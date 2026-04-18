@@ -4,6 +4,7 @@ import type {
   ResetReposOptions, ResetReposResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
+  CreateWorkspaceOptions, CreateWorkspaceResult,
 } from "../types/git.types.ts";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "../types/coding.types.ts";
 
@@ -18,6 +19,7 @@ export interface ICodingCLI {
   resetRepos(opts: ResetReposOptions): Promise<ResetReposResult>;
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult>;
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult>;
+  createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult>;
 
   // AI operations
   analyze(opts: AnalyzeOptions): Promise<AnalyzeResult>;
