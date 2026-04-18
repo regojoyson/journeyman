@@ -1,0 +1,42 @@
+import type { ICodingCLI } from "../../interface.ts";
+import type {
+  CloneReposOptions, CloneReposResult,
+  ScanReposOptions, ScanReposResult,
+  ResetReposOptions, ResetReposResult,
+} from "@journeyman/core";
+import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
+import { cloneRepos } from "./operations/clone-repos.ts";
+import { scanRepos } from "./operations/scan-repos.ts";
+import { resetRepos } from "./operations/reset-repos.ts";
+
+/**
+ * Claude coding CLI provider.
+ * Implements ICodingCLI using the Claude Agent SDK internally.
+ */
+export class ClaudeProvider implements ICodingCLI {
+  // Git CLI operations (powered by Claude bash tool)
+  cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
+    return cloneRepos(opts);
+  }
+
+  scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
+    return scanRepos(opts);
+  }
+
+  resetRepos(opts: ResetReposOptions): Promise<ResetReposResult> {
+    return resetRepos(opts);
+  }
+
+  // AI operations — to be implemented
+  analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> {
+    throw new Error("ClaudeProvider.analyze not yet implemented");
+  }
+
+  plan(_opts: PlanOptions): Promise<PlanResult> {
+    throw new Error("ClaudeProvider.plan not yet implemented");
+  }
+
+  implement(_opts: ImplementOptions): Promise<ImplementResult> {
+    throw new Error("ClaudeProvider.implement not yet implemented");
+  }
+}
