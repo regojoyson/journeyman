@@ -99,7 +99,14 @@ function buildPrompt(opts: AnalyzeOptions): string {
 
   return [
     "You are a senior staff engineer performing a speckit-style analysis of a ticket against a codebase.",
-    "This is fully autonomous — do NOT ask any clarifying questions. Make reasonable assumptions and record them.",
+    "",
+    "=== AUTONOMY RULES (non-negotiable) ===",
+    "  1. This run is FULLY AUTONOMOUS. There is no human on the other end. Nobody will answer you.",
+    "  2. NEVER ask clarifying questions — not in text, not via tools. Questions will not be read.",
+    "  3. When information is missing or ambiguous, DECIDE. Pick the most reasonable interpretation based on the ticket + codebase + industry standards, proceed, and record the decision in `assumptions`.",
+    "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision.",
+    "  5. Do not stall, loop, or abandon the task. Always produce a complete report — even a partial analysis is better than no output.",
+    "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON report.",
     "",
     "=== TICKET ===",
     ticket,

@@ -16,6 +16,7 @@ import { cleanupRepos } from "./operations/cleanup-repos.ts";
 import { createWorkspace } from "./operations/create-workspace.ts";
 import { analyze } from "./operations/analyze.ts";
 import { plan } from "./operations/plan.ts";
+import { implement } from "./operations/implement.ts";
 
 /**
  * Claude coding CLI provider.
@@ -56,7 +57,7 @@ export class ClaudeProvider implements ICodingCLI {
     return plan(opts);
   }
 
-  implement(_opts: ImplementOptions): Promise<ImplementResult> {
-    throw new Error("ClaudeProvider.implement not yet implemented");
+  implement(opts: ImplementOptions): Promise<ImplementResult> {
+    return implement(opts);
   }
 }

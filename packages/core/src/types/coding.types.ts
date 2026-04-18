@@ -97,12 +97,44 @@ export type PlanResult = SessionResult & {
 
 export type ImplementOptions = SessionOptions & {
   dirPath: string;
-  plan: string;
-  branch: string;
+  /** Optional — ticket / goal text. */
+  ticketContent?: string;
+  /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest file in docs/analyze is used. */
+  analyzeReportPath?: string;
+  /** Optional — explicit path to a prior plan report (markdown). If omitted, the latest file in docs/plan is used. */
+  planReportPath?: string;
+  /** Optional — additional rules / constraints layered on top of the defaults. */
+  extraRules?: string[];
+  /** Optional narrowing of scope. */
+  focus?: string;
+};
+
+export type ImplementChangeKind = "created" | "modified" | "deleted";
+
+export type ImplementFileChange = {
+  path: string;
+  kind: ImplementChangeKind;
+  summary: string;
+};
+
+export type ImplementStepResult = {
+  id: string;
+  title: string;
+  status: "done" | "skipped" | "partial" | "failed";
+  notes?: string;
 };
 
 export type ImplementResult = SessionResult & {
   success: boolean;
-  filesChanged?: string[];
+  implementationTitle: string;
+  approachSummary: string;
+  filesChanged: ImplementFileChange[];
+  steps: ImplementStepResult[];
+  testsRun: string[];
+  testsPassed: boolean;
+  followUps: string[];
+  reportTitle: string;
+  reportPath: string;
+  summary: string;
   error?: string;
 };
