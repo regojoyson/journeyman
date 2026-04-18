@@ -1,0 +1,216 @@
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { resolveSession } from "../utils/session.ts";
+import type { AnalyzeOptions, AnalyzeResult } from "@journeyman/core";
+
+export type { AnalyzeOptions, AnalyzeResult };
+
+const EMPTY_RESULT: Omit<AnalyzeResult, "sessionId"> = {
+  ticketSummary: "",
+  ticketType: "other",
+  codebaseSummary: "",
+  affectedAreas: [],
+  findings: [],
+  assumptions: [],
+  risks: [],
+  recommendations: [],
+  complexity: "medium",
+  readinessScore: 0,
+  reportTitle: "",
+  reportPath: "",
+  summary: "",
+};
+
+const OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    ticketSummary: { type: "string" },
+    ticketType: {
+      type: "string",
+      enum: ["bug", "feature", "enhancement", "task", "refactor", "other"],
+    },
+    codebaseSummary: { type: "string" },
+    affectedAreas: { type: "array", items: { type: "string" } },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          category: {
+            type: "string",
+            enum: [
+              "ambiguity",
+              "inconsistency",
+              "underspecified",
+              "duplication",
+              "risk",
+              "terminology",
+              "coverage-gap",
+              "assumption",
+            ],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low", "info"],
+          },
+          title: { type: "string" },
+          description: { type: "string" },
+          location: { type: "string" },
+          recommendation: { type: "string" },
+        },
+        required: ["id", "category", "severity", "title", "description"],
+      },
+    },
+    assumptions: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: { type: "string" } },
+    recommendations: { type: "array", items: { type: "string" } },
+    complexity: {
+      type: "string",
+      enum: ["trivial", "low", "medium", "high", "very-high"],
+    },
+    readinessScore: { type: "number", minimum: 0, maximum: 100 },
+    reportTitle: { type: "string" },
+    reportPath: { type: "string" },
+    summary: { type: "string" },
+    error: { type: "string" },
+  },
+  required: [
+    "ticketSummary",
+    "ticketType",
+    "codebaseSummary",
+    "affectedAreas",
+    "findings",
+    "assumptions",
+    "risks",
+    "recommendations",
+    "complexity",
+    "readinessScore",
+    "reportTitle",
+    "reportPath",
+    "summary",
+  ],
+} as const;
+
+function buildPrompt(opts: AnalyzeOptions): string {
+  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from dirPath)";
+  const focus = opts.focus?.trim();
+  const docsDir = `${opts.dirPath.replace(/\/+$/, "")}/docs`;
+
+  return [
+    "You are a senior staff engineer performing a speckit-style analysis of a ticket against a codebase.",
+    "This is fully autonomous — do NOT ask any clarifying questions. Make reasonable assumptions and record them.",
+    "",
+    "=== TICKET ===",
+    ticket,
+    "",
+    "=== CODEBASE ===",
+    `Root path: ${opts.dirPath}`,
+    focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the ticket.",
+    "",
+    "=== INVESTIGATION STEPS (use Bash / Read / Grep / Glob) ===",
+    `  1. ls ${opts.dirPath} and inspect top-level structure`,
+    "  2. Read README / package.json / pyproject / go.mod etc. to understand the project",
+    "  3. grep for keywords from the ticket (feature names, symbols, identifiers) to locate affected modules",
+    "  4. Read the most relevant files (entrypoints, modules matching the ticket scope)",
+    "  5. Cross-reference the ticket requirements against what the code currently does",
+    "",
+    "=== WRITE THE REPORT TO DISK ===",
+    `  1. Ensure the docs directory exists: mkdir -p ${docsDir}`,
+    "  2. Derive a slug from the ticket key/title (kebab-case, lowercase, alnum+dashes).",
+    `  3. Write a markdown report to: ${docsDir}/analyze-<slug>-<YYYYMMDD-HHmm>.md`,
+    "     Use a heredoc or the file tool. The markdown MUST contain sections:",
+    "       # <Report Title>",
+    "       ## Ticket Summary, ## Ticket Type, ## Codebase Summary,",
+    "       ## Affected Areas, ## Findings (table: id | category | severity | title | location),",
+    "       ## Assumptions, ## Risks, ## Recommendations,",
+    "       ## Complexity, ## Readiness Score.",
+    "  4. Verify the file exists with `ls -l` before returning.",
+    "",
+    "=== REPORT REQUIREMENTS (speckit-style) ===",
+    "Return a structured JSON report with these fields:",
+    "  - ticketSummary: 1-3 sentence plain-language summary of what the ticket asks for.",
+    "  - ticketType: bug | feature | enhancement | task | refactor | other.",
+    "  - codebaseSummary: what the relevant parts of the codebase currently do.",
+    "  - affectedAreas: list of file paths / modules / components that would be touched.",
+    "  - findings: array — each { id (F-001 style), category, severity, title, description, location?, recommendation? }.",
+    "    categories: ambiguity | inconsistency | underspecified | duplication | risk | terminology | coverage-gap | assumption.",
+    "    severity: critical | high | medium | low | info.",
+    "  - assumptions: assumptions you had to make because the ticket was underspecified.",
+    "  - risks: things that could go wrong during implementation (regressions, data loss, perf, security).",
+    "  - recommendations: concrete next steps, ordered by priority.",
+    "  - complexity: trivial | low | medium | high | very-high.",
+    "  - readinessScore: 0-100. 100 = crystal clear; 0 = unworkable without clarification.",
+    "  - reportTitle: short human title for the report, e.g. 'Analysis: <ticket key> — <short phrase>'.",
+    "    Suitable for posting as a ticket comment heading.",
+    "  - reportPath: absolute path of the markdown file you just wrote.",
+    "  - summary: a concise ticket-comment-ready summary (markdown, 4-8 short lines or bullets).",
+    "    Must include: 1-line TL;DR, ticket type, complexity, readiness score, top 3 findings by severity,",
+    "    and a pointer line 'Full report: <reportPath>'. Written so a PM/engineer can skim and act.",
+    "",
+    "Return ONLY the JSON matching the schema. No prose outside of it.",
+  ].join("\n");
+}
+
+/**
+ * Autonomously analyzes a ticket against a codebase and returns a
+ * speckit-style structured report: ticket classification, affected areas,
+ * findings (with severity), assumptions, risks, recommendations, complexity,
+ * and a readiness score. No human-in-the-loop — the agent makes reasonable
+ * assumptions and records them.
+ *
+ * @param opts - dirPath (codebase), ticketContent (Jira/Linear/etc. payload),
+ *   optional focus to narrow scope.
+ * @returns A structured AnalyzeResult.
+ *
+ * @example
+ * ```ts
+ * const report = await analyze({
+ *   dirPath: "/projects/api",
+ *   ticketContent: "PROJ-123: Add rate limiting to /users endpoint...",
+ * });
+ * ```
+ */
+export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
+  const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  let output: AnalyzeResult = { ...EMPTY_RESULT, sessionId };
+
+  for await (const msg of query({
+    prompt: buildPrompt(opts),
+    options: {
+      tools: ["Bash", "Read", "Glob", "Grep", "Write"],
+      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write"],
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+      maxTurns: 40,
+      settingSources: [],
+      settings: { allowedMcpServers: [] },
+      outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...queryOption,
+    },
+  })) {
+    logSdkMessage(msg);
+    if (msg.type === "result") {
+      if (msg.subtype !== "success") {
+        return {
+          ...EMPTY_RESULT,
+          sessionId,
+          error: (msg as any).result ?? msg.subtype,
+        };
+      }
+      output = { ...(msg.structured_output as AnalyzeResult), sessionId };
+    }
+  }
+
+  return output;
+}
+
+// Run: npx tsx analyze.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await analyze({
+    dirPath: "/Users/admin/data/workspace/claude-skils/journeyman",
+    ticketContent:
+      "JM-42: Add a `dry-run` flag to resetRepos so callers can preview the git commands that would run without actually executing them. Must log the planned commands per repo and return success=true with a new `planned` array.",
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
