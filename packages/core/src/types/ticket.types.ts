@@ -101,3 +101,23 @@ export type GetTicketSchemaResult = SessionResult & {
   fields: TicketField[];
   error?: string;
 };
+
+export type AddCommentOptions = SessionOptions & {
+  id: string;
+  body: string;
+};
+
+export type AddCommentResult = SessionResult & {
+  comment?: TicketComment;
+  error?: string;
+};
+
+export type UpdateStatusOptions = SessionOptions & {
+  id: string;
+  status: string;
+};
+
+export type UpdateStatusResult = SessionResult & {
+  ticket?: Ticket;
+  error?: string;
+};
