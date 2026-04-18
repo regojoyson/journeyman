@@ -9,10 +9,18 @@ import type {
   AnalyzeOptions, AnalyzeResult,
   PlanOptions, PlanResult,
   ImplementOptions, ImplementResult,
+  IProviderMeta,
 } from "@journeyman/core";
 
 /** Gemini coding CLI provider. Not yet implemented. */
 export class GeminiProvider implements ICodingCLI {
+  static meta: IProviderMeta = {
+    id: "gemini",
+    name: "Gemini CLI",
+    description: "Google Gemini coding CLI",
+    category: "coding-cli",
+  };
+
   cloneRepos(_opts: CloneReposOptions): Promise<CloneReposResult> { throw new Error("GeminiProvider.cloneRepos not implemented"); }
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("GeminiProvider.scanRepos not implemented"); }
   resetRepos(_opts: ResetReposOptions): Promise<ResetReposResult> { throw new Error("GeminiProvider.resetRepos not implemented"); }

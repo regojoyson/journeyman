@@ -1,4 +1,4 @@
-import type { ITicketProvider } from "@journeyman/core";
+import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
 import type {
   CreateTicketOptions, CreateTicketResult,
   UpdateTicketOptions, UpdateTicketResult,
@@ -11,6 +11,13 @@ import type {
 
 /** Monday.com ticket provider. Not yet implemented. */
 export class MondayProvider implements ITicketProvider {
+  static meta: IProviderMeta = {
+    id: "monday",
+    name: "Monday.com",
+    description: "Monday.com work-management provider",
+    category: "ticket",
+  };
+
   createTicket(_opts: CreateTicketOptions): Promise<CreateTicketResult> { throw new Error("MondayProvider.createTicket not implemented"); }
   updateTicket(_opts: UpdateTicketOptions): Promise<UpdateTicketResult> { throw new Error("MondayProvider.updateTicket not implemented"); }
   getTicket(_opts: GetTicketOptions): Promise<GetTicketResult> { throw new Error("MondayProvider.getTicket not implemented"); }

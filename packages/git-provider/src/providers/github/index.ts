@@ -6,6 +6,7 @@ import type {
   CreatePRResult,
   ListPROptions,
   ListPRResult,
+  IProviderMeta,
 } from "@journeyman/core";
 import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { getRepo } from "./operations/get-repo.ts";
@@ -18,6 +19,13 @@ export type GitHubProviderOptions = {
 };
 
 export class GitHubProvider implements IGitProvider {
+  static meta: IProviderMeta = {
+    id: "github",
+    name: "GitHub REST",
+    description: "GitHub REST API provider for repos and PRs",
+    category: "git",
+  };
+
   private readonly token: string;
   private client?: Client;
 

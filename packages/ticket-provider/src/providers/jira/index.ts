@@ -1,4 +1,4 @@
-import type { ITicketProvider } from "@journeyman/core";
+import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
 import type {
   CreateTicketOptions, CreateTicketResult,
   UpdateTicketOptions, UpdateTicketResult,
@@ -15,6 +15,13 @@ import { listTickets } from "./operations/list-tickets.ts";
 import { getTicketSchema } from "./operations/get-ticket-schema.ts";
 
 export class JiraProvider implements ITicketProvider {
+  static meta: IProviderMeta = {
+    id: "jira",
+    name: "Jira Cloud",
+    description: "Atlassian Jira Cloud ticket provider",
+    category: "ticket",
+  };
+
   createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
     return createTicket(opts);
   }

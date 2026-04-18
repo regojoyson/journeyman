@@ -6,6 +6,7 @@ import type {
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
+  IProviderMeta,
 } from "@journeyman/core";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
 import { cloneRepos } from "./operations/clone-repos.ts";
@@ -23,6 +24,13 @@ import { implement } from "./operations/implement.ts";
  * Implements ICodingCLI using the Claude Agent SDK internally.
  */
 export class ClaudeProvider implements ICodingCLI {
+  static meta: IProviderMeta = {
+    id: "claude",
+    name: "Claude Code CLI",
+    description: "AI coding via @anthropic-ai/claude-agent-sdk",
+    category: "coding-cli",
+  };
+
   // Git CLI operations (powered by Claude bash tool)
   cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
     return cloneRepos(opts);

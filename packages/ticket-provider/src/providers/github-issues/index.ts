@@ -1,4 +1,4 @@
-import type { ITicketProvider } from "@journeyman/core";
+import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
 import type {
   CreateTicketOptions, CreateTicketResult,
   UpdateTicketOptions, UpdateTicketResult,
@@ -30,6 +30,13 @@ import { updateStatus } from "./operations/update-status.ts";
  * - `priority`, `issueType`, `customFields` have no GitHub equivalent — ignored.
  */
 export class GitHubIssuesProvider implements ITicketProvider {
+  static meta: IProviderMeta = {
+    id: "github-issues",
+    name: "GitHub Issues",
+    description: "GitHub Issues as ticket provider",
+    category: "ticket",
+  };
+
   private client?: Client;
 
   async createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {

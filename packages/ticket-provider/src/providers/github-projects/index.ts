@@ -1,4 +1,4 @@
-import type { ITicketProvider } from "@journeyman/core";
+import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
 import type {
   CreateTicketOptions, CreateTicketResult,
   UpdateTicketOptions, UpdateTicketResult,
@@ -34,6 +34,13 @@ import { updateStatus } from "./operations/update-status.ts";
  *   fields only if the project defines a field named "Labels".
  */
 export class GitHubProjectsProvider implements ITicketProvider {
+  static meta: IProviderMeta = {
+    id: "github-projects",
+    name: "GitHub Projects",
+    description: "GitHub Projects (v2) as ticket provider",
+    category: "ticket",
+  };
+
   private client?: Client;
 
   async createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
