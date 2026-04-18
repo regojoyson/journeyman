@@ -20,7 +20,10 @@ export class CreatePRPhase extends BasePhase {
       state: "open",
       sessionId: ctx.sessionId,
     });
-    if (!listRes.error && listRes.prs && listRes.prs.length > 0) {
+    if (listRes.error) {
+      return this.failed(`listPRs preflight failed: ${listRes.error}`, "listPRs_error");
+    }
+    if (listRes.prs && listRes.prs.length > 0) {
       const existing = listRes.prs[0];
       return this.ok({
         pr: { id: existing.id, url: existing.url, number: existing.number },

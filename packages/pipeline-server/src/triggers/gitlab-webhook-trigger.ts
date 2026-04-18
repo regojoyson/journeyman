@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { ITriggerSource, PipelineTrigger, TriggerMountContext, ProductConfig } from "@journeyman/core";
 
@@ -76,7 +77,6 @@ export class GitLabWebhookTrigger implements ITriggerSource {
     if (a.length !== b.length) return false;
     const ba = Buffer.from(a);
     const bb = Buffer.from(b);
-    const { timingSafeEqual } = require("node:crypto") as typeof import("node:crypto");
     return timingSafeEqual(ba, bb);
   }
 

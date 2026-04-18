@@ -66,14 +66,14 @@ export class Pipeline {
     const ac = new AbortController();
     this.aborters.set(sessionId, ac);
 
-    const providers = this.deps.resolveProviders(flow, productConfig);
-    const ctx = buildContext({
-      run, signal: ac.signal, workspaceDir, productConfig, providers,
-      trace: this.deps.trace, artifactStore: this.deps.artifactStore,
-      emit: (e) => this.emit(e),
-    });
-
     try {
+      const providers = this.deps.resolveProviders(flow, productConfig);
+      const ctx = buildContext({
+        run, signal: ac.signal, workspaceDir, productConfig, providers,
+        trace: this.deps.trace, artifactStore: this.deps.artifactStore,
+        emit: (e) => this.emit(e),
+      });
+
       for (const step of flow.steps) {
         if (ac.signal.aborted) { await this.finish(run, "cancelled"); return run; }
         const result = await this.runStepWithAttempts(run, step, ctx, ac.signal);
@@ -89,6 +89,13 @@ export class Pipeline {
       }
       await this.finish(run, "completed");
       return run;
+    } catch (err: any) {
+      // Setup-time failure (provider construction, ctx build). Convert to failed.
+      if (run.status === "running") {
+        run.artifacts._setupError = { message: err?.message ?? String(err) };
+        await this.finish(run, "failed");
+      }
+      throw err;
     } finally {
       this.aborters.delete(sessionId);
       if ((this.deps.cleanupOn ?? []).includes(run.status)) {
@@ -238,8 +245,11 @@ export class Pipeline {
       emit: (e) => this.emit(e),
     });
 
-    const blockedIdx = run.steps.findIndex(s => s.status === "blocked");
-    const remaining = flow.steps.slice(blockedIdx + 1);
+    const blockedRec = [...run.steps].reverse().find(s => s.status === "blocked");
+    if (!blockedRec) throw new Error(`resume: no blocked step in run ${sessionId}`);
+    const flowIdx = flow.steps.findIndex(s => s.id === blockedRec.id);
+    if (flowIdx < 0) throw new Error(`resume: blocked step id "${blockedRec.id}" not in flow snapshot`);
+    const remaining = flow.steps.slice(flowIdx + 1);
 
     const now = () => new Date().toISOString();
     const from = run.status;
