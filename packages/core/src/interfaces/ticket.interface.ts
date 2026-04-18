@@ -7,6 +7,8 @@ import type {
   GetTicketResult,
   ListTicketsOptions,
   ListTicketsResult,
+  GetTicketSchemaOptions,
+  GetTicketSchemaResult,
 } from "../types/ticket.types.ts";
 
 /**
@@ -18,4 +20,5 @@ export interface ITicketProvider {
   updateTicket(opts: UpdateTicketOptions): Promise<UpdateTicketResult>;
   getTicket(opts: GetTicketOptions): Promise<GetTicketResult>;
   listTickets(opts: ListTicketsOptions): Promise<ListTicketsResult>;
+  getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult>;
 }
