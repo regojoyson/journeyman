@@ -90,9 +90,13 @@ function buildPrompt(
     `PR description style: ${prSummaryStyle}`,
     "",
     "Per repo, execute in order:",
-    "1. `git -C <dirPath> status --porcelain`. If output is empty, record",
-    '   { error: "no changes", pushed: false, title: "", description: "",',
-    '     commitMessage: "", commitSha: "", filesChanged: [] } and skip remaining steps.',
+    "1. `git -C <dirPath> status --porcelain`. If output is empty, record a",
+    "   full result object with all required fields populated, using empty",
+    "   strings/arrays for fields that would be derived from the missing changes:",
+    '   { folderName: <basename(dirPath)>, dirPath: <dirPath>, branch: "",',
+    '     commitSha: "", commitMessage: "", title: "", description: "",',
+    '     filesChanged: [], pushed: false, error: "no changes" }',
+    "   Then skip remaining steps for this repo.",
     "2. `git -C <dirPath> rev-parse --abbrev-ref HEAD` → branch.",
     "3. Collect changed files:",
     "   `git -C <dirPath> diff --name-only`",
@@ -141,7 +145,13 @@ function buildPrompt(
 export async function commitPushRepos(
   opts: CommitPushReposOptions
 ): Promise<CommitPushReposResult> {
+  if (opts?.repos == null) {
+    return { repos: [], error: "repos is required" };
+  }
   const entries = normalizeEntries(opts);
+  if (entries.length === 0) {
+    return { repos: [] };
+  }
   const pattern = opts.pattern ?? DEFAULT_PATTERN;
   const prSummaryStyle = opts.prSummaryStyle ?? "detailed";
   let output: CommitPushReposResult = { repos: [] };
