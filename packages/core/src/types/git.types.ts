@@ -91,3 +91,36 @@ export type CreatePRResult = {
   number: number;
   error?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Commit + push operation types (used by coding-cli providers)
+// ---------------------------------------------------------------------------
+
+export type CommitPushEntry = {
+  dirPath: string;
+  ticket?: string;   // per-repo override of top-level ticket
+  message?: string;  // full commit message; if set, skips AI generation
+};
+
+export type CommitPushReposOptions = {
+  repos: string | string[] | CommitPushEntry | CommitPushEntry[];
+  ticket?: string;   // default ticket applied to all entries
+  pattern?: string;  // default: "{ticket} : {summary}"
+};
+
+export type CommitPushResult = {
+  folderName: string;
+  dirPath: string;
+  branch: string;        // current branch (committed + pushed to)
+  commitSha: string;     // new HEAD SHA
+  commitMessage: string; // final message used
+  filesChanged: string[];
+  pushed: boolean;
+  remoteUrl?: string;    // origin URL — useful for owner/repo parsing
+  error?: string;
+};
+
+export type CommitPushReposResult = {
+  repos: CommitPushResult[];
+  error?: string;
+};
