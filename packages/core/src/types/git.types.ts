@@ -61,6 +61,26 @@ export type ResetReposResult = SessionResult & {
   error?: string;
 };
 
+export type CleanupEntry = {
+  dirPath: string;
+};
+
+export type CleanupReposOptions = SessionOptions & {
+  repos: string | string[] | CleanupEntry | CleanupEntry[];
+};
+
+export type CleanupRepoResult = {
+  folderName: string;
+  dirPath: string;
+  success: boolean;
+  error?: string;
+};
+
+export type CleanupReposResult = SessionResult & {
+  repos: CleanupRepoResult[];
+  error?: string;
+};
+
 // ---------------------------------------------------------------------------
 // Git platform API types (used by git-provider providers)
 // ---------------------------------------------------------------------------
