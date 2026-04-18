@@ -11,3 +11,14 @@ export type * from "./types/ticket.types.ts";
 export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";
 export type * from "./types/pipeline.types.ts";
+export type {
+  PipelineContext,
+  IPhase,
+  IStateStore,
+  ITraceLogger,
+  IArtifactStore,
+  IFlowConfigSource,
+  IFlowResolver,
+  ITriggerSource,
+  TriggerMountContext,
+} from "./interfaces/pipeline.interface.ts";
