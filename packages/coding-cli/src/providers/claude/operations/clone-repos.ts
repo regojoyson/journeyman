@@ -1,5 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { resolveSession } from "../utils/session.ts";
 import type { RepoEntry, CloneReposOptions, CloneReposResult } from "@journeyman/core";
 
 export type { RepoEntry, CloneReposOptions, CloneReposResult };
@@ -56,7 +57,8 @@ function buildPrompt(entries: RepoEntry[], dir: string): string {
 export async function cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
   const entries = normalizeEntries(opts);
   const dir = opts.targetDir ?? process.cwd();
-  let output: CloneReposResult = { repos: [] };
+  const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  let output: CloneReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
     prompt: buildPrompt(entries, dir),
@@ -69,14 +71,15 @@ export async function cloneRepos(opts: CloneReposOptions): Promise<CloneReposRes
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...queryOption,
     },
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype };
+        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
       }
-      output = msg.structured_output as CloneReposResult;
+      output = { ...(msg.structured_output as CloneReposResult), sessionId };
     }
   }
 
