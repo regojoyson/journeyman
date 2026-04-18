@@ -129,6 +129,7 @@ npx tsx packages/coding-cli/src/providers/claude/operations/clone-repos.ts
 | `ClaudeProvider.scanRepos` | Implemented |
 | `ClaudeProvider.resetRepos` | Implemented |
 | `ClaudeProvider.commitPushRepos` | Implemented |
+| `ClaudeProvider.cleanupRepos` | Implemented |
 | `ClaudeProvider.analyze` | Stub |
 | `ClaudeProvider.plan` | Stub |
 | `ClaudeProvider.implement` | Stub |
