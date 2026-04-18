@@ -1,3 +1,5 @@
+import type { SessionOptions, SessionResult } from "./session.types.ts";
+
 // ---------------------------------------------------------------------------
 // Git CLI operation types (used by coding-cli providers)
 // ---------------------------------------------------------------------------
@@ -5,7 +7,7 @@
 export type RepoEntry = { url: string; branch: string };
 export type ResetEntry = { dirPath: string; branch: string };
 
-export type CloneReposOptions = {
+export type CloneReposOptions = SessionOptions & {
   repos: string | string[] | RepoEntry | RepoEntry[];
   branch?: string;
   targetDir?: string;
@@ -19,12 +21,12 @@ export type CloneResult = {
   error?: string;
 };
 
-export type CloneReposResult = {
+export type CloneReposResult = SessionResult & {
   repos: CloneResult[];
   error?: string;
 };
 
-export type ScanReposOptions = {
+export type ScanReposOptions = SessionOptions & {
   parentDir: string;
 };
 
@@ -36,12 +38,12 @@ export type RepoInfo = {
   isGitRepo: boolean;
 };
 
-export type ScanReposResult = {
+export type ScanReposResult = SessionResult & {
   repos: RepoInfo[];
   error?: string;
 };
 
-export type ResetReposOptions = {
+export type ResetReposOptions = SessionOptions & {
   repos: string | string[] | ResetEntry | ResetEntry[];
   branch?: string;
 };
@@ -54,7 +56,7 @@ export type ResetResult = {
   error?: string;
 };
 
-export type ResetReposResult = {
+export type ResetReposResult = SessionResult & {
   repos: ResetResult[];
   error?: string;
 };
