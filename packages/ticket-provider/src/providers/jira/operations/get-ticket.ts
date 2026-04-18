@@ -46,7 +46,7 @@ export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as GetTicketResult;
-      throw new Error((msg as any).result ?? msg.subtype);
+      throw new Error((msg as any).errors?.[0] ?? msg.subtype);
     }
   }
   return { error: "No result received" };

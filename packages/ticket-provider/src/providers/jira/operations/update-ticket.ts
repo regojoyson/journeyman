@@ -50,7 +50,7 @@ export async function updateTicket(opts: UpdateTicketOptions): Promise<UpdateTic
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as UpdateTicketResult;
-      throw new Error((msg as any).errors?.join(", ") || "Unknown error");
+      throw new Error((msg as any).errors?.join(", ") || msg.subtype);
     }
   }
   return { error: "No result received" };

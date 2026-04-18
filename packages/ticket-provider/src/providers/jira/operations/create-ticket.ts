@@ -53,7 +53,7 @@ export async function createTicket(opts: CreateTicketOptions): Promise<CreateTic
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as CreateTicketResult;
-      throw new Error((msg as any).errors?.[0] ?? "Unknown error");
+      throw new Error((msg as any).errors?.[0] ?? msg.subtype);
     }
   }
   return { error: "No result received" };

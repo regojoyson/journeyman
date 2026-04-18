@@ -32,7 +32,8 @@ function buildJql(opts: ListTicketsOptions): string {
   if (opts.projectId) clauses.push(`project = "${opts.projectId}"`);
   if (opts.status) clauses.push(`status = "${opts.status}"`);
   if (opts.assignee) clauses.push(`assignee = "${opts.assignee}"`);
-  return clauses.length ? clauses.join(" AND ") : "order by created DESC";
+  const where = clauses.join(" AND ");
+  return where ? `${where} ORDER BY created DESC` : "ORDER BY created DESC";
 }
 
 function buildPrompt(opts: ListTicketsOptions): string {
@@ -58,7 +59,7 @@ export async function listTickets(opts: ListTicketsOptions): Promise<ListTickets
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as ListTicketsResult;
-      throw new Error((msg as any).errors?.[0] ?? "Unknown error");
+      throw new Error((msg as any).errors?.[0] ?? msg.subtype);
     }
   }
   return { tickets: [], error: "No result received" };
