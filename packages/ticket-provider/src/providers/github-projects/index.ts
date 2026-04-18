@@ -5,6 +5,8 @@ import type {
   GetTicketOptions, GetTicketResult,
   ListTicketsOptions, ListTicketsResult,
   GetTicketSchemaOptions, GetTicketSchemaResult,
+  AddCommentOptions, AddCommentResult,
+  UpdateStatusOptions, UpdateStatusResult,
 } from "@journeyman/core";
 import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { createTicket } from "./operations/create-ticket.ts";
@@ -12,6 +14,8 @@ import { updateTicket } from "./operations/update-ticket.ts";
 import { getTicket } from "./operations/get-ticket.ts";
 import { listTickets } from "./operations/list-tickets.ts";
 import { getTicketSchema } from "./operations/get-ticket-schema.ts";
+import { addComment } from "./operations/add-comment.ts";
+import { updateStatus } from "./operations/update-status.ts";
 
 /**
  * GitHub Projects V2 provider (draft issues).
@@ -46,6 +50,12 @@ export class GitHubProjectsProvider implements ITicketProvider {
   }
   async getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> {
     return getTicketSchema(await this.getClient(), opts);
+  }
+  async addComment(opts: AddCommentOptions): Promise<AddCommentResult> {
+    return addComment(await this.getClient(), opts);
+  }
+  async updateStatus(opts: UpdateStatusOptions): Promise<UpdateStatusResult> {
+    return updateStatus(await this.getClient(), opts);
   }
 
   private async getClient(): Promise<Client> {

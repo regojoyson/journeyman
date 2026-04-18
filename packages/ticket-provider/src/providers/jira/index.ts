@@ -5,6 +5,8 @@ import type {
   GetTicketOptions, GetTicketResult,
   ListTicketsOptions, ListTicketsResult,
   GetTicketSchemaOptions, GetTicketSchemaResult,
+  AddCommentOptions, AddCommentResult,
+  UpdateStatusOptions, UpdateStatusResult,
 } from "@journeyman/core";
 import { createTicket } from "./operations/create-ticket.ts";
 import { updateTicket } from "./operations/update-ticket.ts";
@@ -28,4 +30,6 @@ export class JiraProvider implements ITicketProvider {
   getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> {
     return getTicketSchema(opts);
   }
+  addComment(_opts: AddCommentOptions): Promise<AddCommentResult> { throw new Error("JiraProvider.addComment not implemented"); }
+  updateStatus(_opts: UpdateStatusOptions): Promise<UpdateStatusResult> { throw new Error("JiraProvider.updateStatus not implemented"); }
 }
