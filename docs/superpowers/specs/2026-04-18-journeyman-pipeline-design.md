@@ -1,121 +1,138 @@
 # Journeyman Pipeline — Design
 
 **Date:** 2026-04-18
-**Status:** Proposed
-**Package:** `@journeyman/pipeline` (new)
+**Status:** Proposed (v1)
+**Packages:** `@journeyman/pipeline` (runner), `@journeyman/pipeline-server` (HTTP)
 
 ## 1. Goal
 
-Build a configurable, phase-based pipeline on top of the existing Journeyman adapters (`coding-cli`, `git-provider`, `ticket-provider`, `notification-provider`) that automates ticket → PR flow. The pipeline is webhook-driven, per-customer configurable, and ships with a management HTTP API for status, logs, streaming, and cancellation.
+Build two new packages that turn the existing Journeyman adapters (`coding-cli`, `git-provider`, `ticket-provider`, `notification-provider`) into a configurable, phase-based pipeline that automates ticket → PR. It is webhook-driven, per-product configurable, and exposes a management HTTP API for status/logs/streaming/cancel/resume.
 
 This is the TypeScript equivalent of auto-pilot's Python pipeline controller, using the adapters already built in this monorepo.
 
 ## 2. Non-goals (v1)
 
-- Human review loop (review phase is a stub that marks the run `blocked`).
-- Multi-process / queue-based horizontal scaling (runs execute in-process).
-- Per-customer API keys (single shared bearer token).
-- Database-backed state or flow config (interfaces are in place; default impls are filesystem-based).
-- Web UI (SSE + REST is enough for v1; UI is a later package).
+- Human review loop auto-resume (ReviewPhase stub blocks; a `/api/runs/:id/resume` endpoint exists but auto-triggering from PR comments is deferred).
+- Multi-process / horizontal scaling (runs execute in-process; single-instance deployment).
+- Per-token API authorization (single shared bearer token).
+- Database-backed state / flow config / artifacts (interfaces in place; default impls are filesystem-based).
+- Automated tests (deferred; correctness relies on code review + manual verification for v1).
+- Parallel step groups, conditional steps, exponential backoff (interfaces accommodate future work).
 
-## 3. Package Layout
+## 3. Architecture
 
-New package `packages/pipeline/` in the existing monorepo.
+Two packages:
+
+- **`@journeyman/pipeline`** — the runner. Owns orchestration: registries, state, trace, artifacts, flow config, resolver, phases, CLI. No HTTP.
+- **`@journeyman/pipeline-server`** — the HTTP layer. Fastify boot, trigger sources (GitHub/GitLab/Jira/API), management REST+SSE endpoints. Depends on `@journeyman/pipeline`.
+
+Everything crosscutting is an interface in `@journeyman/core`. Filesystem impls default; DB/queue/S3 impls drop in later without runner changes.
+
+## 4. Package Layout
+
+### `packages/pipeline/src/`
 
 ```
-packages/pipeline/src/
-├── index.ts                        — public exports
-├── interface.ts                    — re-exports from @journeyman/core
-├── pipeline.ts                     — Pipeline runner + runPipeline()
-├── context.ts                      — PipelineContext builder
-├── registry/
-│   ├── provider-registry.ts        — registers adapters by id, resolves per-flow
-│   └── phase-registry.ts           — registers IPhase classes by step name
-├── phases/
-│   ├── analyze.ts
-│   ├── plan.ts
-│   ├── implement.ts
-│   └── review.ts                   — stub for v1
-├── state/
-│   ├── file-state-store.ts         — default IStateStore
-│   └── file-trace-logger.ts        — default ITraceLogger
-├── config/
-│   └── yaml-flow-config-source.ts  — default IFlowConfigSource
-├── server/
-│   ├── http-server.ts              — Fastify boot
-│   ├── triggers/
-│   │   ├── github-webhook.ts
-│   │   ├── gitlab-webhook.ts
-│   │   ├── jira-webhook.ts
-│   │   └── api-trigger.ts
-│   └── api/
-│       ├── status.ts               GET  /api/runs/:sessionId
-│       ├── list.ts                 GET  /api/runs
-│       ├── logs.ts                 GET  /api/runs/:sessionId/logs
-│       ├── stream.ts               GET  /api/runs/:sessionId/stream (SSE)
-│       ├── cancel.ts               POST /api/runs/:sessionId/cancel
-│       ├── resume.ts               POST /api/runs/:sessionId/resume
-│       ├── flows.ts                GET  /api/flows
-│       ├── providers.ts            GET  /api/providers
-│       └── health.ts               GET  /api/health
-└── cli.ts                          — `journeyman run ...`
+index.ts                              public exports
+cli.ts                                journeyman run | validate-config | sweep
+pipeline.ts                           Pipeline class (runner)
+context.ts                            buildContext()
+event-bus.ts                          EventBus (pub/sub + ring buffer)
+adapter-unwrap.ts                     unwrap() / unwrapField() / AdapterError
+registry/
+  phase-registry.ts
+  provider-registry.ts                per-product config via resolveForProduct()
+state/
+  file-state-store.ts
+  file-trace-logger.ts
+  file-artifact-store.ts
+config/
+  flow-schema.ts                      Zod for flow YAML
+  pipeline-schema.ts                  Zod for pipeline.yaml
+  yaml-flow-config-source.ts
+  pipeline-config-loader.ts
+  flow-resolver.ts
+  flow-validator.ts                   reads/writes graph walk
+phases/
+  base-phase.ts                       reads/writes contracts + ok/blocked/failed/require helpers
+  get-ticket-phase.ts
+  clone-repos-phase.ts
+  analyze-phase.ts                    persists reportPath via artifactStore
+  plan-phase.ts                       same
+  implement-phase.ts                  same
+  commit-push-phase.ts
+  create-pr-phase.ts                  listPRs() idempotency preflight
+  cleanup-repos-phase.ts
+  add-comment-phase.ts
+  update-status-phase.ts              semantic → literal via productConfig.ticketWorkflow.statuses
+  review-phase.ts                     stub: blocks on pr-comment
+  require-field-phase.ts              reusable gate
+lib/
+  format-ticket-md.ts
+  best-effort.ts
+  any-signal.ts                       AbortSignal composition
 ```
 
-New interfaces/types in `@journeyman/core`: `IPhase`, `IStateStore`, `IFlowConfigSource`, `IFlowResolver`, `ITriggerSource`, `ITraceLogger`, `IProviderMeta`, `PipelineRun`, `StepRecord`, `PhaseResult`, `PipelineContext`, `FlowDefinition`, `PipelineTrigger`, `PipelineEvent`.
+### `packages/pipeline-server/src/`
 
-## 4. Core Types
+```
+index.ts                              public exports
+http-server.ts                        buildServer()
+shutdown.ts                           SIGTERM/SIGINT graceful shutdown
+auth.ts                               bearer-token guard (management routes)
+dispatch.ts                           trigger → flow resolution → pipeline.run
+dedup.ts                              in-process ticket mutex + findActiveForTicket
+concurrency.ts                        per-product semaphore
+triggers/
+  api-trigger.ts
+  github-webhook-trigger.ts
+  gitlab-webhook-trigger.ts
+  jira-webhook-trigger.ts
+api/
+  health.ts                           GET  /api/health
+  runs.ts                             GET  /api/runs, /api/runs/:id
+  logs.ts                             GET  /api/runs/:id/logs
+  stream.ts                           GET  /api/runs/:id/stream (SSE)
+  cancel.ts                           POST /api/runs/:id/cancel
+  resume.ts                           POST /api/runs/:id/resume
+  artifacts.ts                        GET  /api/runs/:id/artifacts/:key
+  flows.ts                            GET  /api/flows
+  providers.ts                        GET  /api/providers
+```
+
+### Modifications to `@journeyman/core`
+
+- Add `src/interfaces/pipeline.interface.ts` (all pipeline interfaces).
+- Add `src/types/pipeline.types.ts` (all pipeline data shapes).
+- Add `signal?: AbortSignal` to `AnalyzeOptions`, `PlanOptions`, `ImplementOptions`, `CloneReposOptions`, `CommitPushReposOptions`, `CleanupReposOptions`.
+- Add `listPRs` to `IGitProvider`.
+
+### Modifications to existing adapter packages
+
+- Every provider class exposes `static meta: IProviderMeta`.
+- `GitHubIssuesProvider.updateStatus` rewritten to label-based workflow (previously only open/closed).
+- `GitHubProvider` implements `listPRs`.
+
+## 5. Core Types
 
 ```ts
-interface IProviderMeta {
+// @journeyman/core/src/types/pipeline.types.ts
+
+export type IProviderMeta = {
   id: string;
   name: string;
   description: string;
   category: "coding-cli" | "git" | "ticket" | "notification";
-}
+};
 
-interface IPhase {
-  readonly name: string;
-  run(ctx: PipelineContext, stepConfig: unknown): Promise<PhaseResult>;
-}
-
-type PhaseResult =
+export type PhaseResult =
   | { status: "ok"; artifacts: Record<string, unknown> }
   | { status: "blocked"; reason: string; waitFor?: "ticket-comment" | "pr-comment" | "manual" }
-  | { status: "failed"; error: { message: string; code?: string; cause?: unknown } };
+  | { status: "failed"; error: { message: string; code?: string; stack?: string } };
 
-interface PipelineContext {
-  sessionId: string;
-  ticketKey: string;
-  flowName: string;
-  customerId?: string;
-  signal: AbortSignal;
-  providers: {
-    ticket: ITicketProvider;
-    git: IGitProvider;
-    coding: ICodingCLI;
-    notification: INotificationProvider;
-  };
-  artifacts: Record<string, unknown>;
-  state: PipelineRun;
-  trace: ITraceLogger;
-  emit(event: PipelineEvent): void;
-}
-
-interface PipelineRun {
-  sessionId: string;
-  ticketKey: string;
-  flowName: string;
-  customerId?: string;
-  status: "running" | "blocked" | "completed" | "failed" | "cancelling" | "cancelled";
-  currentStep: string | null;
-  steps: StepRecord[];
-  artifacts: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface StepRecord {
-  name: string;
+export type StepRecord = {
+  id: string;                          // unique within flow (e.g. "mark-in-progress")
+  phase: string;                       // registry key (e.g. "updateStatus")
   attempt: number;
   status: "pending" | "running" | "ok" | "blocked" | "failed" | "cancelled";
   startedAt?: string;
@@ -125,259 +142,597 @@ interface StepRecord {
   output?: unknown;
   error?: { message: string; code?: string; stack?: string };
   blockedReason?: string;
-}
+  waitFor?: "ticket-comment" | "pr-comment" | "manual";
+};
 
-interface FlowDefinition {
+export type ArtifactHandle = {
+  kind: "artifact";
+  sessionId: string;
+  key: string;
+  size: number;
+  contentType?: string;
+  uri: string;                          // "file://..." | "s3://..."
+  sha256?: string;
+};
+
+export type PipelineRun = {
+  sessionId: string;
+  productId: string;
+  ticketKey: string;                    // canonical id (e.g. "edgereg-org/edgereg-api#42")
+  ticketShortKey: string;               // short id for display ("42")
+  flowName: string;
+  flowSnapshot: FlowDefinition;         // frozen copy; resume/recovery uses this
+  status: "queued" | "running" | "blocked" | "completed" | "failed" | "cancelling" | "cancelled";
+  currentStep: string | null;           // step id
+  steps: StepRecord[];
+  artifacts: Record<string, unknown>;   // may contain ArtifactHandle values
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FlowStepDefinition = {
+  id: string;                           // unique within flow (defaults to phase if omitted)
+  phase: string;                        // registry key
+  config?: Record<string, unknown>;
+  retry?: { attempts: number; backoffMs: number };
+  timeoutMs?: number;
+  onFailure?: "fail" | "skip" | "retry" | "block";  // default "fail"
+};
+
+export type FlowDefinition = {
   name: string;
   providers: { ticket: string; git: string; coding: string; notification: string };
-  steps: { name: string; config?: Record<string, unknown>; retry?: { attempts: number; backoffMs: number }; timeoutMs?: number }[];
-}
+  steps: FlowStepDefinition[];
+};
 
-interface IFlowConfigSource { getFlow(name: string): Promise<FlowDefinition>; listFlows(): Promise<string[]>; }
-interface IStateStore       { load(sessionId: string): Promise<PipelineRun | null>; save(run: PipelineRun): Promise<void>; findByTicket(ticketKey: string): Promise<PipelineRun[]>; find(query: { status?: PipelineRun["status"]; limit?: number }): Promise<PipelineRun[]>; }
-interface ITraceLogger      { log(sessionId: string, step: string, line: string, level?: "info"|"warn"|"error"): Promise<void>; read(sessionId: string, step?: string): AsyncIterable<{ ts: string; level: string; step: string; message: string }>; }
-interface ITriggerSource    { id: string; mount(app: FastifyInstance, onTrigger: (t: PipelineTrigger) => void): void; }
-interface IFlowResolver     { resolve(trigger: PipelineTrigger): Promise<{ flowName: string; customerId?: string }>; }
+export type ProductRepo = {
+  providerId: "github" | "gitlab";
+  owner: string;
+  repo: string;
+  url: string;
+  defaultBranch: string;
+};
 
-interface PipelineTrigger {
+export type TicketWorkflow = {
+  trigger?: {
+    matchLabels?: string[];
+    matchStatus?: string[];
+  };
+  statuses: Record<string, string>;     // semantic name → literal value (e.g. "done" → "Done")
+};
+
+export type ProductConfig = {
+  flow: string;
+  workspace: string;
+  repos: ProductRepo[];
+  providerConfig?: {
+    ticket?: Record<string, unknown>;
+    git?: Record<string, unknown>;
+    coding?: Record<string, unknown>;
+    notification?: Record<string, unknown>;
+  };
+  ticketWorkflow?: TicketWorkflow;
+  webhookSecrets?: Record<string, string>;  // env var name per webhook source
+  concurrency?: number;                     // default: unlimited
+};
+
+export type PipelineConfig = {
+  defaultFlow: string;
+  products: Record<string, ProductConfig>;
+  server: {
+    port: number;
+    bearerTokenEnv: string;
+    webhooks: {
+      github?: { secretEnv: string; path?: string };
+      gitlab?: { secretEnv: string; path?: string };
+      jira?:   { secretEnv: string; path?: string };
+    };
+  };
+  workspaces?: {
+    cleanupOn?: Array<PipelineRun["status"]>;
+    retentionDays?: number;
+    keepFailed?: boolean;
+  };
+};
+
+export type PipelineTrigger = {
   sourceId: string;
+  productId: string;                    // resolved by trigger source from URL path
   ticketKey: string;
+  ticketShortKey: string;
   flowName?: string;
-  customerId?: string;
   rawPayload: unknown;
   receivedAt: string;
-}
+};
 
-type PipelineEvent =
-  | { type: "runStarted";   sessionId: string; ticketKey: string; flowName: string; at: string }
-  | { type: "stepStarted";  sessionId: string; step: string; attempt: number; at: string }
-  | { type: "stepEnded";    sessionId: string; step: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
-  | { type: "logLine";      sessionId: string; step: string; level: string; line: string; at: string }
-  | { type: "statusChanged";sessionId: string; from: PipelineRun["status"]; to: PipelineRun["status"]; at: string }
-  | { type: "runEnded";     sessionId: string; status: PipelineRun["status"]; at: string };
+export type PipelineEvent =
+  | { type: "runStarted";  sessionId: string; ticketKey: string; flowName: string; at: string }
+  | { type: "stepStarted"; sessionId: string; stepId: string; phase: string; attempt: number; at: string }
+  | { type: "stepEnded";   sessionId: string; stepId: string; phase: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
+  | { type: "logLine";     sessionId: string; stepId: string; level: "info"|"warn"|"error"; line: string; at: string }
+  | { type: "statusChanged"; sessionId: string; from: PipelineRun["status"]; to: PipelineRun["status"]; at: string }
+  | { type: "runEnded";    sessionId: string; status: PipelineRun["status"]; at: string };
+
+export type TraceLine = {
+  ts: string;
+  level: "info" | "warn" | "error";
+  stepId: string;
+  message: string;
+  meta?: Record<string, unknown>;
+};
 ```
 
-Every adapter provider class exposes a `static meta: IProviderMeta`. The `ProviderRegistry` auto-discovers them by importing the provider classes and indexing by `meta.id` + `meta.category`.
+## 6. Interfaces
 
-## 5. Configuration
+```ts
+// @journeyman/core/src/interfaces/pipeline.interface.ts
 
-### 5.1 Layout
+export interface PipelineContext {
+  sessionId: string;
+  productId: string;
+  ticketKey: string;
+  ticketShortKey: string;
+  flowName: string;
+  workspaceDir: string;                 // per-run: workspaces/<productId>/runs/<sessionId>
+  signal: AbortSignal;
+  productConfig: ProductConfig;
+  providers: {
+    ticket: ITicketProvider;
+    git: IGitProvider;
+    coding: ICodingCLI;
+    notification: INotificationProvider;
+  };
+  artifacts: Record<string, unknown>;
+  state: Readonly<PipelineRun>;
+  trace: ITraceLogger;
+  artifactStore: IArtifactStore;
+  emit: (event: PipelineEvent) => void;
+}
+
+export interface IPhase {
+  readonly name: string;                // registry key
+  run(ctx: PipelineContext, stepConfig: unknown): Promise<PhaseResult>;
+}
+
+export interface IStateStore {
+  load(sessionId: string): Promise<PipelineRun | null>;
+  save(run: PipelineRun): Promise<void>;
+  findByTicket(productId: string, ticketKey: string): Promise<PipelineRun[]>;
+  findActiveForTicket(productId: string, ticketKey: string): Promise<PipelineRun | null>;
+  find(query: { productId?: string; status?: PipelineRun["status"]; limit?: number }): Promise<PipelineRun[]>;
+}
+
+export interface ITraceLogger {
+  log(sessionId: string, stepId: string, line: string, level?: TraceLine["level"], meta?: Record<string, unknown>): Promise<void>;
+  read(sessionId: string, opts?: { stepId?: string; tail?: number }): AsyncIterable<TraceLine>;
+}
+
+export interface IArtifactStore {
+  put(sessionId: string, key: string, data: Buffer | string, opts?: { contentType?: string; ext?: string }): Promise<ArtifactHandle>;
+  putPath(sessionId: string, key: string, srcPath: string, opts?: { contentType?: string }): Promise<ArtifactHandle>;
+  get(handle: ArtifactHandle): Promise<Buffer>;
+  pathFor(handle: ArtifactHandle): string;
+}
+
+export interface IFlowConfigSource {
+  getFlow(name: string): Promise<FlowDefinition>;
+  listFlows(): Promise<string[]>;
+}
+
+export interface IFlowResolver {
+  resolve(trigger: PipelineTrigger): Promise<{ flowName: string; productId: string }>;
+}
+
+export interface ITriggerSource {
+  readonly id: string;
+  mount(app: FastifyInstance, ctx: TriggerMountContext): void;
+}
+
+export type TriggerMountContext = {
+  products: Record<string, ProductConfig>;
+  webhookConfig: PipelineConfig["server"]["webhooks"];
+  onTrigger: (trigger: PipelineTrigger) => void;
+};
+
+export interface IGitProviderListPRs {
+  listPRs(opts: { owner: string; repo: string; head?: string; state?: "open" | "closed" | "all"; sessionId?: string }): Promise<{ prs: { id: string; url: string; number: number; head: string; state: string }[]; error?: string }>;
+}
+
+// IGitProvider gains: listPRs
+```
+
+## 7. Configuration
+
+### 7.1 Directory layout
 
 ```
 config/
-├── pipeline.yaml                   — global config
+├── pipeline.yaml                     # global
 └── flows/
-    ├── default.yaml                — one FlowDefinition per file
-    ├── customer-acme.yaml
-    └── quick-fix.yaml
+    ├── edgereg-default.yaml
+    └── cidms-secure.yaml
 ```
 
-### 5.2 `pipeline.yaml`
+### 7.2 `pipeline.yaml`
 
 ```yaml
-defaults:
-  flow: default
+defaultFlow: edgereg-default
 
-customers:
-  acme:   { flow: customer-acme }
-  globex: { flow: quick-fix }
-
-customerMapping:
-  byJiraProject: { EV: acme, GLX: globex }
-  byGitRepo:     { "acme/*": acme }
+products:
+  edgereg:
+    flow: edgereg-default
+    workspace: ./workspaces/edgereg
+    concurrency: 2
+    repos:
+      - providerId: github
+        owner: edgereg-org
+        repo: edgereg-api
+        url: "git@github.com:edgereg-org/edgereg-api.git"
+        defaultBranch: main
+    providerConfig:
+      git:          { tokenEnv: EDGEREG_GITHUB_TOKEN }
+      ticket:       { tokenEnv: EDGEREG_GITHUB_TOKEN }
+      coding:       { model: "claude-opus-4-7" }
+      notification: { channel: "#edgereg-auto-pilot", botTokenEnv: EDGEREG_SLACK_TOKEN }
+    ticketWorkflow:
+      trigger:
+        matchLabels: ["ready-for-dev"]
+      statuses:
+        development-started: "in-development"
+        code-review:          "code-review"
+        done:                 "done"
+        blocked:              "blocked"
+        failed:               "failed"
+    webhookSecrets:
+      github: EDGEREG_GH_WEBHOOK_SECRET   # optional per-product override
 
 server:
   port: 3000
   bearerTokenEnv: JOURNEYMAN_API_TOKEN
-  triggers:
-    - { id: github-webhook, path: /webhooks/github, secretEnv: GITHUB_WEBHOOK_SECRET }
-    - { id: gitlab-webhook, path: /webhooks/gitlab, secretEnv: GITLAB_WEBHOOK_SECRET }
-    - { id: jira-webhook,   path: /webhooks/jira,   secretEnv: JIRA_WEBHOOK_SECRET }
-    - { id: api,            path: /api/trigger }
+  webhooks:
+    github: { secretEnv: GITHUB_WEBHOOK_SECRET }
+    gitlab: { secretEnv: GITLAB_WEBHOOK_SECRET }
+    jira:   { secretEnv: JIRA_WEBHOOK_SECRET }
 
-state:
-  store: file
-  path: .pipeline-state
-
-trace:
-  logger: file
-  path: logs
+workspaces:
+  cleanupOn: ["completed", "cancelled"]
+  retentionDays: 14
+  keepFailed: true
 ```
 
-### 5.3 `flows/<name>.yaml`
+### 7.3 `flows/<name>.yaml`
 
 ```yaml
-name: customer-acme
-providers: { ticket: jira, git: github, coding: claude, notification: slack }
+name: edgereg-default
+
+providers:
+  ticket:       github-issues
+  git:          github
+  coding:       claude
+  notification: slack
+
 steps:
-  - { name: analyze }
-  - { name: security-scan }
-  - { name: plan, config: { brainstormRounds: 2 } }
-  - { name: implement, config: { coding: codex }, retry: { attempts: 2, backoffMs: 5000 }, timeoutMs: 1800000 }
-  - { name: review }
+  - { id: fetch-ticket,     phase: getTicket }
+  - { id: clone,            phase: cloneRepos }
+  - { id: analyze,          phase: analyze,         timeoutMs: 900000 }
+  - { id: comment-analysis, phase: addComment,      config: { template: analysis-summary }, onFailure: skip }
+  - { id: mark-in-progress, phase: updateStatus,    config: { status: development-started } }
+  - { id: plan,             phase: plan,            timeoutMs: 900000 }
+  - { id: implement,        phase: implement,       timeoutMs: 1800000 }
+  - { id: commit-push,      phase: commitPushRepos, config: { pattern: "#{ticket} : {summary}", prSummaryStyle: detailed } }
+  - { id: open-pr,          phase: createPR }
+  - { id: mark-in-review,   phase: updateStatus,    config: { status: code-review }, onFailure: skip }
+  - { id: cleanup,          phase: cleanupRepos,    onFailure: skip }
 ```
 
-`YamlFlowConfigSource` globs `config/flows/*.yaml` at startup, validates each with a Zod schema, and indexes by `name`. Invalid flow → fail fast with file path + error. Optional chokidar hot-reload for dev.
+## 8. Flow Resolution
 
-### 5.4 Flow resolution order
+Order, highest priority first:
 
-1. Explicit `trigger.flowName` from the trigger payload or API call.
-2. Customer-level `customers[customerId].flow` — `customerId` extracted by the trigger using `customerMapping`.
-3. Global `defaults.flow`.
+1. Explicit `flowName` on `PipelineTrigger` (from API body or webhook path override — none in v1).
+2. `products[productId].flow`.
+3. `defaultFlow`.
 
-`IFlowResolver` encapsulates this chain; the default implementation reads `pipeline.yaml`. Swap for a DB-backed resolver later without touching the runner.
+`productId` is always present on triggers — the URL path (`/webhooks/github/:productId`) or API body carries it.
 
-## 6. Runner (`Pipeline.run(trigger)`)
+## 9. Runner Semantics
 
-1. `IFlowResolver.resolve(trigger)` → `{ flowName, customerId }`.
-2. `IFlowConfigSource.getFlow(flowName)`.
-3. Create `PipelineRun` with a new `sessionId` (uuid v4), `status: running`, empty `steps`, empty `artifacts`. Persist via `IStateStore.save`. Emit `runStarted`.
-4. `ProviderRegistry.resolveForFlow(flow)` → concrete adapter instances. Build `PipelineContext` (including an `AbortController` and its signal).
-5. For each `step` in `flow.steps`:
-   1. If `ctx.signal.aborted` → mark run `cancelled`, save, emit `runEnded`, return.
-   2. Resolve `IPhase` from `PhaseRegistry` by `step.name` (unknown name → fail fast at flow-load time, not here).
-   3. Per-step attempt loop (1..`retry.attempts + 1`, default 1):
-      - Append `StepRecord { status: running, attempt, startedAt }`. Save. Emit `stepStarted`.
-      - Apply `step.timeoutMs` via `AbortSignal.timeout` merged with `ctx.signal`.
-      - Call `phase.run(ctx, step.config)` inside try/catch.
-      - On uncaught throw → convert to `PhaseResult.failed`.
-      - Merge `artifacts` (on `ok`) into `ctx.artifacts`.
-      - Update `StepRecord` with outcome, `endedAt`, `durationMs`, `output`/`error`. Save. Emit `stepEnded`.
-      - On `ok` → break attempt loop, move to next step.
-      - On `blocked` → set `run.status = blocked`, save, emit `runEnded`, return (no further attempts).
-      - On `failed` → if attempts remain, sleep `backoffMs`, retry; else set `run.status = failed`, save, emit `runEnded`, return.
-6. All steps ok → `run.status = completed`. Save. Emit `statusChanged` + `runEnded`. `providers.notification.send(...)` with summary.
+### 9.1 `Pipeline.run({ trigger, flow })`
 
-All state saves are atomic (write-tmp + rename for `FileStateStore`).
+1. Generate `sessionId` (uuid v4).
+2. Acquire per-product semaphore (blocks if at concurrency limit; queued runs saved with `status: "queued"`).
+3. Dedup check: `state.findActiveForTicket(productId, ticketKey)`. If active run exists (`running | blocked | queued`), return its sessionId (no new run).
+4. Create per-run workspace: `workspaces/<productId>/runs/<sessionId>/`.
+5. Initialize `PipelineRun` with `flowSnapshot: flow` and `status: "running"`. Save.
+6. Resolve providers via `ProviderRegistry.resolveForProduct(flow, productConfig.providerConfig)`.
+7. Build `PipelineContext` including `workspaceDir`, `productConfig`, `signal` (from per-run `AbortController`).
+8. For each step in `flow.steps`:
+   - Check `signal.aborted` → mark `cancelled`, save, emit `runEnded`, return.
+   - Resolve phase from `PhaseRegistry` by `step.phase`.
+   - Per-step timeout: `anySignal([ctx.signal, AbortSignal.timeout(step.timeoutMs)])` (if set).
+   - Attempt loop (1..`retry.attempts + 1`):
+     - Append `StepRecord { id: step.id, phase: step.phase, status: "running", attempt, startedAt }`. Save. Emit `stepStarted`.
+     - Call `phase.run(ctx, step.config)` inside try/catch.
+     - Convert thrown exceptions to `PhaseResult.failed`.
+     - Update `StepRecord` with outcome. Save. Emit `stepEnded`.
+     - On `ok`: merge `artifacts` into `ctx.artifacts`. Break loop.
+     - On `blocked`: break both loops; handled at step level.
+     - On `failed`: if attempts remain, sleep `backoffMs`; else apply `onFailure`:
+       - `fail` (default): abort run as `failed`.
+       - `skip`: log warn, continue to next step.
+       - `retry`: same as attempts exhausted-fail if already in retry loop.
+       - `block`: abort run as `blocked` with reason.
+9. All steps `ok` (or all `skip`-failed) → `status: "completed"`. Save. Emit `statusChanged`, `runEnded`.
+10. On `completed` or `cancelled` (per `workspaces.cleanupOn`): delete `workspaces/<productId>/runs/<sessionId>/`. Preserves state, logs, artifacts dirs.
+11. Release semaphore.
 
-## 7. Phases
+### 9.2 Cancel
 
-Each phase is a small class extending `BasePhase`. Phases only read from and write to `ctx.artifacts` — they never import each other. This is what makes steps reorderable and pluggable.
-
-### 7.1 `AnalyzePhase` (`analyzing`)
-- Reads: `ctx.ticketKey`, `ctx.providers.ticket`.
-- Does: `ticket.getTicket` → `coding.analyze({ ticket })` → produces `TICKET.md` + structured summary.
-- Writes: `artifacts.ticket`, `artifacts.ticketMd`, `artifacts.analysis`.
-- Side effects: ticket comment at start and end.
-- Blocked condition: missing required ticket fields → `blocked("missing acceptance criteria", "ticket-comment")`.
-
-### 7.2 `PlanPhase` (`planning`)
-- Reads: `artifacts.analysis`, `artifacts.ticketMd`.
-- Does: `coding.plan({ analysis, rounds: config.brainstormRounds })`.
-- Writes: `artifacts.plan`, `artifacts.planMd`.
-- Side effects: ticket comment with plan summary.
-- Blocked condition: plan requests clarification.
-
-### 7.3 `ImplementPhase` (`developing`)
-- Reads: `artifacts.plan`, `artifacts.ticket`.
-- Does: `coding.cloneRepos` → `coding.implement({ plan, repoPath })` → `coding.commitPushRepos` → `git.createPullRequest`.
-- Writes: `artifacts.branch`, `artifacts.commitSha`, `artifacts.prUrl`, `artifacts.diffStats`.
-- Side effects: ticket comment with PR link; `notification.send`.
-- Failure modes: push rejected, PR creation failed, tool errors.
-
-### 7.4 `ReviewPhase` (`awaiting-review`) — stub for v1
-- Returns `blocked(reason: "awaiting human review", waitFor: "pr-comment")` unconditionally.
-- Real review logic lands when the human loop is implemented.
-
-### 7.5 Registry
-
-```ts
-phaseRegistry.register("analyze",   () => new AnalyzePhase());
-phaseRegistry.register("plan",      () => new PlanPhase());
-phaseRegistry.register("implement", () => new ImplementPhase());
-phaseRegistry.register("review",    () => new ReviewPhase());
-```
-
-Custom phases (e.g. `security-scan`) register the same way. Flows referencing unknown step names fail fast at flow load.
-
-## 8. HTTP Server
-
-### 8.1 Framework
-Fastify. Chosen for native async, schema validation, low overhead. Nothing in the design depends on the choice — `ITriggerSource.mount` takes whichever app instance.
-
-### 8.2 Triggers (inbound)
-
-All trigger sources normalize their payload into `PipelineTrigger` and call `onTrigger(trigger)`. The server wires `onTrigger` to `pipeline.run(trigger)` **fire-and-forget** and returns `202 Accepted { sessionId }`.
-
-- `GitHubWebhookTrigger` — HMAC signature verification via `x-hub-signature-256`; accepts `issues.labeled`, `pull_request.review.submitted`, `issue_comment.created`; extracts ticket key via configured regex; resolves `customerId` via `customerMapping.byGitRepo`.
-- `GitLabWebhookTrigger` — same pattern with GitLab token + event types.
-- `JiraWebhookTrigger` — status transitions to `Ready` (configurable).
-- `ApiTrigger` — `POST /api/trigger` with bearer auth, body `{ ticketKey, flowName?, customerId? }`.
-
-### 8.3 Management API
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET  | `/api/runs/:sessionId` | Full `PipelineRun`. |
-| GET  | `/api/runs?ticket=&status=&limit=` | List runs. |
-| GET  | `/api/runs/:sessionId/logs?step=&tail=` | Trace lines (via `ITraceLogger.read`). |
-| GET  | `/api/runs/:sessionId/stream` | SSE live updates from `EventBus`. Supports `Last-Event-ID` reconnect replay. |
-| POST | `/api/runs/:sessionId/cancel` | Cooperative cancel. |
-| POST | `/api/runs/:sessionId/resume` | Resume a `blocked` run. |
-| GET  | `/api/flows` | Registered flows + summaries. |
-| GET  | `/api/providers` | Registered providers with `meta`. |
-| GET  | `/api/health` | Liveness + registry counts. |
-
-### 8.4 Event bus
-
-In-process pub/sub keyed by `sessionId`. `Pipeline` emits `PipelineEvent` values during the run loop. `SseStreamHandler` subscribes per-request and writes SSE frames. Same bus can later feed WebSocket/metrics/DB-write-behind without runner changes. A small per-session ring buffer (e.g. last 500 events) supports `Last-Event-ID` replay.
-
-### 8.5 Auth
-- Bearer token (env var) for `ApiTrigger` and all `/api/*` management routes.
-- Webhook triggers use their provider's signature scheme.
-- Per-customer keys = later.
-
-## 9. Cancel, Resume, Recovery
-
-### 9.1 Cancel
-- `POST /api/runs/:sessionId/cancel` → `run.status = cancelling`, save, `abortController.abort()`.
-- `ctx.signal` is threaded into every adapter call that accepts an `AbortSignal` (Claude SDK `query`, fetch, child processes).
-- Between steps and after each adapter call, runner re-checks `ctx.signal.aborted`.
+- `POST /api/runs/:id/cancel` → `pipeline.cancel(sessionId)`.
+- Sets `run.status = "cancelling"`. Calls `abortController.abort()` on the run's context.
+- `signal` propagates through `ctx.signal` to every adapter call that accepts it.
+- Runner re-checks `signal.aborted` between steps and after each adapter call.
 - Current phase unwinds → current step marked `cancelled`, run marked `cancelled`, `runEnded` emitted.
-- Cancelling a finished run is an idempotent no-op that returns current state.
+- Idempotent (cancelling finished run is a no-op).
 
-### 9.2 Resume after `blocked`
-- Two triggers (both deferred to human-loop work, but the mechanism is in place):
-  1. External webhook (Jira/PR comment) matches a `blocked` run → `pipeline.resume(sessionId, resumeContext)`.
-  2. Manual `POST /api/runs/:sessionId/resume`.
-- `pipeline.resume(sessionId)` reloads `PipelineRun`, rebuilds `PipelineContext` from stored `artifacts` and provider resolution for the stored `flowName`, and continues the step loop from the step after the blocked step (or re-runs the blocked step if its `waitFor` says so — per-phase configurable).
+### 9.3 Resume
 
-### 9.3 Crash recovery
-- State saved after every transition → a crash mid-step leaves the last `StepRecord` as `running`.
-- On boot, `Pipeline.recover()` scans `IStateStore` for runs with `status: running`; marks the dangling step `failed` with `code: "process-crash"` and the run `failed`. No auto-resume.
+- `POST /api/runs/:id/resume` → `pipeline.resume(sessionId)`.
+- Requires `status === "blocked"`; rejects otherwise.
+- Reads `run.flowSnapshot` (NOT current `flows/` config); rebuilds context; continues from step after blocked one.
 
-## 10. Observability
+### 9.4 Crash recovery
 
-- `ctx.trace.log(...)` emits a `logLine` event **and** appends to the trace store.
-- `FileTraceLogger` writes `logs/<sessionId>/<step>.log`. Lines are JSON: `{ ts, level, step, message, meta? }`.
-- `/api/runs/:sessionId/logs` streams these; `/stream` adds them to SSE in real time.
-- `tail -f logs/<sessionId>/<step>.log` works for local debugging.
+- On server boot, `Pipeline.recover()` scans for runs with `status ∈ ["running", "cancelling"]`.
+- Marks dangling step `failed` with `code: "process-crash"`, run `failed`.
+- No auto-resume.
 
-## 11. Testing
+### 9.5 Graceful shutdown
 
-| Layer | Approach |
-|---|---|
-| `Pipeline` runner | Unit tests with fake `IPhase`, fake `IStateStore`, fake `ProviderRegistry`. Verify transitions, retries, cancel, blocked/resume, crash recovery. |
-| Each phase | Unit tests with mocked adapters. Assert adapter calls + emitted artifacts + result shape. |
-| Adapter meta | Contract test per adapter: `static meta` is non-empty and matches its category. |
-| Flow loading | YAML fixtures → Zod validation errors for bad flows; successful parse for good ones. |
-| Triggers | Replay recorded webhook payloads; assert normalized `PipelineTrigger` + signature verification. |
-| HTTP API | Integration tests against a booted server with in-memory `IStateStore` + fake runner. Assert route contracts + SSE event shape. |
-| E2E smoke | `ApiTrigger` → analyze → plan → implement → completed, using fake providers registered under real ids. |
+- `SIGTERM` / `SIGINT` handler:
+  - Fastify stops accepting new connections.
+  - All in-flight run `sessionId`s are cancelled.
+  - Wait up to 30s for cancellations to complete.
+  - `process.exit(0)`.
+- Runs that were cancelled this way show `status: "cancelled"` in state — not "failed" via crash-recovery.
 
-Test runner: Vitest, per-package `vitest.config.ts`.
+## 10. Phases (Built-in Catalog)
 
-## 12. Dependencies to add
+Each phase declares `reads` / `writes` as static arrays. Boot validator walks each flow's step sequence confirming every phase's reads are available.
 
-- `fastify` + `@fastify/sensible`
-- `zod` (flow schema validation)
-- `js-yaml` (YAML parsing)
-- `chokidar` (optional, dev hot-reload)
-- `uuid`
-- `vitest` (per-package dev dep)
+| Phase | reads | writes | notes |
+|---|---|---|---|
+| `getTicket` | — | `ticket`, `ticketMd` | Uses `ctx.ticketKey`. Blocks if ticket absent. |
+| `cloneRepos` | — | `repoPaths`, `primaryRepoPath`, `repoRefs` | Driven by `productConfig.repos` only. |
+| `analyze` | `primaryRepoPath`, `ticketMd` | `analysis` (with `reportHandle`) | Persists report via `artifactStore.putPath`. |
+| `plan` | `analysis`, `ticketMd`, `primaryRepoPath` | `plan` (with `reportHandle`) | Same. |
+| `implement` | `plan`, `primaryRepoPath`, `ticketMd` | `implementation` (with `reportHandle`) | Same. Branch not set here. |
+| `commitPushRepos` | `primaryRepoPath` | `commit` | `CommitPushResult` stored intact under `commit`. Branch known here. |
+| `createPR` | `commit`, `ctx.productConfig.repos` | `pr` | `listPRs` preflight: if PR already exists for branch, reuse it. |
+| `cleanupRepos` | `repoPaths` | — | Soft-fail. |
+| `addComment` | `ctx.ticketKey` + inputs per template | `commentIds.<stepId>` | Template-driven body. |
+| `updateStatus` | `ctx.ticketKey`, `productConfig.ticketWorkflow.statuses` | `statusHistory` (append) | Semantic `status` → literal via product's map. Boot validator catches missing keys. |
+| `review` | — | — | Unconditionally `blocked("awaiting human review", "pr-comment")`. |
+| `requireField` | reads configured `artifact.field` | — | Generic gate. If missing/empty → `blocked`. |
 
-## 13. Open questions (to resolve during planning)
+Every phase uses `BasePhase`'s helpers:
+- `this.require<T>(ctx, key)` — throws if artifact absent.
+- `this.optional<T>(ctx, key)` — returns undefined if absent.
+- `unwrap(result, "opName")` / `unwrapField(result, "field", "opName")` — converts `{...,error?}` envelopes.
 
-- Exact shape of `ICodingCLI.analyze` / `plan` / `implement` arguments and return types (currently stubs in `ClaudeProvider`). These need to be finalized in `@journeyman/core` before phases can be implemented against them.
-- Regex/extraction rules for mapping webhook payloads → `ticketKey` — lives in `pipeline.yaml` or per-trigger config?
-- Per-step `timeoutMs` default — leave undefined, or pick a sensible global default?
+File-producing phases call `ctx.artifactStore.putPath(sessionId, key, srcPath)` and store `reportHandle` alongside the structured result.
+
+## 11. Artifact Management
+
+`ctx.artifacts` grows step-by-step. Rules:
+
+- **One-object-per-phase convention**: each phase writes a single top-level key named after what it produced (`analysis`, `plan`, `implementation`, `commit`, `pr`, `ticket`).
+- Special cases:
+  - `addComment`: writes `commentIds.<stepId>` (merged into a shared `commentIds` map).
+  - `updateStatus`: writes `statusHistory` (appended).
+- File outputs live under `workspaces/<productId>/artifacts/<sessionId>/<key>.<ext>` (via `FileArtifactStore.putPath`). Surviving `cleanup` phase.
+- State file stores small metadata + `ArtifactHandle`s; blob content is always reachable via `GET /api/runs/:id/artifacts/:key`.
+
+## 12. Ticket Workflow (Config-Driven)
+
+`productConfig.ticketWorkflow`:
+
+- `trigger` — gating: `matchLabels` (GitHub) or `matchStatus` (Jira/Linear). Trigger source inspects webhook payload; non-matching payloads return 200 `{ ignored: "label-mismatch" }` with no pipeline run.
+- `statuses` — map from semantic name to literal value. Flow YAML references semantic names; `UpdateStatusPhase` resolves at runtime.
+
+Boot validator cross-checks every `updateStatus` step's semantic name against the product's status map. Typo = server refuses to boot.
+
+## 13. HTTP Server
+
+### 13.1 Boot sequence
+
+1. Load `pipeline.yaml` + `flows/*.yaml`.
+2. Register providers in `ProviderRegistry` (auto-discover static `meta`).
+3. Register built-in phases in `PhaseRegistry`.
+4. `Pipeline.recover()`.
+5. Run `FlowValidator` across every flow: phase presence, provider presence, reads/writes graph, status names.
+6. Build Fastify app, register bearer auth hook.
+7. Mount each enabled `ITriggerSource`.
+8. Register all `/api/*` routes.
+9. Install shutdown handler.
+10. Listen.
+
+### 13.2 Trigger dispatch
+
+Shared callback receives a normalized `PipelineTrigger`:
+
+```
+onTrigger = async (trigger) => {
+  const { flowName, productId } = await resolver.resolve(trigger);
+  const flow = await flows.getFlow(flowName);
+  await dispatch({ trigger, flow });    // dedup + semaphore + pipeline.run inside
+};
+```
+
+Dispatcher:
+- Per-ticket mutex: if already dispatching for this `productId + ticketKey`, return existing sessionId.
+- Dedup: `state.findActiveForTicket`; if active run exists, return its sessionId.
+- Acquire per-product semaphore; on block, save `status: "queued"` record and return sessionId.
+- Call `pipeline.run({ trigger, flow })`. Do not await — returns `202 { sessionId }` immediately.
+
+### 13.3 Auth
+
+- `Authorization: Bearer <token>` required for all `/api/*` routes EXCEPT `/api/health`.
+- Webhook paths use per-source signature scheme (HMAC, token).
+- Per-product webhook secret override via `products.<id>.webhookSecrets`.
+
+## 14. Triggers
+
+### 14.1 `ApiTrigger` — `POST /api/trigger/:productId?`
+
+Body (Zod):
+```ts
+{ ticketKey: string, ticketShortKey?: string, flowName?: string }
+```
+
+- `productId` from URL; if absent, `defaultFlow`'s implied product (unscoped manual trigger).
+- Normalized to `PipelineTrigger`; returns `202 { sessionId }`.
+
+### 14.2 `GitHubWebhookTrigger` — `POST /webhooks/github/:productId`
+
+- HMAC verify via `X-Hub-Signature-256` with product's secret (fallback to server's).
+- Extract `ticketKey` from event: issue/PR title/number → `"owner/repo#number"`.
+- `ticketShortKey` = `"number"`.
+- Evaluate `productConfig.ticketWorkflow.trigger.matchLabels` against `payload.issue.labels[]`.
+- Redact payload (`sender.email`, installation token, signature echo).
+
+### 14.3 `GitLabWebhookTrigger` — `POST /webhooks/gitlab/:productId`
+
+- `X-Gitlab-Token` constant-time equality with product's secret.
+- Extract ticket from `object_attributes.title` or `merge_request.title`.
+
+### 14.4 `JiraWebhookTrigger` — `POST /webhooks/jira/:productId`
+
+- Bearer token equality with product's secret.
+- Extract `ticketKey` from `issue.key`; `ticketShortKey` same value.
+- Evaluate `matchStatus` against `changelog.items[].toString` for `status` field.
+
+## 15. Management API
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/health` | — | `{ status, registries: {...} }` |
+| POST | `/api/trigger/:productId?` | `{ ticketKey, ticketShortKey?, flowName? }` | `202 { sessionId }` |
+| GET | `/api/runs/:sessionId` | — | full `PipelineRun` |
+| GET | `/api/runs?product=&ticket=&status=&limit=` | — | `{ runs: PipelineRun[] }` |
+| GET | `/api/runs/:sessionId/logs?stepId=&tail=` | — | `{ lines: TraceLine[] }` |
+| GET | `/api/runs/:sessionId/stream` | — | SSE |
+| POST | `/api/runs/:sessionId/cancel` | — | current `PipelineRun` |
+| POST | `/api/runs/:sessionId/resume` | — | current `PipelineRun` |
+| GET | `/api/runs/:sessionId/artifacts/:key` | — | raw bytes of the artifact handle |
+| GET | `/api/flows` | — | `[{ name, providers, steps: string[] }]` |
+| GET | `/api/providers` | — | `{ "coding-cli": IProviderMeta[], ... }` |
+
+SSE `stream`: replays per-session ring buffer on connect, then live events. `Last-Event-ID` reconnect supported.
+
+## 16. Observability
+
+- **State:** `workspaces/<productId>/state/<sessionId>.json`, atomic writes.
+- **Trace:** `workspaces/<productId>/logs/<sessionId>/<stepId>.log`, JSON-per-line.
+- **Artifacts:** `workspaces/<productId>/artifacts/<sessionId>/<key>.<ext>`.
+- **Live:** `EventBus` in-process pub/sub with per-session ring buffer (500 events).
+- **Metrics (future):** Prometheus endpoint not in v1.
+
+## 17. Security
+
+- Bearer token env var for management API.
+- HMAC/token verification per webhook source.
+- Per-product webhook secret overrides.
+- Each `ITriggerSource` provides `redactPayload()` to strip secrets from stored `rawPayload`.
+- Filesystem permissions: `chmod 700 workspaces/`; document in `docs/pipeline/security.md`.
+- For high-sensitivity deployments: swap `FileArtifactStore` for encrypted S3; swap `FileStateStore` for Postgres.
+
+## 18. Per-Product Isolation
+
+- `workspaces/<productId>/{state,logs,artifacts,runs}/` — one dir per product.
+- Per-product `ProviderConfig` — independent tokens, channels, models.
+- Per-product concurrency semaphore.
+- Per-product webhook path segments + optional per-product webhook secrets.
+- `rm -rf workspaces/<productId>/` wipes everything for that product.
+
+## 19. Limitations (v1)
+
+- **Single-instance deployment.** Dedup + concurrency are in-process. Multi-replica deployments will duplicate runs and bypass concurrency limits. Swap `FileStateStore` for `PostgresStateStore` + add a distributed queue for HA.
+- **No automated tests.** Correctness of runner (retry, cancel, block, resume, crash recovery) relies on code review + manual verification.
+- **ReviewPhase is a stub.** Runs end in `blocked` after opening the PR. Human review is outside the pipeline for v1.
+- **Auto-resume from PR comments is deferred.** Endpoint exists (`POST /api/runs/:id/resume`) and is callable by hand; webhook-driven resume is later work.
+- **Jira/Linear/Monday `addComment` + `updateStatus` are still stubs in their providers.** Only GitHub Issues works end-to-end. Other ticket-provider implementations are prerequisites for those products.
+
+## 20. Future Work
+
+Interfaces accommodate the following without structural changes:
+
+- Parallel step groups (`parallel: [a, b, c]`).
+- Conditional steps (`when: "..."` expression).
+- Exponential backoff (change `retry` shape to `{ attempts, backoffMs, backoffFactor }`).
+- DB-backed state + queue-backed dispatcher for horizontal scaling.
+- S3 artifact store with server-side encryption.
+- Prometheus `/metrics`.
+- OpenTelemetry distributed tracing.
+- Per-token API authorization + rate limits.
+- Multi-environment config overlays.
+
+## 21. Dependencies
+
+Added to `@journeyman/pipeline`:
+- `@journeyman/core` (workspace)
+- `@journeyman/coding-cli`, `@journeyman/git-provider`, `@journeyman/ticket-provider`, `@journeyman/notification-provider` (workspace)
+- `js-yaml`, `zod`, `uuid`
+
+Added to `@journeyman/pipeline-server`:
+- `@journeyman/pipeline` (workspace)
+- `fastify`, `@fastify/sensible`
+
+## 22. Prerequisite Adapter Changes
+
+These are *not* pipeline work but must land before the 11-step flow runs end-to-end:
+
+1. `GitHubIssuesProvider.updateStatus` → label-based workflow (`status:*` labels).
+2. `IGitProvider.listPRs` + `GitHubProvider` implementation.
+3. `static meta: IProviderMeta` on every provider class.
+4. `signal?: AbortSignal` added to: `AnalyzeOptions`, `PlanOptions`, `ImplementOptions`, `CloneReposOptions`, `CommitPushReposOptions`, `CleanupReposOptions`; wired through each adapter (esp. Claude SDK's `abortSignal`).
+
+These are in-scope for the plan as Phase 0 parallel tasks.
+
+## 23. Decisions Index
+
+All 33 decisions finalized through design review:
+
+1. Two packages (`pipeline` + `pipeline-server`).
+2. `customer → product` throughout.
+3. Path-routed webhooks `/webhooks/<source>/:productId`.
+4. Per-product workspaces with `state/`, `logs/`, `runs/`, `artifacts/`.
+5. Declarative phase contracts (`reads` / `writes` static arrays).
+6. Boot-time flow validator (graph walk).
+7. `IArtifactStore` — handle-based persistence; file default.
+8. Step id (unique) vs phase name (registry key).
+9. `onFailure: fail | skip | retry | block` per step.
+10. One-object-per-phase artifact convention.
+11. `unwrap()` / `unwrapField()` / `AdapterError` envelope pattern.
+12. Chronological artifact contract (branch appears after commit-push).
+13. `ProductRepo[]` structured in config; no URL parsing.
+14. `ticketWorkflow` per product: `trigger` gating + `statuses` semantic map.
+15. Label-based `updateStatus` for GitHub Issues.
+16. `ArtifactStore.putPath` copies reports out of ephemeral clone pre-cleanup.
+17. `ticketKey` (canonical) + `ticketShortKey` (display) on trigger/run/context.
+18. Semaphore per product for concurrency.
+19. In-process dedup via `findActiveForTicket`.
+20. Redaction hook per trigger source.
+21. `Pipeline.resume(sessionId)` + `POST /api/runs/:id/resume`.
+22. Crash recovery marks dangling runs failed.
+23. Per-product webhook secret overrides.
+24. `formatTicketMd` helper for optional description.
+25. `bestEffort` helper for soft-fail side effects.
+26. Workspace retention sweeper + `cleanupOn` config.
+27. `signal` threaded through all cancellable adapter calls.
+28. Per-product `providerConfig` passed to provider constructors.
+29. `flowSnapshot` on `PipelineRun` for version pinning.
+30. `listPRs` preflight in `CreatePRPhase` for idempotency.
+31. Single-instance v1 assumption documented.
+32. `SIGTERM` graceful shutdown with 30s cancel grace.
+33. `chmod 700 workspaces/` + security docs.
