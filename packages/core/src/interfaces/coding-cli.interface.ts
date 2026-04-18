@@ -2,6 +2,7 @@ import type {
   CloneReposOptions, CloneReposResult,
   ScanReposOptions, ScanReposResult,
   ResetReposOptions, ResetReposResult,
+  CommitPushReposOptions, CommitPushReposResult,
 } from "../types/git.types.ts";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "../types/coding.types.ts";
 
@@ -14,6 +15,7 @@ export interface ICodingCLI {
   cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult>;
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult>;
   resetRepos(opts: ResetReposOptions): Promise<ResetReposResult>;
+  commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult>;
 
   // AI operations
   analyze(opts: AnalyzeOptions): Promise<AnalyzeResult>;
