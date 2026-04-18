@@ -1,6 +1,5 @@
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CreatePROptions, CreatePRResult } from "@journeyman/core";
-import { callTool } from "../mcp-client.ts";
+import { callTool, type Client } from "@journeyman/github-mcp";
 
 type GitHubPRPayload = {
   id: number;

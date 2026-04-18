@@ -1,6 +1,6 @@
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
 import type { ListTicketsOptions, ListTicketsResult, Ticket } from "@journeyman/core";
-import { callTool } from "../../_shared/github-mcp-client.ts";
+import { callTool, type Client } from "@journeyman/github-mcp";
 import { parseProjectId } from "../utils/parse-project-id.ts";
 
 // Replace with the discovered sub-method name.

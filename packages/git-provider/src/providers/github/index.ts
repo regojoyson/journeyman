@@ -5,8 +5,7 @@ import type {
   CreatePROptions,
   CreatePRResult,
 } from "@journeyman/core";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { connectGitHubMcp } from "./mcp-client.ts";
+import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 
@@ -38,7 +37,12 @@ export class GitHubProvider implements IGitProvider {
   }
 
   private async getClient(): Promise<Client> {
-    if (!this.client) this.client = await connectGitHubMcp(this.token);
+    if (!this.client)
+      this.client = await connectGitHubMcp({
+        token: this.token,
+        clientName: "journeyman-git-provider",
+        clientVersion: "0.0.1",
+      });
     return this.client;
   }
 }

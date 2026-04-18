@@ -10,7 +10,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "*",
     "@journeyman/core": "*",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@journeyman/github-mcp": "*"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

@@ -18,6 +18,7 @@ claude-sdk-test/            ← repo root (name: journeyman)
     ├── core/               ← @journeyman/core   — interfaces + shared types (source of truth)
     ├── coding-cli/         ← @journeyman/coding-cli  — Claude/Gemini/Codex CLI providers
     ├── git-provider/       ← @journeyman/git-provider  — GitHub/GitLab REST API providers
+    ├── github-mcp/         ← @journeyman/github-mcp  — shared GitHub MCP client (used by git-provider + ticket-provider)
     ├── ticket-provider/    ← @journeyman/ticket-provider  — Jira/Linear/Monday providers
     └── notification-provider/ ← @journeyman/notification-provider  — Slack provider
 ```
@@ -29,6 +30,7 @@ claude-sdk-test/            ← repo root (name: journeyman)
 | `@journeyman/core` | Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) and all shared option/result types. Never imports from other `@journeyman/*` packages. |
 | `@journeyman/coding-cli` | AI-powered git operations (clone, scan, reset) via Claude Agent SDK + analyze/plan/implement stubs. Providers: `ClaudeProvider`, `GeminiProvider`, `CodexProvider`. |
 | `@journeyman/git-provider` | REST API operations (get repo, create PR/MR). Providers: `GitHubProvider`, `GitLabProvider`. |
+| `@journeyman/github-mcp` | Shared GitHub MCP client (Streamable HTTP transport against `api.githubcopilot.com/mcp/`). Consumed by `git-provider` and `ticket-provider` GitHub implementations. |
 | `@journeyman/ticket-provider` | Issue tracker operations (CRUD tickets). Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`. |
 | `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`. |
 

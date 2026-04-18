@@ -6,8 +6,7 @@ import type {
   ListTicketsOptions, ListTicketsResult,
   GetTicketSchemaOptions, GetTicketSchemaResult,
 } from "@journeyman/core";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { connectGitHubMcp } from "../_shared/github-mcp-client.ts";
+import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { createTicket } from "./operations/create-ticket.ts";
 import { updateTicket } from "./operations/update-ticket.ts";
 import { getTicket } from "./operations/get-ticket.ts";
@@ -46,7 +45,18 @@ export class GitHubIssuesProvider implements ITicketProvider {
   }
 
   private async getClient(): Promise<Client> {
-    if (!this.client) this.client = await connectGitHubMcp();
+    if (!this.client) {
+      const token = process.env.GITHUB_ACCESS_TOKEN;
+      if (!token) {
+        throw new Error(
+          "GitHubIssuesProvider: PAT required. Set GITHUB_ACCESS_TOKEN.",
+        );
+      }
+      this.client = await connectGitHubMcp({
+        token,
+        clientName: "journeyman-ticket-provider",
+      });
+    }
     return this.client;
   }
 }

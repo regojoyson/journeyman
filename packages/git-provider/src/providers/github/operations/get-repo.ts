@@ -1,6 +1,5 @@
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { GetRepoOptions, GetRepoResult } from "@journeyman/core";
-import { callTool } from "../mcp-client.ts";
+import { callTool, type Client } from "@journeyman/github-mcp";
 
 type GitHubRepoPayload = {
   name: string;

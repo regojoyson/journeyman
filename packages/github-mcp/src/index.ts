@@ -4,18 +4,18 @@ import { URL } from "node:url";
 
 const GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/";
 
-export async function connectGitHubMcp(): Promise<Client> {
-  const token = process.env.GITHUB_ACCESS_TOKEN;
-  if (!token) {
-    throw new Error(
-      "GitHub ticket provider: PAT required. Set GITHUB_ACCESS_TOKEN.",
-    );
-  }
+export interface ConnectOptions {
+  token: string;
+  clientName: string;
+  clientVersion?: string;
+}
+
+export async function connectGitHubMcp(opts: ConnectOptions): Promise<Client> {
   const transport = new StreamableHTTPClientTransport(new URL(GITHUB_MCP_URL), {
-    requestInit: { headers: { Authorization: `Bearer ${token}` } },
+    requestInit: { headers: { Authorization: `Bearer ${opts.token}` } },
   });
   const client = new Client(
-    { name: "journeyman-ticket-provider", version: "0.1.0" },
+    { name: opts.clientName, version: opts.clientVersion ?? "0.1.0" },
     { capabilities: {} },
   );
   await client.connect(transport);
@@ -36,3 +36,5 @@ export async function callTool<T>(
   if (!text) throw new Error(`MCP tool '${name}' returned no text content`);
   return JSON.parse(text) as T;
 }
+
+export { Client };

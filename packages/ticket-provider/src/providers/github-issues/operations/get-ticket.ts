@@ -1,6 +1,6 @@
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
 import type { GetTicketOptions, GetTicketResult } from "@journeyman/core";
-import { callTool } from "../../_shared/github-mcp-client.ts";
+import { callTool, type Client } from "@journeyman/github-mcp";
 import { parseIssueId } from "../utils/parse-ids.ts";
 import { toTicket } from "./create-ticket.ts";
 

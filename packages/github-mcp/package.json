@@ -1,15 +1,14 @@
 {
-  "name": "@journeyman/git-provider",
+  "name": "@journeyman/github-mcp",
   "version": "0.1.0",
-  "description": "Git hosting providers — GitHub, GitLab (REST API: PRs, MRs, webhooks)",
+  "description": "Shared GitHub MCP client (Streamable HTTP transport)",
   "type": "module",
   "main": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "files": ["src"],
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "@journeyman/core": "*",
-    "@journeyman/github-mcp": "*"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
