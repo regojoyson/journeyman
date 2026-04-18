@@ -1,5 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { resolveSession } from "../utils/session.ts";
 import type { ResetEntry, ResetReposOptions, ResetReposResult } from "@journeyman/core";
 
 export type { ResetEntry, ResetReposOptions, ResetReposResult };
@@ -73,7 +74,8 @@ function buildPrompt(entries: ResetEntry[]): string {
  */
 export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposResult> {
   const entries = normalizeEntries(opts);
-  let output: ResetReposResult = { repos: [] };
+  const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  let output: ResetReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
     prompt: buildPrompt(entries),
@@ -86,14 +88,15 @@ export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposRes
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...queryOption,
     },
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype };
+        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
       }
-      output = msg.structured_output as ResetReposResult;
+      output = { ...(msg.structured_output as ResetReposResult), sessionId };
     }
   }
 
