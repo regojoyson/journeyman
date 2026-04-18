@@ -1,17 +1,30 @@
 /**
- * Optional session identifier accepted by any coding-cli operation.
- * When provided, the provider resumes the existing Claude Agent SDK session
- * (warm prompt cache). When omitted, the provider generates a fresh UUID.
+ * Optional session identifier accepted by any Journeyman provider operation.
+ *
+ * Threaded end-to-end so callers can tie a sequence of calls (across
+ * coding-cli, git-provider, ticket-provider, notification-provider) to a
+ * single logical session. The Claude provider uses it to resume a real
+ * Agent SDK session (warm prompt cache). REST providers currently pass it
+ * through — useful for future SDK-backed implementations and for correlating
+ * calls in logs today.
  */
 export type SessionOptions = {
   sessionId?: string;
 };
 
 /**
- * Session identifier returned by every coding-cli operation — either the
- * value the caller passed in, or the UUID the provider generated. Always
- * populated, including on error paths, so callers can chain or log.
+ * Session identifier returned by a provider operation.
+ *
+ * - Claude Agent SDK-backed operations (coding-cli Claude provider): ALWAYS
+ *   populated at runtime — either the caller's id or a generated UUID — so
+ *   callers can chain subsequent calls, even on error paths.
+ * - REST-backed operations (git-provider, ticket-provider, notification-
+ *   provider): echo `opts.sessionId` if the caller provided one, otherwise
+ *   leave unset. There is no session to generate because REST is stateless.
+ *
+ * Declared optional so both shapes share one type. The stronger "always
+ * populated" guarantee for Claude ops is a runtime contract of that provider.
  */
 export type SessionResult = {
-  sessionId: string;
+  sessionId?: string;
 };

@@ -23,6 +23,7 @@ export async function getRepo(
       fullName: r.full_name,
       url: r.html_url,
       defaultBranch: r.default_branch,
+      sessionId: opts.sessionId,
     };
   } catch (e) {
     return {
@@ -31,6 +32,7 @@ export async function getRepo(
       url: "",
       defaultBranch: "",
       error: (e as Error).message,
+      sessionId: opts.sessionId,
     };
   }
 }

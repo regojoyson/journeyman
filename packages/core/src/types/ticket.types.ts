@@ -1,3 +1,5 @@
+import type { SessionOptions, SessionResult } from "./session.types.ts";
+
 export type TicketComment = {
   id: string;
   author?: string;
@@ -39,7 +41,7 @@ export type Ticket = {
   customFields?: Record<string, unknown>;
 };
 
-export type CreateTicketOptions = {
+export type CreateTicketOptions = SessionOptions & {
   title: string;
   description?: string;
   assignee?: string;
@@ -47,12 +49,12 @@ export type CreateTicketOptions = {
   projectId?: string;
 };
 
-export type CreateTicketResult = {
+export type CreateTicketResult = SessionResult & {
   ticket?: Ticket;
   error?: string;
 };
 
-export type UpdateTicketOptions = {
+export type UpdateTicketOptions = SessionOptions & {
   id: string;
   title?: string;
   description?: string;
@@ -63,37 +65,37 @@ export type UpdateTicketOptions = {
   customFields?: Record<string, unknown>;
 };
 
-export type UpdateTicketResult = {
+export type UpdateTicketResult = SessionResult & {
   ticket?: Ticket;
   error?: string;
 };
 
-export type GetTicketOptions = {
+export type GetTicketOptions = SessionOptions & {
   id: string;
 };
 
-export type GetTicketResult = {
+export type GetTicketResult = SessionResult & {
   ticket?: Ticket;
   error?: string;
 };
 
-export type ListTicketsOptions = {
+export type ListTicketsOptions = SessionOptions & {
   projectId?: string;
   status?: string;
   assignee?: string;
 };
 
-export type ListTicketsResult = {
+export type ListTicketsResult = SessionResult & {
   tickets: Ticket[];
   error?: string;
 };
 
-export type GetTicketSchemaOptions = {
+export type GetTicketSchemaOptions = SessionOptions & {
   ticketId: string;
   projectId?: string;
 };
 
-export type GetTicketSchemaResult = {
+export type GetTicketSchemaResult = SessionResult & {
   fields: TicketField[];
   error?: string;
 };

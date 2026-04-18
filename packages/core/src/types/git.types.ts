@@ -65,12 +65,12 @@ export type ResetReposResult = SessionResult & {
 // Git platform API types (used by git-provider providers)
 // ---------------------------------------------------------------------------
 
-export type GetRepoOptions = {
+export type GetRepoOptions = SessionOptions & {
   owner: string;
   repo: string;
 };
 
-export type GetRepoResult = {
+export type GetRepoResult = SessionResult & {
   name: string;
   fullName: string;
   url: string;
@@ -78,7 +78,7 @@ export type GetRepoResult = {
   error?: string;
 };
 
-export type CreatePROptions = {
+export type CreatePROptions = SessionOptions & {
   owner: string;
   repo: string;
   title: string;
@@ -87,7 +87,7 @@ export type CreatePROptions = {
   targetBranch: string;
 };
 
-export type CreatePRResult = {
+export type CreatePRResult = SessionResult & {
   id: string;
   url: string;
   number: number;

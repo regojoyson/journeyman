@@ -1,4 +1,6 @@
-export type SendNotificationOptions = {
+import type { SessionOptions, SessionResult } from "./session.types.ts";
+
+export type SendNotificationOptions = SessionOptions & {
   channel: string;
   message: string;
   title?: string;
@@ -12,7 +14,7 @@ export type NotificationAttachment = {
   fields?: { label: string; value: string }[];
 };
 
-export type SendNotificationResult = {
+export type SendNotificationResult = SessionResult & {
   success: boolean;
   messageId?: string;
   error?: string;

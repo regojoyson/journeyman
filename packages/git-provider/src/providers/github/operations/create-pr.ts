@@ -21,8 +21,8 @@ export async function createPR(
       head: opts.sourceBranch,
       base: opts.targetBranch,
     });
-    return { id: String(r.id), url: r.html_url, number: r.number };
+    return { id: String(r.id), url: r.html_url, number: r.number, sessionId: opts.sessionId };
   } catch (e) {
-    return { id: "", url: "", number: 0, error: (e as Error).message };
+    return { id: "", url: "", number: 0, error: (e as Error).message, sessionId: opts.sessionId };
   }
 }
