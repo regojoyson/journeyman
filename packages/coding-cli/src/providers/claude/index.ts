@@ -5,6 +5,7 @@ import type {
   ResetReposOptions, ResetReposResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
+  CreateWorkspaceOptions, CreateWorkspaceResult,
 } from "@journeyman/core";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
 import { cloneRepos } from "./operations/clone-repos.ts";
@@ -12,6 +13,7 @@ import { scanRepos } from "./operations/scan-repos.ts";
 import { resetRepos } from "./operations/reset-repos.ts";
 import { commitPushRepos } from "./operations/commit-push-repos.ts";
 import { cleanupRepos } from "./operations/cleanup-repos.ts";
+import { createWorkspace } from "./operations/create-workspace.ts";
 import { analyze } from "./operations/analyze.ts";
 import { plan } from "./operations/plan.ts";
 
@@ -39,6 +41,10 @@ export class ClaudeProvider implements ICodingCLI {
 
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
     return cleanupRepos(opts);
+  }
+
+  createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
+    return createWorkspace(opts);
   }
 
   // AI operations
