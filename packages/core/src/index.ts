@@ -9,3 +9,4 @@ export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
 export type * from "./types/ticket.types.ts";
 export type * from "./types/notification.types.ts";
+export type * from "./types/session.types.ts";
