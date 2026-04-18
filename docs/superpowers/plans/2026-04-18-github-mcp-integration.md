@@ -268,7 +268,7 @@ import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 
 export type GitHubProviderOptions = {
-  /** Personal Access Token. Falls back to GITHUB_PERSONAL_ACCESS_TOKEN env var. */
+  /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
   token?: string;
 };
 
@@ -277,10 +277,10 @@ export class GitHubProvider implements IGitProvider {
   private client?: Client;
 
   constructor(opts: GitHubProviderOptions = {}) {
-    const token = opts.token ?? process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+    const token = opts.token ?? process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
       throw new Error(
-        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_PERSONAL_ACCESS_TOKEN.",
+        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN.",
       );
     }
     this.token = token;
@@ -328,8 +328,8 @@ Create `packages/git-provider/scripts/list-mcp-tools.ts`:
 ```ts
 import { connectGitHubMcp } from "../src/providers/github/mcp-client.ts";
 
-const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
-if (!token) throw new Error("set GITHUB_PERSONAL_ACCESS_TOKEN");
+const token = process.env.GITHUB_ACCESS_TOKEN;
+if (!token) throw new Error("set GITHUB_ACCESS_TOKEN");
 
 const client = await connectGitHubMcp(token);
 const tools = await client.listTools();
@@ -340,7 +340,7 @@ for (const t of tools.tools) {
 
 - [ ] **Step 2: Run the probe**
 
-Run: `GITHUB_PERSONAL_ACCESS_TOKEN=<your-pat> npx tsx packages/git-provider/scripts/list-mcp-tools.ts`
+Run: `GITHUB_ACCESS_TOKEN=<your-pat> npx tsx packages/git-provider/scripts/list-mcp-tools.ts`
 Expected: prints a list of tool names. Confirm `get_repository` and `create_pull_request` are present.
 
 - [ ] **Step 3: Adjust if names differ**
@@ -376,7 +376,7 @@ If you made no changes, skip the commit.
 Run from the repo root (replace `<your-pat>`):
 
 ```bash
-GITHUB_PERSONAL_ACCESS_TOKEN=<your-pat> npx tsx -e "import('./packages/git-provider/src/providers/github/index.ts').then(async ({ GitHubProvider }) => { const p = new GitHubProvider(); console.log(await p.getRepo({ owner: 'octocat', repo: 'Hello-World' })); })"
+GITHUB_ACCESS_TOKEN=<your-pat> npx tsx -e "import('./packages/git-provider/src/providers/github/index.ts').then(async ({ GitHubProvider }) => { const p = new GitHubProvider(); console.log(await p.getRepo({ owner: 'octocat', repo: 'Hello-World' })); })"
 ```
 
 Expected: prints an object like:
@@ -410,7 +410,7 @@ In a repo you own (call it `<owner>/<repo>`), push a branch named `journeyman-mc
 Replace `<your-pat>`, `<owner>`, `<repo>`, and `<base-branch>`:
 
 ```bash
-GITHUB_PERSONAL_ACCESS_TOKEN=<your-pat> npx tsx -e "import('./packages/git-provider/src/providers/github/index.ts').then(async ({ GitHubProvider }) => { const p = new GitHubProvider(); console.log(await p.createPR({ owner: '<owner>', repo: '<repo>', title: 'journeyman MCP smoke test', body: 'created via @journeyman/git-provider', sourceBranch: 'journeyman-mcp-test', targetBranch: '<base-branch>' })); })"
+GITHUB_ACCESS_TOKEN=<your-pat> npx tsx -e "import('./packages/git-provider/src/providers/github/index.ts').then(async ({ GitHubProvider }) => { const p = new GitHubProvider(); console.log(await p.createPR({ owner: '<owner>', repo: '<repo>', title: 'journeyman MCP smoke test', body: 'created via @journeyman/git-provider', sourceBranch: 'journeyman-mcp-test', targetBranch: '<base-branch>' })); })"
 ```
 
 Expected: prints `{ id: '<numeric-string>', url: 'https://github.com/.../pull/N', number: N }` and the PR appears on GitHub.

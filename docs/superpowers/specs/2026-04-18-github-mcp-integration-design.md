@@ -20,7 +20,7 @@ Implement `GitHubProvider.getRepo` and `GitHubProvider.createPR` (currently stub
 
 1. **MCP-as-RPC, not MCP-as-agent-tools.** `git-provider` is the deterministic remote-API layer per CLAUDE.md ("`git-provider` calls remote REST APIs"). The MCP server replaces direct REST calls; we invoke its tools via the MCP TS SDK with no LLM in the loop.
 2. **Remote hosted transport only.** No local binary or Docker dependency. Uses `StreamableHTTPClientTransport` against `https://api.githubcopilot.com/mcp/`.
-3. **PAT via constructor option with env fallback.** Explicit `opts.token` wins; otherwise `process.env.GITHUB_PERSONAL_ACCESS_TOKEN`. Validated at construction (fail-fast).
+3. **PAT via constructor option with env fallback.** Explicit `opts.token` wins; otherwise `process.env.GITHUB_ACCESS_TOKEN`. Validated at construction (fail-fast).
 4. **Lazy, reused MCP client.** One client/transport per `GitHubProvider` instance, connected on first operation, reused across subsequent calls.
 
 ## Dependencies
@@ -59,7 +59,7 @@ import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 
 export type GitHubProviderOptions = {
-  /** Personal Access Token. Falls back to GITHUB_PERSONAL_ACCESS_TOKEN env var. */
+  /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
   token?: string;
 };
 
@@ -68,10 +68,10 @@ export class GitHubProvider implements IGitProvider {
   private client?: Client;
 
   constructor(opts: GitHubProviderOptions = {}) {
-    const token = opts.token ?? process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+    const token = opts.token ?? process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
       throw new Error(
-        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_PERSONAL_ACCESS_TOKEN."
+        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN."
       );
     }
     this.token = token;
@@ -206,7 +206,7 @@ This matches the existing repo pattern (e.g. `CloneResult`, `ResetResult` in `gi
 ## Verification
 
 - **Type-check:** `npm run typecheck` must pass for the whole monorepo.
-- **Manual smoke test:** the operation files include a runnable `main()` block (matching the `clone-repos.ts` pattern) executable via `npx tsx packages/git-provider/src/providers/github/operations/get-repo.ts`. Reads `GITHUB_PERSONAL_ACCESS_TOKEN` from env.
+- **Manual smoke test:** the operation files include a runnable `main()` block (matching the `clone-repos.ts` pattern) executable via `npx tsx packages/git-provider/src/providers/github/operations/get-repo.ts`. Reads `GITHUB_ACCESS_TOKEN` from env.
   - `getRepo`: against a known public repo (e.g. `octocat/Hello-World`).
   - `createPR`: against a scratch repo/branch the developer controls.
 - **Tool name verification:** during implementation, run `client.listTools()` once against the live MCP server to confirm `get_repository` and `create_pull_request` exist with the assumed argument shapes; adjust the operation files if names differ.

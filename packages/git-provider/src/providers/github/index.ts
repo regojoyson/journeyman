@@ -11,7 +11,7 @@ import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 
 export type GitHubProviderOptions = {
-  /** Personal Access Token. Falls back to GITHUB_PERSONAL_ACCESS_TOKEN env var. */
+  /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
   token?: string;
 };
 
@@ -20,10 +20,10 @@ export class GitHubProvider implements IGitProvider {
   private client?: Client;
 
   constructor(opts: GitHubProviderOptions = {}) {
-    const token = opts.token ?? process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+    const token = opts.token ?? process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
       throw new Error(
-        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_PERSONAL_ACCESS_TOKEN.",
+        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN.",
       );
     }
     this.token = token;
