@@ -104,7 +104,7 @@ export type CommitPushEntry = {
   message?: string;  // full commit message; if set, skips AI generation
 };
 
-export type CommitPushReposOptions = {
+export type CommitPushReposOptions = SessionOptions & {
   repos: string | string[] | CommitPushEntry | CommitPushEntry[];
   ticket?: string;                            // default ticket applied to all entries
   pattern?: string;                           // default: "{ticket} : {summary}"
@@ -125,7 +125,7 @@ export type CommitPushResult = {
   error?: string;
 };
 
-export type CommitPushReposResult = {
+export type CommitPushReposResult = SessionResult & {
   repos: CommitPushResult[];
   error?: string;
 };

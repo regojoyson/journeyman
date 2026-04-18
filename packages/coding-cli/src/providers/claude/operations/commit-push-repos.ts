@@ -1,5 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { resolveSession } from "../utils/session.ts";
 import type {
   CommitPushEntry,
   CommitPushReposOptions,
@@ -145,16 +146,17 @@ function buildPrompt(
 export async function commitPushRepos(
   opts: CommitPushReposOptions
 ): Promise<CommitPushReposResult> {
+  const { sessionId, queryOption } = resolveSession(opts?.sessionId);
   if (opts?.repos == null) {
-    return { repos: [], error: "repos is required" };
+    return { repos: [], error: "repos is required", sessionId };
   }
   const entries = normalizeEntries(opts);
   if (entries.length === 0) {
-    return { repos: [] };
+    return { repos: [], sessionId };
   }
   const pattern = opts.pattern ?? DEFAULT_PATTERN;
   const prSummaryStyle = opts.prSummaryStyle ?? "detailed";
-  let output: CommitPushReposResult = { repos: [] };
+  let output: CommitPushReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
     prompt: buildPrompt(entries, pattern, prSummaryStyle),
@@ -167,14 +169,15 @@ export async function commitPushRepos(
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...queryOption,
     },
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype };
+        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
       }
-      output = msg.structured_output as CommitPushReposResult;
+      output = { ...(msg.structured_output as CommitPushReposResult), sessionId };
     }
   }
 
