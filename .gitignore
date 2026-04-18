@@ -3,3 +3,4 @@ dist/
 *.js.map
 .claude/memory/
 .claude/settings.local.json
+.worktrees/
