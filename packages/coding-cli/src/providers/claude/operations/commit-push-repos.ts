@@ -146,7 +146,7 @@ function buildPrompt(
 export async function commitPushRepos(
   opts: CommitPushReposOptions
 ): Promise<CommitPushReposResult> {
-  const { sessionId, queryOption } = resolveSession(opts?.sessionId);
+  const { sessionId, queryOption } = resolveSession(opts.sessionId);
   if (opts?.repos == null) {
     return { repos: [], error: "repos is required", sessionId };
   }
