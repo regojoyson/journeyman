@@ -47,6 +47,8 @@ export type CreateTicketOptions = SessionOptions & {
   assignee?: string;
   labels?: string[];
   projectId?: string;
+  status?: string;
+  customFields?: Record<string, unknown>;
 };
 
 export type CreateTicketResult = SessionResult & {
