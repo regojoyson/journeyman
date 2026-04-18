@@ -33,7 +33,7 @@
 - [ ] **Step 1: Replace the entire file with the extended types**
 
 ```typescript
-export type Comment = {
+export type TicketComment = {
   id: string;
   author?: string;
   body: string;
@@ -69,7 +69,7 @@ export type Ticket = {
   reporter?: string;
   createdAt?: string;
   updatedAt?: string;
-  comments?: Comment[];
+  comments?: TicketComment[];
   attachments?: Attachment[];
   customFields?: Record<string, unknown>;
 };
@@ -297,7 +297,7 @@ export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as GetTicketResult;
-      throw new Error(msg.result_text);
+      throw new Error(msg.errors?.[0] ?? msg.subtype);
     }
   }
   return { error: "No result received" };
@@ -423,7 +423,7 @@ export async function updateTicket(opts: UpdateTicketOptions): Promise<UpdateTic
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype === "success") return msg.structured_output as UpdateTicketResult;
-      throw new Error(msg.result_text);
+      throw new Error(msg.errors?.[0] ?? msg.subtype);
     }
   }
   return { error: "No result received" };

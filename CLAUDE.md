@@ -95,7 +95,7 @@ for await (const msg of response) {
   logSdkMessage(msg);
   if (msg.type === "result") {
     if (msg.subtype === "success") return msg.structured_output as MyResultType;
-    throw new Error(msg.result_text);
+    throw new Error(msg.errors?.[0] ?? msg.subtype);
   }
 }
 ```
