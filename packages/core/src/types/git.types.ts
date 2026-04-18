@@ -130,6 +130,26 @@ export type CreatePRResult = SessionResult & {
   error?: string;
 };
 
+export type ListPROptions = SessionOptions & {
+  owner: string;
+  repo: string;
+  head?: string;                                   // "owner:branch" (GitHub format)
+  state?: "open" | "closed" | "all";
+};
+
+export type ListPRItem = {
+  id: string;
+  url: string;
+  number: number;
+  head: string;
+  state: string;
+};
+
+export type ListPRResult = SessionResult & {
+  prs: ListPRItem[];
+  error?: string;
+};
+
 // ---------------------------------------------------------------------------
 // Commit + push operation types (used by coding-cli providers)
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import type {
   CreatePROptions, CreatePRResult,
   GetRepoOptions, GetRepoResult,
+  ListPROptions, ListPRResult,
 } from "../types/git.types.ts";
 
 /**
@@ -10,4 +11,5 @@ import type {
 export interface IGitProvider {
   getRepo(opts: GetRepoOptions): Promise<GetRepoResult>;
   createPR(opts: CreatePROptions): Promise<CreatePRResult>;
+  listPRs(opts: ListPROptions): Promise<ListPRResult>;
 }

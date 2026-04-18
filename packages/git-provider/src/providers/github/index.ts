@@ -4,10 +4,13 @@ import type {
   GetRepoResult,
   CreatePROptions,
   CreatePRResult,
+  ListPROptions,
+  ListPRResult,
 } from "@journeyman/core";
 import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
+import { listPRs } from "./operations/list-prs.ts";
 
 export type GitHubProviderOptions = {
   /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
@@ -34,6 +37,10 @@ export class GitHubProvider implements IGitProvider {
 
   async createPR(opts: CreatePROptions): Promise<CreatePRResult> {
     return createPR(await this.getClient(), opts);
+  }
+
+  async listPRs(opts: ListPROptions): Promise<ListPRResult> {
+    return listPRs(await this.getClient(), opts);
   }
 
   private async getClient(): Promise<Client> {
