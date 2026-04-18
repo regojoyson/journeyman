@@ -47,8 +47,9 @@ export type CommitPushEntry = {
 
 export type CommitPushReposOptions = {
   repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  ticket?: string;   // default ticket applied to all entries
-  pattern?: string;  // default: "{ticket} : {summary}"
+  ticket?: string;                            // default ticket applied to all entries
+  pattern?: string;                           // default: "{ticket} : {summary}"
+  prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
 };
 
 export type CommitPushResult = {
@@ -56,7 +57,9 @@ export type CommitPushResult = {
   dirPath: string;
   branch: string;        // current branch (committed + pushed to)
   commitSha: string;     // new HEAD SHA
-  commitMessage: string; // final message used
+  commitMessage: string; // final message used for git commit
+  title: string;         // PR/MR title — e.g. "EV-123: Fix header alignment"
+  description: string;   // PR/MR body — summary of code changes (markdown)
   filesChanged: string[];
   pushed: boolean;
   remoteUrl?: string;    // origin URL — useful for owner/repo parsing
@@ -235,6 +238,8 @@ const OUTPUT_SCHEMA = {
           branch: { type: "string" },
           commitSha: { type: "string" },
           commitMessage: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
           filesChanged: { type: "array", items: { type: "string" } },
           pushed: { type: "boolean" },
           remoteUrl: { type: "string" },
@@ -246,6 +251,8 @@ const OUTPUT_SCHEMA = {
           "branch",
           "commitSha",
           "commitMessage",
+          "title",
+          "description",
           "filesChanged",
           "pushed",
         ],
@@ -304,7 +311,11 @@ git commit -m "feat(coding-cli): scaffold commitPushRepos types and normalizatio
 Append to `commit-push-repos.ts` (below `normalizeEntries`):
 
 ```ts
-function buildPrompt(entries: NormalizedEntry[], pattern: string): string {
+function buildPrompt(
+  entries: NormalizedEntry[],
+  pattern: string,
+  prSummaryStyle: "brief" | "detailed"
+): string {
   const entriesJson = JSON.stringify(entries, null, 2);
 
   return [
@@ -319,24 +330,41 @@ function buildPrompt(entries: NormalizedEntry[], pattern: string): string {
     'portion cleanly (no leading/trailing " : " or "{ticket}" literal).',
     "If entry.message is set, use it verbatim and skip {summary} generation.",
     "",
+    `PR description style: ${prSummaryStyle}`,
+    "",
     "Per repo, execute in order:",
     "1. `git -C <dirPath> status --porcelain`. If output is empty, record",
-    '   { error: "no changes", pushed: false } and skip remaining steps.',
+    '   { error: "no changes", pushed: false, title: "", description: "",',
+    '     commitMessage: "", commitSha: "", filesChanged: [] } and skip remaining steps.',
     "2. `git -C <dirPath> rev-parse --abbrev-ref HEAD` → branch.",
     "3. Collect changed files:",
     "   `git -C <dirPath> diff --name-only`",
     "   `git -C <dirPath> diff --cached --name-only`",
     "   `git -C <dirPath> ls-files --others --exclude-standard`",
     "   Union them into filesChanged (unique, sorted).",
-    "4. If entry.message is not set, run `git -C <dirPath> diff HEAD` and",
-    "   produce a concise imperative {summary} (<= 72 chars, no trailing period).",
-    "5. Build the final commitMessage by substituting tokens into the pattern.",
-    "6. `git -C <dirPath> add -A`",
-    '7. `git -C <dirPath> commit -m "<commitMessage>"`',
-    "8. `git -C <dirPath> rev-parse HEAD` → commitSha.",
-    "9. `git -C <dirPath> push origin <branch>`. On success pushed: true,",
-    "   on failure pushed: false and set error to the stderr message.",
-    "10. `git -C <dirPath> remote get-url origin` → remoteUrl (ignore errors here).",
+    "4. Run `git -C <dirPath> diff HEAD` to see the actual code changes.",
+    "   If entry.message is not set, produce a concise imperative {summary}",
+    "   (<= 72 chars, no trailing period) from this diff.",
+    "5. Build the final commitMessage:",
+    "   - If entry.message is set, commitMessage = entry.message.",
+    "   - Otherwise substitute {ticket} and {summary} into the pattern.",
+    "     If entry.ticket is absent and pattern starts with '{ticket} : ',",
+    "     collapse the prefix — use just {summary}.",
+    "6. Build the PR-ready fields from the SAME diff:",
+    "   - title: `<ticket>: <summary>` (single space after colon) if entry.ticket",
+    "     is set, else just `<summary>`. Title is for PR/MR, not git log, so it",
+    "     uses ': ' not ' : '.",
+    "   - description: markdown summary of the actual code changes in the diff.",
+    "     If prSummaryStyle is 'brief', write one short paragraph (2–3 sentences).",
+    "     If 'detailed', write a one-line intro then a bulleted list of notable",
+    "     file-by-file changes (what changed, not the full diff). No trailing",
+    "     boilerplate. No generated-by footer.",
+    "7. `git -C <dirPath> add -A`",
+    '8. `git -C <dirPath> commit -m "<commitMessage>"`',
+    "9. `git -C <dirPath> rev-parse HEAD` → commitSha.",
+    "10. `git -C <dirPath> push origin <branch>`. On success pushed: true,",
+    "    on failure pushed: false and set error to the stderr message.",
+    "11. `git -C <dirPath> remote get-url origin` → remoteUrl (ignore errors here).",
     "",
     "folderName is the basename of dirPath.",
     "",
@@ -357,10 +385,11 @@ export async function commitPushRepos(
 ): Promise<CommitPushReposResult> {
   const entries = normalizeEntries(opts);
   const pattern = opts.pattern ?? DEFAULT_PATTERN;
+  const prSummaryStyle = opts.prSummaryStyle ?? "detailed";
   let output: CommitPushReposResult = { repos: [] };
 
   for await (const msg of query({
-    prompt: buildPrompt(entries, pattern),
+    prompt: buildPrompt(entries, pattern, prSummaryStyle),
     options: {
       tools: ["Bash"],
       allowedTools: ["Bash"],
@@ -550,6 +579,8 @@ Expected: JSON output with `repos[0]` having:
 - `branch` set to `main` (or whatever default branch was created)
 - `commitSha` set to a 40-char SHA
 - `commitMessage` starting with `EV-123 : `
+- `title` starting with `EV-123: ` (single space after colon, not ` : `)
+- `description` non-empty (markdown summary of the `file.txt` addition)
 - `filesChanged` containing `file.txt`
 - `pushed: false` and `error` describing the push failure (fake origin)
 

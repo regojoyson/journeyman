@@ -104,8 +104,9 @@ export type CommitPushEntry = {
 
 export type CommitPushReposOptions = {
   repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  ticket?: string;   // default ticket applied to all entries
-  pattern?: string;  // default: "{ticket} : {summary}"
+  ticket?: string;                            // default ticket applied to all entries
+  pattern?: string;                           // default: "{ticket} : {summary}"
+  prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
 };
 
 export type CommitPushResult = {
@@ -113,7 +114,9 @@ export type CommitPushResult = {
   dirPath: string;
   branch: string;        // current branch (committed + pushed to)
   commitSha: string;     // new HEAD SHA
-  commitMessage: string; // final message used
+  commitMessage: string; // final message used for git commit
+  title: string;         // PR/MR title — e.g. "EV-123: Fix header alignment"
+  description: string;   // PR/MR body — summary of code changes (markdown)
   filesChanged: string[];
   pushed: boolean;
   remoteUrl?: string;    // origin URL — useful for owner/repo parsing

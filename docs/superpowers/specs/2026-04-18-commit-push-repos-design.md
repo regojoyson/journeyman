@@ -27,8 +27,9 @@ export type CommitPushEntry = {
 
 export type CommitPushReposOptions = {
   repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  ticket?: string;          // default ticket applied to all entries
-  pattern?: string;         // default: "{ticket} : {summary}"
+  ticket?: string;                         // default ticket applied to all entries
+  pattern?: string;                        // default: "{ticket} : {summary}"
+  prSummaryStyle?: "brief" | "detailed";   // default: "detailed"
 };
 
 export type CommitPushResult = {
@@ -36,7 +37,9 @@ export type CommitPushResult = {
   dirPath: string;
   branch: string;           // current branch (committed + pushed to)
   commitSha: string;        // new HEAD SHA
-  commitMessage: string;    // final message used
+  commitMessage: string;    // final message used for git commit
+  title: string;            // PR/MR title — e.g. "EV-123: Fix header alignment"
+  description: string;      // PR/MR body — summary of code changes (markdown)
   filesChanged: string[];
   pushed: boolean;
   remoteUrl?: string;       // origin URL — useful for owner/repo parsing
@@ -82,7 +85,10 @@ The operation dispatches one Claude Agent SDK `query()` that instructs the agent
 8. `git -C <dir> rev-parse HEAD` — capture `commitSha`
 9. `git -C <dir> push origin <branch>` — on success `pushed: true`
 10. `git -C <dir> remote get-url origin` — capture `remoteUrl`
-11. Any failed step sets `error` on that repo's result; other repos continue
+11. Derive PR-ready fields:
+    - `title`: `<ticket>: <summary>` if ticket resolved, else just `<summary>`. Not the same as `commitMessage` — `commitMessage` follows `pattern` (which defaults to `{ticket} : {summary}` with spaces around the colon for git log readability), whereas `title` uses a single `": "` (PR convention).
+    - `description`: agent-generated markdown summary of the code changes based on the same diff. `prSummaryStyle: "brief"` → one short paragraph. `prSummaryStyle: "detailed"` (default) → a short intro line + a bullet list of notable file-by-file changes.
+12. Any failed step sets `error` on that repo's result; other repos continue
 
 ### Claude Agent SDK configuration
 
@@ -136,7 +142,8 @@ for (const r of repos.filter(x => x.pushed)) {
   const { owner, repo } = parseOriginUrl(r.remoteUrl!);
   await github.createPR({
     owner, repo,
-    title: r.commitMessage,
+    title: r.title,
+    body: r.description,
     sourceBranch: r.branch,
     targetBranch: "main",
   });
