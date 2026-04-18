@@ -6,9 +6,43 @@ export type AnalyzeOptions = SessionOptions & {
   focus?: string;
 };
 
+export type AnalyzeTicketType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
+export type AnalyzeSeverity = "critical" | "high" | "medium" | "low" | "info";
+export type AnalyzeComplexity = "trivial" | "low" | "medium" | "high" | "very-high";
+export type AnalyzeFindingCategory =
+  | "ambiguity"
+  | "inconsistency"
+  | "underspecified"
+  | "duplication"
+  | "risk"
+  | "terminology"
+  | "coverage-gap"
+  | "assumption";
+
+export type AnalyzeFinding = {
+  id: string;
+  category: AnalyzeFindingCategory;
+  severity: AnalyzeSeverity;
+  title: string;
+  description: string;
+  location?: string;
+  recommendation?: string;
+};
+
 export type AnalyzeResult = SessionResult & {
+  ticketSummary: string;
+  ticketType: AnalyzeTicketType;
+  codebaseSummary: string;
+  affectedAreas: string[];
+  findings: AnalyzeFinding[];
+  assumptions: string[];
+  risks: string[];
+  recommendations: string[];
+  complexity: AnalyzeComplexity;
+  readinessScore: number;
+  reportTitle: string;
+  reportPath: string;
   summary: string;
-  insights: string[];
   error?: string;
 };
 
