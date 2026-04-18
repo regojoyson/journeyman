@@ -10,6 +10,8 @@ import { cloneRepos } from "./operations/clone-repos.ts";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { resetRepos } from "./operations/reset-repos.ts";
 import { commitPushRepos } from "./operations/commit-push-repos.ts";
+import { analyze } from "./operations/analyze.ts";
+import { plan } from "./operations/plan.ts";
 
 /**
  * Claude coding CLI provider.
@@ -33,13 +35,13 @@ export class ClaudeProvider implements ICodingCLI {
     return commitPushRepos(opts);
   }
 
-  // AI operations — to be implemented
-  analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> {
-    throw new Error("ClaudeProvider.analyze not yet implemented");
+  // AI operations
+  analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
+    return analyze(opts);
   }
 
-  plan(_opts: PlanOptions): Promise<PlanResult> {
-    throw new Error("ClaudeProvider.plan not yet implemented");
+  plan(opts: PlanOptions): Promise<PlanResult> {
+    return plan(opts);
   }
 
   implement(_opts: ImplementOptions): Promise<ImplementResult> {
