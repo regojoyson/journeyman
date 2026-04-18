@@ -1,4 +1,4 @@
-export type Comment = {
+export type TicketComment = {
   id: string;
   author?: string;
   body: string;
@@ -34,7 +34,7 @@ export type Ticket = {
   reporter?: string;
   createdAt?: string;
   updatedAt?: string;
-  comments?: Comment[];
+  comments?: TicketComment[];
   attachments?: Attachment[];
   customFields?: Record<string, unknown>;
 };
