@@ -48,12 +48,50 @@ export type AnalyzeResult = SessionResult & {
 
 export type PlanOptions = SessionOptions & {
   dirPath: string;
-  goal: string;
-  context?: string;
+  /** Optional — ticket / goal text. If omitted, the plan is derived purely from the analyze report. */
+  ticketContent?: string;
+  /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest report in docs/analyze is used. */
+  analyzeReportPath?: string;
+  /** Optional narrowing of scope. */
+  focus?: string;
+};
+
+export type PlanStepKind =
+  | "setup"
+  | "code-change"
+  | "refactor"
+  | "test"
+  | "config"
+  | "migration"
+  | "docs"
+  | "verification"
+  | "rollout";
+
+export type PlanStep = {
+  id: string;
+  kind: PlanStepKind;
+  title: string;
+  description: string;
+  files?: string[];
+  commands?: string[];
+  acceptanceCriteria?: string[];
+  dependsOn?: string[];
 };
 
 export type PlanResult = SessionResult & {
-  steps: string[];
+  planTitle: string;
+  goal: string;
+  approachSummary: string;
+  affectedFiles: string[];
+  steps: PlanStep[];
+  testStrategy: string[];
+  rolloutNotes: string[];
+  risks: string[];
+  openQuestions: string[];
+  estimatedComplexity: AnalyzeComplexity;
+  reportTitle: string;
+  reportPath: string;
+  summary: string;
   error?: string;
 };
 

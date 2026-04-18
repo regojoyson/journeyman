@@ -95,7 +95,7 @@ const OUTPUT_SCHEMA = {
 function buildPrompt(opts: AnalyzeOptions): string {
   const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from dirPath)";
   const focus = opts.focus?.trim();
-  const docsDir = `${opts.dirPath.replace(/\/+$/, "")}/docs`;
+  const docsDir = `${opts.dirPath.replace(/\/+$/, "")}/docs/analyze`;
 
   return [
     "You are a senior staff engineer performing a speckit-style analysis of a ticket against a codebase.",
@@ -118,7 +118,7 @@ function buildPrompt(opts: AnalyzeOptions): string {
     "=== WRITE THE REPORT TO DISK ===",
     `  1. Ensure the docs directory exists: mkdir -p ${docsDir}`,
     "  2. Derive a slug from the ticket key/title (kebab-case, lowercase, alnum+dashes).",
-    `  3. Write a markdown report to: ${docsDir}/analyze-<slug>-<YYYYMMDD-HHmm>.md`,
+    `  3. Write a markdown report to: ${docsDir}/<slug>-<YYYYMMDD-HHmm>.md`,
     "     Use a heredoc or the file tool. The markdown MUST contain sections:",
     "       # <Report Title>",
     "       ## Ticket Summary, ## Ticket Type, ## Codebase Summary,",
