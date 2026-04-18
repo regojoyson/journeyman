@@ -4,6 +4,7 @@ export type AnalyzeOptions = SessionOptions & {
   dirPath: string;
   ticketContent?: string;
   focus?: string;
+  signal?: AbortSignal;
 };
 
 export type AnalyzeTicketType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
@@ -54,6 +55,7 @@ export type PlanOptions = SessionOptions & {
   analyzeReportPath?: string;
   /** Optional narrowing of scope. */
   focus?: string;
+  signal?: AbortSignal;
 };
 
 export type PlanStepKind =
@@ -107,6 +109,7 @@ export type ImplementOptions = SessionOptions & {
   extraRules?: string[];
   /** Optional narrowing of scope. */
   focus?: string;
+  signal?: AbortSignal;
 };
 
 export type ImplementChangeKind = "created" | "modified" | "deleted";

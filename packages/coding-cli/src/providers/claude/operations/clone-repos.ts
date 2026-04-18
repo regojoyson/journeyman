@@ -58,6 +58,14 @@ export async function cloneRepos(opts: CloneReposOptions): Promise<CloneReposRes
   const entries = normalizeEntries(opts);
   const dir = opts.targetDir ?? process.cwd();
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  const controller = opts.signal
+    ? (() => {
+        const ac = new AbortController();
+        if (opts.signal!.aborted) ac.abort(opts.signal!.reason);
+        else opts.signal!.addEventListener("abort", () => ac.abort(opts.signal!.reason), { once: true });
+        return ac;
+      })()
+    : undefined;
   let output: CloneReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
@@ -71,6 +79,7 @@ export async function cloneRepos(opts: CloneReposOptions): Promise<CloneReposRes
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,
     },
   })) {

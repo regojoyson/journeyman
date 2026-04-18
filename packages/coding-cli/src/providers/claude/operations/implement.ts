@@ -188,6 +188,14 @@ function buildPrompt(opts: ImplementOptions): string {
  */
 export async function implement(opts: ImplementOptions): Promise<ImplementResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  const controller = opts.signal
+    ? (() => {
+        const ac = new AbortController();
+        if (opts.signal!.aborted) ac.abort(opts.signal!.reason);
+        else opts.signal!.addEventListener("abort", () => ac.abort(opts.signal!.reason), { once: true });
+        return ac;
+      })()
+    : undefined;
   let output: ImplementResult = { ...EMPTY_RESULT, sessionId };
 
   for await (const msg of query({
@@ -201,6 +209,7 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,
     },
   })) {

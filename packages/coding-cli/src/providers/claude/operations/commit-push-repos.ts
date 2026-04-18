@@ -156,6 +156,14 @@ export async function commitPushRepos(
   }
   const pattern = opts.pattern ?? DEFAULT_PATTERN;
   const prSummaryStyle = opts.prSummaryStyle ?? "detailed";
+  const controller = opts.signal
+    ? (() => {
+        const ac = new AbortController();
+        if (opts.signal!.aborted) ac.abort(opts.signal!.reason);
+        else opts.signal!.addEventListener("abort", () => ac.abort(opts.signal!.reason), { once: true });
+        return ac;
+      })()
+    : undefined;
   let output: CommitPushReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
@@ -169,6 +177,7 @@ export async function commitPushRepos(
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,
     },
   })) {
