@@ -81,6 +81,17 @@ export type CleanupReposResult = SessionResult & {
   error?: string;
 };
 
+export type CreateWorkspaceOptions = SessionOptions & {
+  ticketId: string;
+  parentDir: string;
+};
+
+export type CreateWorkspaceResult = SessionResult & {
+  folderName: string;
+  dirPath: string;
+  error?: string;
+};
+
 // ---------------------------------------------------------------------------
 // Git platform API types (used by git-provider providers)
 // ---------------------------------------------------------------------------
