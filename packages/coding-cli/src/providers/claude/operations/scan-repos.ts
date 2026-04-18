@@ -1,5 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { resolveSession } from "../utils/session.ts";
 import type { ScanReposOptions, ScanReposResult } from "@journeyman/core";
 
 export type { ScanReposOptions, ScanReposResult };
@@ -52,7 +53,8 @@ function buildPrompt(parentDir: string): string {
  * ```
  */
 export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
-  let output: ScanReposResult = { repos: [] };
+  const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  let output: ScanReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
     prompt: buildPrompt(opts.parentDir),
@@ -65,14 +67,15 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...queryOption,
     },
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype };
+        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
       }
-      output = msg.structured_output as ScanReposResult;
+      output = { ...(msg.structured_output as ScanReposResult), sessionId };
     }
   }
 
