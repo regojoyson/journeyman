@@ -48,19 +48,22 @@ export type ScanReposResult = SessionResult & {
 export type ResetReposOptions = SessionOptions & {
   repos: string | string[] | ResetEntry | ResetEntry[];
   branch?: string;
+  ticket?: { id: string; title: string };
   signal?: AbortSignal;
 };
 
 export type ResetResult = {
   folderName: string;
   dirPath: string;
-  branch: string;
+  baseBranch: string;
+  newBranch: string;
   success: boolean;
   error?: string;
 };
 
 export type ResetReposResult = SessionResult & {
   repos: ResetResult[];
+  newBranch: string;
   error?: string;
 };
 
