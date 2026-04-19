@@ -1,7 +1,7 @@
 import type { ICodingCLI } from "../../interface.ts";
 import type {
   ScanReposOptions, ScanReposResult,
-  ResetReposOptions, ResetReposResult,
+  CheckoutRepoOptions, CheckoutRepoResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
@@ -9,7 +9,7 @@ import type {
 } from "@journeyman/core";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
 import { scanRepos } from "./operations/scan-repos.ts";
-import { resetRepos } from "./operations/reset-repos.ts";
+import { checkoutRepo } from "./operations/checkout-repo.ts";
 import { commitPushRepos } from "./operations/commit-push-repos.ts";
 import { cleanupRepos } from "./operations/cleanup-repos.ts";
 import { createWorkspace } from "./operations/create-workspace.ts";
@@ -34,8 +34,8 @@ export class ClaudeProvider implements ICodingCLI {
     return scanRepos(opts);
   }
 
-  resetRepos(opts: ResetReposOptions): Promise<ResetReposResult> {
-    return resetRepos(opts);
+  checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
+    return checkoutRepo(opts);
   }
 
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult> {

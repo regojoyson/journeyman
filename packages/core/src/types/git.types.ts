@@ -5,7 +5,7 @@ import type { SessionOptions, SessionResult } from "./session.types.ts";
 // ---------------------------------------------------------------------------
 
 export type RepoEntry = { url: string; branch: string };
-export type ResetEntry = { dirPath: string; branch: string };
+export type CheckoutEntry = { dirPath: string; branch: string };
 
 export type CloneReposOptions = {
   repos: string | string[] | RepoEntry | RepoEntry[];
@@ -45,14 +45,14 @@ export type ScanReposResult = SessionResult & {
   error?: string;
 };
 
-export type ResetReposOptions = SessionOptions & {
-  repos: string | string[] | ResetEntry | ResetEntry[];
+export type CheckoutRepoOptions = SessionOptions & {
+  repos: string | string[] | CheckoutEntry | CheckoutEntry[];
   branch?: string;
   ticket?: { id: string; title: string };
   signal?: AbortSignal;
 };
 
-export type ResetResult = {
+export type CheckoutResult = {
   folderName: string;
   dirPath: string;
   baseBranch: string;
@@ -61,8 +61,8 @@ export type ResetResult = {
   error?: string;
 };
 
-export type ResetReposResult = SessionResult & {
-  repos: ResetResult[];
+export type CheckoutRepoResult = SessionResult & {
+  repos: CheckoutResult[];
   newBranch: string;
   error?: string;
 };

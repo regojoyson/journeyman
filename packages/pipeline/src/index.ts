@@ -36,7 +36,7 @@ export { ReviewPhase } from "./phases/review-phase.ts";
 export { RequireFieldPhase } from "./phases/require-field-phase.ts";
 export { NotifyPhase } from "./phases/notify-phase.ts";
 export { ScanReposPhase } from "./phases/scan-repos-phase.ts";
-export { ResetReposPhase } from "./phases/reset-repos-phase.ts";
+export { CheckoutRepoPhase } from "./phases/checkout-repo-phase.ts";
 export { CreateWorkspacePhase } from "./phases/create-workspace-phase.ts";
 export { GetRepoPhase } from "./phases/get-repo-phase.ts";
 export { ListPRsPhase } from "./phases/list-prs-phase.ts";

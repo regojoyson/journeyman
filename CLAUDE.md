@@ -52,7 +52,7 @@ packages/coding-cli/src/
     │   ├── index.ts                ← ClaudeProvider class
     │   ├── operations/
     │   │   ├── scan-repos.ts       ← scanRepos() via Claude Agent SDK
-    │   │   └── reset-repos.ts      ← resetRepos() via Claude Agent SDK
+    │   │   └── checkout-repo.ts    ← checkoutRepo() via Claude Agent SDK
     │   └── utils/
     │       └── sdk-logger.ts       ← shared logSdkMessage() utility
     ├── gemini/index.ts             ← GeminiProvider stub
@@ -125,7 +125,7 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 | Feature | Status |
 |---|---|
 | `ClaudeProvider.scanRepos` | Implemented |
-| `ClaudeProvider.resetRepos` | Implemented |
+| `ClaudeProvider.checkoutRepo` | Implemented |
 | `ClaudeProvider.commitPushRepos` | Implemented |
 | `ClaudeProvider.cleanupRepos` | Implemented |
 | `ClaudeProvider.createWorkspace` | Implemented |

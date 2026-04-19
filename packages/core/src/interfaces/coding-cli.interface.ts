@@ -1,6 +1,6 @@
 import type {
   ScanReposOptions, ScanReposResult,
-  ResetReposOptions, ResetReposResult,
+  CheckoutRepoOptions, CheckoutRepoResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
@@ -14,7 +14,7 @@ import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementO
 export interface ICodingCLI {
   // Git operations (executed via CLI bash)
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult>;
-  resetRepos(opts: ResetReposOptions): Promise<ResetReposResult>;
+  checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult>;
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult>;
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult>;
   createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult>;

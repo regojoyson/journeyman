@@ -1,7 +1,7 @@
 import type { ICodingCLI } from "../../interface.ts";
 import type {
   ScanReposOptions, ScanReposResult,
-  ResetReposOptions, ResetReposResult,
+  CheckoutRepoOptions, CheckoutRepoResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
@@ -21,7 +21,7 @@ export class GeminiProvider implements ICodingCLI {
   };
 
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("GeminiProvider.scanRepos not implemented"); }
-  resetRepos(_opts: ResetReposOptions): Promise<ResetReposResult> { throw new Error("GeminiProvider.resetRepos not implemented"); }
+  checkoutRepo(_opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> { throw new Error("GeminiProvider.checkoutRepo not implemented"); }
   commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("GeminiProvider.commitPushRepos not implemented"); }
   cleanupRepos(_opts: CleanupReposOptions): Promise<CleanupReposResult> { throw new Error("GeminiProvider.cleanupRepos not implemented"); }
   createWorkspace(_opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { throw new Error("GeminiProvider.createWorkspace not implemented"); }

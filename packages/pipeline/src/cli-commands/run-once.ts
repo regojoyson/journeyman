@@ -8,7 +8,7 @@ import {
   GetTicketPhase, CloneReposPhase, AnalyzePhase, PlanPhase, ImplementPhase,
   CommitPushPhase, CreatePRPhase, CleanupReposPhase, AddCommentPhase,
   UpdateStatusPhase, ReviewPhase, RequireFieldPhase, NotifyPhase,
-  ScanReposPhase, ResetReposPhase, CreateWorkspacePhase,
+  ScanReposPhase, CheckoutRepoPhase, CreateWorkspacePhase,
   GetRepoPhase, ListPRsPhase,
   CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
 } from "../index.ts";
@@ -62,7 +62,7 @@ export async function runOnce(
   phases.register("requireField",    () => new RequireFieldPhase());
   phases.register("notify",          () => new NotifyPhase());
   phases.register("scanRepos",       () => new ScanReposPhase());
-  phases.register("resetRepos",      () => new ResetReposPhase());
+  phases.register("checkoutRepo",    () => new CheckoutRepoPhase());
   phases.register("createWorkspace", () => new CreateWorkspacePhase());
   phases.register("getRepo",         () => new GetRepoPhase());
   phases.register("listPRs",         () => new ListPRsPhase());

@@ -226,7 +226,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await analyze({
     dirPath: "/Users/admin/data/workspace/claude-skils/journeyman",
     ticketContent:
-      "JM-42: Add a `dry-run` flag to resetRepos so callers can preview the git commands that would run without actually executing them. Must log the planned commands per repo and return success=true with a new `planned` array.",
+      "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them. Must log the planned commands per repo and return success=true with a new `planned` array.",
   });
   console.log(JSON.stringify(result, null, 2));
 }

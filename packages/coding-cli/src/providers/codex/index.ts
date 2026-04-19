@@ -1,5 +1,5 @@
 import type { ICodingCLI } from "../../interface.ts";
-import type { ScanReposOptions, ScanReposResult, ResetReposOptions, ResetReposResult, CommitPushReposOptions, CommitPushReposResult, CleanupReposOptions, CleanupReposResult, CreateWorkspaceOptions, CreateWorkspaceResult, AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult, IProviderMeta } from "@journeyman/core";
+import type { ScanReposOptions, ScanReposResult, CheckoutRepoOptions, CheckoutRepoResult, CommitPushReposOptions, CommitPushReposResult, CleanupReposOptions, CleanupReposResult, CreateWorkspaceOptions, CreateWorkspaceResult, AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult, IProviderMeta } from "@journeyman/core";
 
 /** Codex coding CLI provider. Not yet implemented. */
 export class CodexProvider implements ICodingCLI {
@@ -11,7 +11,7 @@ export class CodexProvider implements ICodingCLI {
   };
 
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("CodexProvider.scanRepos not implemented"); }
-  resetRepos(_opts: ResetReposOptions): Promise<ResetReposResult> { throw new Error("CodexProvider.resetRepos not implemented"); }
+  checkoutRepo(_opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> { throw new Error("CodexProvider.checkoutRepo not implemented"); }
   commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("CodexProvider.commitPushRepos not implemented"); }
   cleanupRepos(_opts: CleanupReposOptions): Promise<CleanupReposResult> { throw new Error("CodexProvider.cleanupRepos not implemented"); }
   createWorkspace(_opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { throw new Error("CodexProvider.createWorkspace not implemented"); }

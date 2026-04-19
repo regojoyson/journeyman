@@ -1,9 +1,10 @@
 /**
- * @file reset-repos-phase.ts
- * Resets locally cloned repositories to their configured default branches.
+ * @file checkout-repo-phase.ts
+ * Resets locally cloned repositories to their configured default branches
+ * and checks out a fresh feature branch.
  *
- * Reads:  repoPaths    — list of local repo paths written by cloneRepos.
- * Writes: resetResults — array of ResetResult objects, one per repo.
+ * Reads:  repoPaths       — list of local repo paths written by cloneRepos.
+ * Writes: checkoutResults — array of CheckoutResult objects, one per repo.
  */
 
 import { BasePhase } from "./base-phase.ts";
@@ -12,9 +13,9 @@ import type { PhaseResult, PipelineContext } from "@journeyman/core";
 
 /**
  * Resets each repo in `repoPaths` to the default branch declared in
- * `productConfig.repos`. Branches are matched by index — the i-th path
- * corresponds to the i-th repo entry. Falls back to `"main"` when a product
- * repo entry is missing.
+ * `productConfig.repos`, then checks out a fresh feature branch. Branches are
+ * matched by index — the i-th path corresponds to the i-th repo entry. Falls
+ * back to `"main"` when a product repo entry is missing.
  *
  * Useful as a cleanup step between retries or before re-running implement,
  * ensuring the working tree is in a known-good state.
@@ -24,12 +25,12 @@ import type { PhaseResult, PipelineContext } from "@journeyman/core";
  * - Provider error → unwrap throws AdapterError, runner records as failed.
  * - Aborted via `ctx.signal` → provider raises AbortError.
  *
- * Side effects: performs `git reset` (and possibly `git checkout`) on local disk.
+ * Side effects: performs `git reset` and `git checkout` on local disk.
  */
-export class ResetReposPhase extends BasePhase {
-  readonly name = "resetRepos";
+export class CheckoutRepoPhase extends BasePhase {
+  readonly name = "checkoutRepo";
   static reads = ["repoPaths"] as const;
-  static writes = ["resetResults"] as const;
+  static writes = ["checkoutResults"] as const;
 
   async run(ctx: PipelineContext): Promise<PhaseResult> {
     const repoPaths = this.require<string[]>(ctx, "repoPaths");
@@ -40,16 +41,16 @@ export class ResetReposPhase extends BasePhase {
       branch: repos[i]?.defaultBranch ?? "main",
     }));
 
-    const res = unwrap(await ctx.providers.coding.resetRepos({
+    const res = unwrap(await ctx.providers.coding.checkoutRepo({
       repos: entries,
       sessionId: ctx.sessionId,
       signal: ctx.signal,
-    }), "resetRepos");
+    }), "checkoutRepo");
 
     for (const r of res.repos) {
-      if (r.error) return this.failed(`resetRepos: ${r.error}`);
+      if (r.error) return this.failed(`checkoutRepo: ${r.error}`);
     }
 
-    return this.ok({ resetResults: res.repos });
+    return this.ok({ checkoutResults: res.repos });
   }
 }

@@ -51,6 +51,24 @@ Clones every repository listed in `productConfig.repos` to a temporary local wor
 
 ---
 
+### `checkoutRepo`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `checkoutRepo` |
+| **reads** | `repoPaths` |
+| **writes** | `checkoutResults` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/checkout-repo-phase.ts` |
+
+Hard-resets each cloned repo in `repoPaths` to its configured default branch (from `productConfig.repos[i].defaultBranch`, falling back to `"main"`) and checks out a fresh feature branch via the `coding` provider's `checkoutRepo` operation. Useful as a cleanup step between retries or before re-running implement, ensuring the working tree is in a known-good state. Stores per-repo results under `checkoutResults`.
+
+**Failure modes:** any individual repo reports an `error` (phase fails with that message); coding-cli provider error; cancellation via `ctx.signal`.
+
+**Side effects:** performs `git reset` and `git checkout` on local disk.
+
+---
+
 ### `analyze`
 
 | Field | Value |
@@ -242,6 +260,7 @@ Each phase that produces data owns a top-level key in `ctx.artifacts`. Keys are 
 | `repoPaths` | `cloneRepos` | `Record<string, string>` — repo name → local absolute path |
 | `primaryRepoPath` | `cloneRepos` | `string` — absolute path of the primary repo |
 | `repoRefs` | `cloneRepos` | `Record<string, { sha: string; branch: string }>` |
+| `checkoutResults` | `checkoutRepo` | `CheckoutResult[]` — one entry per repo (`dirPath`, `newBranch`, `success`, optional `error`) |
 | `analysis` | `analyze` | `AnalyzeResult` including `reportHandle: ArtifactHandle` |
 | `plan` | `plan` | `PlanResult` including `reportHandle: ArtifactHandle` |
 | `implementation` | `implement` | `ImplementResult` including `reportHandle: ArtifactHandle` |

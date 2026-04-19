@@ -510,7 +510,7 @@ List all available providers registered in the system, organized by category.
       "name": "claude",
       "displayName": "Claude (Anthropic)",
       "version": "1.0.0",
-      "capabilities": ["cloneRepos", "scanRepos", "resetRepos", "commitPushRepos", "cleanupRepos"],
+      "capabilities": ["cloneRepos", "scanRepos", "checkoutRepo", "commitPushRepos", "cleanupRepos"],
       "status": "ready"
     }
   ],

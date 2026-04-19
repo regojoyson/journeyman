@@ -1,9 +1,9 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
-import type { ResetEntry, ResetReposOptions, ResetReposResult } from "@journeyman/core";
+import type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult } from "@journeyman/core";
 
-export type { ResetEntry, ResetReposOptions, ResetReposResult };
+export type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult };
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -29,7 +29,7 @@ const OUTPUT_SCHEMA = {
   required: ["newBranch", "repos"],
 } as const;
 
-function normalizeEntries(opts: ResetReposOptions): ResetEntry[] {
+function normalizeEntries(opts: CheckoutRepoOptions): CheckoutEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) =>
     typeof r === "string" ? { dirPath: r, branch: opts.branch ?? "main" } : r
@@ -37,8 +37,8 @@ function normalizeEntries(opts: ResetReposOptions): ResetEntry[] {
 }
 
 function buildPrompt(
-  entries: ResetEntry[],
-  ticket: ResetReposOptions["ticket"],
+  entries: CheckoutEntry[],
+  ticket: CheckoutRepoOptions["ticket"],
 ): string {
   const steps = entries
     .map(({ dirPath, branch }) => `  - ${dirPath} → baseBranch: ${branch}`)
@@ -97,11 +97,11 @@ function buildPrompt(
  * from ticket details when provided, or as an animal-themed fallback.
  *
  * @param opts - Repos, base branch, and optional ticket driving the branch name.
- * @returns A ResetReposResult with the generated newBranch and per-repo details.
+ * @returns A CheckoutRepoResult with the generated newBranch and per-repo details.
  *
  * @example
  * ```ts
- * const result = await resetRepos({
+ * const result = await checkoutRepo({
  *   repos: [
  *     { dirPath: "/projects/api", branch: "main" },
  *     { dirPath: "/projects/web", branch: "main" },
@@ -111,7 +111,7 @@ function buildPrompt(
  * console.log(result.newBranch); // e.g. "ev-12345/fix-header-alignment_1713542400"
  * ```
  */
-export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposResult> {
+export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
   const entries = normalizeEntries(opts);
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
   if (entries.length === 0) {
@@ -125,7 +125,7 @@ export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposRes
         return ac;
       })()
     : undefined;
-  let output: ResetReposResult = { repos: [], newBranch: "", sessionId };
+  let output: CheckoutRepoResult = { repos: [], newBranch: "", sessionId };
 
   for await (const msg of query({
     prompt: buildPrompt(entries, opts.ticket),
@@ -147,16 +147,16 @@ export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposRes
       if (msg.subtype !== "success") {
         return { repos: [], newBranch: "", error: (msg as any).result ?? msg.subtype, sessionId };
       }
-      output = { ...(msg.structured_output as ResetReposResult), sessionId };
+      output = { ...(msg.structured_output as CheckoutRepoResult), sessionId };
     }
   }
 
   return output;
 }
 
-// Run directly: npx tsx reset-repos.ts
+// Run directly: npx tsx checkout-repo.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const result = await resetRepos({
+  const result = await checkoutRepo({
     repos: [
       { dirPath: "/Users/admin/data/workspace/my-api", branch: "main" },
       { dirPath: "/Users/admin/data/workspace/my-web", branch: "main" },
