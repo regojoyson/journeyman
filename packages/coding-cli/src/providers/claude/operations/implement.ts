@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { ImplementOptions, ImplementResult } from "@journeyman/core";
+
+const log = createLogger("claude:implement");
 
 export type { ImplementOptions, ImplementResult };
 
@@ -188,6 +191,7 @@ function buildPrompt(opts: ImplementOptions): string {
  */
 export async function implement(opts: ImplementOptions): Promise<ImplementResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "implement start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -216,16 +220,25 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return {
-          ...EMPTY_RESULT,
-          sessionId,
-          error: (msg as any).errors?.[0] ?? msg.subtype,
-        };
+        const error = (msg as any).errors?.[0] ?? msg.subtype;
+        log.error({ sessionId, error }, "implement failed");
+        return { ...EMPTY_RESULT, sessionId, error };
       }
       output = { ...(msg.structured_output as ImplementResult), sessionId };
     }
   }
 
+  log.info(
+    {
+      sessionId,
+      success: output.success,
+      filesChanged: output.filesChanged.length,
+      stepCount: output.steps.length,
+      testsPassed: output.testsPassed,
+      reportPath: output.reportPath,
+    },
+    "implement done",
+  );
   return output;
 }
 

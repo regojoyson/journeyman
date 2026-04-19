@@ -1,10 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createLogger } from "@journeyman/core";
 import { resolveSession } from "../utils/session.ts";
 import type {
   CreateWorkspaceOptions,
   CreateWorkspaceResult,
 } from "@journeyman/core";
+
+const log = createLogger("claude:create-workspace");
 
 export type { CreateWorkspaceOptions, CreateWorkspaceResult };
 
@@ -37,11 +40,14 @@ export async function createWorkspace(
   opts: CreateWorkspaceOptions
 ): Promise<CreateWorkspaceResult> {
   const { sessionId } = resolveSession(opts.sessionId);
+  log.info({ sessionId, ticketId: opts.ticketId, parentDir: opts.parentDir }, "createWorkspace start");
 
   if (!opts.ticketId) {
+    log.error({ sessionId }, "createWorkspace missing ticketId");
     return { folderName: "", dirPath: "", error: "ticketId is required", sessionId };
   }
   if (!opts.parentDir) {
+    log.error({ sessionId }, "createWorkspace missing parentDir");
     return { folderName: "", dirPath: "", error: "parentDir is required", sessionId };
   }
 
@@ -50,9 +56,11 @@ export async function createWorkspace(
 
   try {
     await mkdir(dirPath, { recursive: true });
+    log.info({ sessionId, dirPath }, "createWorkspace done");
     return { folderName, dirPath, sessionId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    log.error({ sessionId, dirPath, err: message }, "createWorkspace failed");
     return { folderName, dirPath, error: message, sessionId };
   }
 }

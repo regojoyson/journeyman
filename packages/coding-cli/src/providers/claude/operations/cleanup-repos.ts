@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { basename, resolve } from "node:path";
+import { createLogger } from "@journeyman/core";
 import { resolveSession } from "../utils/session.ts";
 import type {
   CleanupEntry,
@@ -7,6 +8,8 @@ import type {
   CleanupReposResult,
   CleanupRepoResult,
 } from "@journeyman/core";
+
+const log = createLogger("claude:cleanup-repos");
 
 export type { CleanupEntry, CleanupReposOptions, CleanupReposResult, CleanupRepoResult };
 
@@ -29,14 +32,17 @@ async function cleanupOne(entry: CleanupEntry): Promise<CleanupRepoResult> {
 
   const refusal = unsafeReason(absPath);
   if (refusal) {
+    log.warn({ dirPath: absPath, reason: refusal }, "cleanup refused — unsafe path");
     return { folderName, dirPath: absPath, success: false, error: refusal };
   }
 
   try {
     await rm(absPath, { recursive: true, force: true });
+    log.debug({ dirPath: absPath }, "cleanup removed");
     return { folderName, dirPath: absPath, success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    log.error({ dirPath: absPath, err: message }, "cleanup failed");
     return { folderName, dirPath: absPath, success: false, error: message };
   }
 }
@@ -62,7 +68,16 @@ async function cleanupOne(entry: CleanupEntry): Promise<CleanupRepoResult> {
 export async function cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
   const entries = normalizeEntries(opts);
   const { sessionId } = resolveSession(opts.sessionId);
+  log.info({ sessionId, repoCount: entries.length }, "cleanupRepos start");
   const repos = await Promise.all(entries.map(cleanupOne));
+  log.info(
+    {
+      sessionId,
+      successCount: repos.filter((r) => r.success).length,
+      failureCount: repos.filter((r) => !r.success).length,
+    },
+    "cleanupRepos done",
+  );
   return { repos, sessionId };
 }
 

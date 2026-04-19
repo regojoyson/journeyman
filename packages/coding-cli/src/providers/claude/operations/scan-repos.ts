@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { ScanReposOptions, ScanReposResult } from "@journeyman/core";
+
+const log = createLogger("claude:scan-repos");
 
 export type { ScanReposOptions, ScanReposResult };
 
@@ -54,6 +57,7 @@ function buildPrompt(parentDir: string): string {
  */
 export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  log.info({ sessionId, parentDir: opts.parentDir }, "scanRepos start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -82,12 +86,18 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).errors?.[0] ?? msg.subtype, sessionId };
+        const error = (msg as any).errors?.[0] ?? msg.subtype;
+        log.error({ sessionId, error }, "scanRepos failed");
+        return { repos: [], error, sessionId };
       }
       output = { ...(msg.structured_output as ScanReposResult), sessionId };
     }
   }
 
+  log.info(
+    { sessionId, repoCount: output.repos.length, gitRepoCount: output.repos.filter((r) => r.isGitRepo).length },
+    "scanRepos done",
+  );
   return output;
 }
 

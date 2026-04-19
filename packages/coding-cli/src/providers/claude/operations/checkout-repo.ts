@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult } from "@journeyman/core";
+
+const log = createLogger("claude:checkout-repo");
 
 export type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult };
 
@@ -114,7 +117,12 @@ function buildPrompt(
 export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
   const entries = normalizeEntries(opts);
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  log.info(
+    { sessionId, repoCount: entries.length, ticketId: opts.ticket?.id },
+    "checkoutRepo start",
+  );
   if (entries.length === 0) {
+    log.warn({ sessionId }, "checkoutRepo called with no repos");
     return { repos: [], newBranch: "", sessionId };
   }
   const controller = opts.signal
@@ -145,12 +153,23 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], newBranch: "", error: (msg as any).errors?.[0] ?? msg.subtype, sessionId };
+        const error = (msg as any).errors?.[0] ?? msg.subtype;
+        log.error({ sessionId, error }, "checkoutRepo failed");
+        return { repos: [], newBranch: "", error, sessionId };
       }
       output = { ...(msg.structured_output as CheckoutRepoResult), sessionId };
     }
   }
 
+  log.info(
+    {
+      sessionId,
+      newBranch: output.newBranch,
+      successCount: output.repos.filter((r) => r.success).length,
+      failureCount: output.repos.filter((r) => !r.success).length,
+    },
+    "checkoutRepo done",
+  );
   return output;
 }
 
