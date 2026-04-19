@@ -1,0 +1,286 @@
+{
+  "info": {
+    "name": "Journeyman Pipeline Server",
+    "description": "API collection for the Journeyman pipeline-server. Set the collection variables before use:\n- `baseUrl` — e.g. http://localhost:3000\n- `bearerToken` — the server's API bearer token\n- `productId` — e.g. my-product\n- `sessionId` — filled automatically by the Trigger run request",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:3000", "type": "string" },
+    { "key": "bearerToken",  "value": "change-me",            "type": "string" },
+    { "key": "productId",    "value": "my-product",           "type": "string" },
+    { "key": "sessionId",    "value": "",                     "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] },
+            "description": "No auth required. Returns counts of registered phases, flows, and providers."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"ok\",\n  \"registries\": {\n    \"phases\": 10,\n    \"flows\": 2,\n    \"coding\": 1,\n    \"git\": 1,\n    \"ticket\": 1,\n    \"notification\": 1\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flows",
+      "item": [
+        {
+          "name": "List flows",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/flows", "host": ["{{baseUrl}}"], "path": ["api", "flows"] },
+            "description": "Returns all registered flow definitions (name, providers, step IDs)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Providers",
+      "item": [
+        {
+          "name": "List providers",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/providers", "host": ["{{baseUrl}}"], "path": ["api", "providers"] },
+            "description": "Returns registered providers grouped by category: coding-cli, git, ticket, notification."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Triggers",
+      "item": [
+        {
+          "name": "Trigger run (API)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.sessionId) {",
+                  "    pm.collectionVariables.set('sessionId', body.sessionId);",
+                  "    console.log('sessionId set to', body.sessionId);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/trigger/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trigger", "{{productId}}"]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketKey\": \"owner/repo#42\",\n  \"ticketShortKey\": \"42\",\n  \"flowName\": \"default\"\n}"
+            },
+            "description": "Manually trigger a pipeline run for a ticket. `flowName` is optional — omit to use the product default. Returns 202 immediately; the run executes async.\n\nThe test script auto-saves the returned `sessionId` into the collection variable."
+          },
+          "response": [
+            {
+              "name": "202 Accepted",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{ \"accepted\": true }"
+            },
+            {
+              "name": "202 Deduplicated",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{ \"sessionId\": \"existing-session-id\", \"deduplicated\": true }"
+            }
+          ]
+        },
+        {
+          "name": "GitHub webhook (simulate)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/github/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "github", "{{productId}}"]
+            },
+            "header": [
+              { "key": "Content-Type",           "value": "application/json" },
+              { "key": "x-github-event",         "value": "issues" },
+              { "key": "x-hub-signature-256",    "value": "sha256=REPLACE_WITH_HMAC_SHA256", "description": "Compute: HMAC-SHA256(secret, raw body)" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"labeled\",\n  \"issue\": {\n    \"number\": 42,\n    \"labels\": [{ \"name\": \"journeyman\" }]\n  },\n  \"repository\": {\n    \"full_name\": \"owner/repo\"\n  }\n}"
+            },
+            "description": "Simulates a GitHub webhook event. You must provide a valid `x-hub-signature-256` header (HMAC-SHA256 of the raw body with your configured secret). The label in `issue.labels` must match the product's `ticketWorkflow.trigger.matchLabels` if configured."
+          }
+        },
+        {
+          "name": "GitLab webhook (simulate)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/gitlab/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "gitlab", "{{productId}}"]
+            },
+            "header": [
+              { "key": "Content-Type",       "value": "application/json" },
+              { "key": "x-gitlab-token",     "value": "your-gitlab-secret" },
+              { "key": "x-gitlab-event",     "value": "Issue Hook" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object_kind\": \"issue\",\n  \"object_attributes\": {\n    \"iid\": 42,\n    \"title\": \"My issue\",\n    \"labels\": [{ \"title\": \"journeyman\" }]\n  },\n  \"project\": {\n    \"path_with_namespace\": \"group/project\"\n  }\n}"
+            },
+            "description": "Simulates a GitLab webhook. The `x-gitlab-token` header must match the configured secret."
+          }
+        },
+        {
+          "name": "Jira webhook (simulate)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/jira/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "jira", "{{productId}}"]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhookEvent\": \"jira:issue_updated\",\n  \"issue\": {\n    \"key\": \"PROJ-42\",\n    \"fields\": {\n      \"status\": { \"name\": \"In Progress\" },\n      \"labels\": [\"journeyman\"]\n    }\n  }\n}"
+            },
+            "description": "Simulates a Jira webhook event."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Runs",
+      "item": [
+        {
+          "name": "List runs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs?status=running&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs"],
+              "query": [
+                { "key": "product", "value": "{{productId}}", "disabled": true, "description": "Filter by productId" },
+                { "key": "ticket",  "value": "owner/repo#42", "disabled": true, "description": "Filter by ticketKey (requires product too)" },
+                { "key": "status",  "value": "running",       "disabled": false, "description": "running | completed | failed | blocked | cancelled" },
+                { "key": "limit",   "value": "20",            "disabled": false }
+              ]
+            },
+            "description": "List pipeline runs. All query params are optional. Combine `product` + `ticket` to find runs for a specific ticket."
+          }
+        },
+        {
+          "name": "Get run",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}"]
+            },
+            "description": "Get full details of a single run by sessionId, including all step records and artifacts map."
+          }
+        },
+        {
+          "name": "Cancel run",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}", "cancel"]
+            },
+            "description": "Signals the run to abort. Returns the latest run state. The run transitions to `cancelled` asynchronously."
+          }
+        },
+        {
+          "name": "Resume run (blocked)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}", "resume"]
+            },
+            "description": "Resume a run that is in `blocked` status. Continues from the step after the blocked one. Returns 409 if the run is not blocked."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs & Artifacts",
+      "item": [
+        {
+          "name": "Get run logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}/logs?tail=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}", "logs"],
+              "query": [
+                { "key": "stepId", "value": "clone-repos", "disabled": true, "description": "Filter logs to a specific step id" },
+                { "key": "tail",   "value": "100",         "disabled": false, "description": "Return last N lines only" }
+              ]
+            },
+            "description": "Returns trace log lines for the run. Optionally filter by `stepId` or limit with `tail`."
+          }
+        },
+        {
+          "name": "Get artifact",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}/artifacts/scan-result",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}", "artifacts", "scan-result"]
+            },
+            "description": "Download a named artifact from the run. The artifact `key` comes from the phase that produced it (check `run.artifacts` in the Get Run response). Returns the raw bytes with the correct Content-Type."
+          }
+        },
+        {
+          "name": "Stream run events (SSE)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}", "stream"]
+            },
+            "description": "Server-Sent Events stream for a run. Replays all past events first, then streams live events. Event types: `runStarted`, `stepStarted`, `stepEnded`, `statusChanged`, `runEnded`.\n\nNote: Postman has limited SSE support — use curl or a browser EventSource for real-time streaming:\n```\ncurl -N -H 'Authorization: Bearer {{bearerToken}}' {{baseUrl}}/api/runs/{{sessionId}}/stream\n```"
+          }
+        }
+      ]
+    }
+  ]
+}
