@@ -1,5 +1,4 @@
 import type {
-  CloneReposOptions, CloneReposResult,
   ScanReposOptions, ScanReposResult,
   ResetReposOptions, ResetReposResult,
   CommitPushReposOptions, CommitPushReposResult,
@@ -14,7 +13,6 @@ import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementO
  */
 export interface ICodingCLI {
   // Git operations (executed via CLI bash)
-  cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult>;
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult>;
   resetRepos(opts: ResetReposOptions): Promise<ResetReposResult>;
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult>;
