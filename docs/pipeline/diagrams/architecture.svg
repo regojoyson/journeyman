@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 780" font-family="system-ui, -apple-system, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="a-b" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="a-g" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22c55e"/>
+    </marker>
+    <marker id="a-p" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect width="980" height="780" fill="#fafafa" rx="8"/>
+  <text x="490" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">Journeyman Pipeline — System Architecture</text>
+  <text x="490" y="52" text-anchor="middle" font-size="11" fill="#64748b">Webhook/API → dispatcher → pipeline runner → adapters → per-product disk</text>
+
+  <!-- ═══ External Triggers (top row) ═══ -->
+  <text x="40" y="90" font-size="11" font-weight="600" fill="#475569">EXTERNAL</text>
+
+  <rect x="40" y="100" width="140" height="52" rx="8" fill="#1f2937"/>
+  <text x="110" y="122" text-anchor="middle" fill="white" font-weight="600">GitHub</text>
+  <text x="110" y="140" text-anchor="middle" fill="#9ca3af" font-size="10">issues / PRs / labels</text>
+
+  <rect x="200" y="100" width="140" height="52" rx="8" fill="#f97316"/>
+  <text x="270" y="122" text-anchor="middle" fill="white" font-weight="600">GitLab</text>
+  <text x="270" y="140" text-anchor="middle" fill="#ffedd5" font-size="10">issues / MRs</text>
+
+  <rect x="360" y="100" width="140" height="52" rx="8" fill="#2563eb"/>
+  <text x="430" y="122" text-anchor="middle" fill="white" font-weight="600">Jira</text>
+  <text x="430" y="140" text-anchor="middle" fill="#dbeafe" font-size="10">status transitions</text>
+
+  <rect x="520" y="100" width="140" height="52" rx="8" fill="#6b7280"/>
+  <text x="590" y="122" text-anchor="middle" fill="white" font-weight="600">curl / UI / CI</text>
+  <text x="590" y="140" text-anchor="middle" fill="#e5e7eb" font-size="10">manual triggers</text>
+
+  <!-- arrows down to server -->
+  <line x1="110" y1="152" x2="170" y2="195" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="270" y1="152" x2="290" y2="195" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="430" y1="152" x2="410" y2="195" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="590" y1="152" x2="530" y2="195" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ═══ @journeyman/pipeline-server ═══ -->
+  <rect x="40" y="200" width="620" height="170" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+  <text x="60" y="222" font-weight="700" fill="#1e40af">@journeyman/pipeline-server</text>
+  <text x="60" y="238" font-size="10" fill="#3b82f6" font-style="italic">Fastify HTTP server — stateless except for in-process dedup state</text>
+
+  <!-- Trigger sources row -->
+  <rect x="60" y="250" width="120" height="38" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="120" y="268" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">GitHubWebhook</text>
+  <text x="120" y="282" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/github/:productId</text>
+
+  <rect x="190" y="250" width="120" height="38" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="250" y="268" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">GitLabWebhook</text>
+  <text x="250" y="282" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/gitlab/:productId</text>
+
+  <rect x="320" y="250" width="110" height="38" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="375" y="268" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">JiraWebhook</text>
+  <text x="375" y="282" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/jira/:productId</text>
+
+  <rect x="440" y="250" width="100" height="38" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="490" y="268" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">ApiTrigger</text>
+  <text x="490" y="282" text-anchor="middle" font-size="9" fill="#3b82f6">/api/trigger/:productId</text>
+
+  <rect x="550" y="250" width="100" height="38" rx="6" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="600" y="268" text-anchor="middle" font-size="11" font-weight="600" fill="#166534">Management API</text>
+  <text x="600" y="282" text-anchor="middle" font-size="9" fill="#15803d">/api/runs/* SSE /cancel /resume</text>
+
+  <!-- Dispatcher -->
+  <rect x="170" y="300" width="360" height="58" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text x="350" y="320" text-anchor="middle" font-weight="700" fill="#92400e">Dispatcher</text>
+  <text x="350" y="335" text-anchor="middle" font-size="10" fill="#b45309">resolves flow → dedup (state) → TicketMutex → SemaphorePool → run</text>
+  <text x="350" y="349" text-anchor="middle" font-size="9" fill="#d97706" font-style="italic">fire-and-forget; webhook returns 202 immediately</text>
+
+  <!-- arrows trigger-sources → dispatcher -->
+  <line x1="120" y1="288" x2="280" y2="300" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="250" y1="288" x2="320" y2="300" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="375" y1="288" x2="380" y2="300" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="490" y1="288" x2="430" y2="300" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- ═══ @journeyman/pipeline ═══ -->
+  <rect x="40" y="395" width="620" height="245" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <text x="60" y="417" font-weight="700" fill="#166534">@journeyman/pipeline</text>
+  <text x="60" y="433" font-size="10" fill="#15803d" font-style="italic">Orchestration — phases, registries, state, flow config, no HTTP</text>
+
+  <!-- Pipeline runner (center) -->
+  <rect x="230" y="450" width="200" height="64" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="330" y="470" text-anchor="middle" font-weight="700" fill="#14532d">Pipeline runner</text>
+  <text x="330" y="486" text-anchor="middle" font-size="10" fill="#166534">walks flow steps one at a time</text>
+  <text x="330" y="500" text-anchor="middle" font-size="9" fill="#15803d" font-style="italic">retry · timeout · cancel · block · resume</text>
+
+  <!-- arrow from dispatcher to runner -->
+  <line x1="350" y1="358" x2="330" y2="448" stroke="#f59e0b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="365" y="410" font-size="10" fill="#92400e" font-style="italic">pipeline.run()</text>
+
+  <!-- Registries (left) -->
+  <rect x="60" y="450" width="150" height="64" rx="6" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="135" y="470" text-anchor="middle" font-weight="600" fill="#166534" font-size="11">Registries</text>
+  <text x="135" y="486" text-anchor="middle" font-size="10" fill="#15803d">PhaseRegistry</text>
+  <text x="135" y="502" text-anchor="middle" font-size="10" fill="#15803d">ProviderRegistry</text>
+
+  <!-- Flow config (top of runner) -->
+  <rect x="60" y="530" width="150" height="60" rx="6" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="135" y="548" text-anchor="middle" font-weight="600" fill="#166534" font-size="11">Flow config</text>
+  <text x="135" y="564" text-anchor="middle" font-size="10" fill="#15803d">YamlFlowConfigSource</text>
+  <text x="135" y="578" text-anchor="middle" font-size="10" fill="#15803d">FlowResolver · Validator</text>
+
+  <!-- Stores (right) -->
+  <rect x="450" y="450" width="190" height="64" rx="6" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="545" y="470" text-anchor="middle" font-weight="600" fill="#166534" font-size="11">Stores (per-product)</text>
+  <text x="545" y="486" text-anchor="middle" font-size="10" fill="#15803d">FileStateStore · FileTraceLogger</text>
+  <text x="545" y="502" text-anchor="middle" font-size="10" fill="#15803d">FileArtifactStore</text>
+
+  <!-- EventBus -->
+  <rect x="450" y="530" width="190" height="60" rx="6" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="545" y="548" text-anchor="middle" font-weight="600" fill="#166534" font-size="11">EventBus</text>
+  <text x="545" y="564" text-anchor="middle" font-size="10" fill="#15803d">in-process pub/sub</text>
+  <text x="545" y="578" text-anchor="middle" font-size="10" fill="#15803d">drives SSE stream</text>
+
+  <!-- runner connections -->
+  <line x1="230" y1="475" x2="210" y2="475" stroke="#22c55e" stroke-width="1"/>
+  <line x1="230" y1="495" x2="210" y2="555" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="430" y1="475" x2="450" y2="475" stroke="#22c55e" stroke-width="1"/>
+  <line x1="430" y1="495" x2="450" y2="555" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- Phases row -->
+  <rect x="230" y="530" width="200" height="60" rx="6" fill="#bbf7d0" stroke="#16a34a"/>
+  <text x="330" y="548" text-anchor="middle" font-weight="600" fill="#14532d" font-size="11">12 built-in Phases</text>
+  <text x="330" y="563" text-anchor="middle" font-size="9" fill="#166534">getTicket · cloneRepos · analyze · plan</text>
+  <text x="330" y="576" text-anchor="middle" font-size="9" fill="#166534">implement · commitPush · createPR · …</text>
+  <line x1="330" y1="514" x2="330" y2="528" stroke="#22c55e" stroke-width="1"/>
+
+  <!-- ═══ Adapter packages (right column) ═══ -->
+  <rect x="680" y="200" width="280" height="440" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="2"/>
+  <text x="700" y="222" font-weight="700" fill="#7c3aed">Adapter packages</text>
+  <text x="700" y="238" font-size="10" fill="#a855f7" font-style="italic">Implement interfaces from @journeyman/core</text>
+
+  <rect x="700" y="260" width="240" height="82" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="820" y="280" text-anchor="middle" font-weight="600" fill="#6b21a8" font-size="11">@journeyman/coding-cli</text>
+  <text x="820" y="298" text-anchor="middle" font-size="10" fill="#7c3aed">ICodingCLI implementations:</text>
+  <text x="820" y="314" text-anchor="middle" font-size="10" fill="#7c3aed">ClaudeProvider ✅</text>
+  <text x="820" y="328" text-anchor="middle" font-size="10" fill="#a855f7">GeminiProvider · CodexProvider (stubs)</text>
+
+  <rect x="700" y="352" width="240" height="82" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="820" y="372" text-anchor="middle" font-weight="600" fill="#6b21a8" font-size="11">@journeyman/git-provider</text>
+  <text x="820" y="390" text-anchor="middle" font-size="10" fill="#7c3aed">IGitProvider implementations:</text>
+  <text x="820" y="406" text-anchor="middle" font-size="10" fill="#7c3aed">GitHubProvider ✅</text>
+  <text x="820" y="420" text-anchor="middle" font-size="10" fill="#a855f7">GitLabProvider (stub)</text>
+
+  <rect x="700" y="444" width="240" height="98" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="820" y="464" text-anchor="middle" font-weight="600" fill="#6b21a8" font-size="11">@journeyman/ticket-provider</text>
+  <text x="820" y="482" text-anchor="middle" font-size="10" fill="#7c3aed">ITicketProvider implementations:</text>
+  <text x="820" y="498" text-anchor="middle" font-size="10" fill="#7c3aed">GitHubIssuesProvider ✅</text>
+  <text x="820" y="513" text-anchor="middle" font-size="10" fill="#a855f7">JiraProvider · LinearProvider</text>
+  <text x="820" y="527" text-anchor="middle" font-size="10" fill="#a855f7">MondayProvider · GHProjects (stubs)</text>
+
+  <rect x="700" y="552" width="240" height="80" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="820" y="572" text-anchor="middle" font-weight="600" fill="#6b21a8" font-size="11">@journeyman/notification-provider</text>
+  <text x="820" y="590" text-anchor="middle" font-size="10" fill="#7c3aed">INotificationProvider implementations:</text>
+  <text x="820" y="608" text-anchor="middle" font-size="10" fill="#a855f7">SlackProvider (stub)</text>
+
+  <!-- arrow from phases to adapters -->
+  <line x1="430" y1="560" x2="698" y2="470" stroke="#7c3aed" stroke-width="2" marker-end="url(#a-p)"/>
+  <text x="560" y="495" font-size="10" fill="#7c3aed" font-style="italic">ctx.providers.*</text>
+
+  <!-- ═══ Disk workspaces (bottom) ═══ -->
+  <rect x="40" y="665" width="900" height="92" rx="8" fill="#fef9c3" stroke="#eab308"/>
+  <text x="60" y="685" font-weight="600" fill="#713f12">workspaces/ — per-product disk layout</text>
+  <text x="60" y="702" font-size="10" font-family="monospace" fill="#a16207">workspaces/edgereg/{state/&lt;sid&gt;.json, logs/&lt;sid&gt;/&lt;step&gt;.log, artifacts/&lt;sid&gt;/&lt;key&gt;.&lt;ext&gt;, runs/&lt;sid&gt;/repos/…}</text>
+  <text x="60" y="718" font-size="10" font-family="monospace" fill="#a16207">workspaces/cidms/{state, logs, artifacts, runs}</text>
+  <text x="60" y="738" font-size="9" fill="#ca8a04" font-style="italic">state + logs + artifacts survive cleanup; runs/ pruned after terminal states per workspaces.cleanupOn</text>
+
+  <line x1="545" y1="594" x2="300" y2="664" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#a-g)"/>
+  <text x="395" y="640" font-size="10" fill="#15803d" font-style="italic">state.save · trace.log · artifactStore.putPath</text>
+</svg>

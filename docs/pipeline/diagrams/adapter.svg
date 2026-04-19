@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" font-family="system-ui, -apple-system, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="a-b" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="a-p" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="680" fill="#fafafa" rx="8"/>
+  <text x="500" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">Adapter Pattern — Interfaces in Core, Implementations in Packages</text>
+  <text x="500" y="52" text-anchor="middle" font-size="11" fill="#64748b">Flow YAML names a provider id → ProviderRegistry resolves → Pipeline calls via interface</text>
+
+  <!-- ═══ Core interfaces (center) ═══ -->
+  <rect x="340" y="90" width="320" height="230" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text x="500" y="114" text-anchor="middle" font-weight="700" fill="#1e40af" font-size="14">@journeyman/core</text>
+  <text x="500" y="130" text-anchor="middle" font-size="10" fill="#3b82f6" font-style="italic">Interfaces + types only · no logic · no deps on other @journeyman packages</text>
+
+  <rect x="360" y="142" width="140" height="36" rx="4" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="430" y="156" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">ICodingCLI</text>
+  <text x="430" y="170" text-anchor="middle" font-size="9" fill="#3b82f6">analyze/plan/implement/…</text>
+
+  <rect x="510" y="142" width="130" height="36" rx="4" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="575" y="156" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">IGitProvider</text>
+  <text x="575" y="170" text-anchor="middle" font-size="9" fill="#3b82f6">getRepo/createPR/listPRs</text>
+
+  <rect x="360" y="186" width="140" height="36" rx="4" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="430" y="200" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">ITicketProvider</text>
+  <text x="430" y="214" text-anchor="middle" font-size="9" fill="#3b82f6">getTicket/addComment/updateStatus</text>
+
+  <rect x="510" y="186" width="130" height="36" rx="4" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="575" y="200" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">INotificationProvider</text>
+  <text x="575" y="214" text-anchor="middle" font-size="9" fill="#3b82f6">send</text>
+
+  <rect x="360" y="230" width="280" height="44" rx="4" fill="#e0e7ff" stroke="#6366f1"/>
+  <text x="500" y="247" text-anchor="middle" font-size="11" font-weight="600" fill="#312e81">IProviderMeta</text>
+  <text x="500" y="262" text-anchor="middle" font-size="10" fill="#4338ca">{ id, name, description, category }</text>
+
+  <text x="500" y="293" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">Every provider class exposes a static meta field</text>
+  <text x="500" y="307" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">so ProviderRegistry can discover and index them.</text>
+
+  <!-- ═══ Coding CLI implementations (top-left) ═══ -->
+  <rect x="40" y="90" width="260" height="230" rx="10" fill="#f3e8ff" stroke="#a855f7" stroke-width="2"/>
+  <text x="50" y="112" font-weight="700" fill="#6b21a8" font-size="12">@journeyman/coding-cli</text>
+  <text x="50" y="126" font-size="9" fill="#7c3aed" font-style="italic">implements ICodingCLI</text>
+
+  <rect x="55" y="138" width="230" height="52" rx="6" fill="#ede9fe" stroke="#a855f7"/>
+  <text x="63" y="154" font-size="11" font-weight="600" fill="#6b21a8">ClaudeProvider ✅</text>
+  <text x="63" y="168" font-size="10" fill="#7c3aed">meta.id = "claude"</text>
+  <text x="63" y="182" font-size="9" fill="#a855f7">@anthropic-ai/claude-agent-sdk</text>
+
+  <rect x="55" y="196" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="63" y="212" font-size="11" font-weight="600" fill="#6b21a8">GeminiProvider</text>
+  <text x="63" y="226" font-size="10" fill="#a855f7">meta.id = "gemini" · stub</text>
+
+  <rect x="55" y="240" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="63" y="256" font-size="11" font-weight="600" fill="#6b21a8">CodexProvider</text>
+  <text x="63" y="270" font-size="10" fill="#a855f7">meta.id = "codex" · stub</text>
+
+  <text x="55" y="299" font-size="10" fill="#7c3aed" font-style="italic">category: "coding-cli"</text>
+
+  <!-- arrow to core -->
+  <line x1="300" y1="203" x2="340" y2="203" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a-p)"/>
+  <text x="320" y="195" text-anchor="middle" font-size="9" fill="#7c3aed">implements</text>
+
+  <!-- ═══ Git provider implementations (bottom-left) ═══ -->
+  <rect x="40" y="340" width="260" height="150" rx="10" fill="#f3e8ff" stroke="#a855f7" stroke-width="2"/>
+  <text x="50" y="362" font-weight="700" fill="#6b21a8" font-size="12">@journeyman/git-provider</text>
+  <text x="50" y="376" font-size="9" fill="#7c3aed" font-style="italic">implements IGitProvider</text>
+
+  <rect x="55" y="388" width="230" height="48" rx="6" fill="#ede9fe" stroke="#a855f7"/>
+  <text x="63" y="404" font-size="11" font-weight="600" fill="#6b21a8">GitHubProvider ✅</text>
+  <text x="63" y="418" font-size="10" fill="#7c3aed">meta.id = "github"</text>
+  <text x="63" y="430" font-size="9" fill="#a855f7">GitHub MCP (shared client)</text>
+
+  <rect x="55" y="442" width="230" height="34" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="63" y="458" font-size="11" font-weight="600" fill="#6b21a8">GitLabProvider</text>
+  <text x="63" y="470" font-size="10" fill="#a855f7">meta.id = "gitlab" · stub</text>
+
+  <line x1="300" y1="415" x2="340" y2="203" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a-p)"/>
+
+  <!-- ═══ Ticket provider implementations (top-right) ═══ -->
+  <rect x="700" y="90" width="260" height="290" rx="10" fill="#f3e8ff" stroke="#a855f7" stroke-width="2"/>
+  <text x="710" y="112" font-weight="700" fill="#6b21a8" font-size="12">@journeyman/ticket-provider</text>
+  <text x="710" y="126" font-size="9" fill="#7c3aed" font-style="italic">implements ITicketProvider</text>
+
+  <rect x="715" y="138" width="230" height="56" rx="6" fill="#ede9fe" stroke="#a855f7"/>
+  <text x="723" y="154" font-size="11" font-weight="600" fill="#6b21a8">GitHubIssuesProvider ✅</text>
+  <text x="723" y="168" font-size="10" fill="#7c3aed">meta.id = "github-issues"</text>
+  <text x="723" y="180" font-size="9" fill="#a855f7">label-based updateStatus</text>
+  <text x="723" y="192" font-size="9" fill="#a855f7">(status:in-development, status:code-review …)</text>
+
+  <rect x="715" y="200" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="723" y="216" font-size="11" font-weight="600" fill="#6b21a8">JiraProvider</text>
+  <text x="723" y="230" font-size="10" fill="#a855f7">meta.id = "jira" · stub</text>
+
+  <rect x="715" y="244" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="723" y="260" font-size="11" font-weight="600" fill="#6b21a8">LinearProvider</text>
+  <text x="723" y="274" font-size="10" fill="#a855f7">meta.id = "linear" · stub</text>
+
+  <rect x="715" y="288" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="723" y="304" font-size="11" font-weight="600" fill="#6b21a8">MondayProvider</text>
+  <text x="723" y="318" font-size="10" fill="#a855f7">meta.id = "monday" · stub</text>
+
+  <rect x="715" y="332" width="230" height="38" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="723" y="348" font-size="11" font-weight="600" fill="#6b21a8">GitHubProjectsProvider</text>
+  <text x="723" y="362" font-size="10" fill="#a855f7">meta.id = "github-projects" · stub</text>
+
+  <!-- arrow to core -->
+  <line x1="714" y1="203" x2="660" y2="203" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a-p)"/>
+  <text x="690" y="195" text-anchor="middle" font-size="9" fill="#7c3aed">implements</text>
+
+  <!-- ═══ Notification provider implementations (bottom-right) ═══ -->
+  <rect x="700" y="400" width="260" height="110" rx="10" fill="#f3e8ff" stroke="#a855f7" stroke-width="2"/>
+  <text x="710" y="422" font-weight="700" fill="#6b21a8" font-size="12">@journeyman/notification-provider</text>
+  <text x="710" y="436" font-size="9" fill="#7c3aed" font-style="italic">implements INotificationProvider</text>
+
+  <rect x="715" y="448" width="230" height="42" rx="6" fill="#faf5ff" stroke="#c084fc"/>
+  <text x="723" y="464" font-size="11" font-weight="600" fill="#6b21a8">SlackProvider</text>
+  <text x="723" y="478" font-size="10" fill="#a855f7">meta.id = "slack" · stub</text>
+
+  <line x1="714" y1="470" x2="660" y2="208" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a-p)"/>
+
+  <!-- ═══ Pipeline consumer (bottom center) ═══ -->
+  <rect x="40" y="540" width="920" height="120" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <text x="60" y="562" font-weight="700" fill="#166534" font-size="13">How Pipeline uses adapters</text>
+
+  <rect x="60" y="575" width="280" height="76" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="200" y="592" text-anchor="middle" font-weight="600" font-size="10" fill="#14532d">1. Flow YAML names ids</text>
+  <text x="70" y="610" font-family="monospace" font-size="9" fill="#166534">providers:</text>
+  <text x="70" y="622" font-family="monospace" font-size="9" fill="#166534">  coding:       claude</text>
+  <text x="70" y="634" font-family="monospace" font-size="9" fill="#166534">  git:          github</text>
+  <text x="70" y="646" font-family="monospace" font-size="9" fill="#166534">  ticket:       github-issues</text>
+
+  <rect x="360" y="575" width="280" height="76" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="500" y="592" text-anchor="middle" font-weight="600" font-size="10" fill="#14532d">2. ProviderRegistry resolves classes</text>
+  <text x="370" y="610" font-family="monospace" font-size="9" fill="#166534">registry.resolveForProduct(</text>
+  <text x="370" y="622" font-family="monospace" font-size="9" fill="#166534">  flow, productConfig</text>
+  <text x="370" y="634" font-family="monospace" font-size="9" fill="#166534">) → &#123; coding: new ClaudeProvider(),</text>
+  <text x="370" y="646" font-family="monospace" font-size="9" fill="#166534">    git: new GitHubProvider(opts), … &#125;</text>
+
+  <rect x="660" y="575" width="280" height="76" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="800" y="592" text-anchor="middle" font-weight="600" font-size="10" fill="#14532d">3. Phases call through interface</text>
+  <text x="670" y="610" font-family="monospace" font-size="9" fill="#166534">await ctx.providers.coding</text>
+  <text x="670" y="622" font-family="monospace" font-size="9" fill="#166534">  .analyze({...});</text>
+  <text x="670" y="634" font-family="monospace" font-size="9" fill="#166534">await ctx.providers.git</text>
+  <text x="670" y="646" font-family="monospace" font-size="9" fill="#166534">  .createPR({...});</text>
+
+  <line x1="340" y1="613" x2="360" y2="613" stroke="#22c55e" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="640" y1="613" x2="660" y2="613" stroke="#22c55e" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Legend -->
+  <rect x="355" y="328" width="290" height="50" rx="6" fill="white" stroke="#e5e7eb"/>
+  <text x="500" y="345" text-anchor="middle" font-size="10" font-weight="600" fill="#334155">Swap impls by editing one YAML line</text>
+  <text x="500" y="362" text-anchor="middle" font-size="9" fill="#64748b">coding: claude → coding: gemini → new class bound, same interface</text>
+</svg>
