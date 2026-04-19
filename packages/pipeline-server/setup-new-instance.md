@@ -192,21 +192,42 @@ openssl rand -hex 32
 # → paste as GITHUB_WEBHOOK_SECRET
 ```
 
-Then export everything (or put it in a `.env` file and use `dotenv`):
+The server **automatically detects both** — no extra setup needed:
+
+- If a `.env` file exists in the working directory it is loaded at startup
+- Variables already in `process.env` (Docker, systemd, CI, shell exports) are **never overridden** — they always win
+- If no `.env` file exists the server continues using `process.env` only
+
+**Option A — `.env` file (recommended for local dev)**
+
+Create a `.env` file in the repo root:
+
+```bash
+JOURNEYMAN_API_TOKEN=<generated-above>
+GITHUB_WEBHOOK_SECRET=<generated-above>
+ANTHROPIC_API_KEY=sk-ant-...
+GITHUB_TOKEN=ghp_...
+
+# Optional — only if using Slack
+SLACK_BOT_TOKEN=xoxb-...
+
+# Optional — only if using Jira
+JIRA_USER=you@company.com
+JIRA_TOKEN=<jira-api-token>
+```
+
+> Add `.env` to your `.gitignore` — never commit secrets.
+
+**Option B — shell exports (CI / Docker / systemd)**
 
 ```bash
 export JOURNEYMAN_API_TOKEN=<generated-above>
 export GITHUB_WEBHOOK_SECRET=<generated-above>
 export ANTHROPIC_API_KEY=sk-ant-...
 export GITHUB_TOKEN=ghp_...
-
-# Optional — only if using Slack
-export SLACK_BOT_TOKEN=xoxb-...
-
-# Optional — only if using Jira
-export JIRA_USER=you@company.com
-export JIRA_TOKEN=<jira-api-token>
 ```
+
+Both options can coexist — shell exports take precedence over `.env` values for the same key.
 
 ---
 
