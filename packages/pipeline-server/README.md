@@ -44,17 +44,21 @@ See [setup-new-instance.md](./setup-new-instance.md) for a complete step-by-step
 
 ```bash
 # 1. Create config files
-cp config/pipeline.example.yaml config/pipeline.yaml
-cp config/flows/default.example.yaml config/flows/default.yaml
+mkdir -p config/flows
+# populate config/pipeline.yaml and config/flows/default.yaml (see setup-new-instance.md)
 
-# 2. Set required environment variables
-export JOURNEYMAN_API_TOKEN=<random-secret>
-export ANTHROPIC_API_KEY=sk-ant-...
-export GITHUB_TOKEN=ghp_...
-export GITHUB_WEBHOOK_SECRET=<hmac-secret>
+# 2. Set environment variables — .env file or shell exports (both work)
+cat > .env <<EOF
+JOURNEYMAN_API_TOKEN=<random-secret>
+ANTHROPIC_API_KEY=sk-ant-...
+GITHUB_TOKEN=ghp_...
+GITHUB_WEBHOOK_SECRET=<hmac-secret>
+EOF
 
-# 3. Start
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+# 3. Start — pick any one
+npm start
+npx journeyman serve
+npx journeyman-server
 ```
 
 Server listens on the port set in `pipeline.yaml` (default `3000`).

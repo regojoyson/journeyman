@@ -4,14 +4,12 @@
   "description": "HTTP server + webhook triggers + management API for @journeyman/pipeline",
   "type": "module",
   "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "files": [
-    "src"
-  ],
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "journeyman-server": "./src/cli-start.ts" },
+  "files": ["src"],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/cli-start.ts config/pipeline.yaml"
   },
   "dependencies": {
     "@fastify/sensible": "^5.6.0",

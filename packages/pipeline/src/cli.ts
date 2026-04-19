@@ -18,9 +18,10 @@ import { parseArgs } from "node:util";
 
 function help() {
   console.log(`Usage:
-  journeyman run --ticket <KEY> --product <ID> [--flow <name>] [--config <path>]
-  journeyman validate-config [--config <path>]
-  journeyman sweep [--config <path>]
+  journeyman serve                [--config <path>]   Start the HTTP pipeline server
+  journeyman run                  --ticket <KEY> --product <ID> [--flow <name>] [--config <path>]
+  journeyman validate-config      [--config <path>]
+  journeyman sweep                [--config <path>]
 `);
 }
 
@@ -42,6 +43,11 @@ async function main() {
   }
 
   const cmd = positionals[0];
+  if (cmd === "serve") {
+    const { startServer } = await import("@journeyman/pipeline-server");
+    await startServer(values.config!);
+    return;
+  }
   if (cmd === "run") {
     if (!values.ticket || !values.product) {
       console.error("--ticket and --product required");

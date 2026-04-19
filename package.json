@@ -6,7 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "start": "tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.112",
