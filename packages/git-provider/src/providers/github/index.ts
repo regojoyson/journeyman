@@ -1,17 +1,16 @@
 import type {
   IGitProvider,
-  GetRepoOptions,
-  GetRepoResult,
-  CreatePROptions,
-  CreatePRResult,
-  ListPROptions,
-  ListPRResult,
+  GetRepoOptions, GetRepoResult,
+  CreatePROptions, CreatePRResult,
+  ListPROptions, ListPRResult,
+  CloneReposOptions, CloneReposResult,
   IProviderMeta,
 } from "@journeyman/core";
 import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
 import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 import { listPRs } from "./operations/list-prs.ts";
+import { cloneRepos } from "./operations/clone-repos.ts";
 
 export type GitHubProviderOptions = {
   /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
@@ -32,9 +31,7 @@ export class GitHubProvider implements IGitProvider {
   constructor(opts: GitHubProviderOptions = {}) {
     const token = opts.token ?? process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
-      throw new Error(
-        "GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN.",
-      );
+      throw new Error("GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN.");
     }
     this.token = token;
   }
@@ -49,6 +46,10 @@ export class GitHubProvider implements IGitProvider {
 
   async listPRs(opts: ListPROptions): Promise<ListPRResult> {
     return listPRs(await this.getClient(), opts);
+  }
+
+  async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
+    return cloneRepos(this.token, opts);
   }
 
   private async getClient(): Promise<Client> {

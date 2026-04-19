@@ -1,6 +1,5 @@
 import type { ICodingCLI } from "../../interface.ts";
 import type {
-  CloneReposOptions, CloneReposResult,
   ScanReposOptions, ScanReposResult,
   ResetReposOptions, ResetReposResult,
   CommitPushReposOptions, CommitPushReposResult,
@@ -21,7 +20,6 @@ export class GeminiProvider implements ICodingCLI {
     category: "coding-cli",
   };
 
-  cloneRepos(_opts: CloneReposOptions): Promise<CloneReposResult> { throw new Error("GeminiProvider.cloneRepos not implemented"); }
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("GeminiProvider.scanRepos not implemented"); }
   resetRepos(_opts: ResetReposOptions): Promise<ResetReposResult> { throw new Error("GeminiProvider.resetRepos not implemented"); }
   commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("GeminiProvider.commitPushRepos not implemented"); }

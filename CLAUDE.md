@@ -51,7 +51,6 @@ packages/coding-cli/src/
     ├── claude/
     │   ├── index.ts                ← ClaudeProvider class
     │   ├── operations/
-    │   │   ├── clone-repos.ts      ← cloneRepos() via Claude Agent SDK
     │   │   ├── scan-repos.ts       ← scanRepos() via Claude Agent SDK
     │   │   └── reset-repos.ts      ← resetRepos() via Claude Agent SDK
     │   └── utils/
@@ -118,14 +117,13 @@ npm install
 npm run typecheck
 
 # Run a specific operation (example)
-npx tsx packages/coding-cli/src/providers/claude/operations/clone-repos.ts
+npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 ```
 
 ## Implementation Status
 
 | Feature | Status |
 |---|---|
-| `ClaudeProvider.cloneRepos` | Implemented |
 | `ClaudeProvider.scanRepos` | Implemented |
 | `ClaudeProvider.resetRepos` | Implemented |
 | `ClaudeProvider.commitPushRepos` | Implemented |
@@ -136,7 +134,7 @@ npx tsx packages/coding-cli/src/providers/claude/operations/clone-repos.ts
 | `ClaudeProvider.implement` | Stub |
 | `GeminiProvider` | Stub |
 | `CodexProvider` | Stub |
-| `GitHubProvider` | Stub |
+| `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via MCP) |
 | `GitLabProvider` | Stub |
 | `JiraProvider` | Stub |
 | `LinearProvider` | Stub |

@@ -27,10 +27,9 @@ export class CloneReposPhase extends BasePhase {
     if (!repos.length) return this.blocked("product has no repos configured", "manual");
 
     const entries = repos.map(r => ({ url: r.url, branch: r.defaultBranch }));
-    const res = unwrap(await ctx.providers.coding.cloneRepos({
+    const res = unwrap(await ctx.providers.git.cloneRepos({
       repos: entries,
       targetDir: join(ctx.workspaceDir, "repos"),
-      sessionId: ctx.sessionId,
       signal: ctx.signal,
     }), "cloneRepos");
 
