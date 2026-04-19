@@ -190,8 +190,8 @@ products:
 Before restarting, validate that your YAML is well-formed and all providers/phases are known:
 
 ```bash
-npx journeyman validate-config
-npx journeyman validate-config --config path/to/pipeline.yaml   # custom path
+npm run validate
+npx tsx packages/pipeline/src/cli.ts validate-config --config path/to/pipeline.yaml
 ```
 
 If validation passes you will see:

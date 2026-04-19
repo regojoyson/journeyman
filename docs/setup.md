@@ -392,7 +392,7 @@ curl -X POST https://<your-host>/api/trigger/<productId> \
 ### Validate the config before starting
 
 ```bash
-npx journeyman validate-config --config config/pipeline.yaml
+npm run validate
 ```
 
 Expected: `✓ config valid`. Errors point to the exact file + field.
@@ -531,7 +531,7 @@ Brief overlap window where either old or new would verify is fine; HMAC compares
 
 1. Add an entry under `products.<id>.repos[]`.
 2. Configure a GitHub webhook on the new repo pointing at the same URL.
-3. `npx journeyman validate-config`.
+3. `npm run validate`.
 4. Restart server.
 
 ### Remove a product
@@ -545,19 +545,19 @@ Brief overlap window where either old or new would verify is fine; HMAC compares
 
 1. Edit `defaultFlow:` in `pipeline.yaml`.
 2. Make sure the new flow exists in `config/flows/`.
-3. `npx journeyman validate-config`.
+3. `npm run validate`.
 4. Restart server.
 
 ### Clean up old run dirs
 
 ```bash
-npx journeyman sweep --config config/pipeline.yaml
+npm run sweep
 ```
 
 Or run it on a cron:
 
 ```cron
-0 3 * * * cd /opt/journeyman && npx journeyman sweep --config config/pipeline.yaml
+0 3 * * * cd /opt/journeyman && npm run sweep
 ```
 
 ---

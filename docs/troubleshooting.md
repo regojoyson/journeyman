@@ -331,7 +331,7 @@ jq '.artifacts | .. | select(type=="object" and .kind=="artifact")' workspaces/<
 jq 'select(.status=="running")' workspaces/*/state/*.json
 
 # Validate config without starting the server
-npx journeyman validate-config --config config/pipeline.yaml
+npm run validate
 
 # Check for temporary/partial writes
 ls -la workspaces/*/state/ | grep "\.tmp-"

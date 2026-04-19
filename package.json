@@ -7,7 +7,10 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "start": "tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml"
+    "start": "tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml",
+    "validate": "tsx packages/pipeline/src/cli.ts validate-config --config config/pipeline.yaml",
+    "run-once": "tsx packages/pipeline/src/cli.ts run",
+    "sweep": "tsx packages/pipeline/src/cli.ts sweep --config config/pipeline.yaml"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.112",

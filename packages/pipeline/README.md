@@ -48,7 +48,7 @@ This is a workspace package; refer to the repo root `package.json` for setup ins
 
 4. **Run:**
    ```bash
-   npx journeyman run --product edgereg --ticket "edgereg-org/edgereg-api#42"
+   npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
    ```
 
 ## Exports
@@ -77,13 +77,13 @@ This is a workspace package; refer to the repo root `package.json` for setup ins
 
 ```bash
 # Run a flow for a ticket
-npx journeyman run --product <id> --ticket <org/repo#num>
+npm run run-once -- --product <id> --ticket <org/repo#num>
 
 # Validate config YAML
-npx journeyman validate-config config/pipeline.yaml
+npm run validate
 
 # Sweep stale artifacts (cleanup)
-npx journeyman sweep config/pipeline.yaml --age-hours 24
+npm run sweep
 ```
 
 ## Documentation

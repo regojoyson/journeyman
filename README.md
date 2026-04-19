@@ -34,15 +34,26 @@ See [**Quickstart**](docs/quickstart.md) — minimum viable setup in ~10 minutes
 npm install
 # create config/pipeline.yaml + config/flows/default.yaml  (see docs/setup.md)
 # set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN, ANTHROPIC_API_KEY
-npx journeyman validate-config
+npm run validate
 npm start                        # or: npx journeyman serve
 ```
 
 Or trigger a single run via CLI without the server:
 
 ```bash
-npx journeyman run --product edgereg --ticket "edgereg-org/edgereg-api#42"
+npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
 ```
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm install` | Install workspace dependencies |
+| `npm run typecheck` | Typecheck all packages |
+| `npm run validate` | Validate `config/pipeline.yaml` + flows |
+| `npm start` | Start the HTTP pipeline server |
+| `npm run run-once -- --product <id> --ticket <key>` | Run one ticket end-to-end (no server) |
+| `npm run sweep` | Clean up old workspace directories |
 
 ## Documentation
 

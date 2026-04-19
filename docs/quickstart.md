@@ -116,7 +116,7 @@ steps:
 ## 5. Validate
 
 ```bash
-npx journeyman validate-config --config config/pipeline.yaml
+npm run validate
 ```
 
 Expected: `✓ config valid`.
@@ -130,7 +130,7 @@ If you see an error, it'll point to the exact line/field in your config. Fix and
 Simplest smoke: run a single ticket end-to-end without starting the server.
 
 ```bash
-npx journeyman run \
+npm run run-once -- \
   --product demo \
   --ticket "YOUR_GITHUB_USER_OR_ORG/YOUR_REPO#123"
 ```
