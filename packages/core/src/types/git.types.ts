@@ -7,7 +7,7 @@ import type { SessionOptions, SessionResult } from "./session.types.ts";
 export type RepoEntry = { url: string; branch: string };
 export type ResetEntry = { dirPath: string; branch: string };
 
-export type CloneReposOptions = SessionOptions & {
+export type CloneReposOptions = {
   repos: string | string[] | RepoEntry | RepoEntry[];
   branch?: string;
   targetDir?: string;
@@ -17,12 +17,12 @@ export type CloneReposOptions = SessionOptions & {
 export type CloneResult = {
   folderName: string;
   dirPath: string;
-  url: string;
+  url: string;       // always the ORIGINAL, non-tokenized URL
   branch: string;
   error?: string;
 };
 
-export type CloneReposResult = SessionResult & {
+export type CloneReposResult = {
   repos: CloneResult[];
   error?: string;
 };
