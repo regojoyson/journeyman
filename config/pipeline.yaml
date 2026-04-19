@@ -1,0 +1,56 @@
+# Journeyman pipeline config — sam-portfolio
+
+defaultFlow: default
+
+# ── Server ─────────────────────────────────────────────────────────────────────
+server:
+  port: 3000
+  bearerTokenEnv: JOURNEYMAN_API_TOKEN
+  webhooks:
+    github:
+      secretEnv: GITHUB_WEBHOOK_SECRET
+
+# ── Workspace cleanup ──────────────────────────────────────────────────────────
+workspaces:
+  cleanupOn: [completed, cancelled]
+  retentionDays: 14
+  keepFailed: true
+
+# ── Products ───────────────────────────────────────────────────────────────────
+products:
+  sam-portfolio:
+    flow: default
+    workspace: ./workspaces/sam-portfolio
+    concurrency: 1
+
+    repos:
+      - providerId: github
+        owner: regojoyson
+        repo: sam-portfolio
+        url: https://github.com/regojoyson/sam-portfolio
+        defaultBranch: main
+
+    providerConfig:
+      ticket:
+        # GitHub Projects v2 — project #1 at github.com/users/regojoyson/projects/1
+        projectId: "regojoyson/1"
+      git:
+        tokenEnv: GITHUB_ACCESS_TOKEN
+      coding:
+        apiKeyEnv: ANTHROPIC_API_KEY
+      notification:
+        # Slack is a stub — flow below doesn't call notify, safe to ignore
+        channel: "#sam-portfolio"
+
+    ticketWorkflow:
+      trigger:
+        matchLabels: [Todo]       # only run when issue has this label
+      statuses:
+        development-started: "In Progress"
+        code-review:          "In Review"
+        done:                 "Done"
+        blocked:              "Blocked"
+        failed:               "Failed"
+
+    webhookSecrets:
+      github: GITHUB_WEBHOOK_SECRET

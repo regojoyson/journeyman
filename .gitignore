@@ -4,3 +4,6 @@ dist/
 .claude/memory/
 .claude/settings.local.json
 .worktrees/
+.claude/worktrees/
+.env
+workspaces/

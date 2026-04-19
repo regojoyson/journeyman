@@ -95,13 +95,15 @@ export async function cloneRepos(opts: CloneReposOptions): Promise<CloneReposRes
   return output;
 }
 
-// Run: npx tsx clone-repos.ts
-const result = await cloneRepos({
-  repos: [
-    { url: "https://github.com/anthropics/anthropic-sdk-python.git", branch: "main" },
-    { url: "https://github.com/anthropics/anthropic-sdk-java.git", branch: "devvv" },
-  ],
-  targetDir: "/Users/admin/data/workspace/claude-skils/claude-sdk-test",
-});
+// Run directly: npx tsx clone-repos.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await cloneRepos({
+    repos: [
+      { url: "https://github.com/anthropics/anthropic-sdk-python.git", branch: "main" },
+      { url: "https://github.com/anthropics/anthropic-sdk-java.git", branch: "devvv" },
+    ],
+    targetDir: "/Users/admin/data/workspace/claude-skils/claude-sdk-test",
+  });
 
-console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}

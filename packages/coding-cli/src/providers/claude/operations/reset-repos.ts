@@ -112,12 +112,14 @@ export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposRes
   return output;
 }
 
-// Run: npx tsx reset-repos.ts
-const result = await resetRepos({
-  repos: [
-    { dirPath: "/Users/admin/data/workspace/my-api", branch: "prod" },
-    { dirPath: "/Users/admin/data/workspace/my-web", branch: "prod" },
-  ],
-});
+// Run directly: npx tsx reset-repos.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await resetRepos({
+    repos: [
+      { dirPath: "/Users/admin/data/workspace/my-api", branch: "prod" },
+      { dirPath: "/Users/admin/data/workspace/my-web", branch: "prod" },
+    ],
+  });
 
-console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}

@@ -66,12 +66,14 @@ export async function cleanupRepos(opts: CleanupReposOptions): Promise<CleanupRe
   return { repos, sessionId };
 }
 
-// Run: npx tsx cleanup-repos.ts
-const result = await cleanupRepos({
-  repos: [
-    "/tmp/journeyman-cleanup-test-a",
-    "/tmp/journeyman-cleanup-test-b",
-  ],
-});
+// Run directly: npx tsx cleanup-repos.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await cleanupRepos({
+    repos: [
+      "/tmp/journeyman-cleanup-test-a",
+      "/tmp/journeyman-cleanup-test-b",
+    ],
+  });
 
-console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}

@@ -57,10 +57,12 @@ export async function createWorkspace(
   }
 }
 
-// Run: npx tsx create-workspace.ts
-const result = await createWorkspace({
-  ticketId: "PROJ-123",
-  parentDir: "/tmp/journeyman-workspace",
-});
+// Run directly: npx tsx create-workspace.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await createWorkspace({
+    ticketId: "PROJ-123",
+    parentDir: "/tmp/journeyman-workspace",
+  });
 
-console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}

@@ -91,9 +91,11 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
   return output;
 }
 
-// Run: npx tsx scan-repos.ts
-const result = await scanRepos({
-  parentDir: "/Users/admin/data/workspace/claude-skils/",
-});
+// Run directly: npx tsx scan-repos.ts
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const result = await scanRepos({
+    parentDir: "/Users/admin/data/workspace/claude-skils/",
+  });
 
-console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result, null, 2));
+}
