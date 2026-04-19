@@ -39,6 +39,13 @@ config/
 mkdir -p config/flows
 ```
 
+Add `.env` and `workspaces/` to `.gitignore` so secrets and run data are never committed:
+
+```bash
+echo ".env" >> .gitignore
+echo "workspaces/" >> .gitignore
+```
+
 ---
 
 ## 3. Write `config/pipeline.yaml`
@@ -252,6 +259,13 @@ All three default to `config/pipeline.yaml` if no config path is given.
 
 You should see:
 ```
+Loaded 5 variable(s) from .env          ← shown if .env file found
+journeyman pipeline-server listening on 3000
+```
+
+If no `.env` file exists:
+```
+No .env file found — using process environment only
 journeyman pipeline-server listening on 3000
 ```
 
@@ -356,7 +370,9 @@ sudo journalctl -u journeyman -f   # tail logs
 
 | Symptom | Fix |
 |---|---|
-| Server exits immediately | Check the env var named in `bearerTokenEnv` is set |
+| Server exits immediately | Check the env var named in `bearerTokenEnv` is set — run `npm start` from the repo root so `.env` is found |
+| `.env` variables not loading | `.env` must be in the working directory where you run the server (repo root). Run `npm start` from the repo root, not a subdirectory |
+| `.env` value ignored | A real `process.env` var with the same name already exists and takes precedence — unset it or remove from shell profile |
 | `Unknown phase: X` | Phase name in the flow YAML doesn't match a registered phase |
 | `Unknown provider: X` | `providers.*` in the flow doesn't match any registered provider ID |
 | `401 invalid signature` | GitHub secret mismatch — regenerate and update both `.env` and GitHub settings |
