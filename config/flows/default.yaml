@@ -20,8 +20,15 @@ steps:
   - id: mark-in-progress
     phase: updateStatus
     config:
-      status: In progress
+      status: development-started
     onFailure: skip
+
+  - id: checkout
+    phase: checkoutRepo
+    timeoutMs: 120000
+    retry:
+      attempts: 2
+      backoffMs: 3000
 
   - id: analyze
     phase: analyze
@@ -51,7 +58,7 @@ steps:
   - id: mark-in-review
     phase: updateStatus
     config:
-      status: Code Review
+      status: code-review
     onFailure: skip
 
   - id: cleanup
