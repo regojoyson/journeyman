@@ -6,7 +6,7 @@
 
 **Architecture:** A `subscribeAll` global listener is added to `EventBus`; `FileTraceLogger` emits `logLine` events after each disk write; a new `console-logger.ts` subscribes globally and prints formatted output for all lifecycle and logLine events. Seven phases get minimal `ctx.trace.log()` calls for key milestones.
 
-**Tech Stack:** TypeScript, Node.js, Vitest (tests), no new runtime dependencies.
+**Tech Stack:** TypeScript, Node.js — no new dependencies.
 
 ---
 
@@ -27,140 +27,17 @@
 | `packages/pipeline/src/phases/checkout-repo-phase.ts` | Modify | Log branch name being checked out |
 | `packages/pipeline/src/phases/commit-push-phase.ts` | Modify | Log commit message and pushed branch |
 | `packages/pipeline/src/phases/create-pr-phase.ts` | Modify | Log PR URL |
-| `packages/pipeline/src/event-bus.test.ts` | Create | Tests for `subscribeAll` |
-| `packages/pipeline/src/state/file-trace-logger.test.ts` | Create | Tests for logLine event emission |
-| `package.json` (root) | Modify | Add vitest devDependency + test script |
 
 ---
 
-### Task 1: Set up Vitest
-
-**Files:**
-- Modify: `package.json` (root)
-- Create: `vitest.config.ts` (root)
-
-- [ ] **Step 1: Install Vitest**
-
-```bash
-npm install --save-dev vitest
-```
-
-Expected: vitest appears in root `package.json` devDependencies.
-
-- [ ] **Step 2: Add test script to root package.json**
-
-Open `package.json` at the root. Add `"test": "vitest run"` to the `"scripts"` block.
-
-- [ ] **Step 3: Create vitest.config.ts at repo root**
-
-```typescript
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    include: ["packages/*/src/**/*.test.ts"],
-  },
-});
-```
-
-- [ ] **Step 4: Verify vitest runs (no tests yet)**
-
-```bash
-npm test
-```
-
-Expected output: `No test files found` or `0 tests passed`. No errors.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add package.json vitest.config.ts package-lock.json
-git commit -m "chore: add vitest for pipeline unit tests"
-```
-
----
-
-### Task 2: Add `subscribeAll` to EventBus
+### Task 1: Add `subscribeAll` to EventBus
 
 **Files:**
 - Modify: `packages/pipeline/src/event-bus.ts`
-- Create: `packages/pipeline/src/event-bus.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Replace event-bus.ts**
 
-Create `packages/pipeline/src/event-bus.test.ts`:
-
-```typescript
-import { describe, it, expect } from "vitest";
-import { EventBus } from "./event-bus.ts";
-import type { PipelineEvent } from "@journeyman/core";
-
-function makeStepStarted(sessionId: string): PipelineEvent {
-  return {
-    type: "stepStarted",
-    sessionId,
-    stepId: "test-step",
-    phase: "testPhase",
-    attempt: 1,
-    at: new Date().toISOString(),
-  };
-}
-
-describe("EventBus.subscribeAll", () => {
-  it("receives events from any session", () => {
-    const bus = new EventBus();
-    const received: PipelineEvent[] = [];
-    bus.subscribeAll(e => received.push(e));
-
-    bus.publish(makeStepStarted("s1"));
-    bus.publish(makeStepStarted("s2"));
-
-    expect(received).toHaveLength(2);
-    expect(received[0].sessionId).toBe("s1");
-    expect(received[1].sessionId).toBe("s2");
-  });
-
-  it("returns an unsubscribe function that stops delivery", () => {
-    const bus = new EventBus();
-    const received: PipelineEvent[] = [];
-    const unsub = bus.subscribeAll(e => received.push(e));
-
-    bus.publish(makeStepStarted("s1"));
-    unsub();
-    bus.publish(makeStepStarted("s2"));
-
-    expect(received).toHaveLength(1);
-    expect(received[0].sessionId).toBe("s1");
-  });
-
-  it("does not affect per-session subscribers", () => {
-    const bus = new EventBus();
-    const global: PipelineEvent[] = [];
-    const perSession: PipelineEvent[] = [];
-    bus.subscribeAll(e => global.push(e));
-    bus.subscribe("s1", e => perSession.push(e));
-
-    bus.publish(makeStepStarted("s1"));
-    bus.publish(makeStepStarted("s2"));
-
-    expect(global).toHaveLength(2);
-    expect(perSession).toHaveLength(1);
-    expect(perSession[0].sessionId).toBe("s1");
-  });
-});
-```
-
-- [ ] **Step 2: Run to verify it fails**
-
-```bash
-npm test
-```
-
-Expected: FAIL — `bus.subscribeAll is not a function`.
-
-- [ ] **Step 3: Add `subscribeAll` to EventBus**
-
-Open `packages/pipeline/src/event-bus.ts`. Replace the entire file content:
+Open `packages/pipeline/src/event-bus.ts`. Replace the entire file:
 
 ```typescript
 import type { PipelineEvent } from "@journeyman/core";
@@ -203,34 +80,32 @@ export class EventBus {
 }
 ```
 
-- [ ] **Step 4: Run tests — expect pass**
+- [ ] **Step 2: Type-check**
 
 ```bash
-npm test
+npm run typecheck
 ```
 
-Expected: 3 tests pass.
+Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add packages/pipeline/src/event-bus.ts packages/pipeline/src/event-bus.test.ts
+git add packages/pipeline/src/event-bus.ts
 git commit -m "feat(pipeline): add EventBus.subscribeAll for global event listening"
 ```
 
 ---
 
-### Task 3: Add `productId` to `runStarted` / `runEnded` events
+### Task 2: Add `productId` to `runStarted` / `runEnded` events
 
 **Files:**
-- Modify: `packages/core/src/types/pipeline.types.ts` (the `PipelineEvent` union)
-- Modify: `packages/pipeline/src/pipeline.ts` (the publish calls)
-
-The console logger needs `productId` to label terminal output. Neither `runStarted` nor `runEnded` currently carry it.
+- Modify: `packages/core/src/types/pipeline.types.ts`
+- Modify: `packages/pipeline/src/pipeline.ts`
 
 - [ ] **Step 1: Update PipelineEvent union in core**
 
-Open `packages/core/src/types/pipeline.types.ts`. Find the `PipelineEvent` type. Change the `runStarted` and `runEnded` members to include `productId`:
+Open `packages/core/src/types/pipeline.types.ts`. Find the `PipelineEvent` type and replace it:
 
 ```typescript
 export type PipelineEvent =
@@ -242,9 +117,9 @@ export type PipelineEvent =
   | { type: "runEnded";      sessionId: string; productId: string; status: PipelineRun["status"]; at: string };
 ```
 
-- [ ] **Step 2: Fix the publish call for `runStarted` in pipeline.ts**
+- [ ] **Step 2: Fix `runStarted` publish in pipeline.ts**
 
-Open `packages/pipeline/src/pipeline.ts`. Find line 90:
+Open `packages/pipeline/src/pipeline.ts`. Find this line (around line 90):
 
 ```typescript
 this.emit({ type: "runStarted", sessionId, ticketKey: run.ticketKey, flowName: run.flowName, at: now() });
@@ -256,9 +131,9 @@ Change to:
 this.emit({ type: "runStarted", sessionId, productId: run.productId, ticketKey: run.ticketKey, flowName: run.flowName, at: now() });
 ```
 
-- [ ] **Step 3: Fix the publish call for `runEnded` in pipeline.ts**
+- [ ] **Step 3: Fix `runEnded` publish in pipeline.ts**
 
-In the same file, find the `runEnded` publish call (near the `finish` method). It looks like:
+In the same file, find the `runEnded` publish call (near the `finish` method):
 
 ```typescript
 this.emit({ type: "runEnded", sessionId: run.sessionId, status: run.status, at: now() });
@@ -276,7 +151,7 @@ this.emit({ type: "runEnded", sessionId: run.sessionId, productId: run.productId
 npm run typecheck
 ```
 
-Expected: no errors. Fix any TypeScript complaints about missing `productId`.
+Expected: no errors.
 
 - [ ] **Step 5: Commit**
 
@@ -287,80 +162,12 @@ git commit -m "feat(core): add productId to runStarted and runEnded pipeline eve
 
 ---
 
-### Task 4: Update `FileTraceLogger` to emit `logLine` events
+### Task 3: Update `FileTraceLogger` to emit `logLine` events
 
 **Files:**
 - Modify: `packages/pipeline/src/state/file-trace-logger.ts`
-- Create: `packages/pipeline/src/state/file-trace-logger.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-
-Create `packages/pipeline/src/state/file-trace-logger.test.ts`:
-
-```typescript
-import { describe, it, expect } from "vitest";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { FileTraceLogger } from "./file-trace-logger.ts";
-import { EventBus } from "../event-bus.ts";
-import type { PipelineEvent } from "@journeyman/core";
-
-function makeTempDir(): string {
-  return mkdtempSync(join(tmpdir(), "journeyman-test-"));
-}
-
-describe("FileTraceLogger logLine emission", () => {
-  it("emits a logLine event to the EventBus when logging", async () => {
-    const dir = makeTempDir();
-    const bus = new EventBus();
-    const received: PipelineEvent[] = [];
-    bus.subscribeAll(e => received.push(e));
-
-    const logger = new FileTraceLogger(dir, () => "test-product", bus);
-    await logger.log("session-1", "clone", "cloning repos", "info");
-
-    expect(received).toHaveLength(1);
-    const event = received[0];
-    expect(event.type).toBe("logLine");
-    if (event.type !== "logLine") throw new Error("wrong type");
-    expect(event.sessionId).toBe("session-1");
-    expect(event.stepId).toBe("clone");
-    expect(event.line).toBe("cloning repos");
-    expect(event.level).toBe("info");
-  });
-
-  it("does not emit to EventBus when no bus provided", async () => {
-    const dir = makeTempDir();
-    const logger = new FileTraceLogger(dir, () => "test-product");
-    // Should not throw
-    await logger.log("session-1", "clone", "cloning repos", "info");
-  });
-
-  it("emits warn and error levels", async () => {
-    const dir = makeTempDir();
-    const bus = new EventBus();
-    const levels: string[] = [];
-    bus.subscribeAll(e => { if (e.type === "logLine") levels.push(e.level); });
-
-    const logger = new FileTraceLogger(dir, () => "test-product", bus);
-    await logger.log("s", "step", "warn msg", "warn");
-    await logger.log("s", "step", "error msg", "error");
-
-    expect(levels).toEqual(["warn", "error"]);
-  });
-});
-```
-
-- [ ] **Step 2: Run to verify it fails**
-
-```bash
-npm test
-```
-
-Expected: FAIL — `FileTraceLogger` constructor does not accept a third argument.
-
-- [ ] **Step 3: Update FileTraceLogger to accept EventBus and emit logLine**
+- [ ] **Step 1: Replace file-trace-logger.ts**
 
 Open `packages/pipeline/src/state/file-trace-logger.ts`. Replace the entire file:
 
@@ -429,15 +236,7 @@ export class FileTraceLogger implements ITraceLogger {
 }
 ```
 
-- [ ] **Step 4: Run tests — expect pass**
-
-```bash
-npm test
-```
-
-Expected: all tests pass (EventBus tests + FileTraceLogger tests).
-
-- [ ] **Step 5: Type-check**
+- [ ] **Step 2: Type-check**
 
 ```bash
 npm run typecheck
@@ -445,23 +244,21 @@ npm run typecheck
 
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add packages/pipeline/src/state/file-trace-logger.ts packages/pipeline/src/state/file-trace-logger.test.ts
+git add packages/pipeline/src/state/file-trace-logger.ts
 git commit -m "feat(pipeline): FileTraceLogger emits logLine events to EventBus"
 ```
 
 ---
 
-### Task 5: Create `console-logger.ts`
+### Task 4: Create `console-logger.ts`
 
 **Files:**
 - Create: `packages/pipeline-server/src/console-logger.ts`
 
 - [ ] **Step 1: Create the file**
-
-Create `packages/pipeline-server/src/console-logger.ts`:
 
 ```typescript
 import type { EventBus } from "@journeyman/pipeline";
@@ -487,8 +284,7 @@ function handle(e: PipelineEvent): void {
       } else if (e.status === "cancelled") {
         console.log(`[step]   ~ ${e.stepId} cancelled`);
       } else {
-        const run = (e as any);
-        console.log(`[step]   ✗ ${e.stepId} — ${run.error ?? e.status}`);
+        console.log(`[step]   ✗ ${e.stepId} — ${e.status}`);
       }
       break;
     case "statusChanged":
@@ -514,7 +310,7 @@ export function subscribeConsoleLogger(bus: EventBus): () => void {
 npm run typecheck
 ```
 
-Expected: no errors. If `EventBus` is not exported from `@journeyman/pipeline`, open `packages/pipeline/src/index.ts` and add `export { EventBus } from "./event-bus.ts";` — it should already be there but verify.
+Expected: no errors. If `EventBus` is not exported from `@journeyman/pipeline`, open `packages/pipeline/src/index.ts` and verify `export { EventBus } from "./event-bus.ts";` is present.
 
 - [ ] **Step 3: Commit**
 
@@ -525,38 +321,36 @@ git commit -m "feat(pipeline-server): add console-logger for terminal output"
 
 ---
 
-### Task 6: Wire `main.ts`
+### Task 5: Wire `main.ts`
 
 **Files:**
 - Modify: `packages/pipeline-server/src/main.ts`
 
-- [ ] **Step 1: Import `subscribeConsoleLogger`**
+- [ ] **Step 1: Add import**
 
-Open `packages/pipeline-server/src/main.ts`. Add this import after the existing imports:
+Open `packages/pipeline-server/src/main.ts`. Add after existing imports:
 
 ```typescript
 import { subscribeConsoleLogger } from "./console-logger.ts";
 ```
 
-- [ ] **Step 2: Pass `eventBus` to `FileTraceLogger`**
+- [ ] **Step 2: Pass `bus` to `FileTraceLogger`**
 
-In `main.ts`, find this line (around line 72):
+Find:
 
 ```typescript
 const trace = new FileTraceLogger(workspacesRoot, productIdResolver);
 ```
 
-Change it to:
+Change to:
 
 ```typescript
 const trace = new FileTraceLogger(workspacesRoot, productIdResolver, bus);
 ```
 
-Note: `bus` is the `EventBus` instance defined just before this line as `const bus = new EventBus();`.
-
 - [ ] **Step 3: Call `subscribeConsoleLogger`**
 
-Immediately after `const bus = new EventBus();`, add:
+Immediately after `const bus = new EventBus();` add:
 
 ```typescript
 subscribeConsoleLogger(bus);
@@ -570,15 +364,7 @@ npm run typecheck
 
 Expected: no errors.
 
-- [ ] **Step 5: Smoke test — start the server**
-
-```bash
-npm start
-```
-
-Expected: server starts and prints `journeyman pipeline-server listening on 3000`. Trigger a run via curl and watch step lifecycle appear in the terminal.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add packages/pipeline-server/src/main.ts
@@ -587,15 +373,13 @@ git commit -m "feat(pipeline-server): wire console logger and EventBus into File
 
 ---
 
-### Task 7: Add trace calls to `getTicket` and `updateStatus` phases
+### Task 6: Add trace calls to `getTicket` and `updateStatus` phases
 
 **Files:**
 - Modify: `packages/pipeline/src/phases/get-ticket-phase.ts`
 - Modify: `packages/pipeline/src/phases/update-status-phase.ts`
 
-- [ ] **Step 1: Update `get-ticket-phase.ts`**
-
-Open `packages/pipeline/src/phases/get-ticket-phase.ts`. Replace the `run` method body:
+- [ ] **Step 1: Update `get-ticket-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext): Promise<PhaseResult> {
@@ -609,9 +393,7 @@ async run(ctx: PipelineContext): Promise<PhaseResult> {
 }
 ```
 
-- [ ] **Step 2: Update `update-status-phase.ts`**
-
-Open `packages/pipeline/src/phases/update-status-phase.ts`. Replace the `run` method body:
+- [ ] **Step 2: Update `update-status-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext, config: Config): Promise<PhaseResult> {
@@ -649,8 +431,6 @@ async run(ctx: PipelineContext, config: Config): Promise<PhaseResult> {
 npm run typecheck
 ```
 
-Expected: no errors.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -660,15 +440,13 @@ git commit -m "feat(pipeline): add trace logs to getTicket and updateStatus phas
 
 ---
 
-### Task 8: Add trace calls to `cloneRepos` and `cleanupRepos` phases
+### Task 7: Add trace calls to `cloneRepos` and `cleanupRepos` phases
 
 **Files:**
 - Modify: `packages/pipeline/src/phases/clone-repos-phase.ts`
 - Modify: `packages/pipeline/src/phases/cleanup-repos-phase.ts`
 
-- [ ] **Step 1: Update `clone-repos-phase.ts`**
-
-Open `packages/pipeline/src/phases/clone-repos-phase.ts`. Replace the `run` method body:
+- [ ] **Step 1: Update `clone-repos-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext): Promise<PhaseResult> {
@@ -700,9 +478,7 @@ async run(ctx: PipelineContext): Promise<PhaseResult> {
 }
 ```
 
-- [ ] **Step 2: Update `cleanup-repos-phase.ts`**
-
-Open `packages/pipeline/src/phases/cleanup-repos-phase.ts`. Replace the `run` method body:
+- [ ] **Step 2: Update `cleanup-repos-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext): Promise<PhaseResult> {
@@ -723,8 +499,6 @@ async run(ctx: PipelineContext): Promise<PhaseResult> {
 npm run typecheck
 ```
 
-Expected: no errors.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -734,16 +508,14 @@ git commit -m "feat(pipeline): add trace logs to cloneRepos and cleanupRepos pha
 
 ---
 
-### Task 9: Add trace calls to `checkoutRepo`, `commitPush`, and `createPR` phases
+### Task 8: Add trace calls to `checkoutRepo`, `commitPush`, and `createPR` phases
 
 **Files:**
 - Modify: `packages/pipeline/src/phases/checkout-repo-phase.ts`
 - Modify: `packages/pipeline/src/phases/commit-push-phase.ts`
 - Modify: `packages/pipeline/src/phases/create-pr-phase.ts`
 
-- [ ] **Step 1: Update `checkout-repo-phase.ts`**
-
-Open `packages/pipeline/src/phases/checkout-repo-phase.ts`. Replace the `run` method body:
+- [ ] **Step 1: Update `checkout-repo-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext): Promise<PhaseResult> {
@@ -772,9 +544,7 @@ async run(ctx: PipelineContext): Promise<PhaseResult> {
 }
 ```
 
-- [ ] **Step 2: Update `commit-push-phase.ts`**
-
-Open `packages/pipeline/src/phases/commit-push-phase.ts`. Replace the `run` method body:
+- [ ] **Step 2: Update `commit-push-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
@@ -801,9 +571,7 @@ async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
 }
 ```
 
-- [ ] **Step 3: Update `create-pr-phase.ts`**
-
-Open `packages/pipeline/src/phases/create-pr-phase.ts`. In the `run` method, after the `return this.ok({ pr: { id: existing.id ... } })` for the existing-PR case, add a log line. And after the final `createPR` call, add another. Replace the full `run` method:
+- [ ] **Step 3: Update `create-pr-phase.ts` run method**
 
 ```typescript
 async run(ctx: PipelineContext): Promise<PhaseResult> {
@@ -853,17 +621,7 @@ async run(ctx: PipelineContext): Promise<PhaseResult> {
 npm run typecheck
 ```
 
-Expected: no errors.
-
-- [ ] **Step 5: Run all tests**
-
-```bash
-npm test
-```
-
-Expected: all tests pass.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add packages/pipeline/src/phases/checkout-repo-phase.ts packages/pipeline/src/phases/commit-push-phase.ts packages/pipeline/src/phases/create-pr-phase.ts
@@ -873,8 +631,6 @@ git commit -m "feat(pipeline): add trace logs to checkoutRepo, commitPush, and c
 ---
 
 ## Manual Verification
-
-Start the server and trigger a run:
 
 ```bash
 # Terminal 1
@@ -887,7 +643,7 @@ curl -X POST http://localhost:3000/api/trigger/sam-portfolio \
   -d '{"ticketKey": "regojoyson/sam-portfolio#1"}'
 ```
 
-Expected terminal output (Terminal 1):
+Expected terminal output:
 
 ```
 journeyman pipeline-server listening on 3000
@@ -900,4 +656,5 @@ journeyman pipeline-server listening on 3000
   [info] cloned 1 repo(s)
 [step]   ✓ clone (8432ms)
 ...
+[run]    sam-portfolio · completed
 ```
