@@ -80,6 +80,8 @@ export type CheckoutBranchOptions = {
   branch: string;
   fromBranch?: string;
   create?: boolean;
+  /** When true, run `git fetch origin` before the checkout so fromBranch is fresh. Default false. */
+  fetch?: boolean;
   signal?: AbortSignal;
 };
 
@@ -615,6 +617,18 @@ export async function checkoutBranch(
     };
   }
 
+  if (opts.fetch) {
+    try {
+      await execFileP("git", ["-C", dirPath, "fetch", "origin"], { signal: opts.signal });
+    } catch (err) {
+      const e = err as { stderr?: string; message: string };
+      return {
+        dirPath, branch, previousBranch, created: false,
+        error: `git fetch failed: ${e.stderr?.trim() || e.message}`,
+      };
+    }
+  }
+
   const exists = await branchExists(dirPath, branch);
 
   if (!exists && !create) {
@@ -890,6 +904,7 @@ type Config = {
   pattern?: string;
   fromBranch?: string;
   create?: boolean;
+  fetch?: boolean;
 };
 
 const DEFAULT_PATTERN = "feature/{ticket}";
@@ -913,6 +928,7 @@ export class CheckoutBranchPhase extends BasePhase {
       branch,
       fromBranch: config.fromBranch,
       create: config.create,
+      fetch: config.fetch,
       signal: ctx.signal,
     }), "checkoutBranch");
 
