@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import type { ListTicketsOptions, ListTicketsResult } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { buildMcpConfig } from "../utils/mcp-config.ts";
+
+const log = createLogger("jira:list-tickets");
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -44,6 +47,8 @@ function buildPrompt(opts: ListTicketsOptions): string {
 }
 
 export async function listTickets(opts: ListTicketsOptions): Promise<ListTicketsResult> {
+  const jql = buildJql(opts);
+  log.info({ jql }, "listTickets start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -58,9 +63,16 @@ export async function listTickets(opts: ListTicketsOptions): Promise<ListTickets
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
-      if (msg.subtype === "success") return msg.structured_output as ListTicketsResult;
-      throw new Error((msg as any).errors?.[0] ?? msg.subtype);
+      if (msg.subtype === "success") {
+        const result = msg.structured_output as ListTicketsResult;
+        log.info({ count: result.tickets?.length ?? 0 }, "listTickets done");
+        return result;
+      }
+      const error = (msg as any).errors?.[0] ?? msg.subtype;
+      log.error({ jql, error }, "listTickets failed");
+      throw new Error(error);
     }
   }
+  log.error({ jql }, "listTickets: no result received");
   return { tickets: [], error: "No result received" };
 }

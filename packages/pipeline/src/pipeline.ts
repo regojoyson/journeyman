@@ -27,11 +27,14 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { createLogger } from "@journeyman/core";
 import type {
   FlowDefinition, FlowStepDefinition, IPhase, IStateStore, ITraceLogger,
   IArtifactStore, PhaseResult, PipelineEvent, PipelineRun, PipelineTrigger,
   ProductConfig, StepRecord,
 } from "@journeyman/core";
+
+const log = createLogger("pipeline");
 import type { PhaseRegistry } from "./registry/phase-registry.ts";
 import type { ResolvedProviders } from "./registry/provider-registry.ts";
 import type { EventBus } from "./event-bus.ts";
@@ -62,7 +65,10 @@ export class Pipeline {
 
   cancel(sessionId: string): void {
     const ac = this.aborters.get(sessionId);
-    if (ac) ac.abort();
+    if (ac) {
+      log.info({ sessionId }, "run cancelled");
+      ac.abort();
+    }
   }
 
   isRunning(sessionId: string): boolean {
@@ -91,6 +97,10 @@ export class Pipeline {
       updatedAt: now(),
     };
     await this.deps.state.save(run);
+    log.info(
+      { sessionId, productId: trigger.productId, ticketKey: run.ticketKey, flowName: flow.name, stepCount: flow.steps.length },
+      "run started",
+    );
     this.emit({ type: "runStarted", sessionId, ticketKey: run.ticketKey, flowName: run.flowName, at: now() });
 
     const ac = new AbortController();
@@ -120,6 +130,7 @@ export class Pipeline {
       await this.finish(run, "completed");
       return run;
     } catch (err: any) {
+      log.error({ sessionId, err: err?.message ?? String(err) }, "run setup failed");
       // Setup-time failure (provider construction, ctx build). Convert to failed.
       if (run.status === "running") {
         run.artifacts._setupError = { message: err?.message ?? String(err) };
@@ -156,6 +167,10 @@ export class Pipeline {
       run.currentStep = step.id;
       run.updatedAt = new Date().toISOString();
       await this.deps.state.save(run);
+      log.info(
+        { sessionId: run.sessionId, stepId: step.id, phase: step.phase, attempt, maxAttempts },
+        "step started",
+      );
       ctx.emit({
         type: "stepStarted",
         sessionId: run.sessionId,
@@ -189,6 +204,21 @@ export class Pipeline {
         rec.error = last.error;
       }
       await this.deps.state.save(run);
+      const logFields = {
+        sessionId: run.sessionId,
+        stepId: step.id,
+        phase: step.phase,
+        attempt,
+        status: rec.status,
+        durationMs: rec.durationMs,
+      };
+      if (rec.status === "failed") {
+        log.error({ ...logFields, err: rec.error?.message }, "step failed");
+      } else if (rec.status === "blocked") {
+        log.warn({ ...logFields, reason: rec.blockedReason }, "step blocked");
+      } else {
+        log.info(logFields, "step ok");
+      }
       ctx.emit({
         type: "stepEnded",
         sessionId: run.sessionId,
@@ -225,6 +255,11 @@ export class Pipeline {
     run.currentStep = null;
     run.updatedAt = at;
     await this.deps.state.save(run);
+    const durationMs = new Date(at).getTime() - new Date(run.createdAt).getTime();
+    log.info(
+      { sessionId: run.sessionId, status, from, stepCount: run.steps.length, durationMs },
+      "run ended",
+    );
     this.emit({ type: "statusChanged", sessionId: run.sessionId, from, to: status, at });
     this.emit({ type: "runEnded", sessionId: run.sessionId, status, at });
   }
@@ -239,6 +274,9 @@ export class Pipeline {
       ...(await state.find({ status: "running" })),
       ...(await state.find({ status: "cancelling" })),
     ];
+    if (targets.length > 0) {
+      log.warn({ count: targets.length }, "recovering stuck runs after process restart");
+    }
     const now = new Date().toISOString();
     for (const r of targets) {
       for (const s of r.steps) {
@@ -257,6 +295,7 @@ export class Pipeline {
 
   /** Resume a blocked run from the step after the blocked one. Uses flowSnapshot. */
   async resume(sessionId: string): Promise<PipelineRun> {
+    log.info({ sessionId }, "run resume requested");
     const run = await this.deps.state.load(sessionId);
     if (!run) throw new Error(`no such run ${sessionId}`);
     if (run.status !== "blocked") throw new Error(`cannot resume ${sessionId}: status=${run.status}`);

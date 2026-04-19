@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import type { GetTicketOptions, GetTicketResult } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { buildMcpConfig } from "../utils/mcp-config.ts";
+
+const log = createLogger("jira:get-ticket");
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -70,6 +73,7 @@ function buildPrompt(opts: GetTicketOptions): string {
 }
 
 export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult> {
+  log.info({ ticketId: opts.id }, "getTicket start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -84,9 +88,16 @@ export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
-      if (msg.subtype === "success") return msg.structured_output as GetTicketResult;
-      throw new Error(msg.errors?.[0] ?? msg.subtype);
+      if (msg.subtype === "success") {
+        const result = msg.structured_output as GetTicketResult;
+        log.info({ ticketId: opts.id, found: !!result.ticket }, "getTicket done");
+        return result;
+      }
+      const error = msg.errors?.[0] ?? msg.subtype;
+      log.error({ ticketId: opts.id, error }, "getTicket failed");
+      throw new Error(error);
     }
   }
+  log.error({ ticketId: opts.id }, "getTicket: no result received");
   return { error: "No result received" };
 }

@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { AnalyzeOptions, AnalyzeResult } from "@journeyman/core";
+
+const log = createLogger("claude:analyze");
 
 export type { AnalyzeOptions, AnalyzeResult };
 
@@ -180,6 +183,7 @@ function buildPrompt(opts: AnalyzeOptions): string {
  */
 export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "analyze start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -208,16 +212,25 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return {
-          ...EMPTY_RESULT,
-          sessionId,
-          error: (msg as any).errors?.[0] ?? msg.subtype,
-        };
+        const error = (msg as any).errors?.[0] ?? msg.subtype;
+        log.error({ sessionId, error }, "analyze failed");
+        return { ...EMPTY_RESULT, sessionId, error };
       }
       output = { ...(msg.structured_output as AnalyzeResult), sessionId };
     }
   }
 
+  log.info(
+    {
+      sessionId,
+      ticketType: output.ticketType,
+      complexity: output.complexity,
+      readinessScore: output.readinessScore,
+      findingCount: output.findings.length,
+      reportPath: output.reportPath,
+    },
+    "analyze done",
+  );
   return output;
 }
 

@@ -1,4 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type {
@@ -6,6 +7,8 @@ import type {
   CommitPushReposOptions,
   CommitPushReposResult,
 } from "@journeyman/core";
+
+const log = createLogger("claude:commit-push-repos");
 
 export type { CommitPushEntry, CommitPushReposOptions, CommitPushReposResult };
 
@@ -180,10 +183,16 @@ export async function commitPushRepos(
 ): Promise<CommitPushReposResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
   if (opts?.repos == null) {
+    log.error({ sessionId }, "commitPushRepos missing repos");
     return { repos: [], error: "repos is required", sessionId };
   }
   const entries = normalizeEntries(opts);
+  log.info(
+    { sessionId, repoCount: entries.length, ticket: opts.ticket },
+    "commitPushRepos start",
+  );
   if (entries.length === 0) {
+    log.warn({ sessionId }, "commitPushRepos called with no repos");
     return { repos: [], sessionId };
   }
   const pattern = opts.pattern ?? DEFAULT_PATTERN;
@@ -216,12 +225,22 @@ export async function commitPushRepos(
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).errors?.[0] ?? msg.subtype, sessionId };
+        const error = (msg as any).errors?.[0] ?? msg.subtype;
+        log.error({ sessionId, error }, "commitPushRepos failed");
+        return { repos: [], error, sessionId };
       }
       output = { ...(msg.structured_output as CommitPushReposResult), sessionId };
     }
   }
 
+  log.info(
+    {
+      sessionId,
+      pushedCount: output.repos.filter((r) => r.pushed).length,
+      failureCount: output.repos.filter((r) => !r.pushed).length,
+    },
+    "commitPushRepos done",
+  );
   return output;
 }
 
