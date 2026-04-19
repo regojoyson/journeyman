@@ -20,7 +20,7 @@ steps:
   - id: mark-in-progress
     phase: updateStatus
     config:
-      status: development-started
+      status: In progress
     onFailure: skip
 
   - id: analyze
@@ -51,7 +51,7 @@ steps:
   - id: mark-in-review
     phase: updateStatus
     config:
-      status: code-review
+      status: Code Review
     onFailure: skip
 
   - id: cleanup
