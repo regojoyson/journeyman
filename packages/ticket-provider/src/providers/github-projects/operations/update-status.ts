@@ -1,11 +1,16 @@
 import type { UpdateStatusOptions, UpdateStatusResult } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import {
+  formatGitHubError,
+  UPDATE_PROJECT_FIELD_SINGLE_SELECT,
+  UPDATE_PROJECT_FIELD_TEXT,
+  type GitHubClient,
+} from "@journeyman/github-api";
 import { getTicket } from "./get-ticket.ts";
-
-const UPDATE_FIELD_METHOD = "update_item_field";
+import { findField, findOptionId, getProjectFields } from "../utils/resolve-fields.ts";
+import { resolveProjectNodeId } from "../utils/resolve-project-id.ts";
 
 export async function updateStatus(
-  client: Client,
+  client: GitHubClient,
   opts: UpdateStatusOptions,
 ): Promise<UpdateStatusResult> {
   const match = /^([^/]+)\/(\d+)#(.+)$/.exec(opts.id);
@@ -15,17 +20,34 @@ export async function updateStatus(
     };
   }
   const [, owner, numStr, itemId] = match;
+  const project_number = Number(numStr);
+
   try {
-    await callTool(client, "projects_write", {
-      method: UPDATE_FIELD_METHOD,
-      owner,
-      project_number: Number(numStr),
-      item_id: itemId,
-      updated_field: "Status",
-      value: opts.status,
-    });
+    const projectId = await resolveProjectNodeId(client, owner, project_number);
+    const fields = await getProjectFields(client, projectId);
+    const status = findField(fields, "Status");
+    if (!status) return { error: "updateStatus: Status field not found on project" };
+
+    if (status.dataType === "SINGLE_SELECT") {
+      const optionId = findOptionId(status, opts.status);
+      if (!optionId) return { error: `updateStatus: Status option "${opts.status}" not found` };
+      await client.graphql(UPDATE_PROJECT_FIELD_SINGLE_SELECT, {
+        projectId,
+        itemId,
+        fieldId: status.id,
+        optionId,
+      });
+    } else {
+      await client.graphql(UPDATE_PROJECT_FIELD_TEXT, {
+        projectId,
+        itemId,
+        fieldId: status.id,
+        text: opts.status,
+      });
+    }
+
     return getTicket(client, { id: opts.id });
   } catch (err) {
-    return { error: (err as Error).message };
+    return { error: formatGitHubError("graphql.updateProjectV2ItemFieldValue", err) };
   }
 }

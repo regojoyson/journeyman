@@ -1,10 +1,7 @@
-
 import type { UpdateTicketOptions, UpdateTicketResult } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 import { parseIssueId } from "../utils/parse-ids.ts";
-import { toTicket } from "./create-ticket.ts";
-
-type GitHubIssue = Parameters<typeof toTicket>[2];
+import { toTicket, type GitHubIssue } from "./create-ticket.ts";
 
 function mapStateFromStatus(status: string | undefined): "open" | "closed" | undefined {
   if (!status) return undefined;
@@ -13,12 +10,11 @@ function mapStateFromStatus(status: string | undefined): "open" | "closed" | und
 }
 
 export async function updateTicket(
-  client: Client,
+  client: GitHubClient,
   opts: UpdateTicketOptions,
 ): Promise<UpdateTicketResult> {
   const { owner, repo, number } = parseIssueId(opts.id);
   const args: Record<string, unknown> = {
-    method: "update",
     owner,
     repo,
     issue_number: number,
@@ -30,16 +26,17 @@ export async function updateTicket(
   const state = mapStateFromStatus(opts.status);
   if (state !== undefined) args.state = state;
 
-  // only title/issue_number are guaranteed; check that at least one update field is present
   const updateFieldKeys = ["title", "body", "assignees", "labels", "state"];
   if (!updateFieldKeys.some((k) => k in args)) {
     return { error: "updateTicket: no fields to update" };
   }
 
   try {
-    const issue = await callTool<GitHubIssue>(client, "issue_write", args);
-    return { ticket: toTicket(owner, repo, issue) };
+    const { data } = await client.rest.issues.update(
+      args as Parameters<typeof client.rest.issues.update>[0],
+    );
+    return { ticket: toTicket(owner, repo, data as unknown as GitHubIssue) };
   } catch (err) {
-    return { error: (err as Error).message };
+    return { error: formatGitHubError("issues.update", err) };
   }
 }

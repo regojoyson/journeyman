@@ -1,27 +1,20 @@
 import type { GetRepoOptions, GetRepoResult } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
-
-type GitHubRepoPayload = {
-  name: string;
-  full_name: string;
-  html_url: string;
-  default_branch: string;
-};
+import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 
 export async function getRepo(
-  client: Client,
+  client: GitHubClient,
   opts: GetRepoOptions,
 ): Promise<GetRepoResult> {
   try {
-    const r = await callTool<GitHubRepoPayload>(client, "get_repository", {
+    const { data } = await client.rest.repos.get({
       owner: opts.owner,
       repo: opts.repo,
     });
     return {
-      name: r.name,
-      fullName: r.full_name,
-      url: r.html_url,
-      defaultBranch: r.default_branch,
+      name: data.name,
+      fullName: data.full_name,
+      url: data.html_url,
+      defaultBranch: data.default_branch,
       sessionId: opts.sessionId,
     };
   } catch (e) {
@@ -30,7 +23,7 @@ export async function getRepo(
       fullName: "",
       url: "",
       defaultBranch: "",
-      error: (e as Error).message,
+      error: formatGitHubError("repos.get", e),
       sessionId: opts.sessionId,
     };
   }

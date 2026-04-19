@@ -1,28 +1,30 @@
-
 import type { ListTicketsOptions, ListTicketsResult } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 import { parseOwnerRepo } from "../utils/parse-ids.ts";
-import { toTicket } from "./create-ticket.ts";
-
-type GitHubIssue = Parameters<typeof toTicket>[2];
+import { toTicket, type GitHubIssue } from "./create-ticket.ts";
 
 export async function listTickets(
-  client: Client,
+  client: GitHubClient,
   opts: ListTicketsOptions,
 ): Promise<ListTicketsResult> {
   const { owner, repo } = parseOwnerRepo(opts.projectId);
-  const args: Record<string, unknown> = { owner, repo, perPage: 100 };
-  const state = opts.status?.toLowerCase();
-  if (state === "open" || state === "closed") args.state = state;
+  const stateInput = opts.status?.toLowerCase();
+  const state: "open" | "closed" | "all" =
+    stateInput === "open" || stateInput === "closed" ? stateInput : "all";
 
   try {
-    const issues = await callTool<GitHubIssue[]>(client, "list_issues", args);
-    const tickets = issues
-      .filter((i) => (i as { pull_request?: unknown }).pull_request == null)
-      .filter((i) => !opts.assignee || i.assignees.some((a) => a.login === opts.assignee))
+    const { data } = await client.rest.issues.listForRepo({
+      owner,
+      repo,
+      state,
+      per_page: 100,
+    });
+    const tickets = (data as unknown as GitHubIssue[])
+      .filter((i) => i.pull_request == null)
+      .filter((i) => !opts.assignee || (i.assignees ?? []).some((a) => a.login === opts.assignee))
       .map((i) => toTicket(owner, repo, i));
     return { tickets };
   } catch (err) {
-    return { tickets: [], error: (err as Error).message };
+    return { tickets: [], error: formatGitHubError("issues.listForRepo", err) };
   }
 }

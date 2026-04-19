@@ -6,7 +6,7 @@ import type {
   CloneReposOptions, CloneReposResult,
   IProviderMeta,
 } from "@journeyman/core";
-import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
+import { createGitHubClient, type GitHubClient } from "@journeyman/github-api";
 import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 import { listPRs } from "./operations/list-prs.ts";
@@ -28,7 +28,7 @@ export class GitHubProvider implements IGitProvider {
   };
 
   private readonly token: string;
-  private client?: Client;
+  private client?: GitHubClient;
 
   constructor(opts: GitHubProviderOptions = {}) {
     const token =
@@ -44,28 +44,28 @@ export class GitHubProvider implements IGitProvider {
   }
 
   async getRepo(opts: GetRepoOptions): Promise<GetRepoResult> {
-    return getRepo(await this.getClient(), opts);
+    return getRepo(this.getClient(), opts);
   }
 
   async createPR(opts: CreatePROptions): Promise<CreatePRResult> {
-    return createPR(await this.getClient(), opts);
+    return createPR(this.getClient(), opts);
   }
 
   async listPRs(opts: ListPROptions): Promise<ListPRResult> {
-    return listPRs(await this.getClient(), opts);
+    return listPRs(this.getClient(), opts);
   }
 
   async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
     return cloneRepos(this.token, opts);
   }
 
-  private async getClient(): Promise<Client> {
-    if (!this.client)
-      this.client = await connectGitHubMcp({
+  private getClient(): GitHubClient {
+    if (!this.client) {
+      this.client = createGitHubClient({
         token: this.token,
-        clientName: "journeyman-git-provider",
-        clientVersion: "0.0.1",
+        userAgent: "journeyman-git-provider/0.1.0",
       });
+    }
     return this.client;
   }
 }

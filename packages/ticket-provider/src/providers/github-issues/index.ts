@@ -8,7 +8,7 @@ import type {
   AddCommentOptions, AddCommentResult,
   UpdateStatusOptions, UpdateStatusResult,
 } from "@journeyman/core";
-import { connectGitHubMcp, type Client } from "@journeyman/github-mcp";
+import { createGitHubClient, type GitHubClient } from "@journeyman/github-api";
 import { createTicket } from "./operations/create-ticket.ts";
 import { updateTicket } from "./operations/update-ticket.ts";
 import { getTicket } from "./operations/get-ticket.ts";
@@ -20,16 +20,16 @@ import { updateStatus } from "./operations/update-status.ts";
 export type GitHubIssuesProviderOptions = {
   /** Personal Access Token (explicit). Takes precedence over `tokenEnv`. */
   token?: string;
-  /** Name of an env var to read the token from (e.g. "SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN"). */
+  /** Name of an env var to read the token from. */
   tokenEnv?: string;
 };
 
 /**
  * GitHub repo-level issue tracker provider.
  *
- * Backed by GitHub's hosted MCP server (https://api.githubcopilot.com/mcp/).
- * Deterministic — no LLM in the loop. Requires a PAT with `repo` scope, sourced
- * (in order) from `opts.token`, `process.env[opts.tokenEnv]`, or `GITHUB_ACCESS_TOKEN`.
+ * Backed by the GitHub REST API via Octokit. Deterministic — no LLM in the loop.
+ * Requires a PAT with `repo` scope, sourced (in order) from `opts.token`,
+ * `process.env[opts.tokenEnv]`, or `GITHUB_ACCESS_TOKEN`.
  *
  * - `opts.projectId` for create/list is `"owner/repo"`.
  * - `opts.id` for get/update is `"owner/repo#<number>"`.
@@ -44,33 +44,33 @@ export class GitHubIssuesProvider implements ITicketProvider {
     category: "ticket",
   };
 
-  private client?: Client;
+  private client?: GitHubClient;
 
   constructor(private readonly opts: GitHubIssuesProviderOptions = {}) {}
 
   async createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
-    return createTicket(await this.getClient(), opts);
+    return createTicket(this.getClient(), opts);
   }
   async updateTicket(opts: UpdateTicketOptions): Promise<UpdateTicketResult> {
-    return updateTicket(await this.getClient(), opts);
+    return updateTicket(this.getClient(), opts);
   }
   async getTicket(opts: GetTicketOptions): Promise<GetTicketResult> {
-    return getTicket(await this.getClient(), opts);
+    return getTicket(this.getClient(), opts);
   }
   async listTickets(opts: ListTicketsOptions): Promise<ListTicketsResult> {
-    return listTickets(await this.getClient(), opts);
+    return listTickets(this.getClient(), opts);
   }
   async getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> {
     return getTicketSchema(opts);
   }
   async addComment(opts: AddCommentOptions): Promise<AddCommentResult> {
-    return addComment(await this.getClient(), opts);
+    return addComment(this.getClient(), opts);
   }
   async updateStatus(opts: UpdateStatusOptions): Promise<UpdateStatusResult> {
-    return updateStatus(await this.getClient(), opts);
+    return updateStatus(this.getClient(), opts);
   }
 
-  private async getClient(): Promise<Client> {
+  private getClient(): GitHubClient {
     if (!this.client) {
       const token =
         this.opts.token
@@ -81,9 +81,9 @@ export class GitHubIssuesProvider implements ITicketProvider {
           "GitHubIssuesProvider: PAT required. Pass opts.token, set opts.tokenEnv to a populated env var, or set GITHUB_ACCESS_TOKEN.",
         );
       }
-      this.client = await connectGitHubMcp({
+      this.client = createGitHubClient({
         token,
-        clientName: "journeyman-ticket-provider",
+        userAgent: "journeyman-ticket-provider/0.1.0",
       });
     }
     return this.client;

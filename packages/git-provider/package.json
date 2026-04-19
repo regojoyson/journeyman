@@ -9,7 +9,7 @@
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {
     "@journeyman/core": "*",
-    "@journeyman/github-mcp": "*"
+    "@journeyman/github-api": "*"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

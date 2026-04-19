@@ -1,24 +1,23 @@
-
 import type {
   GetTicketSchemaOptions,
   GetTicketSchemaResult,
   TicketField,
 } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import {
+  formatGitHubError,
+  GET_PROJECT_FIELDS,
+  type GitHubClient,
+  type ProjectFieldNode,
+} from "@journeyman/github-api";
 import { parseProjectId } from "../utils/parse-project-id.ts";
+import { resolveProjectNodeId } from "../utils/resolve-project-id.ts";
 
-// Replace with the discovered sub-method name.
-const LIST_FIELDS_METHOD = "list_fields";
-
-type ProjectFieldPayload = {
-  id: string;
-  name: string;
-  dataType?: string;
-  options?: { id: string; name: string }[];
+type Resp = {
+  node?: { fields?: { nodes: ProjectFieldNode[] } } | null;
 };
 
 export async function getTicketSchema(
-  client: Client,
+  client: GitHubClient,
   opts: GetTicketSchemaOptions,
 ): Promise<GetTicketSchemaResult> {
   if (!opts.projectId) {
@@ -26,12 +25,10 @@ export async function getTicketSchema(
   }
   const { owner, project_number } = parseProjectId(opts.projectId);
   try {
-    const fields = await callTool<ProjectFieldPayload[]>(client, "projects_get", {
-      method: LIST_FIELDS_METHOD,
-      owner,
-      project_number,
-    });
-    const mapped: TicketField[] = fields.map((f) => ({
+    const projectId = await resolveProjectNodeId(client, owner, project_number);
+    const r = await client.graphql<Resp>(GET_PROJECT_FIELDS, { projectId });
+    const nodes = r.node?.fields?.nodes ?? [];
+    const mapped: TicketField[] = nodes.map((f) => ({
       id: f.id,
       name: f.name,
       type: f.dataType?.toLowerCase(),
@@ -39,6 +36,6 @@ export async function getTicketSchema(
     }));
     return { fields: mapped };
   } catch (err) {
-    return { fields: [], error: (err as Error).message };
+    return { fields: [], error: formatGitHubError("graphql.projectV2.fields", err) };
   }
 }

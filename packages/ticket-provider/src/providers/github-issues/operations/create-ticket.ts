@@ -1,29 +1,28 @@
-
 import type {
   CreateTicketOptions,
   CreateTicketResult,
   Ticket,
 } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 import { parseOwnerRepo } from "../utils/parse-ids.ts";
 
-type GitHubIssue = {
+export type GitHubIssue = {
   id: number;
   number: number;
   title: string;
-  body: string | null;
-  state: "open" | "closed";
+  body?: string | null;
+  state: string;
   html_url: string;
-  assignees: { login: string }[];
-  labels: ({ name: string } | string)[];
+  assignees?: { login: string }[] | null;
+  labels: ({ name?: string } | string)[];
   created_at: string;
   updated_at: string;
-  user: { login: string } | null;
+  user?: { login: string } | null;
   pull_request?: unknown;
 };
 
-function mapLabel(l: { name: string } | string): string {
-  return typeof l === "string" ? l : l.name;
+function mapLabel(l: { name?: string } | string): string {
+  return typeof l === "string" ? l : (l.name ?? "");
 }
 
 export function toTicket(owner: string, repo: string, issue: GitHubIssue): Ticket {
@@ -32,8 +31,8 @@ export function toTicket(owner: string, repo: string, issue: GitHubIssue): Ticke
     title: issue.title,
     description: issue.body ?? undefined,
     status: issue.state,
-    assignee: issue.assignees[0]?.login,
-    labels: issue.labels.map(mapLabel),
+    assignee: issue.assignees?.[0]?.login,
+    labels: (issue.labels ?? []).map(mapLabel).filter((n) => n !== ""),
     url: issue.html_url,
     reporter: issue.user?.login,
     createdAt: issue.created_at,
@@ -48,39 +47,34 @@ function mapStateFromStatus(status: string | undefined): "open" | "closed" | und
 }
 
 export async function createTicket(
-  client: Client,
+  client: GitHubClient,
   opts: CreateTicketOptions,
 ): Promise<CreateTicketResult> {
   const { owner, repo } = parseOwnerRepo(opts.projectId);
-  const args: Record<string, unknown> = {
-    method: "create",
-    owner,
-    repo,
-    title: opts.title,
-  };
-  if (opts.description) args.body = opts.description;
-  if (opts.assignee) args.assignees = [opts.assignee];
-  if (opts.labels?.length) args.labels = opts.labels;
-
   try {
-    const issue = await callTool<GitHubIssue>(client, "issue_write", args);
-    let ticket = toTicket(owner, repo, issue);
+    const { data } = await client.rest.issues.create({
+      owner,
+      repo,
+      title: opts.title,
+      body: opts.description,
+      assignees: opts.assignee ? [opts.assignee] : undefined,
+      labels: opts.labels,
+    });
+    let ticket = toTicket(owner, repo, data as unknown as GitHubIssue);
 
-    // status is lossy (open/closed only) — apply via a follow-up update if requested
     const targetState = mapStateFromStatus(opts.status);
-    if (targetState && targetState !== issue.state) {
-      const updated = await callTool<GitHubIssue>(client, "issue_write", {
-        method: "update",
+    if (targetState && targetState !== data.state) {
+      const { data: updated } = await client.rest.issues.update({
         owner,
         repo,
-        issue_number: issue.number,
+        issue_number: data.number,
         state: targetState,
       });
-      ticket = toTicket(owner, repo, updated);
+      ticket = toTicket(owner, repo, updated as unknown as GitHubIssue);
     }
 
     return { ticket };
   } catch (err) {
-    return { error: (err as Error).message };
+    return { error: formatGitHubError("issues.create", err) };
   }
 }

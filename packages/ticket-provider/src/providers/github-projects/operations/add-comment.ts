@@ -1,8 +1,8 @@
 import type { AddCommentOptions, AddCommentResult } from "@journeyman/core";
-import type { Client } from "@journeyman/github-mcp";
+import type { GitHubClient } from "@journeyman/github-api";
 
 export async function addComment(
-  _client: Client,
+  _client: GitHubClient,
   _opts: AddCommentOptions,
 ): Promise<AddCommentResult> {
   return {

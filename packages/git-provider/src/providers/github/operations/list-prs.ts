@@ -1,24 +1,20 @@
 import type { ListPROptions, ListPRResult, ListPRItem } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 
-type GitHubPR = {
-  id: number;
-  number: number;
-  html_url: string;
-  state: string;
-  head: { label: string };
-};
-
-export async function listPRs(client: Client, opts: ListPROptions): Promise<ListPRResult> {
+export async function listPRs(
+  client: GitHubClient,
+  opts: ListPROptions,
+): Promise<ListPRResult> {
   try {
-    const prs = await callTool<GitHubPR[]>(client, "list_pull_requests", {
+    const { data } = await client.rest.pulls.list({
       owner: opts.owner,
       repo: opts.repo,
-      state: opts.state ?? "open",
+      state: (opts.state ?? "open") as "open" | "closed" | "all",
       head: opts.head,
+      per_page: 100,
     });
     return {
-      prs: prs.map<ListPRItem>(p => ({
+      prs: data.map<ListPRItem>((p) => ({
         id: String(p.id),
         url: p.html_url,
         number: p.number,
@@ -27,6 +23,6 @@ export async function listPRs(client: Client, opts: ListPROptions): Promise<List
       })),
     };
   } catch (err) {
-    return { prs: [], error: (err as Error).message };
+    return { prs: [], error: formatGitHubError("pulls.list", err) };
   }
 }

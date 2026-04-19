@@ -1,47 +1,44 @@
-
 import type { ListTicketsOptions, ListTicketsResult, Ticket } from "@journeyman/core";
-import { callTool, type Client } from "@journeyman/github-mcp";
+import {
+  fieldValuesToRecord,
+  formatGitHubError,
+  LIST_PROJECT_ITEMS,
+  type GitHubClient,
+  type ProjectItemNode,
+} from "@journeyman/github-api";
 import { parseProjectId } from "../utils/parse-project-id.ts";
+import { resolveProjectNodeId } from "../utils/resolve-project-id.ts";
 
-// Replace with the discovered sub-method name.
-const LIST_ITEMS_METHOD = "list_items";
-
-type ProjectItem = {
-  id: string;
-  content?: {
-    title: string;
-    body: string | null;
-    assignees?: { login: string }[];
-  };
-  fields?: Record<string, unknown>;
+type Resp = {
+  node?: { items?: { nodes: ProjectItemNode[] } } | null;
 };
 
 export async function listTickets(
-  client: Client,
+  client: GitHubClient,
   opts: ListTicketsOptions,
 ): Promise<ListTicketsResult> {
   const { owner, project_number } = parseProjectId(opts.projectId);
   try {
-    const items = await callTool<ProjectItem[]>(client, "projects_list", {
-      method: LIST_ITEMS_METHOD,
-      owner,
-      project_number,
-      per_page: 100,
-    });
+    const projectId = await resolveProjectNodeId(client, owner, project_number);
+    const r = await client.graphql<Resp>(LIST_PROJECT_ITEMS, { projectId, first: 100 });
+    const items = r.node?.items?.nodes ?? [];
     const tickets: Ticket[] = items
-      .filter((it) => !!it.content) // skip non-draft items for v1
-      .map((it) => ({
-        id: `${owner}/${project_number}#${it.id}`,
-        title: it.content!.title,
-        description: it.content!.body ?? undefined,
-        assignee: it.content!.assignees?.[0]?.login,
-        status: typeof it.fields?.Status === "string" ? it.fields.Status : undefined,
-        customFields: it.fields,
-      }))
+      .filter((it) => !!it.content)
+      .map((it) => {
+        const fields = fieldValuesToRecord(it.fieldValues?.nodes ?? []);
+        return {
+          id: `${owner}/${project_number}#${it.id}`,
+          title: it.content!.title ?? "",
+          description: it.content!.body ?? undefined,
+          assignee: it.content!.assignees?.nodes?.[0]?.login,
+          status: typeof fields.Status === "string" ? fields.Status : undefined,
+          customFields: fields,
+        };
+      })
       .filter((t) => !opts.status || t.status === opts.status)
       .filter((t) => !opts.assignee || t.assignee === opts.assignee);
     return { tickets };
   } catch (err) {
-    return { tickets: [], error: (err as Error).message };
+    return { tickets: [], error: formatGitHubError("graphql.projectV2.items", err) };
   }
 }
