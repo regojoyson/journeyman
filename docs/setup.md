@@ -52,23 +52,31 @@ All 8 packages should typecheck clean (exit 0).
 
 ## 3. Environment variables
 
-Pipeline loads secrets from environment variables. The config file references env **names**, not values. You can put them in a shell profile, `.env.local` (if you wire up dotenv), or your deployment platform's secret manager.
+Pipeline loads secrets from `.env` file (auto-loaded at startup) or real environment variables — real env vars always win over `.env` for the same key.
 
 ### Required for any deployment
 
 ```bash
 # Bearer token for /api/* management routes + /api/trigger
-export JOURNEYMAN_API_TOKEN="$(openssl rand -hex 32)"
-
-# Default env for Anthropic SDK (read directly by @anthropic-ai/claude-agent-sdk)
-export ANTHROPIC_API_KEY="sk-ant-..."
+JOURNEYMAN_API_TOKEN=...          # generate with: openssl rand -hex 32
 ```
+
+### Claude authentication (pick one)
+
+The Claude Agent SDK inherits `process.env` when spawning its subprocess. It auths one of two ways — you only need ONE:
+
+| Method | When it works | Setup |
+|---|---|---|
+| `~/.claude/` session | Local dev, interactive | Run `claude login` once on the machine |
+| `ANTHROPIC_API_KEY` env var | Servers, Docker, CI | `ANTHROPIC_API_KEY=sk-ant-...` in `.env` |
+
+> **Note:** The `apiKeyEnv: ANTHROPIC_API_KEY` field in `providerConfig.coding` is **not read by any code** — it's historical dead config. The SDK just inherits whatever's in `process.env`. You can omit the `coding` block entirely.
 
 ### Required if any product uses GitHub (repos or issues)
 
 ```bash
-# GitHub PAT or App token used by GitHubProvider + GitHubIssuesProvider
-export GITHUB_ACCESS_TOKEN="ghp_..."
+# GitHub PAT used by GitHubProvider + GitHubIssuesProvider + GitHubProjectsProvider
+GITHUB_ACCESS_TOKEN=ghp_...
 ```
 
 Token scopes:
@@ -406,7 +414,7 @@ Set env vars in a `.env` file (auto-loaded at startup) or export them to your sh
 JOURNEYMAN_API_TOKEN=...
 GITHUB_ACCESS_TOKEN=...
 GITHUB_WEBHOOK_SECRET=...
-ANTHROPIC_API_KEY=...
+# ANTHROPIC_API_KEY=...     ← only if NOT logged in via `claude login`
 ```
 
 Then start with any of:

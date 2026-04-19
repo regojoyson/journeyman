@@ -36,8 +36,8 @@ products:
         projectId: "regojoyson/1"
       git:
         tokenEnv: GITHUB_ACCESS_TOKEN
-      coding:
-        apiKeyEnv: ANTHROPIC_API_KEY
+      # coding: not needed — ClaudeProvider reads from ~/.claude/ session
+      # or ANTHROPIC_API_KEY env var if present. No config consumed.
       notification:
         # Slack is a stub — flow below doesn't call notify, safe to ignore
         channel: "#sam-portfolio"

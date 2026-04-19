@@ -33,7 +33,8 @@ See [**Quickstart**](docs/quickstart.md) — minimum viable setup in ~10 minutes
 ```bash
 npm install
 # create config/pipeline.yaml + config/flows/default.yaml  (see docs/setup.md)
-# set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN, ANTHROPIC_API_KEY
+# set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN
+# (ANTHROPIC_API_KEY only if you haven't run `claude login`)
 npm run validate
 npm start                        # or: npx journeyman serve
 ```

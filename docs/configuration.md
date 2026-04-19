@@ -575,7 +575,7 @@ Configuration files reference environment variables via the `*Env` fields. Varia
 | `GITLAB_WEBHOOK_SECRET` | GitLab webhook HMAC secret | If using GitLab webhooks |
 | `GITLAB_ACCESS_TOKEN` | GitLab REST API authentication | If using GitLab provider |
 | `JIRA_WEBHOOK_SECRET` | Jira webhook HMAC secret | If using Jira webhooks |
-| `ANTHROPIC_API_KEY` | Claude API key | If using Claude coding provider |
+| `ANTHROPIC_API_KEY` | Claude API key | Only if NOT logged in via `claude login` (server/Docker/CI) |
 
 ### Env Var vs. YAML Config
 

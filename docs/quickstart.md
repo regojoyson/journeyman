@@ -43,10 +43,14 @@ Create a `.env` file in the repo root (or export to your shell — both work):
 ```bash
 JOURNEYMAN_API_TOKEN=        # generate: openssl rand -hex 32
 GITHUB_ACCESS_TOKEN=ghp_your_token_here
-ANTHROPIC_API_KEY=sk-ant-your_key_here
+# ANTHROPIC_API_KEY=         # only if NOT logged in via `claude login`
 ```
 
-> Add `.env` to `.gitignore`. You do **not** need `GITHUB_WEBHOOK_SECRET` for the manual-trigger path — only needed when you wire up real GitHub webhooks (covered at the end).
+> Add `.env` to `.gitignore`.
+>
+> **Claude auth** — if you've run `claude login` (or use Claude Code desktop), the SDK picks up your `~/.claude/` session automatically and no API key is needed. Only required on servers / Docker / CI.
+>
+> **Webhook secret** — not needed for the manual-trigger path; only when wiring up real GitHub webhooks (covered at the end).
 
 ## 3. Write `config/pipeline.yaml`
 

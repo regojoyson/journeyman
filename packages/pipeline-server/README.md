@@ -49,10 +49,10 @@ mkdir -p config/flows
 
 # 2. Set environment variables — .env file or shell exports (both work)
 cat > .env <<EOF
-JOURNEYMAN_API_TOKEN=<random-secret>
-ANTHROPIC_API_KEY=sk-ant-...
-GITHUB_TOKEN=ghp_...
-GITHUB_WEBHOOK_SECRET=<hmac-secret>
+JOURNEYMAN_API_TOKEN=<random-secret>     # bearer for management API
+GITHUB_ACCESS_TOKEN=ghp_...              # for repo clone, PRs, issues
+GITHUB_WEBHOOK_SECRET=<hmac-secret>      # only if wiring real webhooks
+# ANTHROPIC_API_KEY=sk-ant-...           # only if NOT logged in via \`claude login\`
 EOF
 
 # 3. Start — pick any one

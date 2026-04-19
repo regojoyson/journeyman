@@ -21,11 +21,8 @@ This is a workspace package; refer to the repo root `package.json` for setup ins
        repos:
          - owner: edgereg-org
            name: edgereg-api
-   adapters:
-     github:
-       credentials: env:GITHUB_ACCESS_TOKEN
-     claude:
-       apiKey: env:ANTHROPIC_API_KEY
+   # Claude auths via ~/.claude/ session (run `claude login`) or
+   # ANTHROPIC_API_KEY env var — no config needed.
    ```
 
 2. **Create `config/flows/default.yaml`:**
@@ -43,7 +40,7 @@ This is a workspace package; refer to the repo root `package.json` for setup ins
 3. **Set environment variables:**
    ```bash
    export GITHUB_ACCESS_TOKEN=ghp_...
-   export ANTHROPIC_API_KEY=sk-ant-...
+   # ANTHROPIC_API_KEY only needed if NOT logged in via `claude login`
    ```
 
 4. **Run:**

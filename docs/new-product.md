@@ -57,9 +57,8 @@ products:
       git:
         provider: github                # or: gitlab
         tokenEnv: GITHUB_TOKEN          # reuse existing env var, or set a new one
-      coding:
-        provider: claude
-        apiKeyEnv: ANTHROPIC_API_KEY
+      # coding block is optional — ClaudeProvider ignores config and auths
+      # via ~/.claude/ session (if logged in) or ANTHROPIC_API_KEY env var.
       notification:
         provider: slack
         tokenEnv: SLACK_BOT_TOKEN
