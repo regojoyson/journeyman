@@ -38,15 +38,15 @@ Expected: all packages exit 0.
 
 ## 2. Set env vars
 
+Create a `.env` file in the repo root (or export to your shell — both work):
+
 ```bash
-export JOURNEYMAN_API_TOKEN="$(openssl rand -hex 32)"
-export GITHUB_ACCESS_TOKEN="ghp_your_token_here"
-export ANTHROPIC_API_KEY="sk-ant-your_key_here"
+JOURNEYMAN_API_TOKEN=        # generate: openssl rand -hex 32
+GITHUB_ACCESS_TOKEN=ghp_your_token_here
+ANTHROPIC_API_KEY=sk-ant-your_key_here
 ```
 
-Put them in your shell profile if you want them to persist.
-
-> You do **not** need `GITHUB_WEBHOOK_SECRET` for the manual-trigger path. Only needed when you wire up real GitHub webhooks (covered at the end).
+> Add `.env` to `.gitignore`. You do **not** need `GITHUB_WEBHOOK_SECRET` for the manual-trigger path — only needed when you wire up real GitHub webhooks (covered at the end).
 
 ## 3. Write `config/pipeline.yaml`
 
@@ -155,7 +155,7 @@ Go look at your GitHub repo — there should be a new PR linked to the issue.
 Start:
 
 ```bash
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+npm start
 ```
 
 Expected:
@@ -258,7 +258,7 @@ For non-GitHub sources (GitLab, Jira) + multi-product / multi-tenant setups, see
 
 | Symptom | Fix |
 |---|---|
-| `npx journeyman: command not found` | Run from repo root after `npm install`. Or use `npx tsx packages/pipeline/src/cli.ts` explicitly. |
+| `npx journeyman: command not found` | Run from repo root after `npm install`. Or use `npx tsx packages/pipeline/src/cli.ts` directly. |
 | `AdapterError: getTicket: missing field "ticket"` | Ticket id format. For GitHub Issues, must be `owner/repo#number`. |
 | `Flow "default" references unknown phase "foo"` | Typo in flow YAML. Run `validate-config`. |
 | `Product "demo" must declare at least one repo` | Empty `repos:` list. Add one. |

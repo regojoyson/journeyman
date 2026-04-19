@@ -399,18 +399,29 @@ Expected: `✓ config valid`. Errors point to the exact file + field.
 
 ### Start the server
 
-```bash
-export JOURNEYMAN_API_TOKEN=...
-export GITHUB_ACCESS_TOKEN=...
-export GITHUB_WEBHOOK_SECRET=...
-export ANTHROPIC_API_KEY=...
+Set env vars in a `.env` file (auto-loaded at startup) or export them to your shell — both work, shell exports take precedence:
 
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+```bash
+# .env file in repo root  (recommended for local dev — add .env to .gitignore)
+JOURNEYMAN_API_TOKEN=...
+GITHUB_ACCESS_TOKEN=...
+GITHUB_WEBHOOK_SECRET=...
+ANTHROPIC_API_KEY=...
+```
+
+Then start with any of:
+
+```bash
+npm start                          # simplest — from repo root
+npx journeyman serve               # via CLI
+npx journeyman serve --config path/to/pipeline.yaml   # custom config
+npx journeyman-server              # dedicated server bin
 ```
 
 You should see:
 
 ```
+Loaded 4 variable(s) from .env     ← shown if .env present
 journeyman pipeline-server listening on 3000
 ```
 
@@ -456,7 +467,7 @@ User=journeyman
 Group=journeyman
 WorkingDirectory=/opt/journeyman
 EnvironmentFile=/etc/journeyman/pipeline.env
-ExecStart=/usr/bin/npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+ExecStart=/usr/bin/npm start
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

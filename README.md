@@ -21,21 +21,21 @@ journeyman/
 │   ├── notification-provider/   @journeyman/notification-provider  — Slack
 │   ├── pipeline/                @journeyman/pipeline               — runner + phases + registries + CLI
 │   └── pipeline-server/         @journeyman/pipeline-server        — Fastify + webhooks + management API
-├── docs/pipeline/               Pipeline documentation
+├── docs/                       All documentation
 ├── config/                      Your pipeline.yaml + flows/
 └── workspaces/                  Runtime state + logs + artifacts (one dir per product)
 ```
 
 ## Quick start
 
-See [**Quickstart**](docs/pipeline/quickstart.md) — minimum viable setup in ~10 minutes.
+See [**Quickstart**](docs/quickstart.md) — minimum viable setup in ~10 minutes.
 
 ```bash
 npm install
-# create config/pipeline.yaml + config/flows/default.yaml
-# set env vars: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN, ANTHROPIC_API_KEY
+# create config/pipeline.yaml + config/flows/default.yaml  (see docs/setup.md)
+# set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN, ANTHROPIC_API_KEY
 npx journeyman validate-config
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+npm start                        # or: npx journeyman serve
 ```
 
 Or trigger a single run via CLI without the server:
@@ -47,21 +47,22 @@ npx journeyman run --product edgereg --ticket "edgereg-org/edgereg-api#42"
 ## Documentation
 
 ### Getting started
-- [**Setup**](docs/pipeline/setup.md) — full installation + configuration guide (instance, default flow, per-product)
-- [**Quickstart**](docs/pipeline/quickstart.md) — step-by-step setup and first run
+- [**Quickstart**](docs/quickstart.md) — minimum viable setup in 10 minutes
+- [**Setup**](docs/setup.md) — full installation + configuration guide
+- [**Add a product**](docs/new-product.md) — add a new project to an existing instance
 
 ### Reference
-- [Configuration](docs/pipeline/configuration.md) — `pipeline.yaml` field reference
-- [Flows](docs/pipeline/flows.md) — flow YAML authoring guide
-- [Phases](docs/pipeline/phases.md) — built-in phase catalog + writing custom phases
-- [Products](docs/pipeline/products.md) — adding and managing products
-- [Triggers](docs/pipeline/triggers.md) — webhook setup per source (GitHub, GitLab, Jira, API)
-- [Management API](docs/pipeline/management-api.md) — REST + SSE endpoints
-- [Artifacts](docs/pipeline/artifacts.md) — artifact model and storage
+- [Configuration](docs/configuration.md) — `pipeline.yaml` field reference
+- [Flows](docs/flows.md) — flow YAML authoring guide
+- [Phases](docs/phases.md) — built-in phase catalog + writing custom phases
+- [Products](docs/products.md) — adding and managing products
+- [Triggers](docs/triggers.md) — webhook setup per source (GitHub, GitLab, Jira, API)
+- [Management API](docs/management-api.md) — REST + SSE endpoints
+- [Artifacts](docs/artifacts.md) — artifact model and storage
 
 ### Operations
-- [Security](docs/pipeline/security.md) — filesystem perms, secret rotation, redaction, encryption options
-- [Troubleshooting](docs/pipeline/troubleshooting.md) — known failure modes and fixes
+- [Security](docs/security.md) — filesystem perms, secret rotation, redaction, encryption options
+- [Troubleshooting](docs/troubleshooting.md) — known failure modes and fixes
 
 ### Package READMEs
 - [`@journeyman/pipeline`](packages/pipeline/README.md)
@@ -73,7 +74,7 @@ npx journeyman run --product edgereg --ticket "edgereg-org/edgereg-api#42"
 
 How external triggers flow through the server into the pipeline into adapters and onto disk.
 
-![Journeyman Pipeline — System Architecture](docs/pipeline/diagrams/architecture.svg)
+![Journeyman Pipeline — System Architecture](docs/diagrams/architecture.svg)
 
 **What to look at:**
 - **External layer** (top) — GitHub / GitLab / Jira webhooks and manual API calls are the only entry points.
@@ -87,7 +88,7 @@ How external triggers flow through the server into the pipeline into adapters an
 
 Zoomed in on `Pipeline.run()`: the step loop, retry/timeout/cancel/block branches, and how the shared artifact bag grows phase by phase.
 
-![Pipeline Orchestrator — Run Lifecycle](docs/pipeline/diagrams/orchestrator.svg)
+![Pipeline Orchestrator — Run Lifecycle](docs/diagrams/orchestrator.svg)
 
 **What to look at:**
 - **Left column** — `PipelineRun.status` timeline. Starts `running`, walks steps, ends in one of four terminal states. A `blocked` run can be **resumed** (dashed purple arrow) via `POST /api/runs/:id/resume`; resume uses the frozen `flowSnapshot` on the run, not current config.
@@ -99,7 +100,7 @@ Zoomed in on `Pipeline.run()`: the step loop, retry/timeout/cancel/block branche
 
 How the interface-first design lets you swap Claude for Gemini or GitHub Issues for Jira by editing one line of YAML.
 
-![Adapter Pattern — Interfaces in Core, Implementations in Packages](docs/pipeline/diagrams/adapter.svg)
+![Adapter Pattern — Interfaces in Core, Implementations in Packages](docs/diagrams/adapter.svg)
 
 **What to look at:**
 - **Center (blue)** — `@journeyman/core` holds the four interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) plus `IProviderMeta`. No logic lives here; just contracts.
@@ -109,7 +110,7 @@ How the interface-first design lets you swap Claude for Gemini or GitHub Issues 
   2. `ProviderRegistry.resolveForProduct(flow, productConfig)` looks those ids up per category and instantiates the classes, passing per-product options (`providerConfig.git.tokenEnv`, etc.).
   3. Phases call everything through the interface on `ctx.providers.*` — they never import a concrete class. Swapping `claude` → `gemini` in the flow is a one-line change and no phase code moves.
 
-For more architectural detail, see the [spec](docs/superpowers/specs/2026-04-18-journeyman-pipeline-design.md) and the [phases catalog](docs/pipeline/phases.md).
+For more architectural detail, see the [spec](docs/superpowers/specs/2026-04-18-journeyman-pipeline-design.md) and the [phases catalog](docs/phases.md).
 
 ## Design principles
 

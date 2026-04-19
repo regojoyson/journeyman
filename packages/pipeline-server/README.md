@@ -38,14 +38,14 @@ The HTTP caller always gets a fast `202 Accepted` — the pipeline run is fire-a
 
 ## Quickstart
 
-See [setup-new-instance.md](./setup-new-instance.md) for a complete step-by-step walkthrough.
+See [docs/setup.md](../../docs/setup.md) for a complete step-by-step walkthrough.
 
 **Short version:**
 
 ```bash
 # 1. Create config files
 mkdir -p config/flows
-# populate config/pipeline.yaml and config/flows/default.yaml (see setup-new-instance.md)
+# populate config/pipeline.yaml and config/flows/default.yaml (see docs/setup.md)
 
 # 2. Set environment variables — .env file or shell exports (both work)
 cat > .env <<EOF
@@ -165,6 +165,6 @@ The **Trigger run (API)** request automatically saves the returned `sessionId` i
 
 ## Further reading
 
-- [Setup guide — new instance](./setup-new-instance.md) — first-time setup, env vars, config files
-- [Setup guide — new product](./setup-new-product.md) — add a product to an existing instance
+- [Setup guide](../../docs/setup.md) — first-time setup, env vars, config files
+- [Add a new product](../../docs/new-product.md) — add a product to an existing instance
 - [Pipeline README](../pipeline/README.md) — flow YAML reference, phase catalog, CLI commands
