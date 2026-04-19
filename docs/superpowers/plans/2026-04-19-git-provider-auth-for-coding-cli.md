@@ -1,14 +1,16 @@
-# Re-home Clone to git-provider + Rename resetRepos to resetAndCheckout — Implementation Plan
+# Re-home `cloneRepos` to `@journeyman/git-provider` — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move deterministic `cloneRepos` from `@journeyman/coding-cli` into `@journeyman/git-provider` (implemented with `node:child_process`, not the Claude SDK). Rename the existing `resetRepos` operation/phase to `resetAndCheckout` to better reflect what it does, and extend it to support creating a new branch from a base when the target branch doesn't yet exist. Delete `coding-cli.cloneRepos` and leave `commitPushRepos` unchanged.
+**Goal:** Move deterministic `cloneRepos` out of `@journeyman/coding-cli` and into `@journeyman/git-provider`. In `git-provider`, implement it with `node:child_process.execFile` (no Claude SDK). The GitHub PAT already held by `GitHubProvider` is embedded into the HTTPS clone URL so the host needs only the `git` binary — no SSH keys, no credential helper. All checkout/reset concerns are deliberately out of scope; we'll handle those later.
 
-**Architecture:** `git-provider` owns auth + deterministic local git. `GitHubProvider.cloneRepos` embeds the PAT in the HTTPS clone URL (`https://x-access-token:<pat>@github.com/...`) and runs `git clone` via `execFile`. The token persists in `.git/config`, so downstream `git fetch`/`git push` from `resetAndCheckout` and `commitPushRepos` Just Work with no extra auth plumbing. `resetAndCheckout` keeps its current SDK-driven multi-step behavior (`fetch` → `stash` → `checkout` → `reset --hard` → `clean`) and gains a branch-creation path (`checkout -b <branch> <fromBranch>`) when the target branch doesn't exist.
+**Architecture:** `git-provider` owns auth + deterministic local git operations. `GitHubProvider.cloneRepos` builds `https://x-access-token:<pat>@github.com/<owner>/<repo>.git` and runs `git clone` via `execFile`. The token persists in the cloned `.git/config`, so later `git push` from `commitPushRepos` (unchanged, stays in `coding-cli`) Just Works. `coding-cli.cloneRepos` is deleted.
 
-**Tech Stack:** TypeScript (NodeNext), `node:child_process.execFile`, `node:fs/promises`, `node:assert/strict`, `@anthropic-ai/claude-agent-sdk` (for `resetAndCheckout` only). Tests are single-file scripts run via `npx tsx path/to/foo.test.ts` (pattern: [session.test.ts](packages/coding-cli/src/providers/claude/utils/session.test.ts)).
+**Tech Stack:** TypeScript (NodeNext), `node:child_process.execFile`, `node:fs/promises`, `node:assert/strict`. Tests are single-file scripts run via `npx tsx path/to/foo.test.ts` (pattern: [session.test.ts](packages/coding-cli/src/providers/claude/utils/session.test.ts)).
 
 **Spec:** [2026-04-19-git-provider-auth-for-coding-cli-design.md](../specs/2026-04-19-git-provider-auth-for-coding-cli-design.md)
+
+**Out of scope (follow-up):** renaming `resetRepos` → `resetAndCheckout`, adding branch-create support, any new checkout phase. `resetRepos` stays exactly as it is today.
 
 ---
 
@@ -18,40 +20,35 @@
 - `packages/git-provider/src/providers/github/operations/build-clone-url.ts` — pure URL rewriter helper
 - `packages/git-provider/src/providers/github/operations/build-clone-url.test.ts` — unit tests
 - `packages/git-provider/src/providers/github/operations/clone-repos.ts` — `cloneRepos` implementation
-- `packages/coding-cli/src/providers/claude/operations/reset-and-checkout.ts` — renamed + extended reset-repos
-- `packages/pipeline/src/phases/reset-and-checkout-phase.ts` — renamed phase
 
 **Modify**
-- `packages/core/src/types/git.types.ts` — drop `SessionOptions`/`SessionResult` from `CloneReposOptions`/`Result`; rename `ResetReposOptions` → `ResetAndCheckoutOptions`, `ResetReposResult` → `ResetAndCheckoutResult`, `ResetEntry` → `ResetAndCheckoutEntry`; add `create?` / `fromBranch?` fields.
-- `packages/core/src/interfaces/git-provider.interface.ts` — add `cloneRepos`.
-- `packages/core/src/interfaces/coding-cli.interface.ts` — remove `cloneRepos`; rename `resetRepos` → `resetAndCheckout`.
-- `packages/git-provider/src/providers/github/index.ts` — wire `cloneRepos`.
-- `packages/git-provider/src/providers/gitlab/index.ts` — add `cloneRepos` stub.
-- `packages/coding-cli/src/providers/claude/index.ts` — drop `cloneRepos` method/import; rename `resetRepos` → `resetAndCheckout`.
-- `packages/coding-cli/src/providers/gemini/index.ts` — drop `cloneRepos`; rename `resetRepos` stub.
-- `packages/coding-cli/src/providers/codex/index.ts` — drop `cloneRepos`; rename `resetRepos` stub.
-- `packages/pipeline/src/index.ts` — drop `ResetReposPhase` export; add `ResetAndCheckoutPhase` export.
-- `packages/pipeline/src/cli-commands/run-once.ts` — rename registration.
-- `packages/pipeline/src/cli-commands/validate-config.ts` — rename registration.
+- `packages/core/src/types/git.types.ts` — drop `SessionOptions`/`SessionResult` extension from `CloneReposOptions`/`CloneReposResult`
+- `packages/core/src/interfaces/git-provider.interface.ts` — add `cloneRepos`
+- `packages/core/src/interfaces/coding-cli.interface.ts` — remove `cloneRepos`
+- `packages/git-provider/src/providers/github/index.ts` — wire `cloneRepos`
+- `packages/git-provider/src/providers/gitlab/index.ts` — add `cloneRepos` stub
+- `packages/coding-cli/src/providers/claude/index.ts` — remove `cloneRepos` method + import
+- `packages/coding-cli/src/providers/gemini/index.ts` — remove `cloneRepos` stub + import
+- `packages/coding-cli/src/providers/codex/index.ts` — remove `cloneRepos` stub + import
+- `packages/pipeline/src/phases/clone-repos-phase.ts` — switch to `ctx.providers.git.cloneRepos`; drop `sessionId` arg
 
 **Delete**
 - `packages/coding-cli/src/providers/claude/operations/clone-repos.ts`
-- `packages/coding-cli/src/providers/claude/operations/reset-repos.ts` (replaced by `reset-and-checkout.ts`)
-- `packages/pipeline/src/phases/reset-repos-phase.ts` (replaced by `reset-and-checkout-phase.ts`)
 
 ---
 
 ## Task 1: Update `@journeyman/core` types
 
 **Files:**
-- Modify: `packages/core/src/types/git.types.ts:7-28` and `:48-65`
+- Modify: `packages/core/src/types/git.types.ts:7-28`
 
-- [ ] **Step 1: Rewrite the clone types (drop SessionOptions/SessionResult)**
+- [ ] **Step 1: Drop Session extension from clone types**
 
-In [packages/core/src/types/git.types.ts](packages/core/src/types/git.types.ts), replace lines 7-28 (the `RepoEntry`/`ResetEntry`/`CloneReposOptions`/`CloneResult`/`CloneReposResult` block — stopping just before `ScanReposOptions`) with:
+In [packages/core/src/types/git.types.ts](packages/core/src/types/git.types.ts), replace lines 7-28 (the block from `export type RepoEntry` through the end of `CloneReposResult`, **stopping just before `ScanReposOptions`**) with:
 
 ```ts
 export type RepoEntry = { url: string; branch: string };
+export type ResetEntry = { dirPath: string; branch: string };
 
 export type CloneReposOptions = {
   repos: string | string[] | RepoEntry | RepoEntry[];
@@ -72,59 +69,20 @@ export type CloneReposResult = {
   repos: CloneResult[];
   error?: string;
 };
-
-export type ResetAndCheckoutEntry = {
-  dirPath: string;
-  branch: string;
-  /** Optional override: base branch to fork from when `create` is true. */
-  fromBranch?: string;
-  /** When true, create the branch (from `fromBranch` or current HEAD) if it does not exist. */
-  create?: boolean;
-};
 ```
 
-Note: `ResetEntry` is replaced by `ResetAndCheckoutEntry`. Search the file for any other occurrence of `ResetEntry` (there should only be the declaration just removed); leave `SessionOptions`/`SessionResult` import alone — still used by other types.
+Leave the `SessionOptions`/`SessionResult` import at the top untouched — other types in this file still use it. Leave `ResetReposOptions`/`ResetReposResult`/`ResetEntry` untouched.
 
-- [ ] **Step 2: Rewrite the reset types as `ResetAndCheckout*`**
-
-In the same file, find the block beginning `export type ResetReposOptions` (around line 48) through `ResetReposResult` (around line 65) and replace with:
-
-```ts
-export type ResetAndCheckoutOptions = SessionOptions & {
-  repos: string | string[] | ResetAndCheckoutEntry | ResetAndCheckoutEntry[];
-  branch?: string;
-  /** Default for entries that omit it. When true, create missing branches from `fromBranch`. */
-  create?: boolean;
-  /** Default base for create. Ignored when the target branch already exists. */
-  fromBranch?: string;
-  signal?: AbortSignal;
-};
-
-export type ResetAndCheckoutRepoResult = {
-  folderName: string;
-  dirPath: string;
-  branch: string;
-  created: boolean;     // true if we created the branch; false if it already existed
-  success: boolean;
-  error?: string;
-};
-
-export type ResetAndCheckoutResult = SessionResult & {
-  repos: ResetAndCheckoutRepoResult[];
-  error?: string;
-};
-```
-
-- [ ] **Step 3: Verify typecheck for `@journeyman/core`**
+- [ ] **Step 2: Typecheck `@journeyman/core`**
 
 Run: `cd packages/core && npx tsc --noEmit`
-Expected: no errors. (Downstream packages will fail; we fix them in subsequent tasks.)
+Expected: no errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add packages/core/src/types/git.types.ts
-git commit -m "feat(core): drop session from CloneRepos types; rename ResetRepos → ResetAndCheckout"
+git commit -m "feat(core): drop session from CloneRepos types"
 ```
 
 ---
@@ -160,14 +118,18 @@ export interface IGitProvider {
 }
 ```
 
-- [ ] **Step 2: Update `ICodingCLI` — drop `cloneRepos`, rename `resetRepos`**
+- [ ] **Step 2: Remove `cloneRepos` from `ICodingCLI`**
 
-Replace the contents of [packages/core/src/interfaces/coding-cli.interface.ts](packages/core/src/interfaces/coding-cli.interface.ts) with:
+In [packages/core/src/interfaces/coding-cli.interface.ts](packages/core/src/interfaces/coding-cli.interface.ts):
+- Remove `CloneReposOptions, CloneReposResult,` from the type import list (line 2).
+- Delete the line `cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult>;` (line 17).
+
+Resulting file:
 
 ```ts
 import type {
   ScanReposOptions, ScanReposResult,
-  ResetAndCheckoutOptions, ResetAndCheckoutResult,
+  ResetReposOptions, ResetReposResult,
   CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
@@ -176,13 +138,12 @@ import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementO
 
 /**
  * Contract for AI coding CLI providers (Claude, Gemini, Codex).
- * Covers git operations that benefit from AI (commit-push, reset+checkout)
- * and AI-powered analyze/plan/implement.
+ * Covers git operations run via CLI and AI-powered analyze/plan/implement.
  */
 export interface ICodingCLI {
-  // Git operations
+  // Git operations (executed via CLI bash)
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult>;
-  resetAndCheckout(opts: ResetAndCheckoutOptions): Promise<ResetAndCheckoutResult>;
+  resetRepos(opts: ResetReposOptions): Promise<ResetReposResult>;
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult>;
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult>;
   createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult>;
@@ -197,13 +158,13 @@ export interface ICodingCLI {
 - [ ] **Step 3: Typecheck `@journeyman/core`**
 
 Run: `cd packages/core && npx tsc --noEmit`
-Expected: no errors.
+Expected: no errors. (Downstream packages will fail; we fix them in later tasks.)
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add packages/core/src/interfaces/git-provider.interface.ts packages/core/src/interfaces/coding-cli.interface.ts
-git commit -m "feat(core): move cloneRepos to IGitProvider; rename resetRepos → resetAndCheckout"
+git commit -m "feat(core): move cloneRepos from ICodingCLI to IGitProvider"
 ```
 
 ---
@@ -307,7 +268,7 @@ git commit -m "feat(git-provider): buildCloneUrl helper + tests"
 - Modify: `packages/git-provider/src/providers/github/index.ts`
 - Modify: `packages/git-provider/src/providers/gitlab/index.ts`
 
-- [ ] **Step 1: Implement `cloneRepos` operation**
+- [ ] **Step 1: Implement the operation**
 
 Create `packages/git-provider/src/providers/github/operations/clone-repos.ts`:
 
@@ -502,307 +463,38 @@ git commit -m "feat(git-provider): GitHubProvider.cloneRepos via execFile; GitLa
 
 ---
 
-## Task 5: Create `reset-and-checkout.ts` (replaces `reset-repos.ts`)
+## Task 5: Remove `cloneRepos` from `@journeyman/coding-cli`
 
 **Files:**
-- Create: `packages/coding-cli/src/providers/claude/operations/reset-and-checkout.ts`
-- Delete: `packages/coding-cli/src/providers/claude/operations/reset-repos.ts`
-
-- [ ] **Step 1: Create the new operation file**
-
-Create `packages/coding-cli/src/providers/claude/operations/reset-and-checkout.ts`:
-
-```ts
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import { logSdkMessage } from "../utils/sdk-logger.ts";
-import { resolveSession } from "../utils/session.ts";
-import type {
-  ResetAndCheckoutEntry,
-  ResetAndCheckoutOptions,
-  ResetAndCheckoutResult,
-} from "@journeyman/core";
-
-export type { ResetAndCheckoutEntry, ResetAndCheckoutOptions, ResetAndCheckoutResult };
-
-const OUTPUT_SCHEMA = {
-  type: "object",
-  properties: {
-    repos: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          folderName: { type: "string" },
-          dirPath: { type: "string" },
-          branch: { type: "string" },
-          created: { type: "boolean" },
-          success: { type: "boolean" },
-          error: { type: "string" },
-        },
-        required: ["folderName", "dirPath", "branch", "created", "success"],
-      },
-    },
-    error: { type: "string" },
-  },
-  required: ["repos"],
-} as const;
-
-type Normalized = ResetAndCheckoutEntry;
-
-function normalizeEntries(opts: ResetAndCheckoutOptions): Normalized[] {
-  const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
-  return raw.map((r) =>
-    typeof r === "string"
-      ? {
-          dirPath: r,
-          branch: opts.branch ?? "main",
-          create: opts.create,
-          fromBranch: opts.fromBranch,
-        }
-      : {
-          dirPath: r.dirPath,
-          branch: r.branch,
-          create: r.create ?? opts.create,
-          fromBranch: r.fromBranch ?? opts.fromBranch,
-        },
-  );
-}
-
-function buildPrompt(entries: Normalized[]): string {
-  const entriesJson = JSON.stringify(entries, null, 2);
-
-  return [
-    "For each repo entry, bring the working tree to a clean state on the target branch.",
-    "Keep going for all repos even if some fail — record errors per repo.",
-    "",
-    `Entries:\n${entriesJson}`,
-    "",
-    "Per repo, execute in order:",
-    "1. `git -C <dirPath> fetch origin` — refresh remote refs.",
-    "2. `git -C <dirPath> stash --include-untracked` — drop any local changes so checkout is not blocked.",
-    "3. Detect branch existence:",
-    "   - Local:  `git -C <dirPath> rev-parse --verify refs/heads/<branch>`",
-    "   - Remote: `git -C <dirPath> rev-parse --verify refs/remotes/origin/<branch>`",
-    "4. If the branch exists locally OR on origin:",
-    "     a. `git -C <dirPath> checkout <branch>`",
-    "     b. If it exists on origin: `git -C <dirPath> reset --hard origin/<branch>`",
-    "     c. `git -C <dirPath> clean -fd` — remove leftover untracked files/dirs.",
-    "     d. Set created: false.",
-    "5. Else if entry.create is true:",
-    "     a. If entry.fromBranch is set: `git -C <dirPath> checkout -b <branch> <fromBranch-ref>`",
-    "        where <fromBranch-ref> is `origin/<fromBranch>` if that remote ref exists,",
-    "        otherwise the local `<fromBranch>` name.",
-    "     b. Else: `git -C <dirPath> checkout -b <branch>` (branches from current HEAD).",
-    "     c. Do NOT run `reset --hard` (there is no remote tracking branch yet).",
-    "     d. `git -C <dirPath> clean -fd` is optional here; skip it.",
-    "     e. Set created: true.",
-    "6. Else (does not exist and create is not true):",
-    "     Record error: `branch <branch> does not exist and create=false`. created: false, success: false.",
-    "",
-    "folderName is the basename of dirPath.",
-    "On success set success: true, error empty. On failure set success: false and error to the",
-    "stderr (or node error message) of whichever git step failed.",
-    "",
-    "Return JSON matching the output schema: a repos array with one entry per input repo,",
-    "plus an optional top-level error only if the whole operation failed before any repo was processed.",
-  ].join("\n");
-}
-
-/**
- * Resets each repo to a clean state on the target branch. If the branch does
- * not exist and `create` is true, creates it from `fromBranch` (or current HEAD).
- */
-export async function resetAndCheckout(
-  opts: ResetAndCheckoutOptions,
-): Promise<ResetAndCheckoutResult> {
-  const entries = normalizeEntries(opts);
-  const { sessionId, queryOption } = resolveSession(opts.sessionId);
-  const controller = opts.signal
-    ? (() => {
-        const ac = new AbortController();
-        if (opts.signal!.aborted) ac.abort(opts.signal!.reason);
-        else opts.signal!.addEventListener("abort", () => ac.abort(opts.signal!.reason), { once: true });
-        return ac;
-      })()
-    : undefined;
-  let output: ResetAndCheckoutResult = { repos: [], sessionId };
-
-  for await (const msg of query({
-    prompt: buildPrompt(entries),
-    options: {
-      tools: ["Bash"],
-      allowedTools: ["Bash"],
-      permissionMode: "bypassPermissions",
-      allowDangerouslySkipPermissions: true,
-      maxTurns: 20,
-      settingSources: [],
-      settings: { allowedMcpServers: [] },
-      outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
-      ...(controller !== undefined ? { abortController: controller } : {}),
-      ...queryOption,
-    },
-  })) {
-    logSdkMessage(msg);
-    if (msg.type === "result") {
-      if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
-      }
-      output = { ...(msg.structured_output as ResetAndCheckoutResult), sessionId };
-    }
-  }
-
-  return output;
-}
-```
-
-- [ ] **Step 2: Delete the old file**
-
-```bash
-git rm packages/coding-cli/src/providers/claude/operations/reset-repos.ts
-```
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add packages/coding-cli/src/providers/claude/operations/reset-and-checkout.ts
-git commit -m "feat(coding-cli): rename resetRepos → resetAndCheckout with branch-create support"
-```
-
----
-
-## Task 6: Update coding-cli providers (remove `cloneRepos`, rename to `resetAndCheckout`)
-
-**Files:**
+- Delete: `packages/coding-cli/src/providers/claude/operations/clone-repos.ts`
 - Modify: `packages/coding-cli/src/providers/claude/index.ts`
 - Modify: `packages/coding-cli/src/providers/gemini/index.ts`
 - Modify: `packages/coding-cli/src/providers/codex/index.ts`
-- Delete: `packages/coding-cli/src/providers/claude/operations/clone-repos.ts`
 
-- [ ] **Step 1: Delete old clone-repos operation**
+- [ ] **Step 1: Delete the operation file**
 
 ```bash
 git rm packages/coding-cli/src/providers/claude/operations/clone-repos.ts
 ```
 
-- [ ] **Step 2: Rewrite `ClaudeProvider`**
+- [ ] **Step 2: Update `ClaudeProvider`**
 
-Replace [packages/coding-cli/src/providers/claude/index.ts](packages/coding-cli/src/providers/claude/index.ts) with:
+In [packages/coding-cli/src/providers/claude/index.ts](packages/coding-cli/src/providers/claude/index.ts):
+- Remove `CloneReposOptions, CloneReposResult,` from the type import list.
+- Remove the `import { cloneRepos } from "./operations/clone-repos.ts";` line.
+- Delete the `cloneRepos(...) { return cloneRepos(opts); }` method.
 
-```ts
-import type { ICodingCLI } from "../../interface.ts";
-import type {
-  ScanReposOptions, ScanReposResult,
-  ResetAndCheckoutOptions, ResetAndCheckoutResult,
-  CommitPushReposOptions, CommitPushReposResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
-  IProviderMeta,
-} from "@journeyman/core";
-import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
-import { scanRepos } from "./operations/scan-repos.ts";
-import { resetAndCheckout } from "./operations/reset-and-checkout.ts";
-import { commitPushRepos } from "./operations/commit-push-repos.ts";
-import { cleanupRepos } from "./operations/cleanup-repos.ts";
-import { createWorkspace } from "./operations/create-workspace.ts";
-import { analyze } from "./operations/analyze.ts";
-import { plan } from "./operations/plan.ts";
-import { implement } from "./operations/implement.ts";
+- [ ] **Step 3: Update `GeminiProvider`**
 
-export class ClaudeProvider implements ICodingCLI {
-  static meta: IProviderMeta = {
-    id: "claude",
-    name: "Claude Code CLI",
-    description: "AI coding via @anthropic-ai/claude-agent-sdk",
-    category: "coding-cli",
-  };
+In [packages/coding-cli/src/providers/gemini/index.ts](packages/coding-cli/src/providers/gemini/index.ts):
+- Remove `CloneReposOptions, CloneReposResult,` from the type import list.
+- Delete the `cloneRepos(...)` stub method.
 
-  scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> { return scanRepos(opts); }
-  resetAndCheckout(opts: ResetAndCheckoutOptions): Promise<ResetAndCheckoutResult> { return resetAndCheckout(opts); }
-  commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult> { return commitPushRepos(opts); }
-  cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> { return cleanupRepos(opts); }
-  createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { return createWorkspace(opts); }
+- [ ] **Step 4: Update `CodexProvider`**
 
-  analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> { return analyze(opts); }
-  plan(opts: PlanOptions): Promise<PlanResult> { return plan(opts); }
-  implement(opts: ImplementOptions): Promise<ImplementResult> { return implement(opts); }
-}
-```
-
-- [ ] **Step 3: Rewrite `GeminiProvider`**
-
-Replace [packages/coding-cli/src/providers/gemini/index.ts](packages/coding-cli/src/providers/gemini/index.ts) with:
-
-```ts
-import type { ICodingCLI } from "../../interface.ts";
-import type {
-  ScanReposOptions, ScanReposResult,
-  ResetAndCheckoutOptions, ResetAndCheckoutResult,
-  CommitPushReposOptions, CommitPushReposResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
-  AnalyzeOptions, AnalyzeResult,
-  PlanOptions, PlanResult,
-  ImplementOptions, ImplementResult,
-  IProviderMeta,
-} from "@journeyman/core";
-
-/** Gemini coding CLI provider. Not yet implemented. */
-export class GeminiProvider implements ICodingCLI {
-  static meta: IProviderMeta = {
-    id: "gemini",
-    name: "Gemini CLI",
-    description: "Google Gemini coding CLI",
-    category: "coding-cli",
-  };
-
-  scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("GeminiProvider.scanRepos not implemented"); }
-  resetAndCheckout(_opts: ResetAndCheckoutOptions): Promise<ResetAndCheckoutResult> { throw new Error("GeminiProvider.resetAndCheckout not implemented"); }
-  commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("GeminiProvider.commitPushRepos not implemented"); }
-  cleanupRepos(_opts: CleanupReposOptions): Promise<CleanupReposResult> { throw new Error("GeminiProvider.cleanupRepos not implemented"); }
-  createWorkspace(_opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { throw new Error("GeminiProvider.createWorkspace not implemented"); }
-  analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> { throw new Error("GeminiProvider.analyze not implemented"); }
-  plan(_opts: PlanOptions): Promise<PlanResult> { throw new Error("GeminiProvider.plan not implemented"); }
-  implement(_opts: ImplementOptions): Promise<ImplementResult> { throw new Error("GeminiProvider.implement not implemented"); }
-}
-```
-
-- [ ] **Step 4: Rewrite `CodexProvider`**
-
-Replace [packages/coding-cli/src/providers/codex/index.ts](packages/coding-cli/src/providers/codex/index.ts) with:
-
-```ts
-import type { ICodingCLI } from "../../interface.ts";
-import type {
-  ScanReposOptions, ScanReposResult,
-  ResetAndCheckoutOptions, ResetAndCheckoutResult,
-  CommitPushReposOptions, CommitPushReposResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
-  AnalyzeOptions, AnalyzeResult,
-  PlanOptions, PlanResult,
-  ImplementOptions, ImplementResult,
-  IProviderMeta,
-} from "@journeyman/core";
-
-/** Codex coding CLI provider. Not yet implemented. */
-export class CodexProvider implements ICodingCLI {
-  static meta: IProviderMeta = {
-    id: "codex",
-    name: "Codex CLI",
-    description: "OpenAI Codex CLI",
-    category: "coding-cli",
-  };
-
-  scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("CodexProvider.scanRepos not implemented"); }
-  resetAndCheckout(_opts: ResetAndCheckoutOptions): Promise<ResetAndCheckoutResult> { throw new Error("CodexProvider.resetAndCheckout not implemented"); }
-  commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("CodexProvider.commitPushRepos not implemented"); }
-  cleanupRepos(_opts: CleanupReposOptions): Promise<CleanupReposResult> { throw new Error("CodexProvider.cleanupRepos not implemented"); }
-  createWorkspace(_opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { throw new Error("CodexProvider.createWorkspace not implemented"); }
-  analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> { throw new Error("CodexProvider.analyze not implemented"); }
-  plan(_opts: PlanOptions): Promise<PlanResult> { throw new Error("CodexProvider.plan not implemented"); }
-  implement(_opts: ImplementOptions): Promise<ImplementResult> { throw new Error("CodexProvider.implement not implemented"); }
-}
-```
+In [packages/coding-cli/src/providers/codex/index.ts](packages/coding-cli/src/providers/codex/index.ts):
+- Remove `CloneReposOptions, CloneReposResult,` from the type import list.
+- Delete the `cloneRepos(...)` stub method.
 
 - [ ] **Step 5: Typecheck `@journeyman/coding-cli`**
 
@@ -813,111 +505,12 @@ Expected: no errors.
 
 ```bash
 git add packages/coding-cli
-git commit -m "refactor(coding-cli): drop cloneRepos; rename resetRepos → resetAndCheckout"
+git commit -m "refactor(coding-cli): drop cloneRepos (now owned by git-provider)"
 ```
 
 ---
 
-## Task 7: Rename pipeline phase `ResetReposPhase` → `ResetAndCheckoutPhase`
-
-**Files:**
-- Create: `packages/pipeline/src/phases/reset-and-checkout-phase.ts`
-- Delete: `packages/pipeline/src/phases/reset-repos-phase.ts`
-- Modify: `packages/pipeline/src/index.ts`
-
-- [ ] **Step 1: Create the renamed phase file**
-
-Create `packages/pipeline/src/phases/reset-and-checkout-phase.ts`:
-
-```ts
-/**
- * @file reset-and-checkout-phase.ts
- * Brings each repo to a clean state on a target branch. Can also create a new
- * branch from a base when the target does not yet exist.
- *
- * Reads:  repoPaths        — list of local repo paths written by cloneRepos.
- * Writes: resetResults     — array of ResetAndCheckoutRepoResult, one per repo.
- *
- * Config:
- * - `branch`     — optional override. When omitted, uses productConfig.repos[i].defaultBranch.
- * - `create`     — when true, create the branch if it does not exist.
- * - `fromBranch` — base ref for creation (default: current HEAD).
- *
- * Side effects: performs `git fetch`, `git stash`, `git checkout`, `git reset --hard`,
- * `git clean -fd` and/or `git checkout -b` on local disk.
- */
-
-import { BasePhase } from "./base-phase.ts";
-import { unwrap } from "../adapter-unwrap.ts";
-import type { PhaseResult, PipelineContext } from "@journeyman/core";
-
-type Config = {
-  branch?: string;
-  create?: boolean;
-  fromBranch?: string;
-};
-
-export class ResetAndCheckoutPhase extends BasePhase {
-  readonly name = "resetAndCheckout";
-  static reads = ["repoPaths"] as const;
-  static writes = ["resetResults"] as const;
-
-  async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
-    const repoPaths = this.require<string[]>(ctx, "repoPaths");
-    const repos = ctx.productConfig.repos;
-
-    const entries = repoPaths.map((dirPath, i) => ({
-      dirPath,
-      branch: config.branch ?? repos[i]?.defaultBranch ?? "main",
-      create: config.create,
-      fromBranch: config.fromBranch,
-    }));
-
-    const res = unwrap(await ctx.providers.coding.resetAndCheckout({
-      repos: entries,
-      sessionId: ctx.sessionId,
-      signal: ctx.signal,
-    }), "resetAndCheckout");
-
-    for (const r of res.repos) {
-      if (r.error) return this.failed(`resetAndCheckout: ${r.error}`);
-    }
-
-    return this.ok({ resetResults: res.repos });
-  }
-}
-```
-
-- [ ] **Step 2: Delete the old phase file**
-
-```bash
-git rm packages/pipeline/src/phases/reset-repos-phase.ts
-```
-
-- [ ] **Step 3: Update pipeline index export**
-
-In [packages/pipeline/src/index.ts](packages/pipeline/src/index.ts), replace line 39:
-
-```ts
-export { ResetReposPhase } from "./phases/reset-repos-phase.ts";
-```
-
-with:
-
-```ts
-export { ResetAndCheckoutPhase } from "./phases/reset-and-checkout-phase.ts";
-```
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add packages/pipeline/src/phases/reset-and-checkout-phase.ts packages/pipeline/src/index.ts
-git commit -m "refactor(pipeline): rename ResetReposPhase → ResetAndCheckoutPhase"
-```
-
----
-
-## Task 8: Update pipeline `CloneReposPhase` to use git provider
+## Task 6: Update pipeline `CloneReposPhase` to use git provider
 
 **Files:**
 - Modify: `packages/pipeline/src/phases/clone-repos-phase.ts:25-47`
@@ -951,9 +544,14 @@ In [packages/pipeline/src/phases/clone-repos-phase.ts](packages/pipeline/src/pha
   }
 ```
 
-Key changes: `ctx.providers.coding.cloneRepos` → `ctx.providers.git.cloneRepos`; the `sessionId: ctx.sessionId` line is removed.
+Key changes: `ctx.providers.coding.cloneRepos` → `ctx.providers.git.cloneRepos`; the `sessionId: ctx.sessionId` line is removed (`CloneReposOptions` no longer extends `SessionOptions`).
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Typecheck `@journeyman/pipeline`**
+
+Run: `cd packages/pipeline && npx tsc --noEmit`
+Expected: no errors.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add packages/pipeline/src/phases/clone-repos-phase.ts
@@ -962,45 +560,7 @@ git commit -m "refactor(pipeline): CloneReposPhase uses git provider instead of 
 
 ---
 
-## Task 9: Update pipeline phase registrations
-
-**Files:**
-- Modify: `packages/pipeline/src/cli-commands/run-once.ts`
-- Modify: `packages/pipeline/src/cli-commands/validate-config.ts`
-
-- [ ] **Step 1: Update `run-once.ts`**
-
-In [packages/pipeline/src/cli-commands/run-once.ts](packages/pipeline/src/cli-commands/run-once.ts):
-- Replace `ResetReposPhase` with `ResetAndCheckoutPhase` in the import list (line 11).
-- Replace the registration line `phases.register("resetRepos",      () => new ResetReposPhase());` with:
-  ```ts
-    phases.register("resetAndCheckout", () => new ResetAndCheckoutPhase());
-  ```
-
-- [ ] **Step 2: Update `validate-config.ts`**
-
-In [packages/pipeline/src/cli-commands/validate-config.ts](packages/pipeline/src/cli-commands/validate-config.ts):
-- Replace `ResetReposPhase` with `ResetAndCheckoutPhase` in the import list (line 8).
-- Replace the registration line with:
-  ```ts
-      phases.register("resetAndCheckout", () => new ResetAndCheckoutPhase());
-  ```
-
-- [ ] **Step 3: Typecheck pipeline**
-
-Run: `cd packages/pipeline && npx tsc --noEmit`
-Expected: no errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add packages/pipeline/src/cli-commands/run-once.ts packages/pipeline/src/cli-commands/validate-config.ts
-git commit -m "refactor(pipeline): register resetAndCheckout instead of resetRepos"
-```
-
----
-
-## Task 10: Full workspace verification
+## Task 7: Full workspace verification
 
 - [ ] **Step 1: Typecheck every package**
 
@@ -1012,43 +572,34 @@ Expected: every workspace package reports no errors.
 Run: `npx tsx packages/git-provider/src/providers/github/operations/build-clone-url.test.ts`
 Expected: `buildCloneUrl: all assertions passed`.
 
-- [ ] **Step 3: Grep for stale references**
+- [ ] **Step 3: Grep for stale references — sanity**
 
-Run: `grep -rn "ResetReposPhase\|resetRepos\|coding\.cloneRepos\|ResetReposOptions\|ResetReposResult\|ResetEntry" packages --include="*.ts" | grep -v node_modules`
-Expected output — allowed residuals only:
-- Matches inside `docs/` (plan/spec) — ignore.
-- Matches inside `packages/coding-cli/src/providers/claude/operations/analyze.ts`, `plan.ts`, `implement.ts` — these are **sample ticket text strings** (e.g. "JM-42: Add a `dry-run` flag to resetRepos..."). Leave those alone; they're fixture content, not code references.
-- No other matches. If any real code references remain, fix them inline with a follow-up small commit.
+Run: `grep -rn "coding\.cloneRepos\|\.cloneRepos" packages --include="*.ts" | grep -v node_modules | grep -v "git-provider"`
+Expected: no matches. Every remaining `cloneRepos` call should be on the `git` provider or in `git-provider` source.
 
 - [ ] **Step 4: Final commit (only if Step 3 surfaced fixes)**
 
 ```bash
 git status
-# If there are changes, commit them with: "fix: cleanup stale resetRepos references"
+# If there are changes, commit them with: "fix: cleanup stale cloneRepos references"
 ```
 
 ---
 
-## Manual Smoke Validation (post-merge)
+## Manual Smoke Validation (post-merge, not part of checklist)
 
-On a host with **no global git credentials**:
+On a host with **no global git credentials** (no SSH key loaded, no `~/.netrc`, no credential helper):
 
 1. `export GITHUB_ACCESS_TOKEN=<valid PAT with repo scope>`
 2. In a throwaway script:
    ```ts
    import { GitHubProvider } from "@journeyman/git-provider";
-   import { ClaudeProvider } from "@journeyman/coding-cli";
    const gh = new GitHubProvider();
-   const cli = new ClaudeProvider();
    const r = await gh.cloneRepos({
      repos: ["https://github.com/<YOUR_ORG>/<PRIVATE_REPO>"],
      targetDir: "/tmp/jm-smoke",
    });
    console.log(r);
-   const rc = await cli.resetAndCheckout({
-     repos: [{ dirPath: r.repos[0].dirPath, branch: "feature/smoke-" + Date.now(), create: true, fromBranch: "main" }],
-   });
-   console.log(rc);
    ```
-3. Verify clone succeeded, `.git/config` contains `x-access-token:` in the `[remote "origin"]` url, `r.repos[0].url` is the ORIGINAL URL, and `rc.repos[0].created === true` on the new feature branch.
-4. Make a trivial file edit, then run `cli.commitPushRepos(...)` and verify `pushed: true` without configuring any additional auth.
+3. Verify clone succeeded, `.git/config` of the clone contains `x-access-token:` in the `[remote "origin"]` url, and `r.repos[0].url` is the ORIGINAL (non-tokenized) URL.
+4. Make a trivial file edit in the cloned dir, then run `codingCli.commitPushRepos({ repos: [{ dirPath: r.repos[0].dirPath }], ticket: "SMOKE-1" })` — expect `pushed: true` without any additional auth setup.
