@@ -211,7 +211,7 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
         return {
           ...EMPTY_RESULT,
           sessionId,
-          error: (msg as any).result ?? msg.subtype,
+          error: (msg as any).errors?.[0] ?? msg.subtype,
         };
       }
       output = { ...(msg.structured_output as AnalyzeResult), sessionId };

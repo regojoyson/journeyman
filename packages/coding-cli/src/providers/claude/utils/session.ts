@@ -1,27 +1,29 @@
 import { randomUUID } from "node:crypto";
 
 /**
- * Resolves an optional caller-supplied sessionId into the concrete id plus
- * the option fragment to merge into the Claude Agent SDK `query()` options.
+ * Resolves session identifiers for a Claude Agent SDK `query()` call.
  *
- * - Caller provided a non-empty id → `{ resume: id }` — the SDK continues
- *   that session (warm prompt cache, same conversation history).
- * - Caller omitted the id (or passed an empty string) → we generate a UUID
- *   and pass `{ sessionId }` — the SDK assigns that id to a fresh session.
+ * The caller-supplied `input` is treated as a correlation id (e.g. a pipeline
+ * run id) — NOT as a conversation to resume. Every invocation starts a fresh
+ * SDK conversation with its own random UUID. Sharing a conversation across
+ * phases produces cross-phase bash-transcript bloat and breaks when phases
+ * use different structured-output schemas or tool sets.
  *
- * An empty string is treated as absent so callers don't accidentally resume
- * with an invalid id when a payload field is unset.
+ * Returns:
+ * - `sessionId`: the id the caller should echo back in its result payload.
+ *   Equal to `input` when provided (so callers preserve correlation), or a
+ *   fresh UUID when absent.
+ * - `queryOption`: always `{ sessionId: <freshUuid> }` — a new SDK session.
  *
- * The returned `sessionId` is always populated and is what callers should
- * echo back in their own result payload, even on error paths.
+ * An empty string is treated as absent.
  */
 export function resolveSession(input?: string): {
   sessionId: string;
-  queryOption: { resume: string } | { sessionId: string };
+  queryOption: { sessionId: string };
 } {
-  if (input) {
-    return { sessionId: input, queryOption: { resume: input } };
-  }
-  const sessionId = randomUUID();
-  return { sessionId, queryOption: { sessionId } };
+  const correlationId = input && input.length > 0 ? input : randomUUID();
+  return {
+    sessionId: correlationId,
+    queryOption: { sessionId: randomUUID() },
+  };
 }

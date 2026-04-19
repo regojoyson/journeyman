@@ -7,7 +7,7 @@ defaultFlow: default
 # (Separate from each product's `workspace:` field, which is the git-clone root.)
 stateStorage:
   type: file
-  directory: ./workspaces
+  directory: /Users/admin/data/workspace/claude-skils/journeyman-workspace/storage
 
 # ── Server ─────────────────────────────────────────────────────────────────────
 server:
@@ -27,7 +27,7 @@ workspaces:
 products:
   sam-portfolio:
     flow: default
-    workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace
+    workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
     concurrency: 1
 
     repos:

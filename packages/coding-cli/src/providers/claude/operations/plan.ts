@@ -211,7 +211,7 @@ export async function plan(opts: PlanOptions): Promise<PlanResult> {
         return {
           ...EMPTY_RESULT,
           sessionId,
-          error: (msg as any).result ?? msg.subtype,
+          error: (msg as any).errors?.[0] ?? msg.subtype,
         };
       }
       output = { ...(msg.structured_output as PlanResult), sessionId };

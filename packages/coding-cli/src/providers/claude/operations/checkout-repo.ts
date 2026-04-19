@@ -145,7 +145,7 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], newBranch: "", error: (msg as any).result ?? msg.subtype, sessionId };
+        return { repos: [], newBranch: "", error: (msg as any).errors?.[0] ?? msg.subtype, sessionId };
       }
       output = { ...(msg.structured_output as CheckoutRepoResult), sessionId };
     }

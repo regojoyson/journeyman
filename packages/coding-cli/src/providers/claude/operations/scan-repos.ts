@@ -82,7 +82,7 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
     logSdkMessage(msg);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
-        return { repos: [], error: (msg as any).result ?? msg.subtype, sessionId };
+        return { repos: [], error: (msg as any).errors?.[0] ?? msg.subtype, sessionId };
       }
       output = { ...(msg.structured_output as ScanReposResult), sessionId };
     }

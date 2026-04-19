@@ -219,7 +219,7 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
         return {
           ...EMPTY_RESULT,
           sessionId,
-          error: (msg as any).result ?? msg.subtype,
+          error: (msg as any).errors?.[0] ?? msg.subtype,
         };
       }
       output = { ...(msg.structured_output as ImplementResult), sessionId };
