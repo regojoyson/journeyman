@@ -66,7 +66,10 @@ function buildPrompt(
     "You will sync local repos to origin, then create ONE new feature branch used across all repos.",
     "",
     namingRule,
-    "  - Generate the branch name ONCE (using current unix-seconds timestamp) and use the EXACT same name for every repo.",
+    "",
+    "  - Before touching any repo, run `date +%s` ONCE to get the current unix-seconds timestamp.",
+    "  - Use that single timestamp value in the branch name for ALL repos. Do NOT re-run `date` inside the per-repo loop.",
+    "  - The EXACT same branch name must be used for every repo.",
     "",
     "PER-REPO STEPS (run in order for each repo):",
     "  1. git -C <dirPath> fetch origin",
@@ -111,6 +114,9 @@ function buildPrompt(
 export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposResult> {
   const entries = normalizeEntries(opts);
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
+  if (entries.length === 0) {
+    return { repos: [], newBranch: "", sessionId };
+  }
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -128,7 +134,7 @@ export async function resetRepos(opts: ResetReposOptions): Promise<ResetReposRes
       allowedTools: ["Bash"],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
-      maxTurns: 10,
+      maxTurns: 40,
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
