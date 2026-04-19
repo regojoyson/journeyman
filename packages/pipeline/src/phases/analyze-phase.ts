@@ -15,6 +15,8 @@
  * Side effects: reads files under primaryRepoPath; writes one artifact blob to the store.
  */
 
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
 import type { AnalyzeResult, PhaseResult, PipelineContext } from "@journeyman/core";
@@ -27,6 +29,10 @@ export class AnalyzePhase extends BasePhase {
   async run(ctx: PipelineContext): Promise<PhaseResult> {
     const primaryRepoPath = this.require<string>(ctx, "primaryRepoPath");
     const ticketMd = this.require<string>(ctx, "ticketMd");
+
+    mkdirSync(join(primaryRepoPath, "docs", "analyze"), { recursive: true });
+    mkdirSync(join(primaryRepoPath, "docs", "plan"), { recursive: true });
+    mkdirSync(join(primaryRepoPath, "docs", "implement"), { recursive: true });
 
     const result = unwrap(await ctx.providers.coding.analyze({
       dirPath: primaryRepoPath,
