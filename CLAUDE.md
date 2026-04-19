@@ -18,7 +18,7 @@ claude-sdk-test/            ← repo root (name: journeyman)
     ├── core/               ← @journeyman/core   — interfaces + shared types (source of truth)
     ├── coding-cli/         ← @journeyman/coding-cli  — Claude/Gemini/Codex CLI providers
     ├── git-provider/       ← @journeyman/git-provider  — GitHub/GitLab REST API providers
-    ├── github-mcp/         ← @journeyman/github-mcp  — shared GitHub MCP client (used by git-provider + ticket-provider)
+    ├── github-api/         ← @journeyman/github-api  — shared GitHub Octokit client (REST + GraphQL; used by git-provider + ticket-provider)
     ├── ticket-provider/    ← @journeyman/ticket-provider  — Jira/Linear/Monday providers
     └── notification-provider/ ← @journeyman/notification-provider  — Slack provider
 ```
@@ -28,9 +28,9 @@ claude-sdk-test/            ← repo root (name: journeyman)
 | Package | Scope |
 |---|---|
 | `@journeyman/core` | Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) and all shared option/result types. Never imports from other `@journeyman/*` packages. |
-| `@journeyman/coding-cli` | AI-powered git operations (clone, scan, reset) via Claude Agent SDK + analyze/plan/implement stubs. Providers: `ClaudeProvider`, `GeminiProvider`, `CodexProvider`. |
+| `@journeyman/coding-cli` | AI-powered git operations (clone, scan, reset) and AI operations (analyze, plan, implement) via Claude Agent SDK. Providers: `ClaudeProvider`, `GeminiProvider`, `CodexProvider`. |
 | `@journeyman/git-provider` | REST API operations (get repo, create PR/MR). Providers: `GitHubProvider`, `GitLabProvider`. |
-| `@journeyman/github-mcp` | Shared GitHub MCP client (Streamable HTTP transport against `api.githubcopilot.com/mcp/`). Consumed by `git-provider` and `ticket-provider` GitHub implementations. |
+| `@journeyman/github-api` | Shared GitHub Octokit-based client (`@octokit/rest` + `@octokit/graphql` with retry/throttling plugins). Exposes `createGitHubClient({ token })` returning `{ rest, graphql }`. Consumed by `git-provider` and `ticket-provider` GitHub implementations. |
 | `@journeyman/ticket-provider` | Issue tracker operations (CRUD tickets). Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`. |
 | `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`. |
 
@@ -129,12 +129,14 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 | `ClaudeProvider.commitPushRepos` | Implemented |
 | `ClaudeProvider.cleanupRepos` | Implemented |
 | `ClaudeProvider.createWorkspace` | Implemented |
-| `ClaudeProvider.analyze` | Stub |
-| `ClaudeProvider.plan` | Stub |
-| `ClaudeProvider.implement` | Stub |
+| `ClaudeProvider.analyze` | Implemented (Claude Agent SDK + json_schema structured output) |
+| `ClaudeProvider.plan` | Implemented (Claude Agent SDK + json_schema structured output) |
+| `ClaudeProvider.implement` | Implemented (Claude Agent SDK + json_schema structured output) |
 | `GeminiProvider` | Stub |
 | `CodexProvider` | Stub |
-| `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via MCP) |
+| `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via `@journeyman/github-api` Octokit REST client) |
+| `GitHubIssuesProvider` | Implemented (REST via `@journeyman/github-api`) |
+| `GitHubProjectsProvider` | Implemented (GraphQL ProjectV2 via `@journeyman/github-api`) |
 | `GitLabProvider` | Stub |
 | `JiraProvider` | Stub |
 | `LinearProvider` | Stub |
