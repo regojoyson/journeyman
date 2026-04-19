@@ -15,9 +15,12 @@
  * All commands are lazy-imported so startup time stays low when the subcommand is known.
  */
 import { parseArgs } from "node:util";
+import { createLogger } from "@journeyman/core";
+
+const log = createLogger("pipeline:cli");
 
 function help() {
-  console.log(`Usage:
+  process.stdout.write(`Usage:
   journeyman serve                [--config <path>]   Start the HTTP pipeline server
   journeyman run                  --ticket <KEY> --product <ID> [--flow <name>] [--config <path>]
   journeyman validate-config      [--config <path>]
@@ -50,7 +53,7 @@ async function main() {
   }
   if (cmd === "run") {
     if (!values.ticket || !values.product) {
-      console.error("--ticket and --product required");
+      log.error("--ticket and --product required");
       process.exit(1);
     }
     const { runOnce } = await import("./cli-commands/run-once.ts");
@@ -69,4 +72,4 @@ async function main() {
   process.exit(1);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(err => { log.error({ err }, "cli failed"); process.exit(1); });

@@ -164,5 +164,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ticket: { id: "EV-12345", title: "Fix header alignment on checkout" },
   });
 
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }

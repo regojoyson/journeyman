@@ -16,6 +16,9 @@ import {
   GitHubIssuesProvider, GitHubProjectsProvider,
 } from "@journeyman/ticket-provider";
 import { SlackProvider } from "@journeyman/notification-provider";
+import { createLogger } from "@journeyman/core";
+
+const log = createLogger("pipeline:validate-config");
 
 export async function validateConfig(configPath: string): Promise<number> {
   try {
@@ -57,10 +60,10 @@ export async function validateConfig(configPath: string): Promise<number> {
     ]) providers.register(c as any);
 
     FlowValidator.validate({ phases, providers, flows: flowList, products: config.products, defaultFlow: config.defaultFlow });
-    console.log("✓ config valid");
+    log.info("✓ config valid");
     return 0;
   } catch (err: any) {
-    console.error(`✗ ${err.message}`);
+    log.error({ err }, "config invalid");
     return 1;
   }
 }

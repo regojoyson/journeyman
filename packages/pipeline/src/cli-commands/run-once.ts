@@ -19,6 +19,9 @@ import {
   GitHubIssuesProvider, GitHubProjectsProvider,
 } from "@journeyman/ticket-provider";
 import { SlackProvider } from "@journeyman/notification-provider";
+import { createLogger } from "@journeyman/core";
+
+const log = createLogger("pipeline:run-once");
 
 function findProductIdSync(root: string, sessionId: string): string | null {
   if (!existsSync(root)) return null;
@@ -43,7 +46,7 @@ export async function runOnce(
   const config = loadPipelineConfig(configPath);
   const product = config.products[productId];
   if (!product) {
-    console.error(`Unknown product: ${productId}`);
+    log.error({ productId }, "Unknown product");
     return 1;
   }
 
@@ -113,7 +116,7 @@ export async function runOnce(
     flow,
   });
 
-  console.log(`run ${run.sessionId} → ${run.status}`);
+  log.info({ sessionId: run.sessionId, status: run.status }, "run complete");
   if (run.status === "completed") return 0;
   if (run.status === "blocked")   return 2;
   return 1;

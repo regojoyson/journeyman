@@ -7,6 +7,9 @@
   "exports": { ".": "./src/index.ts" },
   "files": ["src"],
   "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "pino": "^9.0.0"
+  },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "typescript": "^6.0.3"

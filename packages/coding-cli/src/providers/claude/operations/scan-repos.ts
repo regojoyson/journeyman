@@ -97,5 +97,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     parentDir: "/Users/admin/data/workspace/claude-skils/",
   });
 
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }

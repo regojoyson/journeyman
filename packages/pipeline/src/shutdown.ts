@@ -12,7 +12,10 @@
  * before the process exits, rather than being killed mid-step.
  */
 
+import { createLogger } from "@journeyman/core";
 import type { Pipeline } from "./pipeline.ts";
+
+const log = createLogger("pipeline:shutdown");
 
 /** Poll until no runs are in flight, or timeout exceeded. */
 export async function waitForDrain(pipeline: Pipeline, timeoutMs: number): Promise<void> {
@@ -35,7 +38,7 @@ export function installShutdownHandler(
   timeoutMs = 30_000,
 ): void {
   const shutdown = async (signal: string) => {
-    console.log(`[pipeline] ${signal} received, draining...`);
+    log.info({ signal }, "shutdown signal received, draining");
     for (const id of pipeline.listRunning()) pipeline.cancel(id);
     await waitForDrain(pipeline, timeoutMs);
     await onClose();

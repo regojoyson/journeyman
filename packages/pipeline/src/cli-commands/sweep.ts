@@ -14,7 +14,10 @@
 
 import { readdirSync, statSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createLogger } from "@journeyman/core";
 import { loadPipelineConfig } from "../index.ts";
+
+const log = createLogger("pipeline:sweep");
 
 export async function sweep(configPath: string): Promise<number> {
   const config = loadPipelineConfig(configPath);
@@ -37,7 +40,7 @@ export async function sweep(configPath: string): Promise<number> {
           if (s.status === "failed") continue;
         } catch { /* no state — go ahead and remove */ }
       }
-      console.log(`removing ${dir}`);
+      log.info({ dir }, "removing stale workspace");
       rmSync(dir, { recursive: true, force: true });
     }
   }

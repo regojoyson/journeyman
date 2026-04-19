@@ -64,5 +64,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     parentDir: "/tmp/journeyman-workspace",
   });
 
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }

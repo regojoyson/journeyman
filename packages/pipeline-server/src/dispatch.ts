@@ -16,8 +16,11 @@
  */
 
 import type { IFlowConfigSource, IFlowResolver, IStateStore, PipelineTrigger } from "@journeyman/core";
+import { createLogger } from "@journeyman/core";
 import type { Pipeline, SemaphorePool } from "@journeyman/pipeline";
 import type { TicketMutex } from "./dedup.ts";
+
+const log = createLogger("server:dispatch");
 
 export type DispatchDeps = {
   flows: IFlowConfigSource;
@@ -48,7 +51,7 @@ export function buildDispatcher(deps: DispatchDeps): (trigger: PipelineTrigger) 
         const flow = await deps.flows.getFlow(flowName);
         await deps.pipeline.run({ trigger: { ...trigger, productId }, flow });
       } catch (err) {
-        console.error(`dispatch failure for ${trigger.ticketKey}:`, err);
+        log.error({ err, ticketKey: trigger.ticketKey }, "dispatch failure");
       } finally {
         release();
         deps.mutex.release(productId, trigger.ticketKey);

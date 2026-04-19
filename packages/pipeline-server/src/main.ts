@@ -15,6 +15,9 @@ import {
   GitHubIssuesProvider, GitHubProjectsProvider,
 } from "@journeyman/ticket-provider";
 import { SlackProvider } from "@journeyman/notification-provider";
+import { createLogger } from "@journeyman/core";
+
+const log = createLogger("server:main");
 import { buildServer } from "./http-server.ts";
 import { buildDispatcher } from "./dispatch.ts";
 import { TicketMutex } from "./dedup.ts";
@@ -132,5 +135,5 @@ export async function startServer(configPath: string): Promise<void> {
   installShutdownHandler(pipeline, async () => { await app.close(); });
 
   await app.listen({ port: config.server.port, host: "0.0.0.0" });
-  console.log(`journeyman pipeline-server listening on ${config.server.port}`);
+  log.info({ port: config.server.port }, "journeyman pipeline-server listening");
 }

@@ -236,5 +236,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ticketContent:
       "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them.",
   });
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }
