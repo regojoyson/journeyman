@@ -6,7 +6,7 @@ import {
   EventBus, Pipeline, SemaphorePool, installShutdownHandler,
   GetTicketPhase, CloneReposPhase, AnalyzePhase, PlanPhase, ImplementPhase,
   CommitPushPhase, CreatePRPhase, CleanupReposPhase, AddCommentPhase,
-  UpdateStatusPhase, ReviewPhase, RequireFieldPhase,
+  UpdateStatusPhase, ReviewPhase, RequireFieldPhase, CheckoutRepoPhase,
 } from "@journeyman/pipeline";
 import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
@@ -42,6 +42,7 @@ export async function startServer(configPath: string): Promise<void> {
   const phases = new PhaseRegistry();
   phases.register("getTicket",       () => new GetTicketPhase());
   phases.register("cloneRepos",      () => new CloneReposPhase());
+  phases.register("checkoutRepo",    () => new CheckoutRepoPhase());
   phases.register("analyze",         () => new AnalyzePhase());
   phases.register("plan",            () => new PlanPhase());
   phases.register("implement",       () => new ImplementPhase());
