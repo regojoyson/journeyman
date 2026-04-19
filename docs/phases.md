@@ -43,7 +43,7 @@ Fetches the ticket identified by `ctx.ticketId` from the configured ticket provi
 | **Step config** | _(none)_ |
 | **Source** | `packages/pipeline/src/phases/clone-repos-phase.ts` |
 
-Clones every repository listed in `productConfig.repos` to a temporary local workspace via the `coding-cli` provider (`ClaudeProvider.cloneRepos`). Captures the local path of each cloned repo in `repoPaths`, the designated primary repo in `primaryRepoPath`, and the resolved HEAD ref (SHA + branch) per repo in `repoRefs`.
+Clones every repository listed in `productConfig.repos` to a temporary local workspace via the `git` provider (`GitHubProvider.cloneRepos`). Captures the local path of each cloned repo in `repoPaths`, the designated primary repo in `primaryRepoPath`, and the resolved HEAD ref (SHA + branch) per repo in `repoRefs`.
 
 **Failure modes:** git clone error, disk-space exhaustion, missing auth credentials.
 
@@ -291,7 +291,7 @@ The runner wraps each `phase.run()` call in a try/catch. Any uncaught error is c
 Pass `ctx.signal` into every adapter call that accepts an `AbortSignal`. The runner cancels the signal when the pipeline run is externally aborted (timeout, user cancel, process shutdown).
 
 ```ts
-const result = await codingCli.cloneRepos(options, { signal: ctx.signal });
+const result = await gitProvider.cloneRepos({ ...options, signal: ctx.signal });
 ```
 
 Phases that perform multi-step loops should check `ctx.signal.aborted` between iterations and call `this.failed("cancelled")` (or allow the next adapter call to throw an `AbortError`).
