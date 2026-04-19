@@ -69,11 +69,16 @@ export async function startServer(configPath: string): Promise<void> {
   }
 
   // ----- stores -----
-  const workspacesRoot = "./workspaces";
-  const state = new FileStateStore(workspacesRoot);
-  const productIdResolver = (sid: string) => findProductIdSync(workspacesRoot, sid);
-  const trace = new FileTraceLogger(workspacesRoot, productIdResolver);
-  const artifactStore = new FileArtifactStore(workspacesRoot, productIdResolver);
+  const storage = config.stateStorage ?? { type: "file" as const };
+  if (storage.type !== "file") {
+    throw new Error(`Unsupported stateStorage.type: ${storage.type}`);
+  }
+  const stateRoot = storage.directory ?? "./workspaces";
+  log.info({ type: storage.type, directory: stateRoot }, "state storage");
+  const state = new FileStateStore(stateRoot);
+  const productIdResolver = (sid: string) => findProductIdSync(stateRoot, sid);
+  const trace = new FileTraceLogger(stateRoot, productIdResolver);
+  const artifactStore = new FileArtifactStore(stateRoot, productIdResolver);
   const bus = new EventBus();
 
   // ----- flows -----

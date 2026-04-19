@@ -98,6 +98,15 @@ export type PipelineRun = {
 
 export type PipelineConfig = {
   defaultFlow: string;
+  /** Where pipeline run state, traces, and artifacts are persisted.
+   *  Currently only the `file` storage type is supported. Future types
+   *  (e.g. `postgres`, `redis`) will be added as sibling keys. */
+  stateStorage?: {
+    type: "file";
+    /** Directory root for file-based storage. Resolves relative to server CWD.
+     *  Defaults to "./workspaces". */
+    directory?: string;
+  };
   products: Record<string, ProductConfig>;
   server: {
     port: number;

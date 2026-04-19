@@ -2,6 +2,13 @@
 
 defaultFlow: default
 
+# Where pipeline run state, traces, and artifacts are persisted.
+# `type` is extensible — future backends (postgres, redis, …) will slot in here.
+# (Separate from each product's `workspace:` field, which is the git-clone root.)
+stateStorage:
+  type: file
+  directory: ./workspaces
+
 # ── Server ─────────────────────────────────────────────────────────────────────
 server:
   port: 3000

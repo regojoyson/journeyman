@@ -23,6 +23,10 @@ export async function sweep(configPath: string): Promise<number> {
   const config = loadPipelineConfig(configPath);
   const retention = config.workspaces?.retentionDays ?? 14;
   const keepFailed = config.workspaces?.keepFailed ?? true;
+  const stateRoot =
+    config.stateStorage?.type === "file"
+      ? config.stateStorage.directory ?? "./workspaces"
+      : "./workspaces";
   const cutoff = Date.now() - retention * 86400_000;
 
   for (const [productId, p] of Object.entries(config.products)) {
@@ -34,7 +38,7 @@ export async function sweep(configPath: string): Promise<number> {
       if (st.mtimeMs >= cutoff) continue;
 
       if (keepFailed) {
-        const stateFile = join(p.workspace, "state", `${sid}.json`);
+        const stateFile = join(stateRoot, productId, "state", `${sid}.json`);
         try {
           const s = JSON.parse(readFileSync(stateFile, "utf8"));
           if (s.status === "failed") continue;

@@ -2,6 +2,12 @@ import { z } from "zod";
 
 export const PipelineConfigSchema = z.object({
   defaultFlow: z.string().min(1),
+  /** Where pipeline run state, traces, and artifacts are persisted.
+   *  Discriminated by `type` so future backends (postgres, redis, ...) slot in. */
+  stateStorage: z.object({
+    type: z.literal("file"),
+    directory: z.string().min(1).optional(),
+  }).optional(),
   products: z.record(z.object({
     flow: z.string().min(1),
     workspace: z.string().min(1),
