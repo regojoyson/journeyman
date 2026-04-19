@@ -212,9 +212,22 @@ export JIRA_TOKEN=<jira-api-token>
 
 ## 6. Start the server
 
+Three equivalent ways — pick whichever feels natural:
+
 ```bash
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+# Option 1 — npm start (simplest, from repo root)
+npm start
+
+# Option 2 — journeyman CLI serve command
+npx journeyman serve
+npx journeyman serve --config path/to/pipeline.yaml   # custom config path
+
+# Option 3 — dedicated server bin
+npx journeyman-server
+npx journeyman-server path/to/pipeline.yaml
 ```
+
+All three default to `config/pipeline.yaml` if no config path is given.
 
 You should see:
 ```
@@ -257,10 +270,15 @@ curl -X POST http://localhost:3000/api/trigger/my-product \
 
 ```bash
 npm install -g pm2
-pm2 start "npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml" \
-  --name journeyman \
-  --env production
+pm2 start "npm start" --name journeyman --env production
 pm2 save
+pm2 startup    # auto-start on reboot
+```
+
+Or with a custom config path:
+```bash
+pm2 start "npx journeyman serve --config /etc/journeyman/pipeline.yaml" \
+  --name journeyman
 ```
 
 ### With Docker
@@ -271,7 +289,7 @@ WORKDIR /app
 COPY . .
 RUN npm ci
 EXPOSE 3000
-CMD ["npx", "tsx", "packages/pipeline-server/src/cli-start.ts", "config/pipeline.yaml"]
+CMD ["npm", "start"]
 ```
 
 ```bash
@@ -284,6 +302,31 @@ docker run -p 3000:3000 \
   -v $(pwd)/config:/app/config \
   -v $(pwd)/workspaces:/app/workspaces \
   journeyman
+```
+
+### With a systemd service
+
+```ini
+# /etc/systemd/system/journeyman.service
+[Unit]
+Description=Journeyman Pipeline Server
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/journeyman
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+EnvironmentFile=/etc/journeyman/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable journeyman
+sudo systemctl start journeyman
+sudo journalctl -u journeyman -f   # tail logs
 ```
 
 ---

@@ -5,8 +5,12 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
+  "bin": { "journeyman-server": "./src/cli-start.ts" },
   "files": ["src"],
-  "scripts": { "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/cli-start.ts config/pipeline.yaml"
+  },
   "dependencies": {
     "@journeyman/core": "*",
     "@journeyman/pipeline": "*",
