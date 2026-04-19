@@ -99,17 +99,27 @@ openssl rand -hex 32
 # → set as NEW_PRODUCT_WEBHOOK_SECRET
 ```
 
-Add to your environment / `.env` / Docker config:
+The server auto-detects both `.env` and real environment variables — `process.env` always wins over `.env` for the same key.
+
+**Option A — add to `.env` (local dev)**
+
+Append to your existing `.env` file in the repo root:
+
+```bash
+NEW_PRODUCT_WEBHOOK_SECRET=<generated-above>
+
+# Only if this product uses different credentials:
+NEW_JIRA_TOKEN=...
+NEW_LINEAR_API_KEY=...
+```
+
+**Option B — shell export / Docker / systemd**
 
 ```bash
 export NEW_PRODUCT_WEBHOOK_SECRET=<generated-above>
-
-# Only if this product uses a different Jira project / Linear workspace:
-export NEW_JIRA_TOKEN=...
-export NEW_LINEAR_API_KEY=...
 ```
 
-If the new product reuses credentials that are already exported (e.g. `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`), you don't need to add them again — just point `*Env` keys to the same variable names.
+If the new product reuses credentials already set (e.g. `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`), you don't need to add them again — just point `*Env` keys to the same variable names.
 
 ---
 
@@ -180,7 +190,8 @@ products:
 Before restarting, validate that your YAML is well-formed and all providers/phases are known:
 
 ```bash
-npx tsx packages/pipeline/src/cli-commands/validate.ts config/pipeline.yaml
+npx journeyman validate-config
+npx journeyman validate-config --config path/to/pipeline.yaml   # custom path
 ```
 
 If validation passes you will see:
@@ -209,9 +220,11 @@ The server must be restarted to pick up config changes (no hot reload):
 # If running with PM2:
 pm2 restart journeyman
 
-# If running directly:
-# Ctrl+C then re-run:
-npx tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml
+# If running directly — Ctrl+C then use any of:
+npm start
+npx journeyman serve
+npx journeyman serve --config path/to/pipeline.yaml
+npx journeyman-server
 ```
 
 Verify the new product appears:
