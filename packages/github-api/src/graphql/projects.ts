@@ -1,7 +1,12 @@
-export const GET_PROJECT_ID_BY_NUMBER = /* GraphQL */ `
+export const GET_PROJECT_ID_BY_NUMBER_ORG = /* GraphQL */ `
+  query($owner: String!, $number: Int!) {
+    organization(login: $owner) { projectV2(number: $number) { id } }
+  }
+`;
+
+export const GET_PROJECT_ID_BY_NUMBER_USER = /* GraphQL */ `
   query($owner: String!, $number: Int!) {
     user(login: $owner) { projectV2(number: $number) { id } }
-    organization(login: $owner) { projectV2(number: $number) { id } }
   }
 `;
 
@@ -30,6 +35,7 @@ export const GET_PROJECT_ITEM = /* GraphQL */ `
         id
         content {
           ... on DraftIssue {
+            id
             title
             body
             assignees(first: 10) { nodes { login } }
@@ -155,6 +161,7 @@ export interface ProjectFieldValueNode {
 export interface ProjectItemNode {
   id: string;
   content?: {
+    id?: string;
     title?: string;
     body?: string | null;
     assignees?: { nodes: { login: string }[] };

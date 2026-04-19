@@ -1,10 +1,12 @@
 import type { UpdateTicketOptions, UpdateTicketResult } from "@journeyman/core";
 import {
   formatGitHubError,
+  GET_PROJECT_ITEM,
   UPDATE_DRAFT_ISSUE,
   UPDATE_PROJECT_FIELD_SINGLE_SELECT,
   UPDATE_PROJECT_FIELD_TEXT,
   type GitHubClient,
+  type ProjectItemNode,
 } from "@journeyman/github-api";
 import { getTicket } from "./get-ticket.ts";
 import { findField, findOptionId, getProjectFields } from "../utils/resolve-fields.ts";
@@ -32,8 +34,19 @@ export async function updateTicket(
     const projectId = await resolveProjectNodeId(client, owner, project_number);
 
     if (opts.title !== undefined || opts.description !== undefined) {
+      const itemResp = await client.graphql<{ node?: ProjectItemNode | null }>(
+        GET_PROJECT_ITEM,
+        { itemId },
+      );
+      const draftId = itemResp.node?.content?.id;
+      if (!draftId) {
+        return {
+          error:
+            "updateTicket: item is not a draft issue; title/description updates are only supported on draft items",
+        };
+      }
       await client.graphql(UPDATE_DRAFT_ISSUE, {
-        draftId: itemId,
+        draftId,
         title: opts.title ?? null,
         body: opts.description ?? null,
       });
