@@ -1,3 +1,25 @@
+/**
+ * @file github-webhook-trigger.ts
+ * GitHub webhook trigger: POST /webhooks/github/:productId
+ *
+ * Receives GitHub issue and pull_request events and dispatches a pipeline run when
+ * all configured filters pass.
+ *
+ * Security: verifies the `X-Hub-Signature-256` HMAC-SHA256 header using the product's
+ * webhook secret (resolved from the env var named in `product.webhookSecrets.github`
+ * or `opts.defaultSecretEnv`). Uses timing-safe comparison to prevent timing attacks.
+ *
+ * Raw body parsing: registers a content-type parser to capture the raw string before
+ * JSON.parse so the HMAC can be computed over the exact bytes GitHub signed.
+ *
+ * Filtering:
+ * - `product.ticketWorkflow.trigger.matchLabels` — if non-empty, the issue must carry
+ *   at least one of the listed labels; otherwise the event is ignored (200 ignored).
+ *
+ * Ticket key: `<repo.full_name>#<issue/PR number>`, e.g. `"myorg/myrepo#42"`.
+ * Sender and installation fields are stripped from rawPayload before storage.
+ */
+
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ITriggerSource, PipelineTrigger, TriggerMountContext, ProductConfig } from "@journeyman/core";

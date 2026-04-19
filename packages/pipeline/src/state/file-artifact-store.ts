@@ -1,3 +1,20 @@
+/**
+ * @file file-artifact-store.ts
+ * IArtifactStore implementation that persists artifacts to the local filesystem.
+ *
+ * Artifacts are stored at:
+ *   <rootDir>/<productId>/artifacts/<sessionId>/<key><ext>
+ *
+ * Content-type is used to select the file extension (e.g. "text/markdown" → ".md").
+ * Every stored artifact receives a SHA-256 content hash for integrity verification
+ * and deduplication. The returned ArtifactHandle uses a `file://` URI so downstream
+ * consumers can locate and read the file without knowing the store's root directory.
+ *
+ * `putPath` copies an existing file into the store (used by phases that write a temp
+ * report file). `put` accepts raw Buffer or string and writes it directly. `get` reads
+ * the artifact back as a Buffer.
+ */
+
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import { copyFile, readFile, writeFile } from "node:fs/promises";

@@ -1,4 +1,19 @@
 #!/usr/bin/env node
+/**
+ * @file cli.ts
+ * Entry point for the `journeyman` CLI binary.
+ *
+ * Commands:
+ *   run              — Run a single ticket through a flow and exit.
+ *                      Requires --ticket <KEY> and --product <ID>.
+ *                      Optional: --flow <name>, --config <path>.
+ *   validate-config  — Parse and validate pipeline.yaml + all flow YAML files.
+ *                      Exits 0 on success, 1 on any validation error.
+ *   sweep            — Remove expired workspace run directories per retention policy.
+ *
+ * Default config path: config/pipeline.yaml (override with --config).
+ * All commands are lazy-imported so startup time stays low when the subcommand is known.
+ */
 import { parseArgs } from "node:util";
 
 function help() {

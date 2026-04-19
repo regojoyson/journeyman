@@ -1,3 +1,15 @@
+/**
+ * @file logs.ts
+ * GET /api/runs/:sessionId/logs — retrieve structured trace log lines for a run.
+ *
+ * Query params:
+ *   ?stepId=<id>  — restrict to log lines from one step.
+ *   ?tail=<n>     — return only the last N lines (across all steps, sorted by timestamp).
+ *
+ * Returns `{ lines: TraceLine[] }` where each TraceLine has ts, level, stepId, message,
+ * and optional meta. Lines are sorted chronologically.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { ITraceLogger, TraceLine } from "@journeyman/core";
 

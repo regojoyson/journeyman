@@ -1,3 +1,16 @@
+/**
+ * @file semaphore.ts
+ * Promise-based semaphore primitives for limiting concurrent pipeline runs per product.
+ *
+ * `Semaphore` — classic counting semaphore: callers await `acquire()` and call
+ * `release()` when done. Internally queues waiters as resolve callbacks.
+ *
+ * `SemaphorePool` — named pool keyed by product id. Each product gets its own
+ * Semaphore sized from the `limits` map, falling back to `defaultLimit` (Infinity).
+ * The server uses this to cap how many flows run in parallel for a single product
+ * while allowing other products to proceed unimpeded.
+ */
+
 class Semaphore {
   private queue: Array<() => void> = [];
   constructor(private permits: number) {}

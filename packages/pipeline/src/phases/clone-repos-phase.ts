@@ -1,3 +1,17 @@
+/**
+ * @file clone-repos-phase.ts
+ * Clones all repositories configured for the current product to a local workspace.
+ *
+ * Reads:  none — uses productConfig.repos and ctx.workspaceDir.
+ * Writes: repoPaths       — array of absolute local paths, one per cloned repo.
+ *         primaryRepoPath — path of the first repo (used by AI phases).
+ *         repoRefs        — product repo metadata array (owner, repo, url, branch).
+ *
+ * Failure modes: git clone error, disk exhaustion, missing auth credentials,
+ * any per-repo error in the clone result.
+ * Side effects: creates directories on disk; executes git clone for each repo.
+ */
+
 import { join } from "node:path";
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";

@@ -1,3 +1,18 @@
+/**
+ * @file artifacts.ts
+ * GET /api/runs/:sessionId/artifacts/:key — download an artifact blob by key.
+ *
+ * Loads the run from state, performs a deep search through `run.artifacts` for an
+ * `ArtifactHandle` whose `key` matches the path parameter, then streams the file
+ * from the artifact store with the correct `content-type` and `content-length` headers.
+ *
+ * The deep search (`findHandle`) handles artifacts nested inside phase result objects
+ * (e.g. `analysis.reportHandle`, `plan.reportHandle`) without callers needing to know
+ * the exact nesting structure.
+ *
+ * Returns 404 if the run does not exist or if no handle with the given key is found.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { ArtifactHandle, IArtifactStore, IStateStore } from "@journeyman/core";
 

@@ -1,3 +1,13 @@
+/**
+ * @file health.ts
+ * GET /api/health — liveness check and registry summary.
+ *
+ * Returns `{ status: "ok", registries: { phases, flows, coding, git, ticket, notification } }`
+ * with the count of registered items in each category. Useful for deployment health checks
+ * and confirming that all phases and providers loaded correctly at boot.
+ * No auth required (excluded from the bearer-token middleware).
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { IFlowConfigSource, IProviderMeta } from "@journeyman/core";
 

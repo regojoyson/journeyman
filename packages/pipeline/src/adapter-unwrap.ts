@@ -1,3 +1,13 @@
+/**
+ * @file adapter-unwrap.ts
+ * Helpers for extracting values from provider result envelopes.
+ *
+ * Every provider method returns a result object that may carry an `error` string
+ * instead of throwing. These helpers centralise the "check-error-or-return" pattern
+ * so phase code stays readable and all failures surface as a consistent AdapterError
+ * that the pipeline runner catches and records.
+ */
+
 export class AdapterError extends Error {
   constructor(
     public readonly operation: string,

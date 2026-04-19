@@ -1,3 +1,15 @@
+/**
+ * @file runs.ts
+ * Run query endpoints for the pipeline API.
+ *
+ * GET /api/runs/:sessionId        — fetch a single run by session id; 404 if not found.
+ * GET /api/runs                   — list runs with optional filters:
+ *   ?product=<id>                 — restrict to one product.
+ *   ?ticket=<key>                 — find all runs for a specific ticket key.
+ *   ?status=<status>              — filter by run status.
+ *   ?limit=<n>                    — cap result count (applied after sort by createdAt desc).
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { IStateStore } from "@journeyman/core";
 

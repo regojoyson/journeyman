@@ -1,3 +1,17 @@
+/**
+ * @file provider-registry.ts
+ * Registry that stores provider classes by category and instantiates them per run.
+ *
+ * Providers are registered once at boot as classes (not instances) via `register`.
+ * At run time, `resolveForProduct` instantiates one provider per category using the
+ * id declared in the flow's `providers` block, passing per-product `providerConfig`
+ * as constructor options. This means each run gets a fresh, correctly configured
+ * provider instance.
+ *
+ * Categories: `coding-cli`, `git`, `ticket`, `notification`.
+ * Each class must expose a static `meta: IProviderMeta` with `id` and `category`.
+ */
+
 import type {
   IProviderMeta, ICodingCLI, IGitProvider, ITicketProvider, INotificationProvider,
   ProductConfig, FlowDefinition,

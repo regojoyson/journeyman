@@ -1,3 +1,17 @@
+/**
+ * @file plan-phase.ts
+ * Produces a structured implementation plan from the analysis and ticket context.
+ *
+ * Reads:  analysis        — AnalyzeResult from the analyze phase.
+ *         ticketMd        — markdown ticket description.
+ *         primaryRepoPath — local repo path for any additional context reads.
+ * Writes: plan — PlanResult including the plan document and a reportHandle pointing
+ *                to the full plan in the artifact store.
+ *
+ * Failure modes: provider error, incoherent analysis input, context overflow.
+ * Side effects: writes one artifact blob to the artifact store.
+ */
+
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
 import type { AnalyzeResult, PhaseResult, PipelineContext, PlanResult } from "@journeyman/core";
