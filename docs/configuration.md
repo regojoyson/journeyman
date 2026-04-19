@@ -8,7 +8,7 @@ Pipeline configuration is split into two YAML files:
 
 ```
 config/
-├── pipeline.yaml          # Top-level: products, server, workspaces, defaultFlow
+├── pipeline.yaml          # Top-level: products, server, workspaces, stateStorage, defaultFlow
 └── flows/
     ├── default.yaml       # Flow definition
     ├── feature-flow.yaml  # Another flow
@@ -22,6 +22,7 @@ The `config/pipeline.yaml` file is the entry point. Flow definitions are loaded 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `defaultFlow` | string | Yes | Name of the flow to use when a trigger doesn't specify one. Must match a defined flow. |
+| `stateStorage` | object | No | Backend for run state, traces, and artifacts. Discriminated by `type`. Defaults to file-based at `./workspaces`. |
 | `products` | object | Yes | Map of product IDs to product configurations. |
 | `server` | object | Yes | HTTP server settings: port, bearer token, webhook paths and secrets. |
 | `workspaces` | object | No | Cleanup and retention policy for pipeline runs. |
@@ -35,6 +36,35 @@ defaultFlow: "default-feature-flow"
 ```
 
 Must reference a flow name that exists in `config/flows/*.yaml`.
+
+### stateStorage
+
+Where pipeline run state, traces, and artifacts are persisted. The `type` field selects the backend; each backend has its own sibling fields.
+
+Omit the block entirely to use defaults: `type: file`, `directory: ./workspaces`.
+
+```yaml
+stateStorage:
+  type: file
+  directory: ./workspaces      # relative paths resolve from the server CWD
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `"file"` | Yes (if block present) | Storage backend. Only `file` is supported today; additional types (e.g. `postgres`, `redis`) will be added as sibling shapes without breaking this key. |
+| `directory` | string | No (file only) | Root directory for file-based storage. Can be absolute or relative to the server CWD. Defaults to `./workspaces`. |
+
+**Layout when `type: file`:**
+
+```
+<directory>/
+└── <productId>/
+    ├── state/<sessionId>.json     # run records read by GET /api/runs
+    ├── runs/<sessionId>/          # per-run trace logs
+    └── artifacts/<sessionId>/     # analyze/plan/implement reports
+```
+
+This root is independent from each product's `workspace:` field — `workspace:` is the **git-clone** root (where `cloneRepos` checks out code), while `stateStorage.directory` is the **persistence** root (where the runtime records what happened). Keeping them separate lets you wipe working checkouts (`workspaces.cleanupOn`) without losing run history.
 
 ### products
 

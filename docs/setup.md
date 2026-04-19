@@ -121,6 +121,10 @@ server:
     # gitlab: { secretEnv: GITLAB_WEBHOOK_SECRET }
     # jira:   { secretEnv: JIRA_WEBHOOK_SECRET }
 
+stateStorage:
+  type: file
+  directory: ./workspaces
+
 workspaces:
   cleanupOn: ["completed", "cancelled"]
   retentionDays: 14
@@ -132,6 +136,8 @@ Field notes:
 | Field | Purpose |
 |---|---|
 | `defaultFlow` | Which flow to use when a trigger doesn't specify one and no product matches. |
+| `stateStorage.type` | Backend for run state, traces, and artifacts. Only `file` is supported today. |
+| `stateStorage.directory` | Root dir for file-based state. Absolute or relative to the server CWD. Defaults to `./workspaces`. |
 | `products` | Map of productId → product config. We'll populate this in §6. |
 | `server.port` | HTTP port to listen on. |
 | `server.bearerTokenEnv` | Name of the env var holding the management API bearer. |
