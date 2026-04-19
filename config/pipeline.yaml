@@ -32,8 +32,9 @@ products:
 
     providerConfig:
       ticket:
-        # GitHub Projects v2 — project #1 at github.com/users/regojoyson/projects/1
-        projectId: "regojoyson/1"
+        # GitHub Issues — ids are "owner/repo#<number>"
+        projectId: "regojoyson/sam-portfolio"
+        tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
       git:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
       # coding: not needed — ClaudeProvider reads from ~/.claude/ session

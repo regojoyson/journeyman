@@ -17,12 +17,19 @@ import { getTicketSchema } from "./operations/get-ticket-schema.ts";
 import { addComment } from "./operations/add-comment.ts";
 import { updateStatus } from "./operations/update-status.ts";
 
+export type GitHubIssuesProviderOptions = {
+  /** Personal Access Token (explicit). Takes precedence over `tokenEnv`. */
+  token?: string;
+  /** Name of an env var to read the token from (e.g. "SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN"). */
+  tokenEnv?: string;
+};
+
 /**
  * GitHub repo-level issue tracker provider.
  *
  * Backed by GitHub's hosted MCP server (https://api.githubcopilot.com/mcp/).
- * Deterministic — no LLM in the loop. Requires `GITHUB_ACCESS_TOKEN` env var
- * with `repo` scope.
+ * Deterministic — no LLM in the loop. Requires a PAT with `repo` scope, sourced
+ * (in order) from `opts.token`, `process.env[opts.tokenEnv]`, or `GITHUB_ACCESS_TOKEN`.
  *
  * - `opts.projectId` for create/list is `"owner/repo"`.
  * - `opts.id` for get/update is `"owner/repo#<number>"`.
@@ -38,6 +45,8 @@ export class GitHubIssuesProvider implements ITicketProvider {
   };
 
   private client?: Client;
+
+  constructor(private readonly opts: GitHubIssuesProviderOptions = {}) {}
 
   async createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
     return createTicket(await this.getClient(), opts);
@@ -63,10 +72,13 @@ export class GitHubIssuesProvider implements ITicketProvider {
 
   private async getClient(): Promise<Client> {
     if (!this.client) {
-      const token = process.env.GITHUB_ACCESS_TOKEN;
+      const token =
+        this.opts.token
+        ?? (this.opts.tokenEnv ? process.env[this.opts.tokenEnv] : undefined)
+        ?? process.env.GITHUB_ACCESS_TOKEN;
       if (!token) {
         throw new Error(
-          "GitHubIssuesProvider: PAT required. Set GITHUB_ACCESS_TOKEN.",
+          "GitHubIssuesProvider: PAT required. Pass opts.token, set opts.tokenEnv to a populated env var, or set GITHUB_ACCESS_TOKEN.",
         );
       }
       this.client = await connectGitHubMcp({

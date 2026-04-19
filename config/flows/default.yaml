@@ -1,7 +1,7 @@
 name: default
 
 providers:
-  ticket:       github-projects
+  ticket:       github-issues
   git:          github
   coding:       claude
   notification: slack          # stub — not called by any step below

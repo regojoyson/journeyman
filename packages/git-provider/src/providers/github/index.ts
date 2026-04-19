@@ -13,8 +13,10 @@ import { listPRs } from "./operations/list-prs.ts";
 import { cloneRepos } from "./operations/clone-repos.ts";
 
 export type GitHubProviderOptions = {
-  /** Personal Access Token. Falls back to GITHUB_ACCESS_TOKEN env var. */
+  /** Personal Access Token (explicit). Takes precedence over `tokenEnv`. */
   token?: string;
+  /** Name of an env var to read the token from (e.g. "SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN"). */
+  tokenEnv?: string;
 };
 
 export class GitHubProvider implements IGitProvider {
@@ -29,9 +31,14 @@ export class GitHubProvider implements IGitProvider {
   private client?: Client;
 
   constructor(opts: GitHubProviderOptions = {}) {
-    const token = opts.token ?? process.env.GITHUB_ACCESS_TOKEN;
+    const token =
+      opts.token
+      ?? (opts.tokenEnv ? process.env[opts.tokenEnv] : undefined)
+      ?? process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
-      throw new Error("GitHubProvider: PAT required. Pass opts.token or set GITHUB_ACCESS_TOKEN.");
+      throw new Error(
+        "GitHubProvider: PAT required. Pass opts.token, set opts.tokenEnv to a populated env var, or set GITHUB_ACCESS_TOKEN.",
+      );
     }
     this.token = token;
   }
