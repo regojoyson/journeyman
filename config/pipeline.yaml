@@ -20,7 +20,7 @@ workspaces:
 products:
   sam-portfolio:
     flow: default
-    workspace: ./workspaces/sam-portfolio
+    workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace
     concurrency: 1
 
     repos:
