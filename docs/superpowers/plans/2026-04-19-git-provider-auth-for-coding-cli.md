@@ -20,6 +20,7 @@
 - `packages/git-provider/src/providers/github/operations/clone-repos.ts` — `cloneRepos` implementation
 - `packages/git-provider/src/providers/github/operations/checkout-branch.ts` — `checkoutBranch` implementation
 - `packages/git-provider/src/providers/github/operations/checkout-branch.test.ts` — integration test using a real temp git repo
+- `packages/pipeline/src/phases/checkout-branch-phase.ts` — new `checkoutBranch` pipeline phase
 
 **Modify**
 - `packages/core/src/types/git.types.ts` — drop `SessionOptions`/`SessionResult` from `CloneReposOptions`/`CloneReposResult`; add `CheckoutBranchOptions`/`CheckoutBranchResult`
@@ -31,6 +32,10 @@
 - `packages/coding-cli/src/providers/gemini/index.ts` — remove `cloneRepos` method and import
 - `packages/coding-cli/src/providers/codex/index.ts` — remove `cloneRepos` method and import
 - `packages/pipeline/src/phases/clone-repos-phase.ts` — switch `ctx.providers.coding.cloneRepos` → `ctx.providers.git.cloneRepos`; drop `sessionId` from args
+- `packages/pipeline/src/index.ts` — export `CheckoutBranchPhase`
+- `packages/pipeline/src/cli-commands/run-once.ts` — register `"checkoutBranch"` phase
+- `packages/pipeline/src/cli-commands/validate-config.ts` — register `"checkoutBranch"` phase
+- `packages/pipeline-server/src/main.ts` — register `"checkoutBranch"` phase
 
 **Delete**
 - `packages/coding-cli/src/providers/claude/operations/clone-repos.ts`
@@ -845,7 +850,141 @@ git commit -m "refactor(pipeline): CloneReposPhase uses git provider instead of 
 
 ---
 
-## Task 9: Full workspace verification
+## Task 9: Add `CheckoutBranchPhase` to pipeline
+
+**Files:**
+- Create: `packages/pipeline/src/phases/checkout-branch-phase.ts`
+- Modify: `packages/pipeline/src/index.ts`
+- Modify: `packages/pipeline/src/cli-commands/run-once.ts`
+- Modify: `packages/pipeline/src/cli-commands/validate-config.ts`
+- Modify: `packages/pipeline-server/src/main.ts`
+
+- [ ] **Step 1: Create the phase file**
+
+Create `packages/pipeline/src/phases/checkout-branch-phase.ts`:
+
+```ts
+/**
+ * @file checkout-branch-phase.ts
+ * Switches (or creates) a working branch in the primary repo after analyze.
+ *
+ * Reads:  primaryRepoPath — local repo path (written by cloneRepos).
+ * Writes: featureBranch   — the branch that is now checked out.
+ *
+ * Config:
+ * - `pattern`    — branch name template (default: "feature/{ticket}").
+ *                  Supports `{ticket}` (ctx.ticketShortKey) substitution.
+ * - `fromBranch` — optional base ref; when omitted, branches from current HEAD.
+ * - `create`     — default true; when false, the branch must already exist.
+ *
+ * Fails if the provider returns an error (e.g. non-existent branch with create=false,
+ * dirty working tree, invalid branch name).
+ * Side effects: runs `git checkout` (and optionally `git branch`) in the primary repo.
+ */
+
+import { BasePhase } from "./base-phase.ts";
+import { unwrap, AdapterError } from "../adapter-unwrap.ts";
+import type { PhaseResult, PipelineContext } from "@journeyman/core";
+
+type Config = {
+  pattern?: string;
+  fromBranch?: string;
+  create?: boolean;
+};
+
+const DEFAULT_PATTERN = "feature/{ticket}";
+
+function renderBranch(pattern: string, ticket: string): string {
+  return pattern.replace(/\{ticket\}/g, ticket);
+}
+
+export class CheckoutBranchPhase extends BasePhase {
+  readonly name = "checkoutBranch";
+  static reads = ["primaryRepoPath"] as const;
+  static writes = ["featureBranch"] as const;
+
+  async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
+    const primaryRepoPath = this.require<string>(ctx, "primaryRepoPath");
+    const pattern = config.pattern ?? DEFAULT_PATTERN;
+    const branch = renderBranch(pattern, ctx.ticketShortKey);
+
+    const res = unwrap(await ctx.providers.git.checkoutBranch({
+      dirPath: primaryRepoPath,
+      branch,
+      fromBranch: config.fromBranch,
+      create: config.create,
+      signal: ctx.signal,
+    }), "checkoutBranch");
+
+    if (res.error) throw new AdapterError("checkoutBranch", res.error);
+    return this.ok({ featureBranch: res.branch });
+  }
+}
+```
+
+- [ ] **Step 2: Export from pipeline index**
+
+In [packages/pipeline/src/index.ts](packages/pipeline/src/index.ts), add a new line after the `CloneReposPhase` export:
+
+```ts
+export { CheckoutBranchPhase } from "./phases/checkout-branch-phase.ts";
+```
+
+- [ ] **Step 3: Register in `run-once.ts`**
+
+In [packages/pipeline/src/cli-commands/run-once.ts](packages/pipeline/src/cli-commands/run-once.ts):
+
+Add `CheckoutBranchPhase` to the import list from `"../index.ts"` (right after `CloneReposPhase`).
+
+Add the registration line right after the `"cloneRepos"` registration:
+
+```ts
+  phases.register("checkoutBranch",  () => new CheckoutBranchPhase());
+```
+
+- [ ] **Step 4: Register in `validate-config.ts`**
+
+In [packages/pipeline/src/cli-commands/validate-config.ts](packages/pipeline/src/cli-commands/validate-config.ts):
+
+Add `CheckoutBranchPhase` to the import list (right after `CloneReposPhase`).
+
+Add the registration line right after the `"cloneRepos"` registration:
+
+```ts
+    phases.register("checkoutBranch",  () => new CheckoutBranchPhase());
+```
+
+- [ ] **Step 5: Register in `pipeline-server`**
+
+In [packages/pipeline-server/src/main.ts](packages/pipeline-server/src/main.ts):
+
+Add `CheckoutBranchPhase` to the `@journeyman/pipeline` import list (right after `CloneReposPhase`).
+
+Add the registration line right after the `"cloneRepos"` registration:
+
+```ts
+  phases.register("checkoutBranch",  () => new CheckoutBranchPhase());
+```
+
+- [ ] **Step 6: Typecheck affected packages**
+
+Run:
+```bash
+cd packages/pipeline && npx tsc --noEmit
+cd ../pipeline-server && npx tsc --noEmit
+```
+Expected: no errors.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add packages/pipeline/src/phases/checkout-branch-phase.ts packages/pipeline/src/index.ts packages/pipeline/src/cli-commands/run-once.ts packages/pipeline/src/cli-commands/validate-config.ts packages/pipeline-server/src/main.ts
+git commit -m "feat(pipeline): add CheckoutBranchPhase driven by git provider"
+```
+
+---
+
+## Task 10: Full workspace verification
 
 - [ ] **Step 1: Typecheck every package**
 
