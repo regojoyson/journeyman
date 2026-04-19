@@ -4,7 +4,10 @@ import {
   PhaseRegistry, ProviderRegistry,
   GetTicketPhase, CloneReposPhase, AnalyzePhase, PlanPhase, ImplementPhase,
   CommitPushPhase, CreatePRPhase, CleanupReposPhase, AddCommentPhase,
-  UpdateStatusPhase, ReviewPhase, RequireFieldPhase,
+  UpdateStatusPhase, ReviewPhase, RequireFieldPhase, NotifyPhase,
+  ScanReposPhase, ResetReposPhase, CreateWorkspacePhase,
+  GetRepoPhase, ListPRsPhase,
+  CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
 } from "../index.ts";
 import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
@@ -33,6 +36,16 @@ export async function validateConfig(configPath: string): Promise<number> {
     phases.register("updateStatus",    () => new UpdateStatusPhase());
     phases.register("review",          () => new ReviewPhase());
     phases.register("requireField",    () => new RequireFieldPhase());
+    phases.register("notify",          () => new NotifyPhase());
+    phases.register("scanRepos",       () => new ScanReposPhase());
+    phases.register("resetRepos",      () => new ResetReposPhase());
+    phases.register("createWorkspace", () => new CreateWorkspacePhase());
+    phases.register("getRepo",         () => new GetRepoPhase());
+    phases.register("listPRs",         () => new ListPRsPhase());
+    phases.register("createTicket",    () => new CreateTicketPhase());
+    phases.register("updateTicket",    () => new UpdateTicketPhase());
+    phases.register("listTickets",     () => new ListTicketsPhase());
+    phases.register("getTicketSchema", () => new GetTicketSchemaPhase());
 
     const providers = new ProviderRegistry();
     for (const c of [
