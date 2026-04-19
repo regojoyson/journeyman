@@ -1,3 +1,26 @@
+/**
+ * @file http-server.ts
+ * Builds and configures the Fastify HTTP server for the pipeline server.
+ *
+ * Registers all API endpoint groups and trigger sources onto a single Fastify instance.
+ * A bearer-token middleware guards all `/api/*` routes except `/api/health` and
+ * `/api/trigger/*` (which perform their own auth).
+ *
+ * API groups:
+ *   GET  /api/health                         — liveness + registry counts
+ *   GET  /api/runs, GET /api/runs/:sessionId — run queries
+ *   GET  /api/runs/:sessionId/logs           — trace log retrieval
+ *   GET  /api/runs/:sessionId/stream         — SSE live event stream
+ *   POST /api/runs/:sessionId/cancel         — cancel in-flight run
+ *   POST /api/runs/:sessionId/resume         — resume blocked run
+ *   GET  /api/runs/:sessionId/artifacts/:key — download artifact blob
+ *   GET  /api/flows                          — list registered flows
+ *   GET  /api/providers                      — list registered providers by category
+ *
+ * Trigger sources (e.g. ApiTrigger, GitHubWebhookTrigger) mount their own routes
+ * via `ITriggerSource.mount()`.
+ */
+
 import Fastify, { type FastifyInstance } from "fastify";
 import sensible from "@fastify/sensible";
 import type {

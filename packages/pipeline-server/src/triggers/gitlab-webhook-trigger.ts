@@ -1,3 +1,25 @@
+/**
+ * @file gitlab-webhook-trigger.ts
+ * GitLab webhook trigger: POST /webhooks/gitlab/:productId
+ *
+ * Receives GitLab issue, merge request, and pipeline events and dispatches a run
+ * when all configured filters pass.
+ *
+ * Security: verifies the `X-Gitlab-Token` header using timing-safe string comparison
+ * against the product's secret (env var from `product.webhookSecrets.gitlab` or
+ * `opts.defaultSecretEnv`). GitLab sends a plain token rather than an HMAC.
+ *
+ * Filtering:
+ * - `product.ticketWorkflow.trigger.matchStatus` — if non-empty, the event's
+ *   `object_attributes.state` or `action` must match one of the listed values.
+ *
+ * Ticket key extraction: uses `opts.ticketKeyRegex` (default `/([A-Z]+-\d+)/`) to
+ * scan the event title and description for a Jira-style key (e.g. "EV-123").
+ * If no key is found the event is silently ignored (200 ignored).
+ *
+ * User fields are stripped from rawPayload before storage.
+ */
+
 import { timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { ITriggerSource, PipelineTrigger, TriggerMountContext, ProductConfig } from "@journeyman/core";

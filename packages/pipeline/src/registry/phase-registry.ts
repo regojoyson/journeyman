@@ -1,3 +1,13 @@
+/**
+ * @file phase-registry.ts
+ * Registry that maps phase names to factory functions.
+ *
+ * Each phase is registered once at boot (`register`), then instantiated fresh for
+ * every step execution (`resolve`). Using factories instead of singletons ensures
+ * phase instances carry no cross-run state. The FlowValidator calls `has` and `list`
+ * at boot to confirm all phases referenced by flows are available before accepting traffic.
+ */
+
 import type { IPhase } from "@journeyman/core";
 
 export type PhaseFactory = () => IPhase;

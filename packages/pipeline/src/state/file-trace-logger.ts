@@ -1,3 +1,18 @@
+/**
+ * @file file-trace-logger.ts
+ * ITraceLogger implementation that appends structured JSON log lines to per-step files.
+ *
+ * Layout: <rootDir>/<productId>/logs/<sessionId>/<stepId>.log
+ *
+ * Each line is a JSON-serialised TraceLine: `{ ts, level, stepId, message, meta }`.
+ * One file per step means logs for long-running steps stay isolated and can be tailed
+ * independently via the `stepId` filter in `read()`.
+ *
+ * `read()` is an async generator that loads all matching log files, merges and sorts
+ * by timestamp, then optionally slices to the last `tail` entries. This is suitable for
+ * the logs API endpoint which returns all lines for a session in one response.
+ */
+
 import { mkdirSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { appendFile } from "node:fs/promises";
 import { join } from "node:path";

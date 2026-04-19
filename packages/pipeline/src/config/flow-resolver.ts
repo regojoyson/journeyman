@@ -1,3 +1,16 @@
+/**
+ * @file flow-resolver.ts
+ * Resolves which flow and product to use for an incoming pipeline trigger.
+ *
+ * Resolution order (highest priority first):
+ *   1. `trigger.flowName` — explicit override sent by the caller.
+ *   2. `config.products[productId].flow` — product-level default.
+ *   3. `config.defaultFlow` — global fallback.
+ *
+ * Used by the server dispatcher to look up the correct FlowDefinition before
+ * handing off to the Pipeline runner.
+ */
+
 import type { IFlowResolver, PipelineTrigger, PipelineConfig } from "@journeyman/core";
 
 export class ConfigFlowResolver implements IFlowResolver {

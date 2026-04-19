@@ -1,3 +1,24 @@
+/**
+ * @file flow-validator.ts
+ * Boot-time static validation of all registered flows against phases, providers, and products.
+ *
+ * `FlowValidator.validate()` is called once during server startup before any run is accepted.
+ * It performs five checks in order:
+ *
+ *  1. **Phase existence** — every `phase` key referenced by a step is registered.
+ *  2. **Provider existence** — every provider id in `flow.providers` is registered for its category.
+ *  3. **Artifact DAG**     — for each step, all `static reads` keys are satisfied by a prior
+ *                            step's `static writes` or the initial seeded keys. A missing key
+ *                            fails boot immediately with the flow name, step id, and the gap.
+ *  4. **Defaults**         — `defaultFlow` exists in the loaded flow list.
+ *  5. **Product flows**    — every product's `flow` exists, and each product declares ≥ 1 repo.
+ *  6. **Status names**     — `updateStatus` steps reference semantic names defined in the
+ *                            product's `ticketWorkflow.statuses` map.
+ *
+ * Errors are thrown synchronously with a human-readable message that identifies the exact
+ * misconfiguration so it can be fixed without a live run failing first.
+ */
+
 import type { FlowDefinition, ProductConfig } from "@journeyman/core";
 import type { PhaseRegistry } from "../registry/phase-registry.ts";
 import type { ProviderRegistry } from "../registry/provider-registry.ts";

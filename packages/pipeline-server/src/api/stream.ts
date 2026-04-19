@@ -1,3 +1,16 @@
+/**
+ * @file stream.ts
+ * GET /api/runs/:sessionId/stream — Server-Sent Events (SSE) stream of pipeline events.
+ *
+ * On connect, replays all buffered events for the session so the client catches up on
+ * events that occurred before the connection was established. Then subscribes to live
+ * events and forwards them as SSE frames (`id`, `event`, `data`) until the client
+ * disconnects (tracked via the `close` event on the raw request socket).
+ *
+ * Event types: `runStarted`, `stepStarted`, `stepEnded`, `statusChanged`, `runEnded`.
+ * Each frame's `data` field is the JSON-serialised PipelineEvent.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { PipelineEvent } from "@journeyman/core";
 

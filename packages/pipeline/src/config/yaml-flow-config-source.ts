@@ -1,3 +1,16 @@
+/**
+ * @file yaml-flow-config-source.ts
+ * IFlowConfigSource that loads FlowDefinitions from YAML files in a directory.
+ *
+ * Use `YamlFlowConfigSource.fromDir(dir)` to parse all `.yaml` / `.yml` files in
+ * the flows directory. Each file is validated against the FlowSchema (Zod). Step ids
+ * default to the phase name when omitted, and duplicate ids within a flow cause a
+ * parse-time error rather than a silent runtime collision.
+ *
+ * The resulting instance is immutable — flows are read once at boot and cached in
+ * memory. Hot-reload requires a server restart.
+ */
+
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";

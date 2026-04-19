@@ -1,3 +1,23 @@
+/**
+ * @file api-trigger.ts
+ * Direct HTTP trigger: POST /api/trigger/:productId
+ *
+ * Allows external systems to start a pipeline run by calling the API directly,
+ * bypassing the webhook layer. The request must supply a bearer token matching
+ * the server's configured token.
+ *
+ * Request body: `{ ticketKey: string, ticketShortKey?: string, flowName?: string }`
+ *
+ * The trigger performs:
+ * - Bearer token validation (own check, not the global middleware).
+ * - Product existence check against the loaded product config.
+ * - Payload validation via Zod.
+ * - `ticketShortKey` derivation from `ticketKey` when omitted (extracts `#<number>`).
+ * - Authorization header is stripped from `rawPayload` before storage.
+ *
+ * Returns 202 Accepted immediately; the run executes asynchronously.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { ITriggerSource, PipelineTrigger, TriggerMountContext } from "@journeyman/core";
 import { z } from "zod";

@@ -1,3 +1,16 @@
+/**
+ * @file event-bus.ts
+ * In-process publish/subscribe bus for pipeline events with per-session replay buffering.
+ *
+ * The EventBus is the real-time backbone of the pipeline server. Each step start/end,
+ * status change, and run lifecycle event is published here. The SSE streaming endpoint
+ * calls `replay()` to catch up new subscribers, then `subscribe()` to receive live events.
+ *
+ * Buffer: each session keeps up to `bufferSize` (default 500) events in a circular
+ * ring — oldest are dropped when full. This bounds memory while still letting late
+ * subscribers reconstruct recent history.
+ */
+
 import type { PipelineEvent } from "@journeyman/core";
 
 type Listener = (e: PipelineEvent) => void;

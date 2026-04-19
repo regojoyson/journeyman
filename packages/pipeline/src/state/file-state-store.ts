@@ -1,3 +1,19 @@
+/**
+ * @file file-state-store.ts
+ * IStateStore implementation that persists PipelineRun state as JSON files on disk.
+ *
+ * Layout: <rootDir>/<productId>/state/<sessionId>.json
+ *
+ * Writes are atomic — the run is serialised to a `.tmp-<pid>-<ts>` file first, then
+ * renamed into place. This prevents partial writes from corrupting the stored state
+ * if the process dies mid-save.
+ *
+ * Queries (`find`, `findByTicket`, `findActiveForTicket`) scan the directory tree
+ * synchronously at call time. This is intentional: the store is designed for low-to-
+ * moderate volume where disk I/O is acceptable. A database-backed store would be the
+ * right upgrade path for high-throughput deployments.
+ */
+
 import { mkdirSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";

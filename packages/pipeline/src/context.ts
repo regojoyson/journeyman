@@ -1,3 +1,13 @@
+/**
+ * @file context.ts
+ * Factory for assembling a PipelineContext from a run and its runtime dependencies.
+ *
+ * PipelineContext is the single object passed into every phase's `run()` method.
+ * It bundles run identity (sessionId, ticketKey), the shared artifact bag, all
+ * four provider instances, storage handles, the event emitter, and the AbortSignal.
+ * `buildContext` constructs this object so the Pipeline class stays free of wiring detail.
+ */
+
 import type {
   PipelineContext, PipelineRun, PipelineEvent,
   ITraceLogger, IArtifactStore, ProductConfig,

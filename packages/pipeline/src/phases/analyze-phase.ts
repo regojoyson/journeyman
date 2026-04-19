@@ -1,3 +1,20 @@
+/**
+ * @file analyze-phase.ts
+ * AI-powered analysis of the primary repository relative to the ticket description.
+ *
+ * Reads:  primaryRepoPath — local repo path (written by cloneRepos).
+ *         ticketMd        — markdown ticket description (written by getTicket).
+ * Writes: analysis — AnalyzeResult including complexity, readinessScore, summary,
+ *                    and a reportHandle pointing to the full report in the artifact store.
+ *
+ * The raw report file produced by the coding provider is offloaded to the artifact
+ * store so the in-memory artifact bag stays lean. Downstream phases access it via
+ * `analysis.reportPath` (local temp path) or `analysis.reportHandle` (durable handle).
+ *
+ * Failure modes: provider error, missing repo path, context-window overflow on large repos.
+ * Side effects: reads files under primaryRepoPath; writes one artifact blob to the store.
+ */
+
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
 import type { AnalyzeResult, PhaseResult, PipelineContext } from "@journeyman/core";

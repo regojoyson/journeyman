@@ -1,3 +1,15 @@
+/**
+ * @file resume.ts
+ * POST /api/runs/:sessionId/resume — resume a blocked pipeline run.
+ *
+ * Calls `pipeline.resume(sessionId)` which locates the last blocked step in the
+ * run's flowSnapshot and continues execution from the step after it. Artifacts
+ * accumulated before the block are preserved.
+ *
+ * Returns 409 if the run is not in "blocked" status (e.g. already running, failed,
+ * or completed). Returns the updated PipelineRun on success.
+ */
+
 import type { FastifyInstance } from "fastify";
 
 export type PipelineLike = {

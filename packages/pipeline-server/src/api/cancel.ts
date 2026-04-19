@@ -1,3 +1,13 @@
+/**
+ * @file cancel.ts
+ * POST /api/runs/:sessionId/cancel — cancel an in-flight pipeline run.
+ *
+ * Calls `pipeline.cancel(sessionId)` which signals the run's AbortController.
+ * The runner detects the abort between steps and transitions the run to "cancelled".
+ * Returns the current run state (or a minimal object if the run is not found).
+ * Cancelling an already-terminal run is a no-op.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { IStateStore } from "@journeyman/core";
 

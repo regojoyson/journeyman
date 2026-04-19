@@ -1,3 +1,29 @@
+/**
+ * @file pipeline.ts
+ * Core pipeline orchestrator — run lifecycle, step execution, retry, resume, and recovery.
+ *
+ * Pipeline is the central class that turns a FlowDefinition + trigger into a PipelineRun.
+ * It owns:
+ * - `run()`    — start a new run, execute all steps in order, persist state after each step.
+ * - `resume()` — continue a blocked run from the step after the blocked one, using the
+ *                frozen flowSnapshot so the run is not sensitive to config changes after start.
+ * - `cancel()` — abort an in-flight run via AbortController.
+ * - `recover()` (static) — on server startup, mark any runs that were mid-execution when
+ *                the process crashed as failed so they don't remain stuck in "running".
+ *
+ * Step execution loop:
+ *   for each step → runStepWithAttempts → runPhaseSafe (catches thrown errors)
+ *   → ok: continue | blocked: halt + persist | failed: apply onFailure policy
+ *
+ * Retry: `step.retry.attempts` controls how many total attempts are made; `backoffMs`
+ * is a fixed delay between them. Exponential backoff is deferred to a future version.
+ *
+ * Timeouts: `step.timeoutMs` is composed with the run-level AbortSignal via `anySignal`.
+ *
+ * Cleanup: if `deps.cleanupOn` lists the terminal status, the workspace directory is
+ * deleted after the run finishes. Artifact storage is not touched.
+ */
+
 import { randomUUID } from "node:crypto";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";

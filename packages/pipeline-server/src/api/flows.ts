@@ -1,3 +1,12 @@
+/**
+ * @file flows.ts
+ * GET /api/flows — list all registered flows with their provider ids and step ids.
+ *
+ * Returns an array of `{ name, providers, steps: string[] }` — one entry per flow.
+ * Step ids are returned in declaration order. Full step config is omitted; use this
+ * endpoint for discovery and to verify flow registration after deploy.
+ */
+
 import type { FastifyInstance } from "fastify";
 import type { IFlowConfigSource } from "@journeyman/core";
 

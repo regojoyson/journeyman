@@ -1,3 +1,17 @@
+/**
+ * @file shutdown.ts
+ * Graceful shutdown helpers for SIGTERM / SIGINT handling.
+ *
+ * `installShutdownHandler` registers OS signal handlers that:
+ *   1. Cancel every in-flight pipeline run.
+ *   2. Poll `waitForDrain` until all runs have stopped (or timeout is exceeded).
+ *   3. Call `onClose` (e.g. `app.close()` to shut down the HTTP server).
+ *   4. Exit the process with code 0.
+ *
+ * This ensures in-progress steps can clean up and persist their final state
+ * before the process exits, rather than being killed mid-step.
+ */
+
 import type { Pipeline } from "./pipeline.ts";
 
 /** Poll until no runs are in flight, or timeout exceeded. */
