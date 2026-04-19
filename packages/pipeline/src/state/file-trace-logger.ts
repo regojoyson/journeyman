@@ -13,7 +13,7 @@
  * the logs API endpoint which returns all lines for a session in one response.
  */
 
-import { mkdirSync, existsSync, readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { appendFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ITraceLogger, TraceLine } from "@journeyman/core";
@@ -66,5 +66,22 @@ export class FileTraceLogger implements ITraceLogger {
     all.sort((a, b) => a.ts.localeCompare(b.ts));
     const sliced = opts.tail ? all.slice(-opts.tail) : all;
     for (const line of sliced) yield line;
+  }
+
+  async delete(sessionId: string): Promise<void> {
+    const productId = this.resolveProductId(sessionId);
+    const candidates = productId
+      ? [join(this.rootDir, productId, "logs", sessionId)]
+      : this.listProductDirs().map(p => join(p, "logs", sessionId));
+    for (const dir of candidates) {
+      if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  private listProductDirs(): string[] {
+    if (!existsSync(this.rootDir)) return [];
+    return readdirSync(this.rootDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => join(this.rootDir, d.name));
   }
 }

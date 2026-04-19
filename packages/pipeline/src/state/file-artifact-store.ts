@@ -16,7 +16,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdirSync, statSync } from "node:fs";
+import { mkdirSync, statSync, existsSync, readdirSync, rmSync } from "node:fs";
 import { copyFile, readFile, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import type { IArtifactStore, ArtifactHandle } from "@journeyman/core";
@@ -69,6 +69,23 @@ export class FileArtifactStore implements IArtifactStore {
 
   async get(handle: ArtifactHandle): Promise<Buffer> {
     return readFile(this.pathFor(handle));
+  }
+
+  async delete(sessionId: string): Promise<void> {
+    const productId = this.resolveProductId(sessionId);
+    const candidates = productId
+      ? [join(this.rootDir, productId, "artifacts", sessionId)]
+      : this.listProductDirs().map(p => join(p, "artifacts", sessionId));
+    for (const dir of candidates) {
+      if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  private listProductDirs(): string[] {
+    if (!existsSync(this.rootDir)) return [];
+    return readdirSync(this.rootDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => join(this.rootDir, d.name));
   }
 
   pathFor(handle: ArtifactHandle): string {

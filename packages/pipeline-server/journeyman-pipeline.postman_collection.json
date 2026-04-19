@@ -234,6 +234,21 @@
             },
             "description": "Resume a run that is in `blocked` status. Continues from the step after the blocked one. Returns 409 if the run is not blocked."
           }
+        },
+        {
+          "name": "Delete run",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/runs/{{sessionId}}?force=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "runs", "{{sessionId}}"],
+              "query": [
+                { "key": "force", "value": "false", "description": "Set to `true` to cancel and delete an active run (queued/running/blocked/cancelling). Without force, active runs return 409." }
+              ]
+            },
+            "description": "Delete a pipeline run and all its local data: trace logs, artifacts, run workspace directory, and state record. Returns 204 on success, 404 if the run does not exist, 409 if the run is active and `force` is not set. Does NOT touch upstream tickets."
+          }
         }
       ]
     },

@@ -12,6 +12,7 @@
  *   GET  /api/runs/:sessionId/logs           — trace log retrieval
  *   GET  /api/runs/:sessionId/stream         — SSE live event stream
  *   POST /api/runs/:sessionId/cancel         — cancel in-flight run
+ *   DELETE /api/runs/:sessionId              — delete run state/logs/artifacts/workspace
  *   POST /api/runs/:sessionId/resume         — resume blocked run
  *   GET  /api/runs/:sessionId/artifacts/:key — download artifact blob
  *   GET  /api/flows                          — list registered flows
@@ -33,6 +34,7 @@ import { registerRunsApi } from "./api/runs.ts";
 import { registerLogsApi } from "./api/logs.ts";
 import { registerStreamApi, type EventBusLike } from "./api/stream.ts";
 import { registerCancelApi } from "./api/cancel.ts";
+import { registerDeleteApi } from "./api/delete.ts";
 import { registerResumeApi } from "./api/resume.ts";
 import { registerArtifactsApi } from "./api/artifacts.ts";
 import { registerFlowsApi } from "./api/flows.ts";
@@ -73,6 +75,13 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerLogsApi(app, deps);
   registerStreamApi(app, deps);
   registerCancelApi(app, { pipeline: deps.pipeline as any, state: deps.state });
+  registerDeleteApi(app, {
+    pipeline: deps.pipeline as any,
+    state: deps.state,
+    trace: deps.trace,
+    artifactStore: deps.artifactStore,
+    config: deps.config,
+  });
   registerResumeApi(app, { pipeline: deps.pipeline as any });
   registerArtifactsApi(app, { state: deps.state, artifactStore: deps.artifactStore });
   registerFlowsApi(app, deps);

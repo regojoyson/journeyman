@@ -15,7 +15,7 @@
  */
 
 import { mkdirSync, readFileSync, readdirSync, existsSync } from "node:fs";
-import { rename, writeFile } from "node:fs/promises";
+import { rename, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { IStateStore, PipelineRun } from "@journeyman/core";
 
@@ -45,6 +45,17 @@ export class FileStateStore implements IStateStore {
     const tmp = `${final}.tmp-${process.pid}-${Date.now()}`;
     await writeFile(tmp, JSON.stringify(run, null, 2), "utf8");
     await rename(tmp, final);
+  }
+
+  async delete(sessionId: string): Promise<boolean> {
+    for (const pid of this.listProducts()) {
+      const p = join(this.dirFor(pid), `${sessionId}.json`);
+      if (existsSync(p)) {
+        await unlink(p);
+        return true;
+      }
+    }
+    return false;
   }
 
   async findByTicket(productId: string, ticketKey: string): Promise<PipelineRun[]> {

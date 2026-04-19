@@ -38,6 +38,8 @@ export interface IPhase {
 export interface IStateStore {
   load(sessionId: string): Promise<PipelineRun | null>;
   save(run: PipelineRun): Promise<void>;
+  /** Delete the stored run record. Returns true if a record was removed. */
+  delete(sessionId: string): Promise<boolean>;
   findByTicket(productId: string, ticketKey: string): Promise<PipelineRun[]>;
   findActiveForTicket(productId: string, ticketKey: string): Promise<PipelineRun | null>;
   find(query: { productId?: string; status?: PipelineRun["status"]; limit?: number }): Promise<PipelineRun[]>;
@@ -52,6 +54,8 @@ export interface ITraceLogger {
     meta?: Record<string, unknown>,
   ): Promise<void>;
   read(sessionId: string, opts?: { stepId?: string; tail?: number }): AsyncIterable<TraceLine>;
+  /** Delete all trace logs for a session. No-op if none exist. */
+  delete(sessionId: string): Promise<void>;
 }
 
 export interface IArtifactStore {
@@ -69,6 +73,8 @@ export interface IArtifactStore {
   ): Promise<ArtifactHandle>;
   get(handle: ArtifactHandle): Promise<Buffer>;
   pathFor(handle: ArtifactHandle): string;
+  /** Delete all artifacts stored for a session. No-op if none exist. */
+  delete(sessionId: string): Promise<void>;
 }
 
 export interface IFlowConfigSource {

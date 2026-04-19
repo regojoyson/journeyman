@@ -65,6 +65,10 @@ export class Pipeline {
     if (ac) ac.abort();
   }
 
+  isRunning(sessionId: string): boolean {
+    return this.aborters.has(sessionId);
+  }
+
   async run({ trigger, flow }: RunArgs): Promise<PipelineRun> {
     const now = () => new Date().toISOString();
     const sessionId = randomUUID();
