@@ -96,6 +96,7 @@ All `/api/*` routes (except `/api/health` and `/api/trigger/*`) require `Authori
 | `GET` | `/api/runs/:sessionId/artifacts/:key` | Download a named artifact |
 | `POST` | `/api/runs/:sessionId/cancel` | Cancel a running pipeline |
 | `POST` | `/api/runs/:sessionId/resume` | Resume a blocked pipeline (re-runs the blocked step; see below) |
+| `POST` | `/api/human-loop/advance` | Advance a blocked run by `(productId, ticketKey)` instead of `sessionId` (see below) |
 | `POST` | `/api/trigger/:productId` | Manually trigger a run |
 
 ### Resuming a blocked run
@@ -117,6 +118,45 @@ When no body is provided, the phase is re-run with only `ctx.artifacts.__resumed
 This endpoint is rarely called manually when using `reviewLoop` — the webhook dispatcher routes ticket status-change events to this endpoint automatically via `findActiveForTicket` (see [docs/triggers.md](./triggers.md#status-change-routing)).
 
 **Response:** the updated run object. Returns `409 Conflict` if the run is not in `blocked` state.
+
+### Manually advancing a human-loop run
+
+`POST /api/human-loop/advance` advances a blocked run keyed by `(productId, ticketKey)` rather than `sessionId`. The server resolves the active run via `state.findActiveForTicket(productId, ticketKey)` and then calls the same resume machinery used by `/api/runs/:sessionId/resume`, forwarding the supplied `status` as `ticketStatus`.
+
+This endpoint is intended for surfaces that know *which ticket* the human is acting on but do not have a `sessionId` in hand — Slack action buttons, internal UI controls, CLI helpers, and integration tests. Webhook-driven status changes continue to flow through the dispatcher and should not use this route.
+
+**Request body** (required, JSON):
+
+```json
+{ "productId": "acme-web", "ticketKey": "PROJ-123", "status": "plan-approved" }
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `productId` | string | Yes | Product whose blocked run should advance. |
+| `ticketKey` | string | Yes | Ticket key identifying the run. |
+| `status` | string | Yes | Ticket status literal — forwarded to `pipeline.resume` as `ticketStatus` and placed on `ctx.artifacts.__resumeStatus` for the blocked phase to consume. |
+
+**Response** (`200 OK`):
+
+```json
+{ "sessionId": "<resolved>", "previousStatus": "blocked", "triggeredWith": "plan-approved" }
+```
+
+**Failure modes:**
+
+| Code | Meaning |
+|---|---|
+| `400 Bad Request` | `productId`, `ticketKey`, or `status` missing from the body. |
+| `404 Not Found` | No active run exists for `(productId, ticketKey)`. |
+| `409 Conflict` | A run was found but its status is not `blocked` (e.g. `running`, `completed`, `failed`). |
+| `500 Internal Server Error` | `pipeline.resume` threw while re-running the blocked step. |
+
+**Use cases:**
+
+- Slack action buttons that advance a review loop without plumbing `sessionId` through the message payload.
+- Internal UI controls that operate on ticket context (e.g. an "Approve plan" button on a ticket dashboard).
+- Integration tests that want to deterministically advance a blocked phase without looking up the session ID first.
 
 ### Run status values
 

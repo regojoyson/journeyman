@@ -65,6 +65,9 @@ function buildPrompt(opts: AnalyzeOptions): string {
   const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from dirPath)";
   const focus = opts.focus?.trim();
   const docsDir = `${opts.dirPath.replace(/\/+$/, "")}/docs/analyze`;
+  const reviewBlock = opts.reviewComments
+    ? `\n\n## Reviewer feedback (incorporate into the revised analysis)\n\n${opts.reviewComments}\n`
+    : "";
 
   return [
     "You are a senior staff engineer performing a speckit-style analysis of a ticket against a codebase.",
@@ -76,7 +79,7 @@ function buildPrompt(opts: AnalyzeOptions): string {
     "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision.",
     "  5. Do not stall, loop, or abandon the task. Always produce a complete report — even a partial analysis is better than no output.",
     "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON report.",
-    "",
+    `${reviewBlock}`,
     "=== TICKET ===",
     ticket,
     "",
