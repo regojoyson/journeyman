@@ -12,7 +12,7 @@ import {
   GetRepoPhase, ListPRsPhase,
   CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
 } from "../index.ts";
-import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
+import { ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import {
   JiraProvider, LinearProvider, MondayProvider,
@@ -76,7 +76,7 @@ export async function runOnce(
 
   const providers = new ProviderRegistry();
   for (const c of [
-    ClaudeProvider, GeminiProvider, CodexProvider,
+    ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider,
     GitHubProvider, GitLabProvider,
     JiraProvider, LinearProvider, MondayProvider,
     GitHubIssuesProvider, GitHubProjectsProvider,

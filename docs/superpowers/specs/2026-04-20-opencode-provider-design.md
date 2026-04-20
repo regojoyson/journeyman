@@ -108,8 +108,10 @@ packages/coding-cli/src/providers/opencode/
 
 ## 6. Client Factory (`client.ts`)
 
+> **Note:** We import from `@opencode-ai/sdk/v2` because the v1 API does not support `format: { type: "json_schema" }` on prompts or the `structured` field on assistant messages. v2 is where structured output lives.
+
 ```ts
-import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk"
+import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk/v2"
 import type { OpenCodeProviderConfig } from "./types.ts"
 
 const DEFAULT_PERMISSION = { bash: "allow", edit: "allow", webfetch: "allow" }
