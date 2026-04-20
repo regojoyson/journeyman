@@ -24,7 +24,7 @@
 
 **Exclusions:**
 - `*.test.ts` files — leave `console.*` untouched
-- `packages/pipeline-server/journeyman-pipeline.postman_collection.json` — JSON payload, not our code
+- `docs/journeyman-pipeline.postman_collection.json` — JSON payload, not our code
 - `packages/coding-cli/src/providers/claude/operations/checkout-repo.ts:111` — inside a JSDoc comment example, leave as-is
 - `packages/coding-cli/src/providers/claude/operations/commit-push-repos.ts:235` — already commented out, leave as-is
 

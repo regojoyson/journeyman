@@ -87,10 +87,10 @@ npm run sweep
 
 Full reference docs:
 
-- [Configuration reference](../../docs/configuration.md) — `pipeline.yaml` schema, adapters, secrets
-- [Flows reference](../../docs/flows.md) — flow definition, phase ordering, conditionals
-- [Phases catalog](../../docs/phases.md) — all built-in phases, inputs/outputs, examples
-- [Products guide](../../docs/products.md) — product config, repo mapping, multi-tenant
-- [Artifacts model](../../docs/artifacts.md) — state, context, results, TTL
-- [Security](../../docs/security.md) — secret handling, RBAC, audit
-- [Troubleshooting](../../docs/troubleshooting.md) — common issues, debug mode, logs
+- [Configuration reference](./configuration.md) — `pipeline.yaml` schema, adapters, secrets
+- [Flows reference](./flows.md) — flow definition, phase ordering, conditionals
+- [Phases catalog](./phases.md) — all built-in phases, inputs/outputs, examples
+- [Products guide](./products.md) — product config, repo mapping, multi-tenant
+- [Artifacts model](./artifacts.md) — state, context, results, TTL
+- [Security](./security.md) — secret handling, RBAC, audit
+- [Troubleshooting](./troubleshooting.md) — common issues, debug mode, logs

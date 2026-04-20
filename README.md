@@ -16,7 +16,7 @@ journeyman/
 │   ├── core/                    @journeyman/core                   — interfaces + types only
 │   ├── coding-cli/              @journeyman/coding-cli             — Claude / Gemini / Codex
 │   ├── git-provider/            @journeyman/git-provider           — GitHub / GitLab REST
-│   ├── github-mcp/              @journeyman/github-mcp             — shared GitHub MCP client
+│   ├── github-api/              @journeyman/github-api             — shared GitHub Octokit client (REST + GraphQL)
 │   ├── ticket-provider/         @journeyman/ticket-provider        — Jira / Linear / Monday / GitHub Issues / GitHub Projects
 │   ├── notification-provider/   @journeyman/notification-provider  — Slack
 │   ├── pipeline/                @journeyman/pipeline               — runner + phases + registries + CLI
