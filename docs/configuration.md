@@ -279,7 +279,7 @@ repos:
     defaultBranch: main
 ```
 
-Provider: `GitHubProvider` (REST API + GitHub MCP).
+Provider: `GitHubProvider` (REST API via `@journeyman/github-api` Octokit client).
 Expects: `GITHUB_ACCESS_TOKEN` environment variable.
 
 ### GitLab

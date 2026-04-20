@@ -38,7 +38,7 @@ The HTTP caller always gets a fast `202 Accepted` — the pipeline run is fire-a
 
 ## Quickstart
 
-See [docs/setup.md](../../docs/setup.md) for a complete step-by-step walkthrough.
+See [docs/setup.md](./setup.md) for a complete step-by-step walkthrough.
 
 **Short version:**
 
@@ -165,6 +165,6 @@ The **Trigger run (API)** request automatically saves the returned `sessionId` i
 
 ## Further reading
 
-- [Setup guide](../../docs/setup.md) — first-time setup, env vars, config files
-- [Add a new product](../../docs/new-product.md) — add a product to an existing instance
-- [Pipeline README](../pipeline/README.md) — flow YAML reference, phase catalog, CLI commands
+- [Setup guide](./setup.md) — first-time setup, env vars, config files
+- [Add a new product](./new-product.md) — add a product to an existing instance
+- [Pipeline](./pipeline.md) — flow YAML reference, phase catalog, CLI commands
