@@ -221,7 +221,7 @@ providerConfig:
     slackChannel: "#pipeline-notifications"
 ```
 
-Structure is provider-dependent. Consult provider documentation for valid keys.
+Structure is provider-dependent. See [docs/providers.md](providers.md) for all provider IDs, their config fields, and required environment variables.
 
 ### ticketWorkflow
 
