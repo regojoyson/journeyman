@@ -133,7 +133,7 @@
               "mode": "raw",
               "raw": "{\n  \"action\": \"labeled\",\n  \"issue\": {\n    \"number\": 42,\n    \"labels\": [{ \"name\": \"journeyman\" }]\n  },\n  \"repository\": {\n    \"full_name\": \"owner/repo\"\n  }\n}"
             },
-            "description": "Simulates a GitHub webhook event. You must provide a valid `x-hub-signature-256` header (HMAC-SHA256 of the raw body with your configured secret). The label in `issue.labels` must match the product's `ticketWorkflow.trigger.matchLabels` if configured."
+            "description": "Simulates a GitHub webhook event. You must provide a valid `x-hub-signature-256` header (HMAC-SHA256 of the raw body with your configured secret). The label in `issue.labels` must match the product's `ticketWorkflow.trigger.matchLabels` if configured.\n\n**Event classification:**\n- `action=opened|reopened` → `eventType=new-ticket` (starts a new run)\n- `action=labeled|unlabeled` → `eventType=status-change`, `newStatus=<label name>` (resumes a blocked run if one exists — drives the human review loop)\n- `action=created` on `issue_comment` or issue with comment → `eventType=comment`"
           }
         },
         {
@@ -171,9 +171,9 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"webhookEvent\": \"jira:issue_updated\",\n  \"issue\": {\n    \"key\": \"PROJ-42\",\n    \"fields\": {\n      \"status\": { \"name\": \"In Progress\" },\n      \"labels\": [\"journeyman\"]\n    }\n  }\n}"
+              "raw": "{\n  \"webhookEvent\": \"jira:issue_updated\",\n  \"issue\": {\n    \"key\": \"PROJ-42\",\n    \"fields\": {\n      \"status\": { \"name\": \"In Progress\" },\n      \"labels\": [\"journeyman\"]\n    }\n  },\n  \"changelog\": {\n    \"items\": [\n      { \"field\": \"status\", \"fromString\": \"To Do\", \"toString\": \"In Progress\" }\n    ]\n  }\n}"
             },
-            "description": "Simulates a Jira webhook event."
+            "description": "Simulates a Jira webhook event.\n\n**Event classification:**\n- `webhookEvent=jira:issue_created` → `eventType=new-ticket`\n- `webhookEvent=jira:issue_updated` with a `changelog.items[]` whose `field==\"status\"` → `eventType=status-change`, `newStatus=<changelog.items[].toString>` (resumes a blocked run — drives the human review loop)\n- `webhookEvent=comment_created` → `eventType=comment`"
           }
         }
       ]
@@ -232,8 +232,52 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "runs", "{{sessionId}}", "resume"]
             },
-            "description": "Resume a run that is in `blocked` status. Continues from the step after the blocked one. Returns 409 if the run is not blocked."
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketStatus\": \"completed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Resume a run that is in `blocked` status. **Re-runs the blocked step** (it isn't skipped) — the phase decides whether to `ok` / re-block / fail based on the injected `ctx.artifacts.__resumeStatus`.\n\nBody (optional):\n- `ticketStatus` — literal ticket status value to inject (used by `reviewLoop` and `awaitTicketStatus` phases). Omit for non-human-loop gates that just need a poke.\n\nReturns 409 if the run is not blocked."
           }
+        },
+        {
+          "name": "Advance human-loop run (by ticket)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/human-loop/advance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "human-loop", "advance"]
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"ticketKey\": \"owner/repo#42\",\n  \"status\": \"completed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Manually advance a human-loop blocked run, keyed by `(productId, ticketKey)` instead of sessionId. Looks up the active blocked run and calls resume internally with the given ticket status.\n\nIntended for Slack action buttons, internal UIs, and testing. Webhooks still use the dispatcher path (`/webhooks/...`) and shouldn't call this endpoint.\n\nBody:\n- `productId` (required)\n- `ticketKey`  (required) — e.g. `owner/repo#42` or `PROJ-42`\n- `status`     (required) — semantic or literal status (e.g. `completed`, `rework-requested`, `plan-approved`).\n\nResponse 200: `{ sessionId, previousStatus: 'blocked', triggeredWith }`.\n\nErrors:\n- 400 — missing any of productId/ticketKey/status\n- 404 — no active run for that ticket\n- 409 — run exists but is not blocked"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"sessionId\": \"abc-123\",\n  \"previousStatus\": \"blocked\",\n  \"triggeredWith\": \"completed\"\n}"
+            },
+            {
+              "name": "404 no active run",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{ \"error\": \"no active run for my-product/owner/repo#42\" }"
+            },
+            {
+              "name": "409 not blocked",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{ \"error\": \"run abc-123 is running, not blocked\" }"
+            }
+          ]
         },
         {
           "name": "Delete run",
