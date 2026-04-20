@@ -193,6 +193,51 @@ Server checks `changelog.items[*]` where `field === "status"` and matches the `t
 
 ---
 
+## Status-change routing
+
+When a flow uses the `reviewLoop` or `awaitTicketStatus` phase, the ticket status change itself is the human approval signal. The dispatcher detects status-change events on webhooks and automatically resumes the corresponding blocked run — no manual `POST /api/runs/:sessionId/resume` call is needed.
+
+### Event-type classification
+
+Each incoming webhook is classified into one of three `PipelineTrigger.eventType` values (`"new-ticket" | "status-change" | "comment"`) and, for status changes, the literal status value is placed on `PipelineTrigger.newStatus`.
+
+**GitHub** (`github-webhook-trigger.ts`) — GitHub Issues has no first-class status field, so labels are treated as the status primitive:
+
+| GitHub event | `action` | `eventType` | `newStatus` |
+|---|---|---|---|
+| `issues` | `opened` / `reopened` | `new-ticket` | _(none)_ |
+| `issues` | `labeled` / `unlabeled` | `status-change` | `label.name` |
+| `issues` | `created` (with `comment`) | `comment` | _(none)_ |
+| `issue_comment` | any | `comment` | _(none)_ |
+| `pull_request` | `labeled` / `unlabeled` | `status-change` | `label.name` |
+
+**Jira** (`jira-webhook-trigger.ts`) — Jira status transitions arrive as changelog entries on the `issue_updated` webhook:
+
+| Jira `webhookEvent` | Condition | `eventType` | `newStatus` |
+|---|---|---|---|
+| `jira:issue_created` | — | `new-ticket` | _(none)_ |
+| `jira:issue_updated` | `changelog.items[*].field === "status"` | `status-change` | `changelog.items[*].toString` |
+| `comment_created` | — | `comment` | _(none)_ |
+
+The literal `newStatus` is passed to the pipeline as-is. Semantic resolution against `productConfig.ticketWorkflow.statuses` happens inside the `reviewLoop` / `awaitTicketStatus` phase.
+
+### Dispatcher routing table
+
+With the trigger classified, the dispatcher decides whether to start a new run, resume an existing one, or drop the event:
+
+| `eventType` | existing run for `(productId, ticketKey)` | action |
+|---|---|---|
+| `new-ticket` | none | start new run |
+| `new-ticket` | any | deduplicate — return existing `sessionId` |
+| `status-change` | `blocked` | `pipeline.resume(sessionId, { ticketStatus: newStatus })` |
+| `status-change` | `running` / `queued` | ignore (deduplicate) |
+| `status-change` | none | ignore (drop — nothing to resume) |
+| `comment` | any | (reserved; currently no-op for loop routing) |
+
+Session lookup uses `IStateStore.findActiveForTicket(productId, ticketKey)` — the webhook never needs to carry a `sessionId`.
+
+---
+
 ## Trigger Dispatcher Behavior
 
 For every accepted trigger (after signature/auth verification and body parsing):

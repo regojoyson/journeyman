@@ -7,6 +7,7 @@ import {
   GetTicketPhase, CloneReposPhase, AnalyzePhase, PlanPhase, ImplementPhase,
   CommitPushPhase, CreatePRPhase, CleanupReposPhase, AddCommentPhase,
   UpdateStatusPhase, ReviewPhase, RequireFieldPhase, CheckoutRepoPhase,
+  ReviewLoopPhase, AwaitTicketStatusPhase, FetchTicketCommentsPhase, FetchPRCommentsPhase,
 } from "@journeyman/pipeline";
 import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
@@ -56,6 +57,10 @@ export async function startServer(configPath: string): Promise<void> {
   phases.register("updateStatus",    () => new UpdateStatusPhase());
   phases.register("review",          () => new ReviewPhase());
   phases.register("requireField",    () => new RequireFieldPhase());
+  phases.register("awaitTicketStatus",    () => new AwaitTicketStatusPhase());
+  phases.register("fetchTicketComments",  () => new FetchTicketCommentsPhase());
+  phases.register("fetchPRComments",      () => new FetchPRCommentsPhase());
+  phases.register("reviewLoop",           () => new ReviewLoopPhase(phases));
 
   const providers = new ProviderRegistry();
   for (const c of [

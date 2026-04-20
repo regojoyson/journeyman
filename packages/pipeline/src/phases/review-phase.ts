@@ -21,7 +21,8 @@ export class ReviewPhase extends BasePhase {
   static reads = [] as const;
   static writes = [] as const;
 
-  async run(_ctx: PipelineContext): Promise<PhaseResult> {
+  async run(ctx: PipelineContext): Promise<PhaseResult> {
+    if (ctx.artifacts.__resumed === true) return this.ok({});
     return this.blocked("awaiting human review", "pr-comment");
   }
 }

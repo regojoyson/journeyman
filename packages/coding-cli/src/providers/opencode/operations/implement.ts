@@ -93,6 +93,9 @@ function buildPrompt(opts: ImplementOptions): string {
   const rules = [...DEFAULT_RULES, ...(opts.extraRules ?? [])]
     .map((r, i) => `  ${i + 1}. ${r}`)
     .join("\n");
+  const reviewBlock = opts.reviewComments
+    ? `\n\n## Reviewer feedback (address during implementation)\n\n${opts.reviewComments}\n`
+    : "";
 
   return [
     "You are a senior staff engineer IMPLEMENTING a ticket autonomously.",
@@ -104,7 +107,7 @@ function buildPrompt(opts: ImplementOptions): string {
     "  4. Ship working code — do not leave TODO stubs where a real implementation is expected.",
     "  5. If a step is blocked, mark it 'failed' with a clear note and move on.",
     "  6. Never output prose asking for confirmation. The only output is the final JSON report.",
-    "",
+    `${reviewBlock}`,
     "=== TICKET / GOAL ===",
     ticket,
     "",

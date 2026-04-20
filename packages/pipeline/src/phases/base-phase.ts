@@ -36,8 +36,9 @@ export abstract class BasePhase implements IPhase {
   protected blocked(
     reason: string,
     waitFor?: "ticket-comment" | "pr-comment" | "manual",
+    artifacts?: Record<string, unknown>,
   ): PhaseResult {
-    return { status: "blocked", reason, waitFor };
+    return { status: "blocked", reason, waitFor, artifacts };
   }
 
   protected failed(message: string, code?: string): PhaseResult {

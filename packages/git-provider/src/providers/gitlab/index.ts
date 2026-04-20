@@ -4,6 +4,7 @@ import type {
   CreatePROptions, CreatePRResult,
   ListPROptions, ListPRResult,
   CloneReposOptions, CloneReposResult,
+  ListPRCommentsOptions, ListPRCommentsResult,
 } from "@journeyman/core";
 
 /** GitLab REST API provider. Not yet implemented. */
@@ -19,4 +20,5 @@ export class GitLabProvider implements IGitProvider {
   createPR(_opts: CreatePROptions): Promise<CreatePRResult> { throw new Error("GitLabProvider.createPR not implemented"); }
   async listPRs(_opts: ListPROptions): Promise<ListPRResult> { throw new Error("GitLabProvider.listPRs not implemented"); }
   async cloneRepos(_opts: CloneReposOptions): Promise<CloneReposResult> { throw new Error("GitLabProvider.cloneRepos not implemented"); }
+  async listPRComments(_opts: ListPRCommentsOptions): Promise<ListPRCommentsResult> { throw new Error("GitLabProvider.listPRComments not implemented"); }
 }

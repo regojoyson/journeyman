@@ -31,14 +31,33 @@ export type DispatchDeps = {
   semaphores: SemaphorePool;
 };
 
-export type DispatchResult = { sessionId?: string; deduplicated?: boolean };
+export type DispatchResult = { sessionId?: string; deduplicated?: boolean; resumed?: boolean };
 
 export function buildDispatcher(deps: DispatchDeps): (trigger: PipelineTrigger) => Promise<DispatchResult> {
   return async (trigger) => {
     const { productId, flowName } = await deps.resolver.resolve(trigger);
 
     const existing = await deps.state.findActiveForTicket(productId, trigger.ticketKey);
-    if (existing) return { sessionId: existing.sessionId, deduplicated: true };
+
+    if (existing) {
+      // Route status-change events for blocked runs → resume.
+      if (existing.status === "blocked" && trigger.eventType === "status-change") {
+        void (async () => {
+          try {
+            await deps.pipeline.resume(existing.sessionId, { ticketStatus: trigger.newStatus });
+          } catch (err) {
+            log.error({ err, sessionId: existing.sessionId }, "resume failure");
+          }
+        })();
+        return { sessionId: existing.sessionId, resumed: true } as DispatchResult;
+      }
+      return { sessionId: existing.sessionId, deduplicated: true };
+    }
+
+    if (trigger.eventType === "status-change") {
+      // No run to resume and this is not a fresh-start event — drop.
+      return { deduplicated: true };
+    }
 
     if (!deps.mutex.acquire(productId, trigger.ticketKey)) {
       return { deduplicated: true };

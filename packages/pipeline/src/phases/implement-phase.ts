@@ -38,6 +38,7 @@ export class ImplementPhase extends BasePhase {
       planReportPath: plan.reportPath,
       sessionId: ctx.sessionId,
       signal: ctx.signal,
+      reviewComments: ctx.artifacts.reviewComments as string | undefined,
     }), "implement") as ImplementResult;
 
     if (!result.success) return this.failed(result.error ?? "implement returned success=false");

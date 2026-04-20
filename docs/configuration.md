@@ -257,6 +257,24 @@ Maps semantic status names (used in `updateStatus` phase steps) to literal statu
 
 If a flow step references a semantic status not defined here, validation fails.
 
+#### Semantic status names for review loops
+
+When using the `reviewLoop` or `awaitTicketStatus` phases (see [docs/flows.md](flows.md#human-review-loops)), the `approveStatus`/`reworkStatus`/`continueOn`/`failOn` config values are also looked up through this map. The following semantic names are the recommended canonical set for human-loop products:
+
+| Semantic name | Meaning |
+|---|---|
+| `development-started` | Run has begun work (set after clone/checkout). |
+| `analyze-approved` | Reviewer accepted the analysis — proceed to plan. |
+| `analyze-rework` | Reviewer asked for analysis changes — re-run analyze with feedback. |
+| `plan-approved` | Reviewer accepted the plan — proceed to implement. |
+| `plan-rework` | Reviewer asked for plan changes — re-run plan with feedback. |
+| `code-review` | PR opened; awaiting code review. |
+| `rework-requested` | Reviewer asked for code changes — re-run plan/implement/commit-push with PR feedback. |
+| `completed` | Run finished successfully. |
+| `failed` | Run terminated in failure (optionally used as a `failOn` target). |
+
+Map each of these to whatever literal status / label value your ticket provider uses (GitHub labels, Jira workflow steps, Linear states, etc.). Only define the names actually referenced by your flow — flows that don't use `reviewLoop` don't need any of these.
+
 ### webhookSecrets
 
 Additional webhook verification secrets for this product, beyond the global server webhook secrets.

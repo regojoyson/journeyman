@@ -28,6 +28,7 @@ export interface PipelineContext {
   trace: ITraceLogger;
   artifactStore: IArtifactStore;
   emit: (event: PipelineEvent) => void;
+  currentStepId: string;                       // NEW
 }
 
 export interface IPhase {

@@ -231,6 +231,86 @@ Stub gate phase that unconditionally returns `PhaseResult.blocked`, halting the 
 
 ---
 
+### `reviewLoop`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `reviewLoop` |
+| **reads** | _(none declared; sub-phases declare their own reads)_ |
+| **writes** | `${stepId}_cycles`, `${stepId}_outcome` |
+| **Step config** | `approveStatus: string`, `reworkStatus: string`, `onRework: string[]`, `maxCycles?: number` (default 3) |
+| **Source** | `packages/pipeline/src/phases/review-loop-phase.ts` |
+
+Generic compound review-loop phase. On first entry, blocks awaiting a ticket status change. When resumed, maps the literal `ctx.artifacts.__resumeStatus` to a semantic name via `productConfig.ticketWorkflow.statuses`:
+
+- Matches `approveStatus` — returns `ok()` and records `${stepId}_outcome: "approved"`.
+- Matches `reworkStatus` — executes each phase in `onRework` in order (pulled from `PhaseRegistry`), increments the per-step cycle counter, and re-blocks. If `maxCycles` would be exceeded, fails the run.
+- Any other status — re-blocks awaiting the correct signal.
+
+Cycle counters are scoped by `ctx.currentStepId` so multiple `reviewLoop` steps in the same flow don't collide.
+
+**Failure modes:** `maxCycles` exceeded; sub-phase returns `failed` (propagated); sub-phase returns `blocked` unexpectedly (propagated).
+
+**Side effects:** whatever the configured sub-phases do (e.g., `fetchPRComments` reads from the git provider; `implement` mutates files).
+
+---
+
+### `awaitTicketStatus`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `awaitTicketStatus` |
+| **reads** | _(none)_ |
+| **writes** | _(none)_ |
+| **Step config** | `continueOn: string[]`, `failOn?: string[]` |
+| **Source** | `packages/pipeline/src/phases/await-ticket-status-phase.ts` |
+
+One-shot gate phase. Blocks until the run is resumed with a ticket status that maps (via `productConfig.ticketWorkflow.statuses`) to a semantic name listed in `continueOn`, at which point it returns `ok()`. If the resume status matches `failOn`, the phase fails the run. Unknown statuses cause the phase to re-block and wait for the correct signal.
+
+Lighter-weight alternative to `reviewLoop` when no rework cycle is needed — just a "pause until human approves" checkpoint.
+
+**Failure modes:** resumed with a status in `failOn` (fails with a descriptive message).
+
+**Side effects:** none.
+
+---
+
+### `fetchTicketComments`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `fetchTicketComments` |
+| **reads** | _(none; uses `ctx.ticketKey`)_ |
+| **writes** | `reviewComments` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/fetch-ticket-comments-phase.ts` |
+
+Fetches the latest ticket comments via the ticket provider and writes a concatenated markdown string to `reviewComments` (oldest first, each entry prefixed with `**author** (timestamp):`). Downstream `analyze`, `plan`, and `implement` phases read this artifact and forward it to the coding provider as reviewer-feedback context.
+
+**Failure modes:** ticket provider error.
+
+**Side effects:** one read call to the ticket provider.
+
+---
+
+### `fetchPRComments`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `fetchPRComments` |
+| **reads** | `prUrl` |
+| **writes** | `reviewComments` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/fetch-pr-comments-phase.ts` |
+
+Fetches the PR's review comments (inline code comments with path/line) and issue comments (general PR discussion) via `IGitProvider.listPRComments`, merges and sorts them chronologically, and writes a concatenated markdown string to `reviewComments`.
+
+**Failure modes:** git provider error; missing `prUrl` artifact (phase fails).
+
+**Side effects:** two read calls to the git provider (review + issue comments).
+
+---
+
 ### `requireField`
 
 | Field | Value |

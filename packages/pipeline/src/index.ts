@@ -44,3 +44,7 @@ export { CreateTicketPhase } from "./phases/create-ticket-phase.ts";
 export { UpdateTicketPhase } from "./phases/update-ticket-phase.ts";
 export { ListTicketsPhase } from "./phases/list-tickets-phase.ts";
 export { GetTicketSchemaPhase } from "./phases/get-ticket-schema-phase.ts";
+export { ReviewLoopPhase } from "./phases/review-loop-phase.ts";
+export { AwaitTicketStatusPhase } from "./phases/await-ticket-status-phase.ts";
+export { FetchTicketCommentsPhase } from "./phases/fetch-ticket-comments-phase.ts";
+export { FetchPRCommentsPhase } from "./phases/fetch-pr-comments-phase.ts";
