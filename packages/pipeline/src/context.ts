@@ -40,5 +40,6 @@ export function buildContext(args: {
     trace,
     artifactStore,
     emit,
+    currentStepId: "",
   };
 }

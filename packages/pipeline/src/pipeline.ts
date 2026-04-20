@@ -183,7 +183,7 @@ export class Pipeline {
       const stepSignal = step.timeoutMs
         ? anySignal([baseSignal, AbortSignal.timeout(step.timeoutMs)])
         : baseSignal;
-      const stepCtx = { ...ctx, signal: stepSignal };
+      const stepCtx = { ...ctx, signal: stepSignal, currentStepId: step.id };
 
       last = await this.runPhaseSafe(this.deps.phases.resolve(step.phase), stepCtx, step);
 
@@ -199,6 +199,7 @@ export class Pipeline {
         rec.status = "blocked";
         rec.blockedReason = last.reason;
         rec.waitFor = last.waitFor;
+        if (last.artifacts) Object.assign(run.artifacts, last.artifacts);
       } else {
         rec.status = "failed";
         rec.error = last.error;
@@ -293,9 +294,14 @@ export class Pipeline {
     }
   }
 
-  /** Resume a blocked run from the step after the blocked one. Uses flowSnapshot. */
-  async resume(sessionId: string): Promise<PipelineRun> {
-    log.info({ sessionId }, "run resume requested");
+  /**
+   * Resume a blocked run by RE-RUNNING the blocked step. The blocked step is
+   * responsible for detecting resume state via ctx.artifacts.__resumeStatus and
+   * deciding to ok / block again / fail. Transient artifacts (__resumeStatus,
+   * __resumed) are cleared after the step returns.
+   */
+  async resume(sessionId: string, opts?: { ticketStatus?: string }): Promise<PipelineRun> {
+    log.info({ sessionId, ticketStatus: opts?.ticketStatus }, "run resume requested");
     const run = await this.deps.state.load(sessionId);
     if (!run) throw new Error(`no such run ${sessionId}`);
     if (run.status !== "blocked") throw new Error(`cannot resume ${sessionId}: status=${run.status}`);
@@ -318,7 +324,10 @@ export class Pipeline {
     if (!blockedRec) throw new Error(`resume: no blocked step in run ${sessionId}`);
     const flowIdx = flow.steps.findIndex(s => s.id === blockedRec.id);
     if (flowIdx < 0) throw new Error(`resume: blocked step id "${blockedRec.id}" not in flow snapshot`);
-    const remaining = flow.steps.slice(flowIdx + 1);
+
+    // Inject transient resume artifacts so the blocked step can react.
+    if (opts?.ticketStatus !== undefined) run.artifacts.__resumeStatus = opts.ticketStatus;
+    run.artifacts.__resumed = true;
 
     const now = () => new Date().toISOString();
     const from = run.status;
@@ -328,9 +337,19 @@ export class Pipeline {
     this.emit({ type: "statusChanged", sessionId, from, to: "running", at: now() });
 
     try {
-      for (const step of remaining) {
+      // Re-run blocked step, then continue forward through remaining steps.
+      const stepsToRun = flow.steps.slice(flowIdx);
+      for (const step of stepsToRun) {
         if (ac.signal.aborted) { await this.finish(run, "cancelled"); return run; }
         const result = await this.runStepWithAttempts(run, step, ctx, ac.signal);
+
+        // After the first step (the re-run blocked step), clear transient flags.
+        if (step.id === blockedRec.id) {
+          delete run.artifacts.__resumeStatus;
+          delete run.artifacts.__resumed;
+          await this.deps.state.save(run);
+        }
+
         if (result.status === "blocked") { await this.finish(run, "blocked"); return run; }
         if (result.status === "failed") {
           const onFail = step.onFailure ?? "fail";

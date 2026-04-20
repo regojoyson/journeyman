@@ -76,6 +76,28 @@ export class GitHubWebhookTrigger implements ITriggerSource {
       const ticketKey = `${repoFullName}#${number}`;
       const ticketShortKey = String(number);
 
+      const action: string | undefined = body?.action;
+      let eventType: "new-ticket" | "status-change" | "comment" | undefined;
+      let newStatus: string | undefined;
+
+      if (event === "issues") {
+        if (action === "labeled" || action === "unlabeled") {
+          eventType = "status-change";
+          newStatus = body?.label?.name;
+        } else if (action === "opened" || action === "reopened") {
+          eventType = "new-ticket";
+        } else if (action === "created" && body?.comment) {
+          eventType = "comment";
+        }
+      } else if (event === "issue_comment") {
+        eventType = "comment";
+      } else if (event === "pull_request") {
+        if (action === "labeled" || action === "unlabeled") {
+          eventType = "status-change";
+          newStatus = body?.label?.name;
+        }
+      }
+
       ctx.onTrigger({
         sourceId: this.id,
         productId,
@@ -83,6 +105,8 @@ export class GitHubWebhookTrigger implements ITriggerSource {
         ticketShortKey,
         rawPayload: this.redact(body, event),
         receivedAt: new Date().toISOString(),
+        eventType,
+        newStatus,
       });
       return reply.code(202).send({ accepted: true });
     });

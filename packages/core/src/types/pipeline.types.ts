@@ -7,7 +7,12 @@ export type IProviderMeta = {
 
 export type PhaseResult =
   | { status: "ok"; artifacts: Record<string, unknown> }
-  | { status: "blocked"; reason: string; waitFor?: "ticket-comment" | "pr-comment" | "manual" }
+  | {
+      status: "blocked";
+      reason: string;
+      waitFor?: "ticket-comment" | "pr-comment" | "manual";
+      artifacts?: Record<string, unknown>;   // NEW — merged into run before blocking
+    }
   | { status: "failed"; error: { message: string; code?: string; stack?: string } };
 
 export type StepRecord = {
@@ -132,6 +137,8 @@ export type PipelineTrigger = {
   flowName?: string;
   rawPayload: unknown;
   receivedAt: string;
+  eventType?: "new-ticket" | "status-change" | "comment";   // NEW
+  newStatus?: string;                                         // NEW — literal status value
 };
 
 export type PipelineEvent =

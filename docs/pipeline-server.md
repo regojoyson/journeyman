@@ -95,8 +95,28 @@ All `/api/*` routes (except `/api/health` and `/api/trigger/*`) require `Authori
 | `GET` | `/api/runs/:sessionId/stream` | SSE stream of live pipeline events |
 | `GET` | `/api/runs/:sessionId/artifacts/:key` | Download a named artifact |
 | `POST` | `/api/runs/:sessionId/cancel` | Cancel a running pipeline |
-| `POST` | `/api/runs/:sessionId/resume` | Resume a blocked pipeline |
+| `POST` | `/api/runs/:sessionId/resume` | Resume a blocked pipeline (re-runs the blocked step; see below) |
 | `POST` | `/api/trigger/:productId` | Manually trigger a run |
+
+### Resuming a blocked run
+
+`POST /api/runs/:sessionId/resume` resumes a run in the `blocked` state by **re-running the blocked step** — not by skipping past it. This lets a single phase (notably `reviewLoop`) implement a loop by returning `blocked` across multiple resumes and `ok` only when its exit condition is met.
+
+**Request body** (optional, JSON):
+
+```json
+{ "ticketStatus": "plan-approved" }
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ticketStatus` | string | No | Literal ticket status value. Placed on `ctx.artifacts.__resumeStatus` so the blocked phase (e.g. `reviewLoop`, `awaitTicketStatus`) can decide whether to return `ok`, re-block, or fail. Cleared after the step returns. |
+
+When no body is provided, the phase is re-run with only `ctx.artifacts.__resumed = true` set — sufficient for the legacy `review` gate, which returns `ok()` on re-entry.
+
+This endpoint is rarely called manually when using `reviewLoop` — the webhook dispatcher routes ticket status-change events to this endpoint automatically via `findActiveForTicket` (see [docs/triggers.md](./triggers.md#status-change-routing)).
+
+**Response:** the updated run object. Returns `409 Conflict` if the run is not in `blocked` state.
 
 ### Run status values
 

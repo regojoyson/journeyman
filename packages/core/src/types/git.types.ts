@@ -189,3 +189,26 @@ export type CommitPushReposResult = SessionResult & {
   repos: CommitPushResult[];
   error?: string;
 };
+
+// ---------------------------------------------------------------------------
+// PR review comment listing (used by reviewLoop rework flows)
+// ---------------------------------------------------------------------------
+
+export type ListPRCommentsOptions = SessionOptions & {
+  prUrl: string;
+  /** ISO8601 — if set, only comments created at or after this time are returned. */
+  sinceIso?: string;
+};
+
+export type PRComment = {
+  author: string;
+  body: string;
+  path?: string;
+  line?: number;
+  createdAt: string;   // ISO 8601
+};
+
+export type ListPRCommentsResult = SessionResult & {
+  comments: PRComment[];
+  error?: string;
+};

@@ -57,6 +57,23 @@ export class JiraWebhookTrigger implements ITriggerSource {
         }
       }
 
+      let eventType: "new-ticket" | "status-change" | "comment" | undefined;
+      let newStatus: string | undefined;
+
+      const webhookEvent: string = body?.webhookEvent ?? "";
+      if (webhookEvent === "jira:issue_created") {
+        eventType = "new-ticket";
+      } else if (webhookEvent === "jira:issue_updated") {
+        const items: any[] = body?.changelog?.items ?? [];
+        const statusItem = items.find(i => i.field === "status");
+        if (statusItem) {
+          eventType = "status-change";
+          newStatus = statusItem.toString;
+        }
+      } else if (webhookEvent === "comment_created") {
+        eventType = "comment";
+      }
+
       ctx.onTrigger({
         sourceId: this.id,
         productId,
@@ -64,6 +81,8 @@ export class JiraWebhookTrigger implements ITriggerSource {
         ticketShortKey: key,         // Jira keys are already short
         rawPayload: this.redact(body),
         receivedAt: new Date().toISOString(),
+        eventType,
+        newStatus,
       });
       return reply.code(202).send({ accepted: true });
     });

@@ -3,6 +3,7 @@ import type {
   GetRepoOptions, GetRepoResult,
   ListPROptions, ListPRResult,
   CloneReposOptions, CloneReposResult,
+  ListPRCommentsOptions, ListPRCommentsResult,
 } from "../types/git.types.ts";
 
 /**
@@ -15,4 +16,5 @@ export interface IGitProvider {
   createPR(opts: CreatePROptions): Promise<CreatePRResult>;
   listPRs(opts: ListPROptions): Promise<ListPRResult>;
   cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult>;
+  listPRComments(opts: ListPRCommentsOptions): Promise<ListPRCommentsResult>;
 }

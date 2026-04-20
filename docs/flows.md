@@ -657,6 +657,134 @@ No automated linting yet; manual review checklist:
 
 ---
 
+## Human review loops
+
+The `reviewLoop` phase lets a flow gate any automated step on a human approval carried via a ticket status change, and re-run rework sub-phases until the reviewer approves. It is the canonical way to add human-in-the-loop checkpoints between `analyze` / `plan` / `implement` / PR review.
+
+### Diagrams
+
+- [Overview](./diagrams/human-loop-overview.svg) — full pipeline with three `reviewLoop` gates and the human interaction lane.
+- [Sequence](./diagrams/human-loop-sequence.svg) — swim-lane walkthrough of one code-review rework cycle.
+- [State machine](./diagrams/human-loop-states.svg) — BLOCKED ↔ REWORKING → DONE | FAILED transitions across successive resumes.
+
+### Config keys
+
+Each `reviewLoop` step takes these config keys:
+
+| Key | Type | Required | Description |
+|---|---|---|---|
+| `approveStatus` | string | Yes | Semantic status name that exits the loop with `ok` — must exist in `productConfig.ticketWorkflow.statuses`. |
+| `reworkStatus` | string | Yes | Semantic status name that triggers the `onRework` sub-phases and re-blocks. |
+| `onRework` | string[] | Yes | Ordered list of phase registry keys to run on each rework cycle (e.g. `[fetchPRComments, plan, implement, commitPushRepos]`). |
+| `maxCycles` | number | No | Default `3`. When exceeded the phase fails the run. |
+
+The `awaitTicketStatus` phase is a lighter-weight alternative for a one-shot "pause until human approves" gate with no rework sub-phases — it takes `continueOn: string[]` and optional `failOn: string[]`.
+
+Misconfiguration of `onRework` (e.g. a typo in a sub-phase name, or a sub-phase that reads an artifact no prior step produced) is only caught at run time, not by the static flow validator — sub-phases are invoked lazily from `PhaseRegistry` and are not surfaced as their own steps.
+
+### Ready-to-use flow (`config/flows/human-loop.yaml`)
+
+```yaml
+name: human-loop
+
+providers:
+  ticket:       github-issues
+  git:          github
+  coding:       claude
+  notification: slack
+
+steps:
+  - id: fetch-ticket
+    phase: getTicket
+
+  - id: clone
+    phase: cloneRepos
+    timeoutMs: 120000
+
+  - id: mark-in-progress
+    phase: updateStatus
+    config: { status: development-started }
+    onFailure: skip
+
+  - id: checkout
+    phase: checkoutRepo
+
+  - id: analyze
+    phase: analyze
+
+  - id: notify-analyze-ready
+    phase: notify
+    config: { message: "Analysis ready for #{ticket}" }
+    onFailure: skip
+
+  - id: analyze-review
+    phase: reviewLoop
+    config:
+      approveStatus: analyze-approved
+      reworkStatus: analyze-rework
+      maxCycles: 2
+      onRework: [fetchTicketComments, analyze]
+
+  - id: plan
+    phase: plan
+
+  - id: notify-plan-ready
+    phase: notify
+    config: { message: "Plan ready for #{ticket} — please approve" }
+    onFailure: skip
+
+  - id: plan-review
+    phase: reviewLoop
+    config:
+      approveStatus: plan-approved
+      reworkStatus: plan-rework
+      maxCycles: 3
+      onRework: [fetchTicketComments, plan]
+
+  - id: implement
+    phase: implement
+
+  - id: commit-push
+    phase: commitPushRepos
+    config:
+      pattern: "#{ticket} : {summary}"
+
+  - id: open-pr
+    phase: createPR
+    onFailure: skip
+
+  - id: notify-pr-ready
+    phase: notify
+    config: { message: "PR ready for #{ticket}" }
+    onFailure: skip
+
+  - id: mark-in-review
+    phase: updateStatus
+    config: { status: code-review }
+    onFailure: skip
+
+  - id: code-review
+    phase: reviewLoop
+    config:
+      approveStatus: completed
+      reworkStatus: rework-requested
+      maxCycles: 3
+      onRework: [fetchPRComments, plan, implement, commitPushRepos]
+
+  - id: notify-complete
+    phase: notify
+    config: { message: "#{ticket} completed" }
+    onFailure: skip
+
+  - id: cleanup
+    phase: cleanupRepos
+    onFailure: skip
+```
+
+Products opt in by setting `flow: human-loop` and mapping the semantic status names (`analyze-approved`, `analyze-rework`, `plan-approved`, `plan-rework`, `code-review`, `rework-requested`, `completed`, `failed`) to the literal status values used by the ticket provider. See [docs/configuration.md](./configuration.md#semantic-status-names-for-review-loops) for the full list.
+
+---
+
 ## References
 
 - **Flow schema:** `packages/pipeline/src/config/flow-schema.ts`

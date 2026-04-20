@@ -32,6 +32,7 @@ export class PlanPhase extends BasePhase {
       analyzeReportPath: analysis.reportPath,
       sessionId: ctx.sessionId,
       signal: ctx.signal,
+      reviewComments: ctx.artifacts.reviewComments as string | undefined,
     }), "plan") as PlanResult;
 
     const reportHandle = await ctx.artifactStore.putPath(

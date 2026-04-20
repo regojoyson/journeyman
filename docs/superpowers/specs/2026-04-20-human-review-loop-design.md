@@ -33,6 +33,16 @@ All gates and loops must be **pluggable phases** driven by configuration — no 
 
 ---
 
+## 2.1 Diagrams
+
+Three companion diagrams illustrate the design from different angles:
+
+- **[Overview](../../diagrams/human-loop-overview.svg)** — full pipeline with three `reviewLoop` gates (analyze / plan / code) and the human interaction lane.
+- **[Sequence](../../diagrams/human-loop-sequence.svg)** — swim-lane walkthrough of one code-review rework cycle: human → webhook → dispatcher → pipeline → phase → providers → state store.
+- **[State machine](../../diagrams/human-loop-states.svg)** — how a single `reviewLoop` step transitions across successive resumes (BLOCKED ↔ REWORKING → DONE | FAILED).
+
+---
+
 ## 3. Architecture overview
 
 ### 3.1 Mechanism: resume re-runs the blocked step
@@ -400,6 +410,143 @@ human        webhook        dispatcher      pipeline          reviewLoop phase  
 - Conditional branches within a flow (`if status == X then Y`)
 - Parallel rework (multiple reviewers)
 - Automerging the PR on approval — "completed" status only marks the run complete; merge remains manual or is a separate phase (not introduced here)
+
+---
+
+## 10.1 Documentation updates (as part of implementation)
+
+These existing docs will be updated when the feature lands so users can discover and configure the new behavior:
+
+| File | Update |
+|---|---|
+| [docs/phases.md](../../phases.md) | Add catalog entries for `reviewLoop`, `awaitTicketStatus`, `fetchTicketComments`, `fetchPRComments` — same format as existing phase catalog entries, with registry key / reads / writes / step config / source file. |
+| [docs/flows.md](../../flows.md) | New section **"Human review loops"** with a complete `human-loop.yaml` example and explanation of the `approveStatus` / `reworkStatus` / `onRework` / `maxCycles` config keys. |
+| [docs/configuration.md](../../configuration.md) | Extend the `ticketWorkflow.statuses` reference section with recommended semantic names for review gates (`analyze-approved`, `analyze-rework`, `plan-approved`, `plan-rework`, `rework-requested`, `completed`). |
+| [docs/triggers.md](../../triggers.md) | Add the webhook event-type mapping (GitHub `labeled` / `unlabeled` → `status-change`; Jira `issue_updated` + status changelog → `status-change`) and the dispatcher routing table from §3.2. |
+| [docs/pipeline-server.md](../../pipeline-server.md) | Document the new `pipeline.resume(sessionId, { ticketStatus })` signature and the semantic change ("resume re-runs the blocked step"). |
+| [docs/new-product.md](../../new-product.md) | Append a "Using the human-loop flow" subsection showing how a product opts in (`flow: human-loop` + the status mapping). |
+| [config/flows/](../../../config/flows/) | Add `human-loop.yaml` as a ready-to-use flow file (content identical to §7 of this spec). |
+| [config/pipeline.yaml](../../../config/pipeline.yaml) | Add a commented example block under `ticketWorkflow.statuses` showing the full semantic name set for human-loop products. Existing products left untouched. |
+
+The implementation plan tracks these as the final documentation task.
+
+---
+
+## 10.2 Example configurations
+
+### 10.2.1 Full `human-loop.yaml` flow
+
+(See §7 above — this YAML is the canonical example, shipped verbatim to `config/flows/human-loop.yaml`.)
+
+### 10.2.2 Product config opting into human-loop
+
+```yaml
+products:
+  my-product:
+    flow: human-loop
+    workspace: /workspaces/my-product
+    concurrency: 1
+
+    repos:
+      - providerId: github
+        owner: my-org
+        repo: my-repo
+        url: https://github.com/my-org/my-repo
+        defaultBranch: main
+
+    providerConfig:
+      ticket:
+        projectId: "my-org/my-repo"
+        tokenEnv: MY_PRODUCT_GITHUB_TOKEN
+      git:
+        tokenEnv: MY_PRODUCT_GITHUB_TOKEN
+      notification:
+        channel: "#my-product-reviews"
+
+    ticketWorkflow:
+      trigger:
+        matchLabels: [Todo]
+      statuses:
+        development-started: "in-progress"
+        analyze-approved:    "analyze-approved"
+        analyze-rework:      "analyze-rework"
+        plan-approved:       "plan-approved"
+        plan-rework:         "plan-rework"
+        code-review:         "in-review"
+        rework-requested:    "rework-requested"
+        completed:           "completed"
+        failed:              "failed"
+
+    webhookSecrets:
+      github: GITHUB_WEBHOOK_SECRET
+```
+
+### 10.2.3 Minimal variant — only a post-plan gate
+
+For products that only want a plan-approval gate (no analyze or code rework), use a lightweight flow with a single `awaitTicketStatus` step:
+
+```yaml
+name: plan-gate-only
+
+providers:
+  ticket: github-issues
+  git: github
+  coding: claude
+  notification: slack
+
+steps:
+  - id: fetch-ticket
+    phase: getTicket
+  - id: clone
+    phase: cloneRepos
+  - id: checkout
+    phase: checkoutRepo
+  - id: analyze
+    phase: analyze
+  - id: plan
+    phase: plan
+  - id: notify-plan-ready
+    phase: notify
+    config: { message: "Plan ready for #{ticket}" }
+    onFailure: skip
+  - id: await-plan-approval
+    phase: awaitTicketStatus
+    config:
+      continueOn: [plan-approved]
+      failOn:     [failed]
+  - id: implement
+    phase: implement
+  - id: commit-push
+    phase: commitPushRepos
+  - id: open-pr
+    phase: createPR
+    onFailure: skip
+  - id: cleanup
+    phase: cleanupRepos
+    onFailure: skip
+```
+
+### 10.2.4 Aggressive variant — unlimited plan rework, bounded code rework
+
+```yaml
+- id: plan-review
+  phase: reviewLoop
+  config:
+    approveStatus: plan-approved
+    reworkStatus:  plan-rework
+    maxCycles:     99          # effectively unlimited
+    onRework:      [fetchTicketComments, plan]
+
+# ... implement, commit, PR ...
+
+- id: code-review
+  phase: reviewLoop
+  config:
+    approveStatus: completed
+    reworkStatus:  rework-requested
+    maxCycles:     2           # strict bound on code rework
+    onRework:      [fetchPRComments, plan, implement, commitPushRepos]
+```
 
 ---
 

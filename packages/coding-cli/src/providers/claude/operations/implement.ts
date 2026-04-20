@@ -106,6 +106,10 @@ function buildPrompt(opts: ImplementOptions): string {
     .map((r, i) => `  ${i + 1}. ${r}`)
     .join("\n");
 
+  const reviewBlock = opts.reviewComments
+    ? `\n\n## Reviewer feedback (address during implementation)\n\n${opts.reviewComments}\n`
+    : "";
+
   return [
     "You are a senior staff engineer IMPLEMENTING a ticket autonomously.",
     "",
@@ -116,7 +120,7 @@ function buildPrompt(opts: ImplementOptions): string {
     "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision. Ship working code — do not leave TODO stubs where a real implementation is expected.",
     "  5. Do not stall, loop, or abandon the task. If a step is blocked, mark that step 'failed' with a clear note and move on to the next step.",
     "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON report.",
-    "",
+    `${reviewBlock}`,
     "=== TICKET / GOAL ===",
     ticket,
     "",

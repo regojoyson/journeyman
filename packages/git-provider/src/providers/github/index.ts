@@ -4,6 +4,7 @@ import type {
   CreatePROptions, CreatePRResult,
   ListPROptions, ListPRResult,
   CloneReposOptions, CloneReposResult,
+  ListPRCommentsOptions, ListPRCommentsResult,
   IProviderMeta,
 } from "@journeyman/core";
 import { createGitHubClient, type GitHubClient } from "@journeyman/github-api";
@@ -11,6 +12,7 @@ import { getRepo } from "./operations/get-repo.ts";
 import { createPR } from "./operations/create-pr.ts";
 import { listPRs } from "./operations/list-prs.ts";
 import { cloneRepos } from "./operations/clone-repos.ts";
+import { listPRComments } from "./operations/list-pr-comments.ts";
 
 export type GitHubProviderOptions = {
   /** Personal Access Token (explicit). Takes precedence over `tokenEnv`. */
@@ -57,6 +59,10 @@ export class GitHubProvider implements IGitProvider {
 
   async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
     return cloneRepos(this.token, opts);
+  }
+
+  async listPRComments(opts: ListPRCommentsOptions): Promise<ListPRCommentsResult> {
+    return listPRComments(opts, { client: this.getClient() });
   }
 
   private getClient(): GitHubClient {

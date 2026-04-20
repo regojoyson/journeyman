@@ -4,6 +4,8 @@ export type AnalyzeOptions = SessionOptions & {
   dirPath: string;
   ticketContent?: string;
   focus?: string;
+  /** Optional — reviewer feedback (markdown) to incorporate into analysis. */
+  reviewComments?: string;
   signal?: AbortSignal;
 };
 
@@ -55,6 +57,8 @@ export type PlanOptions = SessionOptions & {
   analyzeReportPath?: string;
   /** Optional narrowing of scope. */
   focus?: string;
+  /** Optional — reviewer feedback (markdown) to incorporate into the plan. */
+  reviewComments?: string;
   signal?: AbortSignal;
 };
 
@@ -109,6 +113,8 @@ export type ImplementOptions = SessionOptions & {
   extraRules?: string[];
   /** Optional narrowing of scope. */
   focus?: string;
+  /** Optional — reviewer feedback (markdown) to incorporate during implementation. */
+  reviewComments?: string;
   signal?: AbortSignal;
 };
 

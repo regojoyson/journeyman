@@ -349,3 +349,61 @@ products:
       gitlab: <envVarName>
       jira: <envVarName>
 ```
+
+---
+
+## Using the human-loop flow
+
+If the new product should gate each major phase (`analyze`, `plan`, code review) on human approval with bounded rework cycles, point it at the ready-made `human-loop` flow instead of writing a custom flow:
+
+```yaml
+products:
+  new-product:
+    flow: human-loop        # ships in config/flows/human-loop.yaml
+```
+
+The flow ([config/flows/human-loop.yaml](../config/flows/human-loop.yaml)) inserts three `reviewLoop` gates after `analyze`, `plan`, and `createPR`. A reviewer drives the loop by changing the ticket status — the webhook dispatcher auto-resumes the blocked run (see [docs/triggers.md](./triggers.md#status-change-routing)). See [docs/flows.md](./flows.md#human-review-loops) for the full step list and config reference.
+
+Add the semantic-to-literal status mapping required by the flow to the product's `ticketWorkflow.statuses`:
+
+```yaml
+products:
+  new-product:
+    flow: human-loop
+    workspace: ./workspaces/new-product
+
+    repos:
+      - providerId: github
+        owner: my-org
+        repo: my-repo
+        url: https://github.com/my-org/my-repo
+        defaultBranch: main
+
+    providerConfig:
+      ticket:
+        projectId: "my-org/my-repo"
+        tokenEnv: MY_PRODUCT_GITHUB_TOKEN
+      git:
+        tokenEnv: MY_PRODUCT_GITHUB_TOKEN
+      notification:
+        channel: "#my-product-reviews"
+
+    ticketWorkflow:
+      trigger:
+        matchLabels: [Todo]
+      statuses:
+        development-started: "in-progress"
+        analyze-approved:    "analyze-approved"
+        analyze-rework:      "analyze-rework"
+        plan-approved:       "plan-approved"
+        plan-rework:         "plan-rework"
+        code-review:         "in-review"
+        rework-requested:    "rework-requested"
+        completed:           "completed"
+        failed:              "failed"
+
+    webhookSecrets:
+      github: GITHUB_WEBHOOK_SECRET
+```
+
+The literal values on the right-hand side must match whatever your ticket provider actually uses (GitHub labels, Jira workflow states, etc.). See [docs/configuration.md](./configuration.md#semantic-status-names-for-review-loops) for the full semantic-name reference. Ensure the GitHub webhook is subscribed to the `issues` event with the `labeled` / `unlabeled` actions enabled so status changes flow through the dispatcher.

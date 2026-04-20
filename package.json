@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
     "start": "tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml",
     "validate": "tsx packages/pipeline/src/cli.ts validate-config --config config/pipeline.yaml",
     "run-once": "tsx packages/pipeline/src/cli.ts run",

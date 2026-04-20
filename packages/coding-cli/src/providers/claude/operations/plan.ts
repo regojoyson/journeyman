@@ -98,6 +98,9 @@ function buildPrompt(opts: PlanOptions): string {
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
   const explicitReport = opts.analyzeReportPath?.trim();
+  const reviewBlock = opts.reviewComments
+    ? `\n\n## Reviewer feedback (address in the revised plan)\n\n${opts.reviewComments}\n`
+    : "";
 
   return [
     "You are a senior staff engineer producing an autonomous, speckit-style IMPLEMENTATION PLAN.",
@@ -109,7 +112,7 @@ function buildPrompt(opts: PlanOptions): string {
     "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision. Choose a concrete design — do not emit a plan full of 'TBD' or 'decide later'.",
     "  5. Do not stall, loop, or abandon the task. Always produce a complete plan — even a rough plan is better than no output.",
     "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON plan.",
-    "",
+    `${reviewBlock}`,
     "=== TICKET / GOAL ===",
     ticket,
     "",

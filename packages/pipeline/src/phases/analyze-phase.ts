@@ -39,6 +39,7 @@ export class AnalyzePhase extends BasePhase {
       ticketContent: ticketMd,
       sessionId: ctx.sessionId,
       signal: ctx.signal,
+      reviewComments: ctx.artifacts.reviewComments as string | undefined,
     }), "analyze") as AnalyzeResult;
 
     const reportHandle = await ctx.artifactStore.putPath(
