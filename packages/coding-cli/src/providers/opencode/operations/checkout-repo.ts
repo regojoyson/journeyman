@@ -31,6 +31,8 @@ const OUTPUT_SCHEMA = {
   required: ["newBranch", "repos"],
 } as const;
 
+const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
+
 function normalizeEntries(opts: CheckoutRepoOptions): CheckoutEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) =>
@@ -113,7 +115,7 @@ export async function checkoutRepo(
     sessionID: sid,
     parts: [{ type: "text", text: buildPrompt(entries, opts.ticket) }],
     model: config.model,
-    tools: config.tools,
+    tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },
   });
   if (!result.data) throw new Error("opencode session.prompt returned no data");

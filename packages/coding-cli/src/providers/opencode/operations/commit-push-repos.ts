@@ -37,6 +37,8 @@ const OUTPUT_SCHEMA = {
   required: ["repos"],
 } as const;
 
+const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
+
 type NormalizedEntry = { dirPath: string; ticket?: string; message?: string };
 
 function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
@@ -129,7 +131,7 @@ export async function commitPushRepos(
     sessionID: sid,
     parts: [{ type: "text", text: buildPrompt(entries, pattern, prSummaryStyle) }],
     model: config.model,
-    tools: config.tools,
+    tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },
   });
   if (!result.data) throw new Error("opencode session.prompt returned no data");

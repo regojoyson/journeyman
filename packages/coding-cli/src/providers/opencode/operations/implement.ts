@@ -63,6 +63,8 @@ const OUTPUT_SCHEMA = {
   required: ["success", "implementationTitle", "approachSummary", "filesChanged", "steps", "testsRun", "testsPassed", "followUps", "reportTitle", "reportPath", "summary"],
 } as const;
 
+const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: true, grep: true, write: true, edit: true };
+
 const DEFAULT_RULES = [
   "Follow the existing code style, naming conventions, and project structure — match what's already in the repo.",
   "Do NOT introduce new dependencies unless the plan explicitly requires one. Prefer existing utilities.",
@@ -165,7 +167,7 @@ export async function implement(
     sessionID: sid,
     parts: [{ type: "text", text: buildPrompt(opts) }],
     model: config.model,
-    tools: config.tools,
+    tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },
   });
   if (!result.data) throw new Error("opencode session.prompt returned no data");
