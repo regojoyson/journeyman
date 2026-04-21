@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useRuns, useProducts } from '@/api/runs';
-import { useProductStore } from '@/stores/useProductStore';
 import { Activity, LayoutDashboard } from 'lucide-react';
 
 export default function Sidebar() {
-  const { selected } = useProductStore();
+  const [searchParams] = useSearchParams();
+  const selected = searchParams.get('product') ?? 'all';
   const { data: configuredProducts, isLoading } = useProducts();
   const { data: runsData } = useRuns({ limit: 200 }, 30);
 
   const products = useMemo(() => {
-    const seen = new Set<string>(configuredProducts ?? []);
+    const seen = new Set<string>((configuredProducts ?? []).map(p => p.id));
     for (const r of (runsData?.runs ?? [])) if (r.productId) seen.add(r.productId);
     return [...seen].sort();
   }, [configuredProducts, runsData]);
@@ -36,7 +36,7 @@ export default function Sidebar() {
               <Link
                 to={`/?product=${p.id}`}
                 className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${
-                  (selected ?? 'all') === p.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                  selected === p.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
                 }`}
               >
                 <span className="truncate">{p.name}</span>

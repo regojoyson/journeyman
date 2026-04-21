@@ -120,7 +120,7 @@ export async function resumeRun(
   }
 }
 
-export async function getProducts(): Promise<string[]> {
+export async function getProducts(): Promise<{ id: string; flow: string }[]> {
   return parseJson(await fetch('/api/products', { headers: headers() }));
 }
 

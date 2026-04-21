@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
+import { ExternalLink, AlertTriangle, ListChecks, FileCode2, GitBranch, Ticket, Info, Hash } from 'lucide-react';
 
 interface RunContextProps {
   artifacts: Record<string, unknown>;
@@ -14,174 +13,165 @@ const KEY_ORDER: Record<string, number> = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  high: 'text-rose-600', medium: 'text-amber-600', low: 'text-slate-400',
+  high: 'bg-rose-50 text-rose-700 border-rose-200',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+  low: 'bg-slate-50 text-slate-600 border-slate-200',
 };
 
-// Pretty-print a key name
-function fmtKey(k: string): string {
-  return k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
-}
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
-// Is this value a URL?
-function isUrl(v: unknown): v is string {
-  return typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'));
-}
-
-// ── Leaf value ────────────────────────────────────────────────────────────────
-
-function LeafValue({ v, fieldKey }: { v: unknown; fieldKey?: string }) {
-  if (v === null || v === undefined) return <span className="text-slate-300">—</span>;
-  if (typeof v === 'boolean') return <span className={v ? 'text-emerald-600' : 'text-rose-500'}>{String(v)}</span>;
-  if (typeof v === 'number') return <span className="text-blue-600 font-mono">{v}</span>;
-  if (typeof v === 'string') {
-    if (isUrl(v)) return (
-      <a href={v} target="_blank" rel="noopener noreferrer"
-        className="text-blue-500 hover:underline inline-flex items-center gap-0.5 break-all">
-        {v.length > 60 ? v.slice(0, 60) + '…' : v}
-        <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-      </a>
-    );
-    // severity badge
-    if (fieldKey === 'severity') {
-      const cls = SEVERITY_COLORS[v] ?? 'text-slate-500';
-      return <span className={`font-medium ${cls}`}>{v}</span>;
-    }
-    // sha / mono fields
-    if (fieldKey === 'commitSha' || fieldKey === 'sha') {
-      return <span className="font-mono text-slate-600">{(v as string).slice(0, 12)}</span>;
-    }
-    return <span className="text-slate-700 break-words">{v}</span>;
-  }
-  return <span className="text-slate-400 font-mono text-[10px]">{JSON.stringify(v)}</span>;
-}
-
-// ── Tree node (recursive) ─────────────────────────────────────────────────────
-
-interface NodeProps {
-  label: string;
-  value: unknown;
-  depth?: number;
-  defaultOpen?: boolean;
-  fieldKey?: string;
-}
-
-function TreeNode({ label, value, depth = 0, defaultOpen = false, fieldKey }: NodeProps) {
-  const isObject = value !== null && typeof value === 'object';
-  const isArray = Array.isArray(value);
-  const [open, setOpen] = useState(defaultOpen);
-  const indent = depth * 16;
-
-  if (!isObject) {
-    return (
-      <div className="flex items-baseline gap-1.5 py-0.5 hover:bg-slate-50 rounded px-1 -mx-1 group"
-        style={{ paddingLeft: indent + 4 }}>
-        <span className="shrink-0 text-[11px] font-medium text-slate-400 min-w-[6px]">·</span>
-        <span className="shrink-0 text-[11px] font-medium text-slate-500 whitespace-nowrap">{label}</span>
-        <span className="text-[11px] text-slate-300 shrink-0">:</span>
-        <span className="text-[11px] min-w-0"><LeafValue v={value} fieldKey={fieldKey} /></span>
-      </div>
-    );
-  }
-
-  type KV = { k: string; v: unknown };
-  const children: KV[] = isArray
-    ? (value as unknown[]).map((v, i) => ({ k: String(i), v }))
-    : Object.entries(value as Record<string, unknown>).map(([k, v]) => ({ k, v }));
-
-  if (children.length === 0) {
-    return (
-      <div className="flex items-baseline gap-1.5 py-0.5" style={{ paddingLeft: indent + 4 }}>
-        <span className="text-[11px] font-medium text-slate-500">{label}</span>
-        <span className="text-[11px] text-slate-300">{isArray ? '[]' : '{}'}</span>
-      </div>
-    );
-  }
-
-  const summary = isArray
-    ? <span className="text-[10px] text-slate-400 ml-1">{children.length} items</span>
-    : null;
-
+function Row({ icon, label, value, href }: { icon?: React.ReactNode; label: string; value: string; href?: string }) {
   return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 py-0.5 w-full text-left hover:bg-slate-50 rounded px-1 -mx-1 group"
-        style={{ paddingLeft: indent + 4 }}
-      >
-        <span className="text-slate-400 shrink-0">
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        </span>
-        <span className="text-[11px] font-semibold text-slate-600 whitespace-nowrap">{label}</span>
-        {summary}
-      </button>
-      {open && (
-        <div>
-          {children.map(({ k, v }) => (
-            <TreeNode
-              key={k}
-              label={isArray ? `#${parseInt(k) + 1}` : fmtKey(k)}
-              value={v}
-              depth={depth + 1}
-              fieldKey={k}
-              defaultOpen={depth < 1 && !isArray && children.length <= 6}
-            />
-          ))}
-        </div>
+    <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
+      {icon && <span className="mt-0.5 shrink-0 text-slate-400">{icon}</span>}
+      <span className="shrink-0 w-32 text-xs font-medium text-slate-500">{label}</span>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+          className="text-xs text-blue-600 hover:underline flex items-center gap-1 break-all min-w-0">
+          {value.length > 60 ? value.slice(0, 60) + '…' : value}
+          <ExternalLink className="h-3 w-3 shrink-0" />
+        </a>
+      ) : (
+        <span className="text-xs text-slate-700 break-words min-w-0">{value}</span>
       )}
     </div>
   );
 }
 
-// ── Root section per top-level artifact key ───────────────────────────────────
-
-function ArtifactSection({ artifactKey, value }: { artifactKey: string; value: unknown }) {
-  const [open, setOpen] = useState(artifactKey === 'ticket' || artifactKey === 'pr' || artifactKey === 'commit');
-  type KV2 = { k: string; v: unknown };
-  const isObj = value !== null && typeof value === 'object';
-  const children: KV2[] = isObj
-    ? (Array.isArray(value)
-        ? (value as unknown[]).map((v, i) => ({ k: String(i), v }))
-        : Object.entries(value as Record<string, unknown>).map(([k, v]) => ({ k, v })))
-    : [];
-
+function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-slate-100 last:border-0">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 w-full px-3 py-2 text-left hover:bg-slate-50 transition"
-      >
-        <span className="text-slate-400 shrink-0">
-          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </span>
-        <span className="text-xs font-semibold text-slate-700">{fmtKey(artifactKey)}</span>
-        {isObj && (
-          <span className="text-[10px] text-slate-300 ml-auto">
-            {Array.isArray(value) ? `[${(value as unknown[]).length}]` : `{${children.length}}`}
-          </span>
-        )}
-      </button>
+    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</span>
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
 
-      {open && isObj && (
-        <div className="px-4 pb-2">
-          {children.map(({ k, v }) => (
-            <TreeNode
-              key={k}
-              label={Array.isArray(value) ? `#${parseInt(k) + 1}` : fmtKey(k)}
-              value={v}
-              depth={0}
-              fieldKey={k}
-              defaultOpen={!Array.isArray(value) && children.length <= 8}
-            />
+// ── Per-artifact renderers ────────────────────────────────────────────────────
+
+function TicketCard({ value }: { value: any }) {
+  return (
+    <CardShell title="Ticket">
+      <Row icon={<Ticket className="h-3.5 w-3.5" />} label="Title" value={value.title ?? '—'} />
+      <Row icon={<Info className="h-3.5 w-3.5" />} label="Status" value={value.status ?? '—'} />
+      {value.url && <Row icon={<ExternalLink className="h-3.5 w-3.5" />} label="URL" value={value.url} href={value.url} />}
+      {value.body && (
+        <p className="mt-2 text-xs text-slate-600 leading-relaxed line-clamp-4">{value.body}</p>
+      )}
+    </CardShell>
+  );
+}
+
+function AnalysisCard({ value }: { value: any }) {
+  const findings: any[] = value.findings ?? [];
+  return (
+    <CardShell title="Analysis">
+      {value.ticketSummary && (
+        <p className="mb-3 text-sm text-slate-600 leading-relaxed">{value.ticketSummary}</p>
+      )}
+      {findings.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{findings.length} Findings</p>
+          {findings.map((f: any) => (
+            <div key={f.id} className={`rounded-lg border px-3 py-2.5 ${SEVERITY_COLORS[f.severity] ?? SEVERITY_COLORS.low}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-xs font-medium">{f.title}</span>
+                {f.severity && (
+                  <span className="ml-auto text-[10px] font-semibold uppercase">{f.severity}</span>
+                )}
+              </div>
+              {f.recommendation && (
+                <p className="mt-1 text-[11px] leading-relaxed opacity-80">{f.recommendation}</p>
+              )}
+            </div>
           ))}
         </div>
       )}
+    </CardShell>
+  );
+}
 
-      {open && !isObj && (
-        <div className="px-4 pb-2">
-          <span className="text-xs text-slate-600 break-all"><LeafValue v={value} /></span>
+function PlanCard({ value }: { value: any }) {
+  const tasks: any[] = value.tasks ?? value.steps ?? value.items ?? [];
+  return (
+    <CardShell title="Plan">
+      {value.summary && <p className="mb-3 text-sm text-slate-600 leading-relaxed">{value.summary}</p>}
+      {tasks.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{tasks.length} Tasks</p>
+          {tasks.map((t: any, i: number) => (
+            <div key={i} className="flex items-start gap-2.5 rounded-md bg-slate-50 px-3 py-2">
+              <ListChecks className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400" />
+              <span className="text-xs text-slate-700">
+                <span className="font-medium text-slate-400 mr-1">{i + 1}.</span>
+                {typeof t === 'string' ? t : (t.title ?? t.name ?? t.description ?? JSON.stringify(t))}
+              </span>
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </CardShell>
+  );
+}
+
+function ImplementationCard({ value }: { value: any }) {
+  const files: string[] = value.filesModified ?? value.files ?? value.changedFiles ?? [];
+  return (
+    <CardShell title="Implementation">
+      {value.summary && <p className="mb-3 text-sm text-slate-600 leading-relaxed">{value.summary}</p>}
+      {files.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{files.length} Files changed</p>
+          {files.map((f: string, i: number) => (
+            <div key={i} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-1.5">
+              <FileCode2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span className="font-mono text-xs text-slate-700 break-all">{f}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+function CommitCard({ value }: { value: any }) {
+  const commits: any[] = value.commits ?? (Array.isArray(value) ? value : [value]);
+  return (
+    <CardShell title="Commit">
+      {commits.map((c: any, i: number) => (
+        <div key={i} className={commits.length > 1 ? 'pb-3 mb-3 border-b border-slate-100 last:border-0 last:mb-0 last:pb-0' : ''}>
+          {c.sha && <Row icon={<Hash className="h-3.5 w-3.5" />} label="SHA" value={String(c.sha).slice(0, 12)} />}
+          {c.branch && <Row icon={<GitBranch className="h-3.5 w-3.5" />} label="Branch" value={c.branch} />}
+          {c.message && <Row icon={<Info className="h-3.5 w-3.5" />} label="Message" value={c.message} />}
+        </div>
+      ))}
+    </CardShell>
+  );
+}
+
+function PrCard({ value }: { value: any }) {
+  const url: string | undefined = value.url ?? value.prUrl ?? value.htmlUrl;
+  const title: string | undefined = value.title ?? value.prTitle;
+  const number: string | undefined = value.number != null ? `#${value.number}` : undefined;
+  return (
+    <CardShell title="Pull Request">
+      {title && <Row icon={<Info className="h-3.5 w-3.5" />} label="Title" value={title} />}
+      {number && <Row icon={<Hash className="h-3.5 w-3.5" />} label="Number" value={number} />}
+      {url && <Row icon={<ExternalLink className="h-3.5 w-3.5" />} label="URL" value={url} href={url} />}
+    </CardShell>
+  );
+}
+
+function GenericCard({ title, value }: { title: string; value: unknown }) {
+  return (
+    <CardShell title={title.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}>
+      <pre className="whitespace-pre-wrap break-words text-[11px] font-mono text-slate-500 max-h-48 overflow-auto">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </CardShell>
   );
 }
 
@@ -201,10 +191,19 @@ export default function RunContext({ artifacts }: RunContextProps) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
-      {entries.map(([k, v]) => (
-        <ArtifactSection key={k} artifactKey={k} value={v} />
-      ))}
+    <div className="space-y-4">
+      {entries.map(([k, v]) => {
+        if (!v) return null;
+        switch (k) {
+          case 'ticket':        return <TicketCard key={k} value={v} />;
+          case 'analysis':      return <AnalysisCard key={k} value={v} />;
+          case 'plan':          return <PlanCard key={k} value={v} />;
+          case 'implementation':return <ImplementationCard key={k} value={v} />;
+          case 'commit':        return <CommitCard key={k} value={v} />;
+          case 'pr':            return <PrCard key={k} value={v} />;
+          default:              return <GenericCard key={k} title={k} value={v} />;
+        }
+      })}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
 import { useCreateRun, useFlows, useRuns, useProducts } from '@/api/runs';
 
@@ -12,11 +12,14 @@ export default function CreateRunDialog({ open, onClose, defaultProductId }: Cre
   const { data: flows = [] } = useFlows();
   const { data: configuredProducts } = useProducts();
   const { data: runsData } = useRuns({ limit: 200 }, 60);
-  const products = useMemo(() => {
-    const seen = new Set<string>(configuredProducts ?? []);
+
+  const { products, productFlowMap } = useMemo(() => {
+    const seen = new Set<string>((configuredProducts ?? []).map(p => p.id));
     for (const r of (runsData?.runs ?? [])) if (r.productId) seen.add(r.productId);
-    return [...seen].sort();
+    const flowMap = Object.fromEntries((configuredProducts ?? []).map(p => [p.id, p.flow]));
+    return { products: [...seen].sort(), productFlowMap: flowMap };
   }, [configuredProducts, runsData]);
+
   const createRun = useCreateRun();
 
   const [productId, setProductId] = useState(defaultProductId ?? '');
@@ -25,13 +28,25 @@ export default function CreateRunDialog({ open, onClose, defaultProductId }: Cre
   const [flowName, setFlowName] = useState('');
   const [error, setError] = useState('');
 
+  // Sync flow whenever the product or loaded config changes (data may arrive after mount).
+  useEffect(() => {
+    if (productId && productFlowMap[productId]) {
+      setFlowName(productFlowMap[productId]);
+    }
+  }, [productId, productFlowMap]);
+
+  function handleProductChange(id: string) {
+    setProductId(id);
+    setFlowName(productFlowMap[id] ?? '');
+  }
+
   if (!open) return null;
 
   function reset() {
     setProductId(defaultProductId ?? '');
     setTicketKey('');
     setTicketShortKey('');
-    setFlowName('');
+    setFlowName(productFlowMap[defaultProductId ?? ''] ?? '');
     setError('');
   }
 
@@ -73,7 +88,7 @@ export default function CreateRunDialog({ open, onClose, defaultProductId }: Cre
             {products.length > 0 ? (
               <select
                 value={productId}
-                onChange={e => setProductId(e.target.value)}
+                onChange={e => handleProductChange(e.target.value)}
                 required
                 className="input"
               >
@@ -86,7 +101,7 @@ export default function CreateRunDialog({ open, onClose, defaultProductId }: Cre
               <input
                 type="text"
                 value={productId}
-                onChange={e => setProductId(e.target.value)}
+                onChange={e => handleProductChange(e.target.value)}
                 placeholder="e.g. sam-portfolio"
                 required
                 className="input"

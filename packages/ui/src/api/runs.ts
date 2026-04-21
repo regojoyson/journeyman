@@ -96,7 +96,7 @@ export function useResumeRun() {
 }
 
 export function useProducts() {
-  return useQuery<string[]>({
+  return useQuery<{ id: string; flow: string }[]>({
     queryKey: PRODUCTS_QUERY_KEY,
     queryFn: getProducts,
   });

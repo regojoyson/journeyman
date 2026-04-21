@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useRuns } from '@/api/runs';
-import { useProductStore } from '@/stores/useProductStore';
 import { useRefreshStore } from '@/stores/useRefreshStore';
 import RunCard from './RunCard';
 import CreateRunDialog from './CreateRunDialog';
@@ -18,7 +18,8 @@ const STATUS_OPTIONS: { label: string; value: FilterStatus }[] = [
 ];
 
 export default function RunList() {
-  const { selected } = useProductStore();
+  const [searchParams] = useSearchParams();
+  const selected = searchParams.get('product') ?? 'all';
   const { interval } = useRefreshStore();
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [searchInput, setSearchInput] = useState('');
@@ -48,7 +49,7 @@ export default function RunList() {
       <CreateRunDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        defaultProductId={selected && selected !== 'all' ? selected : undefined}
+        defaultProductId={selected !== 'all' ? selected : undefined}
       />
 
       {/* Filters + New Run */}

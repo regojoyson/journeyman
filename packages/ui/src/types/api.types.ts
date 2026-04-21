@@ -23,7 +23,7 @@ export interface RunStep {
   durationMs: number | null;
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
-  error?: string;
+  error?: string | Record<string, unknown>;
 }
 
 export interface ArtifactMeta {

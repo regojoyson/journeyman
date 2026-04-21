@@ -10,6 +10,8 @@ export type ProductsApiDeps = { config: PipelineConfig };
 
 export function registerProductsApi(app: FastifyInstance, deps: ProductsApiDeps) {
   app.get("/api/products", async () => {
-    return Object.keys(deps.config.products).sort();
+    return Object.entries(deps.config.products)
+      .map(([id, cfg]) => ({ id, flow: cfg.flow }))
+      .sort((a, b) => a.id.localeCompare(b.id));
   });
 }

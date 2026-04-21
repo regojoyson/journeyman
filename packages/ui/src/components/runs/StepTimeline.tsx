@@ -305,7 +305,18 @@ function StepRow({ step, index, total, onStepClick }: {
           )}
 
           {step.error && (
-            <div className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700 font-mono">{step.error}</div>
+            <div className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700 font-mono space-y-0.5">
+              {typeof step.error === 'string' ? (
+                <span>{step.error}</span>
+              ) : (
+                Object.entries(step.error as Record<string, unknown>).map(([k, v]) => (
+                  <div key={k}>
+                    <span className="font-semibold">{k}: </span>
+                    <span>{String(v ?? '—')}</span>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </button>
 
