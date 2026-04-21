@@ -384,6 +384,26 @@ providerConfig:
 
 ---
 
+### `console` — ConsoleProvider
+
+**Package:** `@journeyman/notification-provider`  
+**Status:** Implemented — logs via application logger (Pino); no external calls
+
+```yaml
+providers:
+  notification: console
+providerConfig:
+  notification: {}
+```
+
+Writes one `info`-level log entry per notification containing `channel`, `title`, `message`, and `sessionId`. In development (`NODE_ENV != production`) output is pretty-printed via `pino-pretty`; in production it is structured JSON. Intended for local dev and CI environments where a real Slack workspace is unavailable.
+
+**Returns:** `{ success: true, messageId: "<epoch ms>", sessionId }`
+
+**Failure modes:** never fails; no external calls.
+
+---
+
 ## Complete `providerConfig` Examples
 
 ### Claude + GitHub + Jira + Slack
@@ -453,3 +473,4 @@ providerConfig:
 | `linear` | ticket | Stub | — |
 | `monday` | ticket | Stub | — |
 | `slack` | notification | Stub | — |
+| `console` | notification | Implemented | — |

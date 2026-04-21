@@ -11,8 +11,8 @@ import { unwrap } from "../adapter-unwrap.ts";
 import type { AnalyzeResult, PhaseResult, PipelineContext } from "@journeyman/core";
 
 type Config = {
-  /** Target channel name or id (required). */
-  channel: string;
+  /** Target channel name or id. When omitted the notification provider uses its configured default. */
+  channel?: string;
   /** Built-in message template. Ignored when `message` is provided. */
   template?: "analysis-summary" | "pr-opened" | "default";
   /** Verbatim message body. Takes precedence over `template`. */
@@ -45,14 +45,10 @@ export class NotifyPhase extends BasePhase {
   static reads = [] as const;
   static writes = ["notifications"] as const;
 
-  async run(ctx: PipelineContext, config: Config): Promise<PhaseResult> {
-    if (!config?.channel) {
-      return this.failed("notify requires config.channel", "CONFIG_MISSING");
-    }
-
+  async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
     const message = config.message ?? this.renderTemplate(ctx, config.template ?? "default");
     const res = unwrap(await ctx.providers.notification.send({
-      channel: config.channel,
+      channel: config.channel ?? "",
       message,
       title: config.title,
       sessionId: ctx.sessionId,

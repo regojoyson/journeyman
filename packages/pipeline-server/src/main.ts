@@ -29,7 +29,7 @@ import {
   JiraProvider, LinearProvider, MondayProvider,
   GitHubIssuesProvider, GitHubProjectsProvider,
 } from "@journeyman/ticket-provider";
-import { SlackProvider } from "@journeyman/notification-provider";
+import { SlackProvider, ConsoleProvider } from "@journeyman/notification-provider";
 import { createLogger } from "@journeyman/core";
 
 const log = createLogger("server:main");
@@ -91,7 +91,7 @@ export async function startServer(configPath: string): Promise<void> {
     GitHubProvider, GitLabProvider,
     JiraProvider, LinearProvider, MondayProvider,
     GitHubIssuesProvider, GitHubProjectsProvider,
-    SlackProvider,
+    SlackProvider, ConsoleProvider,
   ]) {
     providers.register(c as any);
   }

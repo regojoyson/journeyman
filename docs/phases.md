@@ -33,6 +33,60 @@ Fetches the ticket identified by `ctx.ticketId` from the configured ticket provi
 
 ---
 
+### `getTicketSchema`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `getTicketSchema` |
+| **reads** | _(none)_ |
+| **writes** | `ticketSchema` |
+| **Step config** | `projectId?: string` |
+| **Source** | `packages/pipeline/src/phases/get-ticket-schema-phase.ts` |
+
+Fetches the field schema for the ticket project from the ticket provider. Useful before `createTicket` when you need to know which custom fields and allowed values exist. If `projectId` is omitted, falls back to the product config's default project.
+
+**Failure modes:** ticket provider API error, project not found.
+
+**Side effects:** one read API call to the ticket provider.
+
+---
+
+### `createTicket`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `createTicket` |
+| **reads** | _(none)_ |
+| **writes** | `createdTicket` |
+| **Step config** | `title: string`, `description?: string`, `assignee?: string`, `labels?: string[]`, `projectId?: string`, `status?: string`, `customFields?: Record<string, unknown>` |
+| **Source** | `packages/pipeline/src/phases/create-ticket-phase.ts` |
+
+Creates a new ticket on the configured ticket provider using the supplied config values. Stores the created ticket object under `createdTicket`.
+
+**Failure modes:** missing required `title`, provider API error, invalid field values.
+
+**Side effects:** creates a ticket on the ticket provider.
+
+---
+
+### `updateTicket`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `updateTicket` |
+| **reads** | _(none)_ |
+| **writes** | `updatedTicket` |
+| **Step config** | `title?: string`, `description?: string`, `status?: string`, `assignee?: string`, `labels?: string[]`, `priority?: string`, `customFields?: Record<string, unknown>` |
+| **Source** | `packages/pipeline/src/phases/update-ticket-phase.ts` |
+
+Updates fields on the current ticket (`ctx.ticketId`). Only supplied fields are changed; omitted fields are left as-is. Stores the updated ticket object under `updatedTicket`.
+
+**Failure modes:** ticket not found, provider API error, invalid field values.
+
+**Side effects:** mutates the ticket on the ticket provider.
+
+---
+
 ### `cloneRepos`
 
 | Field | Value |
@@ -51,6 +105,24 @@ Clones every repository listed in `productConfig.repos` to a temporary local wor
 
 ---
 
+### `createWorkspace`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `createWorkspace` |
+| **reads** | _(none)_ |
+| **writes** | `workspacePath` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/create-workspace-phase.ts` |
+
+Creates a temporary working directory for the pipeline run and stores its absolute path under `workspacePath`. Use before phases that need a scratch directory outside of any cloned repo.
+
+**Failure modes:** file-system permission error, disk-space exhaustion.
+
+**Side effects:** creates a directory on disk.
+
+---
+
 ### `checkoutRepo`
 
 | Field | Value |
@@ -66,6 +138,42 @@ Hard-resets each cloned repo in `repoPaths` to its configured default branch (fr
 **Failure modes:** any individual repo reports an `error` (phase fails with that message); coding-cli provider error; cancellation via `ctx.signal`.
 
 **Side effects:** performs `git reset` and `git checkout` on local disk.
+
+---
+
+### `scanRepos`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `scanRepos` |
+| **reads** | `primaryRepoPath` |
+| **writes** | `scannedRepos` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/scan-repos-phase.ts` |
+
+Performs a lightweight structural scan of the primary repo (file tree, language detection, key entry points) and stores a summary under `scannedRepos`. Useful as a cheap pre-pass before the heavier `analyze` step.
+
+**Failure modes:** missing `primaryRepoPath` directory, coding-cli provider error.
+
+**Side effects:** reads files under `primaryRepoPath`; no mutations.
+
+---
+
+### `getRepo`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `getRepo` |
+| **reads** | _(none)_ |
+| **writes** | `repo` |
+| **Step config** | _(none)_ |
+| **Source** | `packages/pipeline/src/phases/get-repo-phase.ts` |
+
+Fetches repository metadata (name, default branch, visibility, clone URLs) from the git provider and stores it under `repo`.
+
+**Failure modes:** git provider API error, repo not found.
+
+**Side effects:** one read API call to the git provider.
 
 ---
 
@@ -130,10 +238,12 @@ Applies the plan to the working tree under `primaryRepoPath`, producing code cha
 | **Registry key** | `commitPushRepos` |
 | **reads** | `primaryRepoPath` |
 | **writes** | `commit` |
-| **Step config** | `pattern?: string`, `prSummaryStyle?: "conventional" \| "plain"` |
-| **Source** | `packages/pipeline/src/phases/commit-push-repos-phase.ts` |
+| **Step config** | `pattern?: string`, `prSummaryStyle?: "brief" \| "detailed"` |
+| **Source** | `packages/pipeline/src/phases/commit-push-phase.ts` |
 
 Commits all staged changes in the primary repo using a commit message derived from the ticket and plan (applying `pattern` if provided), then pushes to the remote branch. Stores commit metadata (SHA, branch, remote URL) under `commit`.
+
+`pattern` supports `#{ticket}` and `{summary}` interpolation tokens. `prSummaryStyle` controls how verbose the auto-generated summary portion is (`"brief"` is the default).
 
 **Failure modes:** nothing to commit, push rejected (force-push blocked, stale ref), auth failure.
 
@@ -159,6 +269,80 @@ Creates a pull request (or merge request) on the git host for the pushed branch.
 
 ---
 
+### `listPRs`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `listPRs` |
+| **reads** | _(none)_ |
+| **writes** | `listedPRs` |
+| **Step config** | `state?: "open" \| "closed" \| "all"`, `head?: string` |
+| **Source** | `packages/pipeline/src/phases/list-prs-phase.ts` |
+
+Lists pull requests for the configured repository. Optionally filter by `state` (defaults to `"open"`) and by source `head` branch. Stores the result array under `listedPRs`.
+
+**Failure modes:** git provider API error.
+
+**Side effects:** one read API call to the git provider.
+
+---
+
+### `addComment`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `addComment` |
+| **reads** | _(resolved at runtime from template)_ |
+| **writes** | `commentIds` |
+| **Step config** | `template?: "analysis-summary" \| "pr-opened" \| "default"`, `body?: string` |
+| **Source** | `packages/pipeline/src/phases/add-comment-phase.ts` |
+
+Posts a comment on the ticket. Supply either `body` (verbatim text, supports `#{...}` artifact interpolation) or `template` to use a built-in rendering. Template `"analysis-summary"` renders from `analysis`, `"pr-opened"` renders from `pr`, and `"default"` posts a generic status update. The created comment ID is stored under `commentIds.<stepId>` so multiple `addComment` steps in the same flow remain independent.
+
+**Failure modes:** ticket provider API error, missing artifact required by the chosen template.
+
+**Side effects:** creates a comment on the ticket.
+
+---
+
+### `notify`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `notify` |
+| **reads** | _(none)_ |
+| **writes** | `notifications` |
+| **Step config** | `channel?: string`, `template?: "analysis-summary" \| "pr-opened" \| "default"`, `message?: string`, `title?: string` |
+| **Source** | `packages/pipeline/src/phases/notify-phase.ts` |
+
+Sends a notification via the configured notification provider (e.g., Slack). `channel` is optional — when omitted the provider uses its configured default channel from `providerConfig.notification`. Supply either `message` (plain text, supports `#{ticket}` interpolation) or `template` for a structured built-in rendering. `title` is used as the notification heading when supported by the provider. Stores delivery receipts under `notifications`.
+
+Valid `notification` provider ids: `slack` (external Slack webhook), `console` (logs to application logger — no external calls, suitable for local dev and CI).
+
+**Failure modes:** notification provider API error, invalid `channel`.
+
+**Side effects:** sends a message to the notification channel.
+
+---
+
+### `updateStatus`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `updateStatus` |
+| **reads** | _(none)_ |
+| **writes** | `statusHistory` |
+| **Step config** | `status: string` (semantic name from `productConfig.ticketWorkflow.statuses`) |
+| **Source** | `packages/pipeline/src/phases/update-status-phase.ts` |
+
+Transitions the ticket to the status named by `config.status`, which is resolved through the product's `ticketWorkflow.statuses` map to the provider-specific status ID. Appends a `{ status, timestamp }` entry to `statusHistory`.
+
+**Failure modes:** unknown status name (not in workflow map), provider transition error, invalid transition for current ticket state.
+
+**Side effects:** mutates the ticket's status on the ticket provider.
+
+---
+
 ### `cleanupRepos`
 
 | Field | Value |
@@ -174,42 +358,6 @@ Removes the locally cloned repository directories listed in `repoPaths` from dis
 **Failure modes:** permission error deleting directories; missing path (logged and skipped).
 
 **Side effects:** deletes directories from disk permanently.
-
----
-
-### `addComment`
-
-| Field | Value |
-|---|---|
-| **Registry key** | `addComment` |
-| **reads** | _(resolved at runtime from template)_ |
-| **writes** | `commentIds.<stepId>` |
-| **Step config** | `template?: "analysis-summary" \| "pr-opened" \| "default"`, `body?: string` |
-| **Source** | `packages/pipeline/src/phases/add-comment-phase.ts` |
-
-Posts a comment on the ticket. Supply either `body` (verbatim text) or `template` to use a built-in rendering. Template `"analysis-summary"` renders from `analysis`, `"pr-opened"` renders from `pr`, and `"default"` posts a generic status update. The created comment ID is stored under `commentIds.<stepId>` so multiple `addComment` steps in the same flow remain independent.
-
-**Failure modes:** ticket provider API error, missing artifact required by the chosen template.
-
-**Side effects:** creates a comment on the ticket.
-
----
-
-### `updateStatus`
-
-| Field | Value |
-|---|---|
-| **Registry key** | `updateStatus` |
-| **reads** | _(none declared)_ |
-| **writes** | `statusHistory` |
-| **Step config** | `status: string` (semantic name from `productConfig.ticketWorkflow.statuses`) |
-| **Source** | `packages/pipeline/src/phases/update-status-phase.ts` |
-
-Transitions the ticket to the status named by `config.status`, which is resolved through the product's `ticketWorkflow.statuses` map to the provider-specific status ID. Appends a `{ status, timestamp }` entry to `statusHistory`.
-
-**Failure modes:** unknown status name (not in workflow map), provider transition error, invalid transition for current ticket state.
-
-**Side effects:** mutates the ticket's status on the ticket provider.
 
 ---
 
@@ -237,7 +385,7 @@ Stub gate phase that unconditionally returns `PhaseResult.blocked`, halting the 
 |---|---|
 | **Registry key** | `reviewLoop` |
 | **reads** | _(none declared; sub-phases declare their own reads)_ |
-| **writes** | `${stepId}_cycles`, `${stepId}_outcome` |
+| **writes** | `${stepId}_cycles`, `${stepId}_outcome` (written at runtime) |
 | **Step config** | `approveStatus: string`, `reworkStatus: string`, `onRework: string[]`, `maxCycles?: number` (default 3) |
 | **Source** | `packages/pipeline/src/phases/review-loop-phase.ts` |
 
@@ -270,6 +418,24 @@ One-shot gate phase. Blocks until the run is resumed with a ticket status that m
 Lighter-weight alternative to `reviewLoop` when no rework cycle is needed — just a "pause until human approves" checkpoint.
 
 **Failure modes:** resumed with a status in `failOn` (fails with a descriptive message).
+
+**Side effects:** none.
+
+---
+
+### `requireField`
+
+| Field | Value |
+|---|---|
+| **Registry key** | `requireField` |
+| **reads** | _(none declared; inspects ctx at runtime)_ |
+| **writes** | _(none)_ |
+| **Step config** | `artifact: string`, `field?: string` |
+| **Source** | `packages/pipeline/src/phases/require-field-phase.ts` |
+
+Validates that a named artifact (and optionally a specific field within it) is present and non-null in `ctx.artifacts`. If the check fails the phase returns `PhaseResult.blocked` with a descriptive reason, preventing downstream steps from operating on bad state. When `field` is omitted the entire artifact key is checked.
+
+**Failure modes:** never throws; always blocks (never fails) when the condition is not met.
 
 **Side effects:** none.
 
@@ -311,21 +477,21 @@ Fetches the PR's review comments (inline code comments with path/line) and issue
 
 ---
 
-### `requireField`
+### `listTickets`
 
 | Field | Value |
 |---|---|
-| **Registry key** | `requireField` |
-| **reads** | _(none declared; inspects ctx at runtime)_ |
-| **writes** | _(none)_ |
-| **Step config** | `artifact: string`, `field?: string` |
-| **Source** | `packages/pipeline/src/phases/require-field-phase.ts` |
+| **Registry key** | `listTickets` |
+| **reads** | _(none)_ |
+| **writes** | `listedTickets` |
+| **Step config** | `projectId?: string`, `status?: string`, `assignee?: string` |
+| **Source** | `packages/pipeline/src/phases/list-tickets-phase.ts` |
 
-Validates that a named artifact (and optionally a specific field within it) is present and non-null in `ctx.artifacts`. If the check fails the phase returns `PhaseResult.blocked` with a descriptive reason, preventing downstream steps from operating on bad state. When `field` is omitted the entire artifact key is checked.
+Lists tickets from the configured ticket provider, optionally filtered by project, status, or assignee. Stores the result array under `listedTickets`.
 
-**Failure modes:** never throws; always blocks (never fails) when the condition is not met.
+**Failure modes:** ticket provider API error.
 
-**Side effects:** none.
+**Side effects:** one read API call to the ticket provider.
 
 ---
 
@@ -337,10 +503,18 @@ Each phase that produces data owns a top-level key in `ctx.artifacts`. Keys are 
 |---|---|---|
 | `ticket` | `getTicket` | Raw ticket object from the ticket provider |
 | `ticketMd` | `getTicket` | Markdown string rendering of the ticket |
+| `ticketSchema` | `getTicketSchema` | Field schema for the ticket project |
+| `createdTicket` | `createTicket` | Newly created ticket object |
+| `updatedTicket` | `updateTicket` | Updated ticket object |
+| `listedTickets` | `listTickets` | Array of ticket objects matching the filter |
 | `repoPaths` | `cloneRepos` | `Record<string, string>` — repo name → local absolute path |
 | `primaryRepoPath` | `cloneRepos` | `string` — absolute path of the primary repo |
 | `repoRefs` | `cloneRepos` | `Record<string, { sha: string; branch: string }>` |
+| `workspacePath` | `createWorkspace` | `string` — absolute path of the scratch workspace directory |
+| `repo` | `getRepo` | Repository metadata from the git provider |
+| `listedPRs` | `listPRs` | Array of PR objects matching the filter |
 | `checkoutResults` | `checkoutRepo` | `CheckoutResult[]` — one entry per repo (`dirPath`, `newBranch`, `success`, optional `error`) |
+| `scannedRepos` | `scanRepos` | Structural scan summary of the primary repo |
 | `analysis` | `analyze` | `AnalyzeResult` including `reportHandle: ArtifactHandle` |
 | `plan` | `plan` | `PlanResult` including `reportHandle: ArtifactHandle` |
 | `implementation` | `implement` | `ImplementResult` including `reportHandle: ArtifactHandle` |
@@ -348,6 +522,8 @@ Each phase that produces data owns a top-level key in `ctx.artifacts`. Keys are 
 | `pr` | `createPR` | `{ url: string; number: number; title: string }` |
 | `statusHistory` | `updateStatus` | `Array<{ status: string; timestamp: string }>` |
 | `commentIds` | `addComment` | `Record<stepId, string>` — one entry per `addComment` step |
+| `notifications` | `notify` | Delivery receipts from the notification provider |
+| `reviewComments` | `fetchTicketComments`, `fetchPRComments` | Concatenated markdown string of comments |
 
 Large blobs (analysis reports, plan documents, diffs) are not stored inline. The phase calls `ctx.artifactStore.putPath(...)` and stores the returned `ArtifactHandle` alongside the structured data. Consumers resolve the blob via `ctx.artifactStore.getPath(handle)` when they need the full content.
 
@@ -360,7 +536,7 @@ All built-in phases extend `BasePhase`. The following helper methods cover the c
 | Method | Signature | Description |
 |---|---|---|
 | `this.ok` | `(artifacts: Record<string, unknown>) => PhaseResult` | Returns a successful result and merges `artifacts` into `ctx.artifacts`. |
-| `this.blocked` | `(reason: string, waitFor?: string) => PhaseResult` | Halts the run; runner preserves state so the flow can be resumed. `waitFor` is a human-readable label for what approval is needed. |
+| `this.blocked` | `(reason: string, waitFor?: "ticket-comment" \| "pr-comment" \| "manual", artifacts?: Record<string, unknown>) => PhaseResult` | Halts the run; runner preserves state so the flow can be resumed. `waitFor` signals what external action unblocks the step. `artifacts` are merged into `ctx.artifacts` immediately, before the block. |
 | `this.failed` | `(message: string, code?: string) => PhaseResult` | Marks the run as errored; runner does not retry unless the step is configured as retriable. |
 | `this.require<T>` | `(ctx: PipelineContext, key: string) => T` | Reads `ctx.artifacts[key]`, throws `PhaseError` if absent. Use for declared `reads` entries. |
 | `this.optional<T>` | `(ctx: PipelineContext, key: string) => T \| undefined` | Returns `ctx.artifacts[key]` or `undefined` without throwing. Use for conditional reads. |

@@ -27,7 +27,7 @@ import {
   JiraProvider, LinearProvider, MondayProvider,
   GitHubIssuesProvider, GitHubProjectsProvider,
 } from "@journeyman/ticket-provider";
-import { SlackProvider } from "@journeyman/notification-provider";
+import { SlackProvider, ConsoleProvider } from "@journeyman/notification-provider";
 import { createLogger } from "@journeyman/core";
 
 const log = createLogger("pipeline:validate-config");
@@ -72,7 +72,7 @@ export async function validateConfig(configPath: string): Promise<number> {
       GitHubProvider, GitLabProvider,
       JiraProvider, LinearProvider, MondayProvider,
       GitHubIssuesProvider, GitHubProjectsProvider,
-      SlackProvider,
+      SlackProvider, ConsoleProvider,
     ]) providers.register(c as any);
 
     FlowValidator.validate({ phases, providers, flows: flowList, products: config.products, defaultFlow: config.defaultFlow });
