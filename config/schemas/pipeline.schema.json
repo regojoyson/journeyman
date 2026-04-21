@@ -124,6 +124,24 @@
                 "additionalProperties": {
                   "type": "string"
                 }
+              },
+              "reviewLabels": {
+                "type": "object",
+                "properties": {
+                  "approve": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "rework": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [

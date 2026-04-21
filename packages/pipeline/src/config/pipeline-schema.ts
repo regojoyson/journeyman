@@ -40,6 +40,10 @@ export const PipelineConfigSchema = z.object({
         matchStatus: z.array(z.string()).optional(),
       }).optional(),
       statuses: z.record(z.string()),
+      reviewLabels: z.object({
+        approve: z.array(z.string()).optional(),
+        rework: z.array(z.string()).optional(),
+      }).optional(),
     }).optional(),
     webhookSecrets: z.record(z.string()).optional(),
     concurrency: z.number().int().min(1).optional(),
