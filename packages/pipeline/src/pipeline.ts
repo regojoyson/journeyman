@@ -179,6 +179,11 @@ export class Pipeline {
         attempt,
         at: rec.startedAt!,
       });
+      await this.deps.trace.log(
+        run.sessionId, step.id,
+        `step started — phase: ${step.phase}${attempt > 1 ? `, attempt: ${attempt}` : ""}`,
+        "info",
+      );
 
       const stepSignal = step.timeoutMs
         ? anySignal([baseSignal, AbortSignal.timeout(step.timeoutMs)])
@@ -215,10 +220,25 @@ export class Pipeline {
       };
       if (rec.status === "failed") {
         log.error({ ...logFields, err: rec.error?.message }, "step failed");
+        await this.deps.trace.log(
+          run.sessionId, step.id,
+          `step failed in ${rec.durationMs}ms — ${rec.error?.message ?? "unknown error"}`,
+          "error",
+        );
       } else if (rec.status === "blocked") {
         log.warn({ ...logFields, reason: rec.blockedReason }, "step blocked");
+        await this.deps.trace.log(
+          run.sessionId, step.id,
+          `step blocked in ${rec.durationMs}ms — ${rec.blockedReason ?? "awaiting gate"}`,
+          "warn",
+        );
       } else {
         log.info(logFields, "step ok");
+        await this.deps.trace.log(
+          run.sessionId, step.id,
+          `step completed in ${rec.durationMs}ms`,
+          "info",
+        );
       }
       ctx.emit({
         type: "stepEnded",

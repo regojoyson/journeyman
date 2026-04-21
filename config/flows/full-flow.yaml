@@ -1,0 +1,94 @@
+name: human-loop
+
+providers:
+  ticket:       github-issues
+  git:          github
+  coding:       claude
+  notification: slack
+
+steps:
+  - id: fetch-ticket
+    phase: getTicket
+
+  - id: clone
+    phase: cloneRepos
+    timeoutMs: 120000
+
+  - id: mark-in-progress
+    phase: updateStatus
+    config: { status: development-started }
+    onFailure: skip
+
+  - id: checkout
+    phase: checkoutRepo
+
+  - id: analyze
+    phase: analyze
+
+  - id: notify-analyze-ready
+    phase: notify
+    config: { message: "Analysis ready for #{ticket}" }
+    onFailure: skip
+
+  - id: analyze-review
+    phase: reviewLoop
+    config:
+      approveStatus: analyze-approved
+      reworkStatus: analyze-rework
+      maxCycles: 2
+      onRework: [fetchTicketComments, analyze]
+
+  - id: plan
+    phase: plan
+
+  - id: notify-plan-ready
+    phase: notify
+    config: { message: "Plan ready for #{ticket} — please approve" }
+    onFailure: skip
+
+  - id: plan-review
+    phase: reviewLoop
+    config:
+      approveStatus: plan-approved
+      reworkStatus: plan-rework
+      maxCycles: 3
+      onRework: [fetchTicketComments, plan]
+
+  - id: implement
+    phase: implement
+
+  - id: commit-push
+    phase: commitPushRepos
+    config:
+      pattern: "#{ticket} : {summary}"
+
+  - id: open-pr
+    phase: createPR
+    onFailure: skip
+
+  - id: notify-pr-ready
+    phase: notify
+    config: { message: "PR ready for #{ticket}" }
+    onFailure: skip
+
+  - id: mark-in-review
+    phase: updateStatus
+    config: { status: code-review }
+    onFailure: skip
+
+  - id: code-review
+    phase: reviewLoop
+    config:
+      approveStatus: completed
+      reworkStatus: rework-requested
+      maxCycles: 3
+      onRework: [fetchPRComments, plan, implement, commitPushRepos]
+
+  - id: notify-complete
+    phase: notify
+    config: { message: "#{ticket} completed" }
+    onFailure: skip
+
+  - id: cleanup
+    phase: cleanupRepos
+    onFailure: skip

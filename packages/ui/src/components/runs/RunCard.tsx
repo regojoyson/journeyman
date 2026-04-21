@@ -1,36 +1,27 @@
-// packages/ui/src/components/runs/RunCard.tsx
-
 import { Link } from 'react-router-dom';
 import { RunListItem, RunStep } from '@/types/api.types';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ProgressBar from '@/components/shared/ProgressBar';
+import { relativeTime } from '@/utils/format';
 
 interface RunCardProps { run: RunListItem; steps?: RunStep[]; }
 
-const STATUS_COLORS: Record<string, string> = {
-  running: 'bg-blue-100 text-blue-700 border-blue-200',
+const STEP_COLORS: Record<string, string> = {
+  running:   'bg-blue-100 text-blue-700 border-blue-200',
   completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  failed: 'bg-rose-100 text-rose-700 border-rose-200',
-  blocked: 'bg-amber-100 text-amber-700 border-amber-200',
-  pending: 'bg-slate-100 text-slate-500 border-slate-200',
+  failed:    'bg-rose-100 text-rose-700 border-rose-200',
+  blocked:   'bg-amber-100 text-amber-700 border-amber-200',
   cancelled: 'bg-slate-100 text-slate-400 border-slate-200',
+  pending:   'bg-slate-100 text-slate-500 border-slate-200',
+};
+
+const STEP_ICONS: Record<string, string> = {
+  running: '↻', completed: '✓', failed: '✕', blocked: '⏸', cancelled: '—',
 };
 
 export default function RunCard({ run, steps }: RunCardProps) {
-  const completedSteps = steps?.filter(s => s.status === 'completed').length ?? 0;
+  const completedSteps = steps?.filter(s => s.status === 'ok').length ?? 0;
   const totalSteps = steps?.length ?? 0;
-  function relativeTime(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins} min ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ago`;
-  }
-
-  const relativeUpdated = run.updatedAt ? relativeTime(run.updatedAt) : 'unknown';
 
   return (
     <Link
@@ -61,22 +52,18 @@ export default function RunCard({ run, steps }: RunCardProps) {
         </div>
       )}
 
-      {/* Mini timeline */}
+      {/* Mini step strip */}
       {steps && steps.length > 0 && (
         <div className="mb-3 flex items-center gap-1 overflow-x-auto pb-1">
           {steps.map(step => {
-            const color = STATUS_COLORS[step.status] || STATUS_COLORS.pending;
-            const isRunning = step.status === 'running';
+            const uiStatus = step.status === 'ok' ? 'completed' : step.status;
+            const color = STEP_COLORS[uiStatus] ?? STEP_COLORS.pending;
             return (
-              <div key={step.stepId} className="flex flex-col items-center" title={`${step.name}: ${step.status}`}>
-                <div
-                  className={`flex h-5 w-5 items-center justify-center rounded-full border text-[8px] ${color} ${
-                    isRunning ? 'animate-pulse-ring' : ''
-                  }`}
-                >
-                  {step.status === 'completed' ? '✓' : step.status === 'failed' ? '✕' : step.status === 'running' ? '↻' : step.status === 'blocked' ? '⏸' : '○'}
+              <div key={step.id} className="flex flex-col items-center" title={`${step.id}: ${step.status}`}>
+                <div className={`flex h-5 w-5 items-center justify-center rounded-full border text-[8px] ${color} ${step.status === 'running' ? 'animate-pulse' : ''}`}>
+                  {STEP_ICONS[uiStatus] ?? '○'}
                 </div>
-                <span className="mt-0.5 text-[8px] text-slate-400">{step.name.slice(0, 6)}</span>
+                <span className="mt-0.5 text-[8px] text-slate-400">{step.id.slice(0, 6)}</span>
               </div>
             );
           })}
@@ -84,7 +71,7 @@ export default function RunCard({ run, steps }: RunCardProps) {
       )}
 
       {/* Timestamp */}
-      <div className="text-xs text-slate-400">{relativeUpdated}</div>
+      <div className="text-xs text-slate-400">{run.createdAt ? relativeTime(run.createdAt) : 'unknown'}</div>
     </Link>
   );
 }

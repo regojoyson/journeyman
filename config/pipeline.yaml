@@ -1,6 +1,6 @@
 # Journeyman pipeline config — sam-portfolio
 
-defaultFlow: default
+defaultFlow: human-loop
 
 # Where pipeline run state, traces, and artifacts are persisted.
 # `type` is extensible — future backends (postgres, redis, …) will slot in here.
@@ -26,7 +26,7 @@ workspaces:
 # ── Products ───────────────────────────────────────────────────────────────────
 products:
   sam-portfolio:
-    flow: default
+    flow: human-loop
     workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
     concurrency: 1
 
@@ -40,7 +40,7 @@ products:
     providerConfig:
       ticket:
         # GitHub Issues — ids are "owner/repo#<number>"
-        projectId: "regojoyson/sam-portfolio"
+        repo: "regojoyson/sam-portfolio"
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
       git:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
@@ -52,13 +52,67 @@ products:
 
     ticketWorkflow:
       trigger:
-        matchLabels: [Todo]       # only run when issue has this label
+        matchLabels: [Todo]         # pipeline starts when this label is applied
+      # Labels set by the system
       statuses:
         development-started: "In Progress"
         code-review:          "Code Review"
-        done:                 "Done"
-        blocked:              "Blocked"
-        failed:               "Failed"
+      # Labels set by humans to advance reviewLoop gates
+      reviewLabels:
+        approve:
+          - analyze-approved
+          - plan-approved
+          - completed
+        rework:
+          - analyze-rework
+          - plan-rework
+          - rework-requested
+
+    webhookSecrets:
+      github: GITHUB_WEBHOOK_SECRET
+
+  sam-college-intro:
+    flow: human-loop
+    workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
+    concurrency: 1
+
+    repos:
+      - providerId: github
+        owner: regojoyson
+        repo: sam-college-intro
+        url: https://github.com/regojoyson/sam-college-intro.git
+        defaultBranch: main
+
+    providerConfig:
+      ticket:
+        # GitHub Issues — ids are "owner/repo#<number>"
+        repo: "regojoyson/sam-college-intro"
+        tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
+      git:
+        tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
+      # coding: not needed — ClaudeProvider reads from ~/.claude/ session
+      # or ANTHROPIC_API_KEY env var if present. No config consumed.
+      notification:
+        # Slack is a stub — flow below doesn't call notify, safe to ignore
+        channel: "#sam-portfolio"
+
+    ticketWorkflow:
+      trigger:
+        matchLabels: [Todo]         # pipeline starts when this label is applied
+      # Labels set by the system
+      statuses:
+        development-started: "In Progress"
+        code-review:          "Code Review"
+      # Labels set by humans to advance reviewLoop gates
+      reviewLabels:
+        approve:
+          - analyze-approved
+          - plan-approved
+          - completed
+        rework:
+          - analyze-rework
+          - plan-rework
+          - rework-requested
 
     webhookSecrets:
       github: GITHUB_WEBHOOK_SECRET

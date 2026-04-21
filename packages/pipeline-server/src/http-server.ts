@@ -3,8 +3,9 @@
  * Builds and configures the Fastify HTTP server for the pipeline server.
  *
  * Registers all API endpoint groups and trigger sources onto a single Fastify instance.
- * A bearer-token middleware guards all `/api/*` routes except `/api/health` and
- * `/api/trigger/*` (which perform their own auth).
+ * CORS is enabled for all origins (credentials: true) so the monitoring UI can connect
+ * from any dev-server port. A bearer-token middleware guards all `/api/*` routes except
+ * `/api/health` and `/api/trigger/*` (which perform their own auth).
  *
  * API groups:
  *   GET  /api/health                         — liveness + registry counts
@@ -25,6 +26,7 @@
 
 import Fastify, { type FastifyInstance } from "fastify";
 import sensible from "@fastify/sensible";
+import cors from "@fastify/cors";
 import type {
   IStateStore, ITraceLogger, IArtifactStore, IFlowConfigSource, IFlowResolver,
   ITriggerSource, PipelineTrigger, PipelineConfig, IProviderMeta,
@@ -61,6 +63,7 @@ export type ServerDeps = {
 export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 5 * 1024 * 1024 });
   await app.register(sensible);
+  await app.register(cors, { origin: true, credentials: true });
 
   app.addHook("onRequest", async (req, reply) => {
     const u = req.url;

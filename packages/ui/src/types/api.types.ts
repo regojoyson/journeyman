@@ -1,6 +1,5 @@
-// packages/ui/src/types/api.types.ts
-
 export type RunStatus = 'running' | 'completed' | 'failed' | 'blocked' | 'cancelled';
+export type StepStatus = 'ok' | 'running' | 'failed' | 'blocked' | 'cancelled' | 'skipped' | 'pending';
 
 export interface RunListItem {
   sessionId: string;
@@ -9,20 +8,22 @@ export interface RunListItem {
   ticketKey: string;
   title: string;
   status: RunStatus;
-  startedAt: string;
+  createdAt: string;
   updatedAt: string;
   endedAt: string | null;
 }
 
 export interface RunStep {
-  stepId: string;
-  name: string;
-  status: RunStatus;
+  id: string;       // step id, e.g. "fetch-ticket"
+  phase: string;    // phase key, e.g. "getTicket"
+  attempt: number;
+  status: StepStatus;
   startedAt: string | null;
   endedAt: string | null;
-  duration: number | null;   // seconds
-  logLines: number;
-  outputs?: Record<string, unknown>;
+  durationMs: number | null;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  error?: string;
 }
 
 export interface ArtifactMeta {
@@ -33,8 +34,17 @@ export interface ArtifactMeta {
 }
 
 export interface RunDetail extends RunListItem {
+  ticketShortKey: string;
+  currentStep: string | null;
   steps: RunStep[];
-  artifacts: ArtifactMeta[];
+  /** Accumulated step outputs keyed by artifact name (e.g. ticket, plan, pr). */
+  artifacts: Record<string, unknown>;
+  /** File artifact metadata — only present if blobs were stored. */
+  artifactFiles?: ArtifactMeta[];
+  flowSnapshot?: {
+    name: string;
+    steps: { id: string; phase: string }[];
+  };
 }
 
 export interface LogLine {
@@ -62,7 +72,7 @@ export interface ProviderCategory {
 
 export interface RunListResponse {
   runs: RunListItem[];
-  total: number;
+  total?: number;
 }
 
 export type FilterStatus = RunStatus | 'all';
