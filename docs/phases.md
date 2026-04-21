@@ -294,10 +294,24 @@ Lists pull requests for the configured repository. Optionally filter by `state` 
 | **Registry key** | `addComment` |
 | **reads** | _(resolved at runtime from template)_ |
 | **writes** | `commentIds` |
-| **Step config** | `template?: "analysis-summary" \| "pr-opened" \| "default"`, `body?: string` |
+| **Step config** | `template?: "work-started" \| "analysis-summary" \| "plan-summary" \| "implementation-summary" \| "pr-opened" \| "review-waiting" \| "review-complete" \| "completed" \| "auto" \| "default"`, `body?: string` |
 | **Source** | `packages/pipeline/src/phases/add-comment-phase.ts` |
 
-Posts a comment on the ticket. Supply either `body` (verbatim text, supports `#{...}` artifact interpolation) or `template` to use a built-in rendering. Template `"analysis-summary"` renders from `analysis`, `"pr-opened"` renders from `pr`, and `"default"` posts a generic status update. The created comment ID is stored under `commentIds.<stepId>` so multiple `addComment` steps in the same flow remain independent.
+Posts a comment on the ticket. Supply either `body` (verbatim text) or `template` for a built-in rendering. When both are omitted, the phase **auto-detects** the best template by scanning the artifact bag in priority order: `pr` → `pr-opened`, `implementation` → `implementation-summary`, `plan` → `plan-summary`, `analysis` → `analysis-summary`, `ticket` → `work-started`, fallback → `default`.
+
+Use `template: "auto"` to make the auto-detect intent explicit. Use `template: "review-waiting"` or `template: "review-complete"` for review gate steps — these cannot be auto-detected. The created comment ID is stored under `commentIds.<stepId>` so multiple `addComment` steps in the same flow remain independent.
+
+| Template | Reads | Renders |
+|---|---|---|
+| `work-started` | `ticket` | Ticket title + start message |
+| `analysis-summary` | `analysis` | Complexity, readiness score, summary |
+| `plan-summary` | `plan` | Step count, complexity, plan summary |
+| `implementation-summary` | `implementation` | Files changed count, implementation summary |
+| `pr-opened` | `pr` | PR URL |
+| `review-waiting` | _(none)_ | Static "ready for review" message |
+| `review-complete` | `${stepId}_outcome` | Review outcome (approved / rework-requested) |
+| `completed` | `ticket`, `pr` | Completion message with PR link |
+| `default` | _(none)_ | Generic checkpoint message |
 
 **Failure modes:** ticket provider API error, missing artifact required by the chosen template.
 

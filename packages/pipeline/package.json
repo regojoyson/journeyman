@@ -4,16 +4,26 @@
   "description": "Configurable phase-based pipeline for Journeyman",
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "bin": { "journeyman": "./src/cli.ts" },
-  "files": ["src"],
-  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "journeyman": "./src/cli.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate:schemas": "tsx src/generate-schemas.ts"
+  },
   "dependencies": {
-    "@journeyman/core": "*",
     "@journeyman/coding-cli": "*",
+    "@journeyman/core": "*",
     "@journeyman/git-provider": "*",
-    "@journeyman/ticket-provider": "*",
     "@journeyman/notification-provider": "*",
+    "@journeyman/ticket-provider": "*",
     "js-yaml": "^4.1.0",
     "uuid": "^10.0.0",
     "zod": "^3.23.8"
@@ -23,6 +33,7 @@
     "@types/node": "^25.6.0",
     "@types/uuid": "^10.0.0",
     "typescript": "^6.0.3",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

@@ -3,23 +3,43 @@
  * Posts a comment to the current ticket via the ticket provider.
  *
  * Config accepts either a `body` string (posted verbatim) or a `template` key
- * that is interpolated against the ticket's analyze result from the artifact bag.
- * The resulting comment ID is written to `commentId` in the artifact bag.
+ * that is resolved via the comment template registry (comment-templates.ts).
+ * If neither is provided, selectTemplate() auto-selects based on pipeline state.
+ * The resulting comment ID is written to `commentIds` in the artifact bag.
  */
 
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
-import type { AnalyzeResult, PhaseResult, PipelineContext } from "@journeyman/core";
+import type { PhaseResult, PipelineContext } from "@journeyman/core";
+import { renderComment, selectTemplate } from "./comment-templates.ts";
 
-type Config = { template?: string; body?: string };
+type Config = {
+  body?: string;
+  /**
+   * Omit or use `"auto"` to auto-select based on what artifacts are in the pipeline bag.
+   * Use a named key to force a specific template regardless of pipeline state.
+   * `"default"` always renders the generic checkpoint message (bypasses auto-selection).
+   */
+  template?:
+    | "work-started"
+    | "analysis-summary"
+    | "plan-summary"
+    | "implementation-summary"
+    | "pr-opened"
+    | "review-waiting"
+    | "review-complete"
+    | "completed"
+    | "auto"
+    | "default";
+};
 
 export class AddCommentPhase extends BasePhase {
   readonly name = "addComment";
-  static reads = [] as const;       // template-dependent reads; validator treats as empty
+  static reads = [] as const;
   static writes = ["commentIds"] as const;
 
   async run(ctx: PipelineContext, config: Config = {}): Promise<PhaseResult> {
-    const body = config.body ?? this.renderTemplate(ctx, config.template ?? "default");
+    const body = config.body ?? this.resolveBody(ctx, config.template);
     const res = unwrap(await ctx.providers.ticket.addComment({
       id: ctx.ticketKey,
       body,
@@ -33,16 +53,8 @@ export class AddCommentPhase extends BasePhase {
     });
   }
 
-  private renderTemplate(ctx: PipelineContext, template: string): string {
-    if (template === "analysis-summary") {
-      const a = this.optional<AnalyzeResult>(ctx, "analysis");
-      if (!a) return "Auto-pilot: (no analysis available)";
-      return `🤖 **Analysis complete**\n\n- **Complexity:** ${a.complexity}\n- **Readiness:** ${a.readinessScore}/100\n\n${a.summary}`;
-    }
-    if (template === "pr-opened") {
-      const pr = this.optional<{ url: string; number: number }>(ctx, "pr");
-      return pr ? `🚀 PR opened: ${pr.url}` : `🚀 PR opened (url unavailable)`;
-    }
-    return `Auto-pilot checkpoint: ${ctx.state.currentStep}`;
+  private resolveBody(ctx: PipelineContext, template?: string): string {
+    const key = (!template || template === "auto") ? selectTemplate(ctx) : template;
+    return renderComment(ctx, key);
   }
 }

@@ -1,4 +1,4 @@
-name: human-loop
+name: full-flow
 
 providers:
   ticket:       github-issues
@@ -25,34 +25,29 @@ steps:
   - id: analyze
     phase: analyze
 
+  - id: comment-analyze
+    phase: addComment
+    config: { template: "analysis-summary" }
+    onFailure: skip
+
   - id: notify-analyze-ready
     phase: notify
     config: { message: "Analysis ready for #{ticket}" }
     onFailure: skip
 
-  - id: analyze-review
-    phase: reviewLoop
-    config:
-      approveStatus: analyze-approved
-      reworkStatus: analyze-rework
-      maxCycles: 2
-      onRework: [fetchTicketComments, analyze]
-
   - id: plan
     phase: plan
+
+  - id: commit-push-plan
+    phase: commitPushRepos
+    config:
+      pattern: "#{ticket} : plan"
+    onFailure: skip
 
   - id: notify-plan-ready
     phase: notify
     config: { message: "Plan ready for #{ticket} — please approve" }
     onFailure: skip
-
-  - id: plan-review
-    phase: reviewLoop
-    config:
-      approveStatus: plan-approved
-      reworkStatus: plan-rework
-      maxCycles: 3
-      onRework: [fetchTicketComments, plan]
 
   - id: implement
     phase: implement
@@ -64,6 +59,11 @@ steps:
 
   - id: open-pr
     phase: createPR
+    onFailure: skip
+
+  - id: comment-pr
+    phase: addComment
+    config: { template: "pr-opened" }
     onFailure: skip
 
   - id: notify-pr-ready

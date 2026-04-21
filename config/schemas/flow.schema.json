@@ -1,0 +1,101 @@
+{
+  "$comment": "Auto-generated from packages/pipeline/src/config/*-schema.ts — run npm run generate:schemas to update",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "providers": {
+      "type": "object",
+      "properties": {
+        "ticket": {
+          "type": "string",
+          "minLength": 1
+        },
+        "git": {
+          "type": "string",
+          "minLength": 1
+        },
+        "coding": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notification": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "ticket",
+        "git",
+        "coding",
+        "notification"
+      ],
+      "additionalProperties": false
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "retry": {
+            "type": "object",
+            "properties": {
+              "attempts": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "backoffMs": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "attempts",
+              "backoffMs"
+            ],
+            "additionalProperties": false
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "onFailure": {
+            "type": "string",
+            "enum": [
+              "fail",
+              "skip",
+              "retry",
+              "block"
+            ]
+          }
+        },
+        "required": [
+          "phase"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "name",
+    "providers",
+    "steps"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

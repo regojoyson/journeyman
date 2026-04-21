@@ -1,0 +1,6 @@
+{
+  "yaml.schemas": {
+    "./config/schemas/pipeline.schema.json": ["config/pipeline.yaml"],
+    "./config/schemas/flow.schema.json": ["config/flows/*.yaml"]
+  }
+}
