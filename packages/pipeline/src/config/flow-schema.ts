@@ -1,3 +1,13 @@
+/**
+ * @file flow-schema.ts
+ * Zod schema for FlowDefinition — validates flow YAML at load time.
+ *
+ * A flow declares which providers to use (ticket, git, coding, notification) and
+ * an ordered list of steps, each bound to a registered phase by name. Steps may
+ * carry retry policy, a timeout, an onFailure disposition, and arbitrary config
+ * passed through to the phase at runtime.
+ */
+
 import { z } from "zod";
 
 export const FlowSchema = z.object({

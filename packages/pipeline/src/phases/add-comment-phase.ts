@@ -1,3 +1,12 @@
+/**
+ * @file add-comment-phase.ts
+ * Posts a comment to the current ticket via the ticket provider.
+ *
+ * Config accepts either a `body` string (posted verbatim) or a `template` key
+ * that is interpolated against the ticket's analyze result from the artifact bag.
+ * The resulting comment ID is written to `commentId` in the artifact bag.
+ */
+
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
 import type { AnalyzeResult, PhaseResult, PipelineContext } from "@journeyman/core";

@@ -1,3 +1,13 @@
+/**
+ * @file pipeline-schema.ts
+ * Zod schema for the top-level pipeline.yaml config file.
+ *
+ * Covers: defaultFlow, stateStorage backend, server settings (port, bearer token,
+ * webhook secrets), workspace lifecycle policy, and the per-product block that
+ * maps a product to a flow, workspace root, repos, provider credentials, and
+ * ticket-workflow status labels.
+ */
+
 import { z } from "zod";
 
 export const PipelineConfigSchema = z.object({

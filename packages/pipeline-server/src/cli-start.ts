@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file cli-start.ts
+ * Entry point for `npm start` / the pipeline-server binary.
+ *
+ * Loads environment variables from a .env file if present, then delegates to
+ * startServer() with the config path taken from argv[2]. Exits non-zero on
+ * uncaught startup errors.
+ */
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";

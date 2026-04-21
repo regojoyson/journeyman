@@ -1,3 +1,13 @@
+/**
+ * @file validate-config.ts
+ * CLI command: parse and validate pipeline.yaml + all flow definitions.
+ *
+ * Registers the full set of phases and providers, then runs FlowValidator to
+ * catch unknown phase names, missing providers, broken artifact DAGs, and
+ * status-name mismatches — all before any run is accepted. Exits 0 on success,
+ * 1 on any validation error.
+ */
+
 import { join } from "node:path";
 import {
   loadPipelineConfig, YamlFlowConfigSource, FlowValidator,
@@ -8,8 +18,10 @@ import {
   ScanReposPhase, CheckoutRepoPhase, CreateWorkspacePhase,
   GetRepoPhase, ListPRsPhase,
   CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
+  ReviewLoopPhase, AwaitTicketStatusPhase,
+  FetchTicketCommentsPhase, FetchPRCommentsPhase,
 } from "../index.ts";
-import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
+import { ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import {
   JiraProvider, LinearProvider, MondayProvider,
@@ -48,11 +60,15 @@ export async function validateConfig(configPath: string): Promise<number> {
     phases.register("createTicket",    () => new CreateTicketPhase());
     phases.register("updateTicket",    () => new UpdateTicketPhase());
     phases.register("listTickets",     () => new ListTicketsPhase());
-    phases.register("getTicketSchema", () => new GetTicketSchemaPhase());
+    phases.register("getTicketSchema",       () => new GetTicketSchemaPhase());
+    phases.register("reviewLoop",            () => new ReviewLoopPhase(phases));
+    phases.register("awaitTicketStatus",     () => new AwaitTicketStatusPhase());
+    phases.register("fetchTicketComments",   () => new FetchTicketCommentsPhase());
+    phases.register("fetchPRComments",       () => new FetchPRCommentsPhase());
 
     const providers = new ProviderRegistry();
     for (const c of [
-      ClaudeProvider, GeminiProvider, CodexProvider,
+      ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider,
       GitHubProvider, GitLabProvider,
       JiraProvider, LinearProvider, MondayProvider,
       GitHubIssuesProvider, GitHubProjectsProvider,

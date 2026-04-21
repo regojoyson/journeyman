@@ -1,3 +1,12 @@
+/**
+ * @file index.ts
+ * Public API barrel for @journeyman/pipeline.
+ *
+ * Re-exports the Pipeline orchestrator, registries, state stores, event bus,
+ * config loaders, flow validator, and every phase class so consumers only need
+ * a single import path.
+ */
+
 export { Pipeline } from "./pipeline.ts";
 export type { PipelineDeps, RunArgs } from "./pipeline.ts";
 export { SemaphorePool } from "./semaphore.ts";

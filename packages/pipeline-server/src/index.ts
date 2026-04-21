@@ -1,3 +1,11 @@
+/**
+ * @file index.ts
+ * Public API barrel for @journeyman/pipeline-server.
+ *
+ * Re-exports the Fastify server factory, pipeline dispatcher, ticket dedup mutex,
+ * webhook and API triggers, and the top-level startServer() bootstrap function.
+ */
+
 export { buildServer, type ServerDeps } from "./http-server.ts";
 export { buildDispatcher } from "./dispatch.ts";
 export { TicketMutex } from "./dedup.ts";

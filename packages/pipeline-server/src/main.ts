@@ -1,3 +1,14 @@
+/**
+ * @file main.ts
+ * Server bootstrap — wires every subsystem and starts the HTTP server.
+ *
+ * Registers all phases and providers, creates file-backed state/trace/artifact
+ * stores, loads and validates flow definitions, sets up the Pipeline with a
+ * concurrency semaphore, attaches webhook and API triggers, mounts all REST
+ * route handlers on a Fastify instance, and begins listening on the configured
+ * port. Installs OS signal handlers for graceful shutdown.
+ */
+
 import { join } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
@@ -8,8 +19,11 @@ import {
   CommitPushPhase, CreatePRPhase, CleanupReposPhase, AddCommentPhase,
   UpdateStatusPhase, ReviewPhase, RequireFieldPhase, CheckoutRepoPhase,
   ReviewLoopPhase, AwaitTicketStatusPhase, FetchTicketCommentsPhase, FetchPRCommentsPhase,
+  NotifyPhase, ScanReposPhase, CreateWorkspacePhase,
+  GetRepoPhase, ListPRsPhase,
+  CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
 } from "@journeyman/pipeline";
-import { ClaudeProvider, GeminiProvider, CodexProvider } from "@journeyman/coding-cli";
+import { ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import {
   JiraProvider, LinearProvider, MondayProvider,
@@ -61,10 +75,19 @@ export async function startServer(configPath: string): Promise<void> {
   phases.register("fetchTicketComments",  () => new FetchTicketCommentsPhase());
   phases.register("fetchPRComments",      () => new FetchPRCommentsPhase());
   phases.register("reviewLoop",           () => new ReviewLoopPhase(phases));
+  phases.register("notify",              () => new NotifyPhase());
+  phases.register("scanRepos",           () => new ScanReposPhase());
+  phases.register("createWorkspace",     () => new CreateWorkspacePhase());
+  phases.register("getRepo",             () => new GetRepoPhase());
+  phases.register("listPRs",             () => new ListPRsPhase());
+  phases.register("createTicket",        () => new CreateTicketPhase());
+  phases.register("updateTicket",        () => new UpdateTicketPhase());
+  phases.register("listTickets",         () => new ListTicketsPhase());
+  phases.register("getTicketSchema",     () => new GetTicketSchemaPhase());
 
   const providers = new ProviderRegistry();
   for (const c of [
-    ClaudeProvider, GeminiProvider, CodexProvider,
+    ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider,
     GitHubProvider, GitLabProvider,
     JiraProvider, LinearProvider, MondayProvider,
     GitHubIssuesProvider, GitHubProjectsProvider,

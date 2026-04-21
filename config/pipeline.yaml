@@ -26,7 +26,7 @@ workspaces:
 # ── Products ───────────────────────────────────────────────────────────────────
 products:
   sam-portfolio:
-    flow: opencode
+    flow: default
     workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
     concurrency: 1
 

@@ -1,3 +1,12 @@
+/**
+ * @file run-once.ts
+ * CLI command: execute a single pipeline run for a given product + ticket key.
+ *
+ * Boots the phase and provider registries, validates the full flow config, then
+ * calls Pipeline.run() with a synthetic CLI trigger. Exits 0 on completion,
+ * 2 when the run blocks waiting for human input, 1 on failure.
+ */
+
 import { join } from "node:path";
 import { existsSync, readdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -11,6 +20,8 @@ import {
   ScanReposPhase, CheckoutRepoPhase, CreateWorkspacePhase,
   GetRepoPhase, ListPRsPhase,
   CreateTicketPhase, UpdateTicketPhase, ListTicketsPhase, GetTicketSchemaPhase,
+  ReviewLoopPhase, AwaitTicketStatusPhase,
+  FetchTicketCommentsPhase, FetchPRCommentsPhase,
 } from "../index.ts";
 import { ClaudeProvider, GeminiProvider, CodexProvider, OpenCodeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
@@ -72,7 +83,11 @@ export async function runOnce(
   phases.register("createTicket",    () => new CreateTicketPhase());
   phases.register("updateTicket",    () => new UpdateTicketPhase());
   phases.register("listTickets",     () => new ListTicketsPhase());
-  phases.register("getTicketSchema", () => new GetTicketSchemaPhase());
+  phases.register("getTicketSchema",       () => new GetTicketSchemaPhase());
+  phases.register("reviewLoop",            () => new ReviewLoopPhase(phases));
+  phases.register("awaitTicketStatus",     () => new AwaitTicketStatusPhase());
+  phases.register("fetchTicketComments",   () => new FetchTicketCommentsPhase());
+  phases.register("fetchPRComments",       () => new FetchPRCommentsPhase());
 
   const providers = new ProviderRegistry();
   for (const c of [
