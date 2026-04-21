@@ -1,20 +1,19 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useRuns } from '@/api/runs';
+import { useRuns, useProducts } from '@/api/runs';
 import { useProductStore } from '@/stores/useProductStore';
 import { Activity, LayoutDashboard } from 'lucide-react';
 
 export default function Sidebar() {
   const { selected } = useProductStore();
-  // Use the runs list to derive unique product IDs — no dedicated products endpoint needed.
-  const { data, isLoading } = useRuns({ limit: 200 }, 30);
+  const { data: configuredProducts, isLoading } = useProducts();
+  const { data: runsData } = useRuns({ limit: 200 }, 30);
 
   const products = useMemo(() => {
-    if (!data) return [];
-    const seen = new Set<string>();
-    for (const r of data.runs) if (r.productId) seen.add(r.productId);
+    const seen = new Set<string>(configuredProducts ?? []);
+    for (const r of (runsData?.runs ?? [])) if (r.productId) seen.add(r.productId);
     return [...seen].sort();
-  }, [data]);
+  }, [configuredProducts, runsData]);
 
   const items = [{ id: 'all', name: 'All Products' }, ...products.map(id => ({ id, name: id }))];
 

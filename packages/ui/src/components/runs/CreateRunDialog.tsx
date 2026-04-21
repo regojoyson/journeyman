@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
-import { useCreateRun, useFlows, useRuns } from '@/api/runs';
+import { useCreateRun, useFlows, useRuns, useProducts } from '@/api/runs';
 
 interface CreateRunDialogProps {
   open: boolean;
@@ -10,11 +10,13 @@ interface CreateRunDialogProps {
 
 export default function CreateRunDialog({ open, onClose, defaultProductId }: CreateRunDialogProps) {
   const { data: flows = [] } = useFlows();
+  const { data: configuredProducts } = useProducts();
   const { data: runsData } = useRuns({ limit: 200 }, 60);
   const products = useMemo(() => {
-    const ids = new Set((runsData?.runs ?? []).map(r => r.productId));
-    return [...ids].sort();
-  }, [runsData]);
+    const seen = new Set<string>(configuredProducts ?? []);
+    for (const r of (runsData?.runs ?? [])) if (r.productId) seen.add(r.productId);
+    return [...seen].sort();
+  }, [configuredProducts, runsData]);
   const createRun = useCreateRun();
 
   const [productId, setProductId] = useState(defaultProductId ?? '');

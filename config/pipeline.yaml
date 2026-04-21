@@ -106,12 +106,8 @@ products:
       # Labels set by humans to advance reviewLoop gates
       reviewLabels:
         approve:
-          - analyze-approved
-          - plan-approved
           - completed
         rework:
-          - analyze-rework
-          - plan-rework
           - rework-requested
 
     webhookSecrets:

@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { getRuns, getRunDetail, getRunLogs, cancelRun, getFlows, getProviders, getHealth, createRun, deleteRun, resumeRun } from './client';
+import { getRuns, getRunDetail, getRunLogs, cancelRun, getFlows, getProviders, getHealth, createRun, deleteRun, resumeRun, getProducts } from './client';
 import { FilterStatus, FlowDefinition, LogLine, ProviderCategory, RunDetail, RunListResponse } from '@/types/api.types';
 
 export const RUNS_QUERY_KEY = ['runs'] as const;
 const DETAIL_KEY = (id: string) => ['runDetail', id] as const;
 const LOGS_KEY = (sessionId: string, stepId: string) => ['runLogs', sessionId, stepId] as const;
+const PRODUCTS_QUERY_KEY = ['products'] as const;
 const FLOWS_QUERY_KEY = ['flows'] as const;
 const PROVIDERS_QUERY_KEY = ['providers'] as const;
 const HEALTH_QUERY_KEY = ['health'] as const;
@@ -91,6 +92,13 @@ export function useResumeRun() {
       queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: DETAIL_KEY(sessionId) });
     },
+  });
+}
+
+export function useProducts() {
+  return useQuery<string[]>({
+    queryKey: PRODUCTS_QUERY_KEY,
+    queryFn: getProducts,
   });
 }
 

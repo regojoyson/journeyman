@@ -43,6 +43,7 @@ import { registerHumanLoopApi } from "./api/human-loop.ts";
 import { registerArtifactsApi } from "./api/artifacts.ts";
 import { registerFlowsApi } from "./api/flows.ts";
 import { registerProvidersApi } from "./api/providers.ts";
+import { registerProductsApi } from "./api/products.ts";
 
 export type ServerDeps = {
   config: PipelineConfig;
@@ -92,6 +93,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerArtifactsApi(app, { state: deps.state, artifactStore: deps.artifactStore });
   registerFlowsApi(app, deps);
   registerProvidersApi(app, deps);
+  registerProductsApi(app, deps);
 
   for (const t of deps.triggers) {
     t.mount(app, {

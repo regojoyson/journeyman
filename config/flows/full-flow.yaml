@@ -89,6 +89,11 @@ steps:
     config: { message: "#{ticket} completed" }
     onFailure: skip
 
+  - id: comment-complete
+    phase: addComment
+    config: { template: "completion-summary" }
+    onFailure: skip
+
   - id: cleanup
     phase: cleanupRepos
     onFailure: skip

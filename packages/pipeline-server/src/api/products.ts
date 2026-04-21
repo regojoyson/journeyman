@@ -1,0 +1,15 @@
+/**
+ * @file products.ts
+ * GET /api/products — list product IDs configured in pipeline.yaml.
+ */
+
+import type { FastifyInstance } from "fastify";
+import type { PipelineConfig } from "@journeyman/core";
+
+export type ProductsApiDeps = { config: PipelineConfig };
+
+export function registerProductsApi(app: FastifyInstance, deps: ProductsApiDeps) {
+  app.get("/api/products", async () => {
+    return Object.keys(deps.config.products).sort();
+  });
+}
