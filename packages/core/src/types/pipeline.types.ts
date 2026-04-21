@@ -78,6 +78,7 @@ export type FlowStepDefinition = {
   retry?: { attempts: number; backoffMs: number };
   timeoutMs?: number;
   onFailure?: "fail" | "skip" | "retry" | "block";  // default "fail"
+  retryable?: boolean;                  // opt-in gate for POST /retry API
 };
 
 export type FlowDefinition = {

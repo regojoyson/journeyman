@@ -28,5 +28,6 @@ export const FlowSchema = z.object({
     }).optional(),
     timeoutMs: z.number().int().min(0).optional(),
     onFailure: z.enum(["fail", "skip", "retry", "block"]).optional(),
+    retryable: z.boolean().optional(),
   })).min(1),
 });

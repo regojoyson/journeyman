@@ -24,6 +24,7 @@ export interface RunStep {
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
   error?: string | Record<string, unknown>;
+  waitFor?: string;
 }
 
 export interface ArtifactMeta {

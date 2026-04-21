@@ -6,6 +6,8 @@ import type {
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
   IProviderMeta,
+  CodingCLIPhase,
+  CodingCLIProviderConfig,
 } from "@journeyman/core";
 import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
 import { scanRepos } from "./operations/scan-repos.ts";
@@ -17,10 +19,6 @@ import { analyze } from "./operations/analyze.ts";
 import { plan } from "./operations/plan.ts";
 import { implement } from "./operations/implement.ts";
 
-/**
- * Claude coding CLI provider.
- * Implements ICodingCLI using the Claude Agent SDK internally.
- */
 export class ClaudeProvider implements ICodingCLI {
   static meta: IProviderMeta = {
     id: "claude",
@@ -29,37 +27,41 @@ export class ClaudeProvider implements ICodingCLI {
     category: "coding-cli",
   };
 
-  // Git CLI operations (powered by Claude bash tool)
+  constructor(private config: CodingCLIProviderConfig = {}) {}
+
+  private resolveModel(phase: CodingCLIPhase): string | undefined {
+    return this.config.models?.[phase] ?? this.config.defaultModel;
+  }
+
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
-    return scanRepos(opts);
+    return scanRepos({ ...opts, model: this.resolveModel("scanRepos") });
   }
 
   checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
-    return checkoutRepo(opts);
+    return checkoutRepo({ ...opts, model: this.resolveModel("checkoutRepo") });
   }
 
   commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult> {
-    return commitPushRepos(opts);
+    return commitPushRepos({ ...opts, model: this.resolveModel("commitPushRepos") });
   }
 
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
-    return cleanupRepos(opts);
+    return cleanupRepos({ ...opts, model: this.resolveModel("cleanupRepos") });
   }
 
   createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
-    return createWorkspace(opts);
+    return createWorkspace({ ...opts, model: this.resolveModel("createWorkspace") });
   }
 
-  // AI operations
   analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
-    return analyze(opts);
+    return analyze({ ...opts, model: this.resolveModel("analyze") });
   }
 
   plan(opts: PlanOptions): Promise<PlanResult> {
-    return plan(opts);
+    return plan({ ...opts, model: this.resolveModel("plan") });
   }
 
   implement(opts: ImplementOptions): Promise<ImplementResult> {
-    return implement(opts);
+    return implement({ ...opts, model: this.resolveModel("implement") });
   }
 }

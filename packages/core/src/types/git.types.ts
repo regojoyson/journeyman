@@ -30,6 +30,7 @@ export type CloneReposResult = {
 export type ScanReposOptions = SessionOptions & {
   parentDir: string;
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type RepoInfo = {
@@ -50,6 +51,7 @@ export type CheckoutRepoOptions = SessionOptions & {
   branch?: string;
   ticket?: { id: string; title: string };
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type CheckoutResult = {
@@ -74,6 +76,7 @@ export type CleanupEntry = {
 export type CleanupReposOptions = SessionOptions & {
   repos: string | string[] | CleanupEntry | CleanupEntry[];
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type CleanupRepoResult = {
@@ -92,6 +95,7 @@ export type CreateWorkspaceOptions = SessionOptions & {
   ticketId: string;
   parentDir: string;
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type CreateWorkspaceResult = SessionResult & {
@@ -169,6 +173,7 @@ export type CommitPushReposOptions = SessionOptions & {
   pattern?: string;                           // default: "{ticket} : {summary}"
   prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type CommitPushResult = {

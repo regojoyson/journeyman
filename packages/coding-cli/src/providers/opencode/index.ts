@@ -1,5 +1,5 @@
 // packages/coding-cli/src/providers/opencode/index.ts
-import type { ICodingCLI, IProviderMeta } from "@journeyman/core";
+import type { ICodingCLI, IProviderMeta, CodingCLIPhase, CodingCLIProviderConfig } from "@journeyman/core";
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
@@ -35,11 +35,15 @@ export class OpenCodeProvider implements ICodingCLI {
   readonly #config: OpenCodeProviderConfig;
   #client: OpenCodeClient | null = null;
 
-  constructor(config: OpenCodeProviderConfig) {
+  constructor(config: OpenCodeProviderConfig, private _providerConfig: CodingCLIProviderConfig = {}) {
     if (!config.mode) throw new Error("OpenCodeProvider: config.mode is required ('managed' | 'external')");
     if (!config.model?.providerID) throw new Error("OpenCodeProvider: config.model.providerID is required");
     if (!config.model?.modelID) throw new Error("OpenCodeProvider: config.model.modelID is required");
     this.#config = config;
+  }
+
+  private resolveModel(phase: CodingCLIPhase): string | undefined {
+    return this._providerConfig.models?.[phase] ?? this._providerConfig.defaultModel;
   }
 
   private async client(): Promise<OpenCodeClient> {

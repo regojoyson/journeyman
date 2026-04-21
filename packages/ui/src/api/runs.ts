@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { getRuns, getRunDetail, getRunLogs, cancelRun, getFlows, getProviders, getHealth, createRun, deleteRun, resumeRun, getProducts } from './client';
+import { getRuns, getRunDetail, getRunLogs, cancelRun, getFlows, getProviders, getHealth, createRun, deleteRun, resumeRun, retryRun, getProducts } from './client';
 import { FilterStatus, FlowDefinition, LogLine, ProviderCategory, RunDetail, RunListResponse } from '@/types/api.types';
 
 export const RUNS_QUERY_KEY = ['runs'] as const;
@@ -89,6 +89,17 @@ export function useResumeRun() {
     mutationFn: ({ sessionId, ticketStatus }: { sessionId: string; ticketStatus?: string }) =>
       resumeRun(sessionId, { ticketStatus }),
     onSuccess: (_data, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: DETAIL_KEY(sessionId) });
+    },
+  });
+}
+
+export function useRetryRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => retryRun(sessionId),
+    onSuccess: (_data, sessionId) => {
       queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: DETAIL_KEY(sessionId) });
     },

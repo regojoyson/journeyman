@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, XCircle, Loader2, PauseCircle, MinusCircle,
   Circle, ChevronDown, ChevronRight, Clock, Hash,
   AlertTriangle, Info, Ticket, GitBranch, FileCode2,
-  ListChecks, ExternalLink, FolderGit2,
+  ListChecks, ExternalLink, FolderGit2, Copy, Check,
 } from 'lucide-react';
 import { RunStep, StepStatus } from '@/types/api.types';
 import { formatStepName, formatDuration } from '@/utils/format';
@@ -278,7 +278,7 @@ function StepRow({ step, index, total, onStepClick }: {
               <span className={`hidden sm:inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cfg.pill}`}>
                 {cfg.label}
               </span>
-              <span className="hidden md:inline text-xs text-slate-400 font-mono">{step.phase}</span>
+<span className="hidden md:inline text-xs text-slate-400 font-mono">{step.phase}</span>
             </div>
             <div className="flex items-center gap-3 shrink-0 text-xs text-slate-400">
               {step.durationMs != null && (
@@ -305,18 +305,7 @@ function StepRow({ step, index, total, onStepClick }: {
           )}
 
           {step.error && (
-            <div className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700 font-mono space-y-0.5">
-              {typeof step.error === 'string' ? (
-                <span>{step.error}</span>
-              ) : (
-                Object.entries(step.error as Record<string, unknown>).map(([k, v]) => (
-                  <div key={k}>
-                    <span className="font-semibold">{k}: </span>
-                    <span>{String(v ?? '—')}</span>
-                  </div>
-                ))
-              )}
-            </div>
+            <StepErrorBlock error={step.error} />
           )}
         </button>
 
@@ -340,6 +329,43 @@ function StepRow({ step, index, total, onStepClick }: {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+function StepErrorBlock({ error }: { error: unknown }) {
+  const [copied, setCopied] = useState(false);
+
+  const text = typeof error === 'string'
+    ? error
+    : Object.entries(error as Record<string, unknown>).map(([k, v]) => `${k}: ${String(v ?? '—')}`).join('\n');
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [text]);
+
+  return (
+    <div className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700 font-mono space-y-0.5 relative group">
+      <button
+        onClick={e => { e.stopPropagation(); copy(); }}
+        className="absolute top-1.5 right-1.5 hidden group-hover:flex items-center gap-1 rounded px-1.5 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-600 transition"
+        title="Copy error"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
+      {typeof error === 'string' ? (
+        <span>{error}</span>
+      ) : (
+        Object.entries(error as Record<string, unknown>).map(([k, v]) => (
+          <div key={k}>
+            <span className="font-semibold">{k}: </span>
+            <span>{String(v ?? '—')}</span>
+          </div>
+        ))
+      )}
     </div>
   );
 }

@@ -34,15 +34,22 @@ Coding providers implement git operations (clone, checkout, scan, commit/push, c
 **Package:** `@journeyman/coding-cli`  
 **Status:** Fully implemented
 
-Runs Claude as an in-process agent via `@anthropic-ai/claude-agent-sdk`. No `providerConfig` fields are required — the SDK reads credentials from the environment.
+Runs Claude as an in-process agent via `@anthropic-ai/claude-agent-sdk`. No credentials config is required — the SDK reads them from the environment. Optionally configure which model to use per phase.
 
 ```yaml
 providers:
   coding: claude
 
 providerConfig:
-  coding: {}   # no options needed
+  coding:
+    defaultModel: claude-sonnet-4-6     # fallback for all phases
+    models:
+      analyze: claude-opus-4-7          # override for a specific phase
+      implement: claude-haiku-4-5       # override for a specific phase
+      # plan, scanRepos, etc. → use defaultModel
 ```
+
+All `models` fields are optional. If omitted, the Claude Agent SDK uses its own default model.
 
 **Environment variables:**
 
@@ -53,7 +60,8 @@ providerConfig:
 **Notes:**
 - In local development, `claude login` stores credentials — no env var needed.
 - In CI/Docker/server, set `ANTHROPIC_API_KEY`.
-- Model is fixed to whichever Claude model the SDK targets by default.
+- `defaultModel` applies to any phase not listed in `models`.
+- Both fields are optional — omitting them uses the SDK default model.
 
 ---
 

@@ -686,3 +686,33 @@ FlowValidationError: flow "default" step "plan" reads "analaysis" which is never
 ```
 
 This means typos in artifact key names surface at deploy time, not during a live customer run.
+
+---
+
+## Step Retryability
+
+By default, the manual retry API (`POST /api/runs/:sessionId/retry`) is **disabled** for all steps. To allow a failed run to be retried from a specific step, add `retryable: true` to that step in the flow YAML:
+
+```yaml
+- id: implement
+  phase: implement
+  retryable: true
+```
+
+**When retry is called on a failed run:**
+1. The pipeline finds the first failed step in `run.steps`.
+2. It looks up that step in the run's frozen `flowSnapshot`.
+3. If `retryable` is absent or `false`, the API returns HTTP 409: `retry is disabled for step '<id>' — set retryable: true in the flow to enable`.
+4. If `retryable: true`, failed and subsequent step records are stripped and the run re-executes from that step forward, preserving all previously-completed artifacts.
+
+**Built-in phases that have `retryable: true` in `full-flow.yaml`:**
+
+| Step id | Phase | Reason |
+|---|---|---|
+| `analyze` | `analyze` | Read-only AI analysis; safe to re-run |
+| `plan` | `plan` | Produces a new plan without external side effects |
+| `implement` | `implement` | Rewrites working-tree files; idempotent given a clean repo state |
+
+Side-effectful steps (`notify`, `addComment`, `updateStatus`, `cleanupRepos`, `createPR`) are left off to prevent duplicate notifications, comments, or PRs.
+
+> **Note:** `retryable` is distinct from `step.retry.attempts`, which controls *automatic* retries on transient failures during a run. `retryable` gates the *manual* retry API only.

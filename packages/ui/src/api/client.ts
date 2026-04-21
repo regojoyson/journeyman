@@ -98,8 +98,9 @@ export async function createRun(
 
 export async function deleteRun(sessionId: string, force = false): Promise<void> {
   const url = `/api/runs/${encodeURIComponent(sessionId)}${force ? '?force=true' : ''}`;
-  const res = await fetch(url, { method: 'DELETE', headers: headers() });
-  if (!res.ok && res.status !== 204) {
+  const { 'Content-Type': _, ...noBodyHeaders } = headers();
+  const res = await fetch(url, { method: 'DELETE', headers: noBodyHeaders });
+  if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${res.statusText} — ${body.slice(0, 200)}`);
   }
@@ -113,6 +114,17 @@ export async function resumeRun(
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(opts ?? {}),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${res.statusText} — ${body.slice(0, 200)}`);
+  }
+}
+
+export async function retryRun(sessionId: string): Promise<void> {
+  const res = await fetch(`/api/runs/${encodeURIComponent(sessionId)}/retry`, {
+    method: 'POST',
+    headers: headers(),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');

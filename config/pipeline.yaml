@@ -44,8 +44,13 @@ products:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
       git:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
-      # coding: not needed — ClaudeProvider reads from ~/.claude/ session
-      # or ANTHROPIC_API_KEY env var if present. No config consumed.
+      coding:
+        defaultModel: claude-sonnet-4-6   # plan, implement, and any unspecified phase
+        models:
+          analyze:         claude-sonnet-4-6   # deep reasoning — quality cascades to plan/implement
+          commitPushRepos: claude-haiku-4-5  # mechanical commit message generation
+          checkoutRepo:    claude-haiku-4-5  # simple git branch operations
+          scanRepos:       claude-haiku-4-5  # lightweight file scan
       notification:
         # Slack is a stub — flow below doesn't call notify, safe to ignore
         channel: "#sam-portfolio"
@@ -90,8 +95,13 @@ products:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
       git:
         tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
-      # coding: not needed — ClaudeProvider reads from ~/.claude/ session
-      # or ANTHROPIC_API_KEY env var if present. No config consumed.
+      coding:
+        defaultModel: claude-sonnet-4-6   # plan, implement, and any unspecified phase
+        models:
+          analyze:         claude-sonnet-4-6  # deep reasoning — quality cascades to plan/implement
+          commitPushRepos: claude-haiku-4-5  # mechanical commit message generation
+          checkoutRepo:    claude-haiku-4-5  # simple git branch operations
+          scanRepos:       claude-haiku-4-5  # lightweight file scan
       notification:
         # Slack is a stub — flow below doesn't call notify, safe to ignore
         channel: "#sam-portfolio"

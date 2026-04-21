@@ -4,7 +4,7 @@ providers:
   ticket:       github-issues
   git:          github
   coding:       claude
-  notification: slack
+  notification: console
 
 steps:
   - id: fetch-ticket
@@ -24,6 +24,7 @@ steps:
 
   - id: analyze
     phase: analyze
+    retryable: true
 
   - id: comment-analyze
     phase: addComment
@@ -37,6 +38,7 @@ steps:
 
   - id: plan
     phase: plan
+    retryable: true
 
   - id: commit-push-plan
     phase: commitPushRepos
@@ -51,6 +53,7 @@ steps:
 
   - id: implement
     phase: implement
+    retryable: true
 
   - id: commit-push
     phase: commitPushRepos

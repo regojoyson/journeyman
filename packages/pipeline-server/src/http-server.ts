@@ -15,6 +15,7 @@
  *   POST /api/runs/:sessionId/cancel         — cancel in-flight run
  *   DELETE /api/runs/:sessionId              — delete run state/logs/artifacts/workspace
  *   POST /api/runs/:sessionId/resume         — resume blocked run
+ *   POST /api/runs/:sessionId/retry          — retry failed run from first failed step
  *   POST /api/human-loop/advance             — advance blocked run by (productId, ticketKey)
  *   GET  /api/runs/:sessionId/artifacts/:key — download artifact blob
  *   GET  /api/flows                          — list registered flows
@@ -39,6 +40,7 @@ import { registerStreamApi, type EventBusLike } from "./api/stream.ts";
 import { registerCancelApi } from "./api/cancel.ts";
 import { registerDeleteApi } from "./api/delete.ts";
 import { registerResumeApi } from "./api/resume.ts";
+import { registerRetryApi } from "./api/retry.ts";
 import { registerHumanLoopApi } from "./api/human-loop.ts";
 import { registerArtifactsApi } from "./api/artifacts.ts";
 import { registerFlowsApi } from "./api/flows.ts";
@@ -89,6 +91,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     config: deps.config,
   });
   registerResumeApi(app, { pipeline: deps.pipeline as any });
+  registerRetryApi(app, { pipeline: deps.pipeline as any });
   registerHumanLoopApi(app, { pipeline: deps.pipeline as any, state: deps.state });
   registerArtifactsApi(app, { state: deps.state, artifactStore: deps.artifactStore });
   registerFlowsApi(app, deps);

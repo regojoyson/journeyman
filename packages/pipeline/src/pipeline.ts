@@ -7,6 +7,8 @@
  * - `run()`    — start a new run, execute all steps in order, persist state after each step.
  * - `resume()` — continue a blocked run from the step after the blocked one, using the
  *                frozen flowSnapshot so the run is not sensitive to config changes after start.
+ * - `retry()`  — re-run a failed run from its first failed step; gated on retryable: true
+ *                in the flow snapshot.
  * - `cancel()` — abort an in-flight run via AbortController.
  * - `recover()` (static) — on server startup, mark any runs that were mid-execution when
  *                the process crashed as failed so they don't remain stuck in "running".
@@ -383,6 +385,80 @@ export class Pipeline {
       return run;
     } finally {
       this.aborters.delete(sessionId);
+    }
+  }
+
+  /**
+   * Retry a failed run by re-executing from the first failed step forward.
+   * Throws if the run is not failed, if no failed step record exists, or if
+   * the failed step does not have `retryable: true` in the flow snapshot.
+   */
+  async retry(sessionId: string): Promise<PipelineRun> {
+    log.info({ sessionId }, "run retry requested");
+    const run = await this.deps.state.load(sessionId);
+    if (!run) throw new Error(`no such run ${sessionId}`);
+    if (run.status !== "failed") throw new Error(`cannot retry ${sessionId}: status=${run.status}`);
+
+    const flow = run.flowSnapshot;
+
+    // Find the first failed step record.
+    const failedRec = run.steps.find(s => s.status === "failed");
+    if (!failedRec) throw new Error(`retry: no failed step in run ${sessionId}`);
+    const flowIdx = flow.steps.findIndex(s => s.id === failedRec.id);
+    if (flowIdx < 0) throw new Error(`retry: failed step "${failedRec.id}" not in flow snapshot`);
+
+    // Retryability gate — must be opted in per step in the flow YAML.
+    const flowStep = flow.steps[flowIdx];
+    if (!flowStep?.retryable) {
+      throw new Error(
+        `retry is disabled for step '${failedRec.id}' — set retryable: true in the flow to enable`,
+      );
+    }
+
+    // Strip failed step and all subsequent records so they re-run fresh.
+    run.steps = run.steps.filter(s => s.status === "ok");
+
+    const productConfig = this.deps.getProductConfig(run.productId);
+    const workspaceDir = join(productConfig.workspace, "runs", sessionId);
+    mkdirSync(workspaceDir, { recursive: true });
+
+    const now = () => new Date().toISOString();
+    const from = run.status;
+    run.status = "running";
+    run.updatedAt = now();
+    await this.deps.state.save(run);
+    this.emit({ type: "statusChanged", sessionId, from, to: "running", at: now() });
+
+    const ac = new AbortController();
+    this.aborters.set(sessionId, ac);
+    const providers = this.deps.resolveProviders(flow, productConfig);
+    const ctx = buildContext({
+      run, signal: ac.signal, workspaceDir, productConfig, providers,
+      trace: this.deps.trace, artifactStore: this.deps.artifactStore,
+      emit: (e) => this.emit(e),
+    });
+
+    try {
+      for (const step of flow.steps.slice(flowIdx)) {
+        if (ac.signal.aborted) { await this.finish(run, "cancelled"); return run; }
+        const result = await this.runStepWithAttempts(run, step, ctx, ac.signal);
+        if (ac.signal.aborted) { await this.finish(run, "cancelled"); return run; }
+        if (result.status === "blocked") { await this.finish(run, "blocked"); return run; }
+        if (result.status === "failed") {
+          const onFail = step.onFailure ?? "fail";
+          if (onFail === "skip") continue;
+          if (onFail === "block") { await this.finish(run, "blocked"); return run; }
+          await this.finish(run, "failed");
+          return run;
+        }
+      }
+      await this.finish(run, "completed");
+      return run;
+    } finally {
+      this.aborters.delete(sessionId);
+      if ((this.deps.cleanupOn ?? []).includes(run.status)) {
+        try { rmSync(workspaceDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      }
     }
   }
 }

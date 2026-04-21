@@ -31,7 +31,19 @@ export const PipelineConfigSchema = z.object({
     providerConfig: z.object({
       ticket: z.record(z.unknown()).optional(),
       git: z.record(z.unknown()).optional(),
-      coding: z.record(z.unknown()).optional(),
+      coding: z.object({
+        defaultModel: z.string().optional(),
+        models: z.object({
+          scanRepos: z.string().optional(),
+          checkoutRepo: z.string().optional(),
+          commitPushRepos: z.string().optional(),
+          cleanupRepos: z.string().optional(),
+          createWorkspace: z.string().optional(),
+          analyze: z.string().optional(),
+          plan: z.string().optional(),
+          implement: z.string().optional(),
+        }).optional(),
+      }).catchall(z.unknown()).optional(),
       notification: z.record(z.unknown()).optional(),
     }).optional(),
     ticketWorkflow: z.object({

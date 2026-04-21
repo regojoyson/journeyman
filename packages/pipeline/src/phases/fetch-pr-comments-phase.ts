@@ -2,10 +2,10 @@
  * @file fetch-pr-comments-phase.ts
  * Fetches PR review and issue comments and writes them to `reviewComments`.
  *
- * Reads:  prUrl — PR URL from createPR phase.
+ * Reads:  pr — PR object { id, url, number } from createPR phase.
  * Writes: reviewComments — concatenated markdown string, oldest first.
  *
- * Failure modes: git provider error, missing prUrl (fails the phase).
+ * Failure modes: git provider error, missing pr (fails the phase).
  * Side effects: two read calls to the git provider (review + issue comments).
  */
 
@@ -15,11 +15,12 @@ import type { ListPRCommentsResult, PhaseResult, PipelineContext } from "@journe
 
 export class FetchPRCommentsPhase extends BasePhase {
   readonly name = "fetchPRComments";
-  static reads = ["prUrl"] as const;
+  static reads = ["pr"] as const;
   static writes = ["reviewComments"] as const;
 
   async run(ctx: PipelineContext): Promise<PhaseResult> {
-    const prUrl = this.require<string>(ctx, "prUrl");
+    const pr = this.require<{ id: string; url: string; number: number }>(ctx, "pr");
+    const prUrl = pr.url;
 
     const result = unwrap(
       await ctx.providers.git.listPRComments({ prUrl, sessionId: ctx.sessionId }),

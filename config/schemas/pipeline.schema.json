@@ -89,6 +89,41 @@
               },
               "coding": {
                 "type": "object",
+                "properties": {
+                  "defaultModel": {
+                    "type": "string"
+                  },
+                  "models": {
+                    "type": "object",
+                    "properties": {
+                      "scanRepos": {
+                        "type": "string"
+                      },
+                      "checkoutRepo": {
+                        "type": "string"
+                      },
+                      "commitPushRepos": {
+                        "type": "string"
+                      },
+                      "cleanupRepos": {
+                        "type": "string"
+                      },
+                      "createWorkspace": {
+                        "type": "string"
+                      },
+                      "analyze": {
+                        "type": "string"
+                      },
+                      "plan": {
+                        "type": "string"
+                      },
+                      "implement": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
                 "additionalProperties": {}
               },
               "notification": {

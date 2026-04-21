@@ -1,11 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useRunDetail, useLogs, useCancelRun, useDeleteRun, useResumeRun } from '@/api/runs';
+import { useRunDetail, useLogs, useCancelRun, useDeleteRun, useResumeRun, useRetryRun } from '@/api/runs';
 import StepTimeline from './StepTimeline';
 import RunContext from './RunContext';
 import LogPanel from '@/components/shared/LogPanel';
 import EmptyState from '@/components/shared/EmptyState';
 import StatusBadge from '@/components/shared/StatusBadge';
-import { ArrowLeft, Loader2, Clock, GitBranch, Tag, Calendar, XCircle, Trash2, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Clock, GitBranch, Tag, Calendar, XCircle, Trash2, PlayCircle, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { formatDuration } from '@/utils/format';
 import type { RunStep } from '@/types/api.types';
@@ -17,11 +17,14 @@ export default function RunDetail() {
   const [activeTab, setActiveTab] = useState<'timeline' | 'context' | 'logs'>('timeline');
   const [activeStep, setActiveStep] = useState<RunStep | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [resumeDialog, setResumeDialog] = useState<{ defaultStatus: string } | null>(null);
+  const [ticketStatusInput, setTicketStatusInput] = useState('');
 
   const logs = useLogs(sessionId!, activeStep?.id ?? null);
   const cancelRun = useCancelRun();
   const deleteRun = useDeleteRun();
   const resumeRun = useResumeRun();
+  const retryRun = useRetryRun();
 
   if (isLoading) {
     return (
@@ -66,12 +69,56 @@ export default function RunDetail() {
     navigate('/');
   }
 
+  function openResumeDialog(defaultStatus: string) {
+    setTicketStatusInput(defaultStatus);
+    setResumeDialog({ defaultStatus });
+  }
+
+  async function handleResume() {
+    await resumeRun.mutateAsync({ sessionId: sessionId!, ticketStatus: ticketStatusInput });
+    setResumeDialog(null);
+  }
+
   return (
     <div className="space-y-6">
       {/* Back link */}
       <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to runs
       </Link>
+
+      {/* Resume with status dialog */}
+      {resumeDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-semibold text-slate-900">Set ticket status</h3>
+            <p className="text-sm text-slate-500">
+              Enter the ticket status to send with this resume request.
+            </p>
+            <input
+              type="text"
+              value={ticketStatusInput}
+              onChange={e => setTicketStatusInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !resumeRun.isPending && handleResume()}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setResumeDialog(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleResume}
+                disabled={resumeRun.isPending || !ticketStatusInput.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {resumeRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
+                Resume
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation overlay */}
       {confirmDelete && (
@@ -122,7 +169,7 @@ export default function RunDetail() {
                 return isReviewLoop ? (
                   <>
                     <button
-                      onClick={() => resumeRun.mutate({ sessionId: run.sessionId, ticketStatus: 'approved' })}
+                      onClick={() => openResumeDialog('approved')}
                       disabled={resumeRun.isPending}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
                     >
@@ -130,7 +177,7 @@ export default function RunDetail() {
                       Approve
                     </button>
                     <button
-                      onClick={() => resumeRun.mutate({ sessionId: run.sessionId, ticketStatus: 'rejected' })}
+                      onClick={() => openResumeDialog('rejected')}
                       disabled={resumeRun.isPending}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-600 disabled:opacity-60"
                     >
@@ -139,7 +186,7 @@ export default function RunDetail() {
                   </>
                 ) : (
                   <button
-                    onClick={() => resumeRun.mutate({ sessionId: run.sessionId })}
+                    onClick={() => openResumeDialog('')}
                     disabled={resumeRun.isPending}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-60"
                   >
@@ -148,6 +195,23 @@ export default function RunDetail() {
                   </button>
                 );
               })()}
+              {run.status === 'failed' && (
+                <div className="flex flex-col items-end gap-1">
+                  <button
+                    onClick={() => retryRun.mutate(run.sessionId)}
+                    disabled={retryRun.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-60"
+                  >
+                    {retryRun.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <RotateCcw className="h-3.5 w-3.5" />}
+                    Retry
+                  </button>
+                  {retryRun.isError && (
+                    <p className="text-xs text-red-500">{(retryRun.error as Error)?.message ?? 'Retry failed'}</p>
+                  )}
+                </div>
+              )}
               {run.status === 'running' && (
                 <button
                   onClick={() => cancelRun.mutate(run.sessionId)}

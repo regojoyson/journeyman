@@ -142,6 +142,7 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 | `LinearProvider` | Stub |
 | `MondayProvider` | Stub |
 | `SlackProvider` | Stub |
+| `retryable` step flag | Implemented (`retryable?: boolean` on `FlowStepDefinition`; gates `POST /retry`) |
 
 ## Adding a New Provider
 

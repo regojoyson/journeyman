@@ -208,6 +208,7 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,
     },

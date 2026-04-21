@@ -1,5 +1,26 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
 
+// ---------------------------------------------------------------------------
+// Provider config — shared across all coding-CLI providers
+// ---------------------------------------------------------------------------
+
+export type CodingCLIPhase =
+  | "scanRepos"
+  | "checkoutRepo"
+  | "commitPushRepos"
+  | "cleanupRepos"
+  | "createWorkspace"
+  | "analyze"
+  | "plan"
+  | "implement";
+
+export interface CodingCLIProviderConfig {
+  /** Fallback model for any phase not listed in `models`. */
+  defaultModel?: string;
+  /** Per-phase model overrides. Takes precedence over defaultModel. */
+  models?: Partial<Record<CodingCLIPhase, string>>;
+}
+
 export type AnalyzeOptions = SessionOptions & {
   dirPath: string;
   ticketContent?: string;
@@ -7,6 +28,7 @@ export type AnalyzeOptions = SessionOptions & {
   /** Optional — reviewer feedback (markdown) to incorporate into analysis. */
   reviewComments?: string;
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type AnalyzeTicketType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
@@ -60,6 +82,7 @@ export type PlanOptions = SessionOptions & {
   /** Optional — reviewer feedback (markdown) to incorporate into the plan. */
   reviewComments?: string;
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type PlanStepKind =
@@ -116,6 +139,7 @@ export type ImplementOptions = SessionOptions & {
   /** Optional — reviewer feedback (markdown) to incorporate during implementation. */
   reviewComments?: string;
   signal?: AbortSignal;
+  model?: string;
 };
 
 export type ImplementChangeKind = "created" | "modified" | "deleted";

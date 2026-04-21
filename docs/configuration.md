@@ -223,6 +223,40 @@ providerConfig:
 
 Structure is provider-dependent. See [docs/providers.md](providers.md) for all provider IDs, their config fields, and required environment variables.
 
+### Per-Phase Model Configuration (coding providers)
+
+All coding providers (`claude`, `opencode`, `gemini`, `codex`) accept optional `defaultModel` and `models` fields. These let different products use different models for each phase of the AI pipeline.
+
+```yaml
+providerConfig:
+  coding:
+    defaultModel: claude-sonnet-4-6   # used for any phase not listed below
+    models:
+      analyze: claude-opus-4-7        # high-quality analysis
+      plan: claude-sonnet-4-6         # balanced planning
+      implement: claude-haiku-4-5     # fast implementation
+      # git phases (scanRepos, checkoutRepo, etc.) → defaultModel
+```
+
+**Resolution order:** `models.<phase>` → `defaultModel` → SDK default.
+
+Different products can use different configs by instantiating separate provider instances:
+
+```yaml
+# pipeline.yaml
+products:
+  product-a:
+    providerConfig:
+      coding:
+        defaultModel: claude-opus-4-7   # quality-first product
+  product-b:
+    providerConfig:
+      coding:
+        defaultModel: claude-haiku-4-5  # speed-first product
+        models:
+          analyze: claude-sonnet-4-6    # but still use sonnet for analysis
+```
+
 ### ticketWorkflow
 
 Defines how semantic status names (used in flow YAML) map to literal status values in the ticket system. Also specifies which issues trigger pipeline runs.

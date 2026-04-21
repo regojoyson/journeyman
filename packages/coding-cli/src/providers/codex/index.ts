@@ -1,5 +1,16 @@
 import type { ICodingCLI } from "../../interface.ts";
-import type { ScanReposOptions, ScanReposResult, CheckoutRepoOptions, CheckoutRepoResult, CommitPushReposOptions, CommitPushReposResult, CleanupReposOptions, CleanupReposResult, CreateWorkspaceOptions, CreateWorkspaceResult, AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult, IProviderMeta } from "@journeyman/core";
+import type {
+  ScanReposOptions, ScanReposResult,
+  CheckoutRepoOptions, CheckoutRepoResult,
+  CommitPushReposOptions, CommitPushReposResult,
+  CleanupReposOptions, CleanupReposResult,
+  CreateWorkspaceOptions, CreateWorkspaceResult,
+  AnalyzeOptions, AnalyzeResult,
+  PlanOptions, PlanResult,
+  ImplementOptions, ImplementResult,
+  IProviderMeta,
+  CodingCLIProviderConfig,
+} from "@journeyman/core";
 
 /** Codex coding CLI provider. Not yet implemented. */
 export class CodexProvider implements ICodingCLI {
@@ -9,6 +20,8 @@ export class CodexProvider implements ICodingCLI {
     description: "OpenAI Codex CLI",
     category: "coding-cli",
   };
+
+  constructor(private _config: CodingCLIProviderConfig = {}) {}
 
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("CodexProvider.scanRepos not implemented"); }
   checkoutRepo(_opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> { throw new Error("CodexProvider.checkoutRepo not implemented"); }
