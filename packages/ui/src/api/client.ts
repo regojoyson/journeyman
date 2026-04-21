@@ -122,9 +122,10 @@ export async function resumeRun(
 }
 
 export async function retryRun(sessionId: string): Promise<void> {
+  const { 'Content-Type': _, ...noBodyHeaders } = headers();
   const res = await fetch(`/api/runs/${encodeURIComponent(sessionId)}/retry`, {
     method: 'POST',
-    headers: headers(),
+    headers: noBodyHeaders,
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useRuns, useProducts } from '@/api/runs';
-import { Activity, LayoutDashboard } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 export default function Sidebar() {
   const [searchParams] = useSearchParams();
@@ -18,36 +18,40 @@ export default function Sidebar() {
   const items = [{ id: 'all', name: 'All Products' }, ...products.map(id => ({ id, name: id }))];
 
   return (
-    <aside className="flex w-[220px] flex-col border-r border-slate-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
-        <Activity className="h-5 w-5 text-blue-500" />
-        <span className="font-semibold text-slate-900">Run Visualizer</span>
+    <aside className="flex w-52 flex-col border-r border-slate-100 bg-white">
+      {/* Brand */}
+      <div className="flex items-center gap-2 px-4 py-4">
+        <Zap className="h-4 w-4 text-blue-500" />
+        <span className="text-sm font-semibold text-slate-900">Journeyman</span>
       </div>
 
-      <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-2">
-        <LayoutDashboard className="h-4 w-4 text-slate-400" />
-        <span className="text-xs font-medium text-slate-500 uppercase">Product</span>
+      {/* Section label */}
+      <div className="px-4 pb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Products</span>
       </div>
 
-      <nav className="flex-1 overflow-auto">
-        <ul className="py-1">
-          {items.map(p => (
-            <li key={p.id}>
-              <Link
-                to={`/?product=${p.id}`}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${
-                  selected === p.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                }`}
-              >
-                <span className="truncate">{p.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      {/* Nav */}
+      <nav className="flex-1 overflow-auto px-2">
+        {items.map(p => (
+          <Link
+            key={p.id}
+            to={`/?product=${p.id}`}
+            className={`flex w-full items-center rounded-md px-3 py-1.5 text-sm transition-colors ${
+              selected === p.id
+                ? 'bg-blue-50 font-medium text-blue-700'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            {p.name}
+          </Link>
+        ))}
       </nav>
 
-      <div className="border-t border-slate-200 px-4 py-3 text-xs text-slate-400">
-        {isLoading ? 'Loading…' : `${products.length} product${products.length !== 1 ? 's' : ''}`}
+      {/* Footer */}
+      <div className="px-4 py-3">
+        <span className="text-xs text-slate-400">
+          {isLoading ? '…' : `${products.length} product${products.length !== 1 ? 's' : ''}`}
+        </span>
       </div>
     </aside>
   );

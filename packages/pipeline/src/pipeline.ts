@@ -358,34 +358,41 @@ export class Pipeline {
     await this.deps.state.save(run);
     this.emit({ type: "statusChanged", sessionId, from, to: "running", at: now() });
 
-    try {
-      // Re-run blocked step, then continue forward through remaining steps.
-      const stepsToRun = flow.steps.slice(flowIdx);
-      for (const step of stepsToRun) {
-        if (ac.signal.aborted) { await this.finish(run, "cancelled"); return run; }
-        const result = await this.runStepWithAttempts(run, step, ctx, ac.signal);
+    // Fire-and-forget: return immediately so the HTTP response is not blocked
+    // while steps execute. UI polls for status updates via /stream or refetch.
+    void (async () => {
+      try {
+        const stepsToRun = flow.steps.slice(flowIdx);
+        for (const step of stepsToRun) {
+          if (ac.signal.aborted) { await this.finish(run, "cancelled"); return; }
+          const result = await this.runStepWithAttempts(run, step, ctx, ac.signal);
 
-        // After the first step (the re-run blocked step), clear transient flags.
-        if (step.id === blockedRec.id) {
-          delete run.artifacts.__resumeStatus;
-          delete run.artifacts.__resumed;
-          await this.deps.state.save(run);
-        }
+          // After the first step (the re-run blocked step), clear transient flags.
+          if (step.id === blockedRec.id) {
+            delete run.artifacts.__resumeStatus;
+            delete run.artifacts.__resumed;
+            await this.deps.state.save(run);
+          }
 
-        if (result.status === "blocked") { await this.finish(run, "blocked"); return run; }
-        if (result.status === "failed") {
-          const onFail = step.onFailure ?? "fail";
-          if (onFail === "skip") continue;
-          if (onFail === "block") { await this.finish(run, "blocked"); return run; }
-          await this.finish(run, "failed");
-          return run;
+          if (result.status === "blocked") { await this.finish(run, "blocked"); return; }
+          if (result.status === "failed") {
+            const onFail = step.onFailure ?? "fail";
+            if (onFail === "skip") continue;
+            if (onFail === "block") { await this.finish(run, "blocked"); return; }
+            await this.finish(run, "failed");
+            return;
+          }
         }
+        await this.finish(run, "completed");
+      } catch (err) {
+        log.error({ sessionId, err }, "resume execution error");
+        await this.finish(run, "failed").catch(() => {});
+      } finally {
+        this.aborters.delete(sessionId);
       }
-      await this.finish(run, "completed");
-      return run;
-    } finally {
-      this.aborters.delete(sessionId);
-    }
+    })();
+
+    return run;
   }
 
   /**

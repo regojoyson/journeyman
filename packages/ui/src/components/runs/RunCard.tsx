@@ -1,77 +1,60 @@
 import { Link } from 'react-router-dom';
 import { RunListItem, RunStep } from '@/types/api.types';
-import StatusBadge from '@/components/shared/StatusBadge';
-import ProgressBar from '@/components/shared/ProgressBar';
 import { relativeTime } from '@/utils/format';
+import { CheckCircle2, XCircle, Loader2, PauseCircle, Ban, Circle } from 'lucide-react';
 
 interface RunCardProps { run: RunListItem; steps?: RunStep[]; }
 
-const STEP_COLORS: Record<string, string> = {
-  running:   'bg-blue-100 text-blue-700 border-blue-200',
-  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  failed:    'bg-rose-100 text-rose-700 border-rose-200',
-  blocked:   'bg-amber-100 text-amber-700 border-amber-200',
-  cancelled: 'bg-slate-100 text-slate-400 border-slate-200',
-  pending:   'bg-slate-100 text-slate-500 border-slate-200',
-};
-
-const STEP_ICONS: Record<string, string> = {
-  running: '↻', completed: '✓', failed: '✕', blocked: '⏸', cancelled: '—',
+const STATUS_META: Record<string, { icon: React.ReactNode; bar: string; label: string }> = {
+  running:   { icon: <Loader2  className="h-3.5 w-3.5 animate-spin text-blue-500" />,   bar: 'bg-blue-500',    label: 'Running'   },
+  completed: { icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />,          bar: 'bg-emerald-500', label: 'Completed' },
+  failed:    { icon: <XCircle  className="h-3.5 w-3.5 text-rose-500" />,                 bar: 'bg-rose-500',    label: 'Failed'    },
+  blocked:   { icon: <PauseCircle className="h-3.5 w-3.5 text-amber-500" />,             bar: 'bg-amber-500',   label: 'Blocked'   },
+  cancelled: { icon: <Ban      className="h-3.5 w-3.5 text-slate-400" />,                bar: 'bg-slate-300',   label: 'Cancelled' },
 };
 
 export default function RunCard({ run, steps }: RunCardProps) {
   const completedSteps = steps?.filter(s => s.status === 'ok').length ?? 0;
   const totalSteps = steps?.length ?? 0;
+  const meta = STATUS_META[run.status] ?? { icon: <Circle className="h-3.5 w-3.5 text-slate-400" />, bar: 'bg-slate-300', label: run.status };
+  const pct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : null;
 
   return (
     <Link
       to={`/run/${run.sessionId}`}
-      className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:border-slate-300"
+      className="group flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
     >
-      {/* Top row: product + ticket */}
-      <div className="mb-2 flex items-center gap-2">
-        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-          {run.productId}
-        </span>
-        <span className="text-sm font-medium text-slate-900">{run.ticketKey}</span>
-        <span className="text-xs text-slate-400 truncate">{run.title}</span>
+      {/* Status icon */}
+      <div className="flex-shrink-0">{meta.icon}</div>
+
+      {/* Main content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="text-sm font-medium text-slate-900 truncate">{run.ticketKey}</span>
+          {run.title && (
+            <span className="text-xs text-slate-400 truncate hidden sm:block">{run.title}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-xs text-slate-400">{run.productId}</span>
+          {run.flowName && (
+            <><span className="text-slate-200">·</span><span className="text-xs text-slate-400">{run.flowName}</span></>
+          )}
+        </div>
       </div>
 
-      {/* Status */}
-      <div className="mb-3 flex items-center gap-2">
-        <StatusBadge status={run.status} />
-        {totalSteps > 0 && (
-          <span className="text-xs text-slate-500">{completedSteps}/{totalSteps} steps</span>
+      {/* Right: steps + time */}
+      <div className="flex-shrink-0 text-right space-y-0.5">
+        {pct !== null && (
+          <div className="flex items-center justify-end gap-1.5">
+            <div className="w-16 h-1 rounded-full bg-slate-100 overflow-hidden">
+              <div className={`h-full rounded-full ${meta.bar} transition-all`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-xs text-slate-400 w-7 text-right">{pct}%</span>
+          </div>
         )}
+        <div className="text-xs text-slate-400">{run.createdAt ? relativeTime(run.createdAt) : '—'}</div>
       </div>
-
-      {/* Progress bar */}
-      {totalSteps > 0 && (
-        <div className="mb-3">
-          <ProgressBar value={completedSteps} max={totalSteps} showPercent />
-        </div>
-      )}
-
-      {/* Mini step strip */}
-      {steps && steps.length > 0 && (
-        <div className="mb-3 flex items-center gap-1 overflow-x-auto pb-1">
-          {steps.map(step => {
-            const uiStatus = step.status === 'ok' ? 'completed' : step.status;
-            const color = STEP_COLORS[uiStatus] ?? STEP_COLORS.pending;
-            return (
-              <div key={step.id} className="flex flex-col items-center" title={`${step.id}: ${step.status}`}>
-                <div className={`flex h-5 w-5 items-center justify-center rounded-full border text-[8px] ${color} ${step.status === 'running' ? 'animate-pulse' : ''}`}>
-                  {STEP_ICONS[uiStatus] ?? '○'}
-                </div>
-                <span className="mt-0.5 text-[8px] text-slate-400">{step.id.slice(0, 6)}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Timestamp */}
-      <div className="text-xs text-slate-400">{run.createdAt ? relativeTime(run.createdAt) : 'unknown'}</div>
     </Link>
   );
 }

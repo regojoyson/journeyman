@@ -18,12 +18,21 @@
 
 import { BasePhase } from "./base-phase.ts";
 import { unwrap, AdapterError } from "../adapter-unwrap.ts";
-import type { CommitPushResult, PhaseResult, PipelineContext } from "@journeyman/core";
+import type { CommitPushResult, PhaseResult, PipelineContext, Ticket } from "@journeyman/core";
 
 type Config = {
   pattern?: string;
   prSummaryStyle?: "brief" | "detailed";
 };
+
+function resolveTicketShortKey(ctx: PipelineContext): string | undefined {
+  if (ctx.ticketShortKey) return ctx.ticketShortKey;
+  const ticket = ctx.artifacts["ticket"] as Ticket | undefined;
+  if (!ticket?.id) return undefined;
+  // "owner/repo#42" → "42"; "PROJ-42" → "PROJ-42"
+  const m = ticket.id.match(/#(\d+)$/);
+  return m ? m[1] : ticket.id;
+}
 
 export class CommitPushPhase extends BasePhase {
   readonly name = "commitPushRepos";
@@ -35,7 +44,7 @@ export class CommitPushPhase extends BasePhase {
 
     const res = unwrap(await ctx.providers.coding.commitPushRepos({
       repos: primaryRepoPath,
-      ticket: ctx.ticketShortKey,
+      ticket: resolveTicketShortKey(ctx),
       pattern: config.pattern,
       prSummaryStyle: config.prSummaryStyle,
       sessionId: ctx.sessionId,

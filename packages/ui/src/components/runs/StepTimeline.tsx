@@ -4,14 +4,15 @@ import {
   CheckCircle2, XCircle, Loader2, PauseCircle, MinusCircle,
   Circle, ChevronDown, ChevronRight, Clock, Hash,
   AlertTriangle, Info, Ticket, GitBranch, FileCode2,
-  ListChecks, ExternalLink, FolderGit2, Copy, Check,
+  ListChecks, ExternalLink, FolderGit2, Copy, Check, Terminal,
 } from 'lucide-react';
 import { RunStep, StepStatus } from '@/types/api.types';
 import { formatStepName, formatDuration } from '@/utils/format';
+import { useLogs } from '@/api/runs';
 
 interface StepTimelineProps {
   steps: RunStep[];
-  onStepClick?: (step: RunStep) => void;
+  sessionId: string;
 }
 
 type StepCfg = { icon: React.ReactNode; pill: string; bar: string; label: string };
@@ -241,20 +242,25 @@ function RawOutput({ output }: { output: Record<string, unknown> }) {
   );
 }
 
+const LEVEL_COLORS: Record<string, string> = {
+  debug: 'text-slate-500', DEBUG: 'text-slate-500',
+  info:  'text-slate-400', INFO:  'text-slate-400',
+  warn:  'text-amber-400', WARN:  'text-amber-400',
+  error: 'text-rose-400',  ERROR: 'text-rose-400',
+};
+
 // ── StepRow ───────────────────────────────────────────────────────────────────
 
-function StepRow({ step, index, total, onStepClick }: {
-  step: RunStep; index: number; total: number; onStepClick?: (s: RunStep) => void;
+function StepRow({ step, index, total, sessionId }: {
+  step: RunStep; index: number; total: number; sessionId: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = getStepCfg(step.status);
   const isLast = index === total - 1;
   const hasOutput = step.output && Object.keys(step.output).length > 0;
+  const isPending = step.status === 'pending';
 
-  function toggle() {
-    setExpanded(e => !e);
-    if (!expanded && onStepClick) onStepClick(step);
-  }
+  const logs = useLogs(sessionId, expanded ? step.id : null);
 
   return (
     <div className="relative flex gap-4">
@@ -269,8 +275,11 @@ function StepRow({ step, index, total, onStepClick }: {
       {/* Card */}
       <div className="flex-1 pb-4">
         <button
-          onClick={toggle}
-          className="w-full text-left rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-slate-300 hover:shadow transition"
+          onClick={() => !isPending && setExpanded(e => !e)}
+          disabled={isPending}
+          className={`w-full text-left rounded-lg border bg-white px-4 py-3 shadow-sm transition ${
+            isPending ? 'opacity-50 cursor-default border-slate-100' : 'border-slate-200 hover:border-slate-300 hover:shadow'
+          } ${expanded ? 'rounded-b-none border-b-0' : ''}`}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
@@ -278,22 +287,20 @@ function StepRow({ step, index, total, onStepClick }: {
               <span className={`hidden sm:inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cfg.pill}`}>
                 {cfg.label}
               </span>
-<span className="hidden md:inline text-xs text-slate-400 font-mono">{step.phase}</span>
+              <span className="hidden md:inline text-xs text-slate-400 font-mono">{step.phase}</span>
             </div>
             <div className="flex items-center gap-3 shrink-0 text-xs text-slate-400">
               {step.durationMs != null && (
                 <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {formatDuration(step.durationMs)}
+                  <Clock className="h-3 w-3" />{formatDuration(step.durationMs)}
                 </span>
               )}
               {step.attempt > 1 && (
                 <span className="flex items-center gap-1">
-                  <Hash className="h-3 w-3" />
-                  attempt {step.attempt}
+                  <Hash className="h-3 w-3" />attempt {step.attempt}
                 </span>
               )}
-              {hasOutput && (expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+              {!isPending && (expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
             </div>
           </div>
 
@@ -304,14 +311,12 @@ function StepRow({ step, index, total, onStepClick }: {
             </div>
           )}
 
-          {step.error && (
-            <StepErrorBlock error={step.error} />
-          )}
+          {step.error && <StepErrorBlock error={step.error} />}
         </button>
 
-        {/* Substep output panel */}
+        {/* Inline detail panel: output + logs */}
         <AnimatePresence>
-          {expanded && hasOutput && (
+          {expanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
@@ -319,11 +324,42 @@ function StepRow({ step, index, total, onStepClick }: {
               transition={{ duration: 0.18 }}
               className="overflow-hidden"
             >
-              <div className="mt-1 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  Step Output
+              <div className="rounded-b-lg border border-t-0 border-slate-200 bg-white shadow-sm">
+                {/* Output section */}
+                {hasOutput && (
+                  <div className="px-4 py-3 border-b border-slate-100">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Output</div>
+                    <PhaseOutput phase={step.phase} output={step.output!} />
+                  </div>
+                )}
+
+                {/* Logs section */}
+                <div>
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">
+                    <Terminal className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Logs</span>
+                    {!logs.isLoading && (
+                      <span className="text-[11px] text-slate-400">({logs.data?.length ?? 0} lines)</span>
+                    )}
+                  </div>
+                  <div className="max-h-64 overflow-auto bg-slate-950 px-4 py-3 font-mono text-xs rounded-b-lg">
+                    {logs.isLoading ? (
+                      <span className="text-slate-500 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Loading logs…
+                      </span>
+                    ) : logs.data && logs.data.length > 0 ? (
+                      logs.data.map(line => (
+                        <div key={line.id} className="leading-relaxed">
+                          <span className="text-slate-600">{new Date(line.timestamp).toLocaleTimeString()}</span>{' '}
+                          <span className={`font-medium ${LEVEL_COLORS[line.level] ?? 'text-slate-400'}`}>{line.level}</span>{' '}
+                          <span className="text-slate-300">{line.message}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-slate-600">No logs for this step.</span>
+                    )}
+                  </div>
                 </div>
-                <PhaseOutput phase={step.phase} output={step.output!} />
               </div>
             </motion.div>
           )}
@@ -372,7 +408,7 @@ function StepErrorBlock({ error }: { error: unknown }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function StepTimeline({ steps, onStepClick }: StepTimelineProps) {
+export default function StepTimeline({ steps, sessionId }: StepTimelineProps) {
   const completed = steps.filter(s => s.status === 'ok').length;
   return (
     <div>
@@ -381,7 +417,7 @@ export default function StepTimeline({ steps, onStepClick }: StepTimelineProps) 
         <span className="text-emerald-600 font-medium">{completed} / {steps.length} completed</span>
       </div>
       {steps.map((step, i) => (
-        <StepRow key={step.id} step={step} index={i} total={steps.length} onStepClick={onStepClick} />
+        <StepRow key={step.id} step={step} index={i} total={steps.length} sessionId={sessionId} />
       ))}
     </div>
   );

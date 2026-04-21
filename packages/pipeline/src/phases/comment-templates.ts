@@ -9,10 +9,18 @@ import type { AnalyzeResult, ImplementResult, PlanResult, Ticket, PipelineContex
 
 type TemplateRenderer = (ctx: PipelineContext) => string;
 
+function resolveShortKey(ctx: PipelineContext, ticket?: Ticket): string {
+  if (ctx.ticketShortKey) return ctx.ticketShortKey;
+  if (!ticket?.id) return ctx.ticketKey;
+  const m = ticket.id.match(/#(\d+)$/);
+  return m ? m[1] : ticket.id;
+}
+
 function renderWorkStarted(ctx: PipelineContext): string {
   const ticket = ctx.artifacts.ticket as Ticket | undefined;
   if (!ticket) return `🚀 Work started on ${ctx.ticketKey}`;
-  const link = ticket.url ? ` ([${ctx.ticketShortKey}](${ticket.url}))` : ` (${ctx.ticketShortKey})`;
+  const shortKey = resolveShortKey(ctx, ticket);
+  const link = ticket.url ? ` ([${shortKey}](${ticket.url}))` : ` (${shortKey})`;
   return `🚀 **Work started**${link}\n\n${ticket.title}`;
 }
 
@@ -55,7 +63,7 @@ function renderCompleted(ctx: PipelineContext): string {
   const pr = ctx.artifacts.pr as { url: string; number: number } | undefined;
   const prRef = pr ? ` — PR: ${pr.url}` : "";
   const title = ticket?.title ? `\n\n${ticket.title}` : "";
-  return `✅ **${ctx.ticketShortKey} complete**${prRef}${title}`;
+  return `✅ **${resolveShortKey(ctx, ticket)} complete**${prRef}${title}`;
 }
 
 function renderDefault(ctx: PipelineContext): string {
