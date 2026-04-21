@@ -51,7 +51,7 @@ export async function getRuns(params?: { limit?: number; offset?: number; status
   if (params?.limit) qs.set('limit', String(params.limit));
   if (params?.offset) qs.set('offset', String(params.offset));
   if (params?.status) qs.set('status', params.status);
-  if (params?.productId) qs.set('productId', params.productId);
+  if (params?.productId) qs.set('product', params.productId);
   if (params?.search) qs.set('search', params.search);
   const raw = await parseJson(await fetch(`/api/runs?${qs.toString()}`, { headers: headers() }));
   return { runs: (raw.runs ?? []).map(normalizeRun), total: raw.total };
