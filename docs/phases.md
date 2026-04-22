@@ -128,12 +128,14 @@ Creates a temporary working directory for the pipeline run and stores its absolu
 | Field | Value |
 |---|---|
 | **Registry key** | `checkoutRepo` |
-| **reads** | `repoPaths` |
+| **reads** | `repoPaths`, `ticket` _(optional)_ |
 | **writes** | `checkoutResults` |
 | **Step config** | _(none)_ |
 | **Source** | `packages/pipeline/src/phases/checkout-repo-phase.ts` |
 
 Hard-resets each cloned repo in `repoPaths` to its configured default branch (from `productConfig.repos[i].defaultBranch`, falling back to `"main"`) and checks out a fresh feature branch via the `coding` provider's `checkoutRepo` operation. Useful as a cleanup step between retries or before re-running implement, ensuring the working tree is in a known-good state. Stores per-repo results under `checkoutResults`.
+
+**Branch naming:** when the pipeline has a ticket (written by `getTicket`), the branch name follows the pattern `{ticketShortKey}/{2-4-word-slug}_{unix-seconds}` (e.g. `42/fix-header-alignment_1713542400`). `ticketShortKey` is preferred over `ticketKey`; if neither is present the branch falls back to an animal-themed random name (e.g. `curious-otter-sprint_1713542400`).
 
 **Failure modes:** any individual repo reports an `error` (phase fails with that message); coding-cli provider error; cancellation via `ctx.signal`.
 
@@ -527,7 +529,7 @@ Each phase that produces data owns a top-level key in `ctx.artifacts`. Keys are 
 | `workspacePath` | `createWorkspace` | `string` — absolute path of the scratch workspace directory |
 | `repo` | `getRepo` | Repository metadata from the git provider |
 | `listedPRs` | `listPRs` | Array of PR objects matching the filter |
-| `checkoutResults` | `checkoutRepo` | `CheckoutResult[]` — one entry per repo (`dirPath`, `newBranch`, `success`, optional `error`) |
+| `checkoutResults` | `checkoutRepo` | `CheckoutResult[]` — one entry per repo (`dirPath`, `newBranch`, `success`, optional `error`). `newBranch` is ticket-keyed when a `ticket` artifact is present, otherwise animal-themed random. |
 | `scannedRepos` | `scanRepos` | Structural scan summary of the primary repo |
 | `analysis` | `analyze` | `AnalyzeResult` including `reportHandle: ArtifactHandle` |
 | `plan` | `plan` | `PlanResult` including `reportHandle: ArtifactHandle` |

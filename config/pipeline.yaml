@@ -1,6 +1,6 @@
 # Journeyman pipeline config — sam-portfolio
 
-defaultFlow: human-loop
+defaultFlow: default
 
 # Where pipeline run state, traces, and artifacts are persisted.
 # `type` is extensible — future backends (postgres, redis, …) will slot in here.
@@ -26,7 +26,7 @@ workspaces:
 # ── Products ───────────────────────────────────────────────────────────────────
 products:
   sam-portfolio:
-    flow: human-loop
+    flow: default
     workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
     concurrency: 1
 
@@ -118,6 +118,54 @@ products:
         approve:
           - completed
         rework:
+          - rework-requested
+
+    webhookSecrets:
+      github: GITHUB_WEBHOOK_SECRET
+  agentic-ai-revolution:
+    flow: advanced-flow
+    workspace: /Users/admin/data/workspace/claude-skils/journeyman-workspace/workspace
+    concurrency: 1
+
+    repos:
+      - providerId: github
+        owner: regojoyson
+        repo: agentic-ai-revolution
+        url: https://github.com/regojoyson/agentic-ai-revolution.git
+        defaultBranch: main
+
+    providerConfig:
+      ticket:
+        # GitHub Issues — ids are "owner/repo#<number>"
+        repo: "regojoyson/agentic-ai-revolution"
+        tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
+      git:
+        tokenEnv: SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN
+      coding:
+        defaultModel: claude-sonnet-4-6   # plan, implement, and any unspecified phase
+        models:
+          analyze:         claude-sonnet-4-6  # deep reasoning — quality cascades to plan/implement
+          commitPushRepos: claude-haiku-4-5  # mechanical commit message generation
+          checkoutRepo:    claude-haiku-4-5  # simple git branch operations
+          scanRepos:       claude-haiku-4-5  # lightweight file scan
+      notification:
+        # Slack is a stub — flow below doesn't call notify, safe to ignore
+        channel: "#sam-portfolio"
+
+    ticketWorkflow:
+      trigger:
+        matchLabels: [Todo]         # pipeline starts when this label is applied
+      # Labels set by the system
+      statuses:
+        development-started: "In Progress"
+        code-review:          "Code Review"
+      # Labels set by humans to advance reviewLoop gates
+      reviewLabels:
+        approve:
+          - plan-approved
+          - completed
+        rework:
+          - plan-rework-requested
           - rework-requested
 
     webhookSecrets:

@@ -9,7 +9,7 @@
 
 import { BasePhase } from "./base-phase.ts";
 import { unwrap } from "../adapter-unwrap.ts";
-import type { PhaseResult, PipelineContext } from "@journeyman/core";
+import type { PhaseResult, PipelineContext, Ticket } from "@journeyman/core";
 
 /**
  * Resets each repo in `repoPaths` to the default branch declared in
@@ -41,8 +41,14 @@ export class CheckoutRepoPhase extends BasePhase {
       branch: repos[i]?.defaultBranch ?? "main",
     }));
 
+    const ticket = this.optional<Ticket>(ctx, "ticket");
+    const ticketId = ctx.ticketShortKey || ctx.ticketKey || undefined;
+
     const res = unwrap(await ctx.providers.coding.checkoutRepo({
       repos: entries,
+      ticket: ticketId && ticket?.title
+        ? { id: ticketId, title: ticket.title }
+        : undefined,
       sessionId: ctx.sessionId,
       signal: ctx.signal,
     }), "checkoutRepo");
