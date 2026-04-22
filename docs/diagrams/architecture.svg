@@ -1,191 +1,100 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 840"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560"
      font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <defs>
     <filter id="sh" x="-4%" y="-4%" width="108%" height="130%">
-      <feDropShadow dx="0" dy="1" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.08"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.06"/>
     </filter>
-    <marker id="a"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#64748b"/></marker>
-    <marker id="ab" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#2563eb"/></marker>
-    <marker id="ae" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#059669"/></marker>
-    <marker id="av" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#7c3aed"/></marker>
-    <marker id="aa" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#d97706"/></marker>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#94a3b8"/>
+    </marker>
   </defs>
 
   <!-- Canvas -->
-  <rect width="1060" height="840" fill="#f8fafc"/>
+  <rect width="1000" height="560" fill="#ffffff"/>
 
-  <!-- ── Title ─────────────────────────────────────────────────── -->
-  <text x="530" y="36" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">Journeyman — System Architecture</text>
-  <text x="530" y="56" text-anchor="middle" font-size="11" fill="#64748b">Webhook / API → Dispatcher → Pipeline runner → Adapters → Per-product disk</text>
+  <!-- Title -->
+  <text x="500" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Journeyman — Architecture</text>
+  <text x="500" y="66" text-anchor="middle" font-size="12" fill="#64748b">Pluggable provider architecture · swap any adapter by editing one line of YAML</text>
 
-  <!-- ── External Triggers ─────────────────────────────────────── -->
-  <text x="22" y="74" font-size="9" font-weight="600" fill="#94a3b8" letter-spacing="1">EXTERNAL TRIGGERS</text>
+  <!-- ─── Server ─────────────────────────────────────────────── -->
+  <rect x="260" y="104" width="480" height="64" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="260" y="104" width="4" height="64" rx="2" fill="#2563eb"/>
+  <text x="500" y="132" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Pipeline Server</text>
+  <text x="500" y="152" text-anchor="middle" font-size="11" fill="#64748b">HTTP · webhooks · management API · trigger dispatch</text>
 
-  <!-- GitHub -->
-  <rect x="22" y="80" width="162" height="58" rx="8" fill="#0f172a" filter="url(#sh)"/>
-  <text x="103" y="106" text-anchor="middle" fill="white" font-weight="600" font-size="13">GitHub</text>
-  <text x="103" y="124" text-anchor="middle" fill="#94a3b8" font-size="10">issues · PRs · labels</text>
+  <line x1="500" y1="172" x2="500" y2="204" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <!-- GitLab -->
-  <rect x="196" y="80" width="162" height="58" rx="8" fill="#e24329" filter="url(#sh)"/>
-  <text x="277" y="106" text-anchor="middle" fill="white" font-weight="600" font-size="13">GitLab</text>
-  <text x="277" y="124" text-anchor="middle" fill="#fec9b3" font-size="10">issues · MRs</text>
+  <!-- ─── Pipeline Orchestrator ──────────────────────────────── -->
+  <rect x="220" y="210" width="560" height="72" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="220" y="210" width="4" height="72" rx="2" fill="#059669"/>
+  <text x="500" y="240" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Pipeline Orchestrator</text>
+  <text x="500" y="260" text-anchor="middle" font-size="11" fill="#64748b">flow execution · phases · state · artifacts · event bus</text>
 
-  <!-- Jira -->
-  <rect x="370" y="80" width="162" height="58" rx="8" fill="#1d4ed8" filter="url(#sh)"/>
-  <text x="451" y="106" text-anchor="middle" fill="white" font-weight="600" font-size="13">Jira</text>
-  <text x="451" y="124" text-anchor="middle" fill="#bfdbfe" font-size="10">status transitions</text>
+  <line x1="500" y1="286" x2="500" y2="318" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <!-- curl/UI -->
-  <rect x="544" y="80" width="162" height="58" rx="8" fill="#475569" filter="url(#sh)"/>
-  <text x="625" y="106" text-anchor="middle" fill="white" font-weight="600" font-size="13">curl · UI · CI</text>
-  <text x="625" y="124" text-anchor="middle" fill="#cbd5e1" font-size="10">manual API triggers</text>
+  <!-- ─── Providers label ────────────────────────────────────── -->
+  <text x="500" y="338" text-anchor="middle" font-size="10" font-weight="600" fill="#94a3b8" letter-spacing="2">PROVIDERS</text>
 
-  <!-- Trigger → server arrows -->
-  <line x1="103" y1="138" x2="190" y2="158" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
-  <line x1="277" y1="138" x2="300" y2="158" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
-  <line x1="451" y1="138" x2="430" y2="158" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
-  <line x1="625" y1="138" x2="560" y2="158" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- ─── Provider slots ─────────────────────────────────────── -->
+  <!-- Each provider: clean card with interface name + example impls -->
 
-  <!-- ── @journeyman/pipeline-server ────────────────────────────── -->
-  <rect x="16" y="152" width="712" height="266" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="36" y="175" font-size="13" font-weight="700" fill="#1e40af">@journeyman/pipeline-server</text>
-  <text x="36" y="191" font-size="10" fill="#3b82f6">Fastify HTTP server · stateless except for in-process dedup state</text>
+  <!-- Coding CLI -->
+  <rect x="40" y="356" width="168" height="148" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="40" y="356" width="168" height="4" rx="2" fill="#7c3aed"/>
+  <text x="124" y="386" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Coding CLI</text>
+  <text x="124" y="404" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">ICodingCLI</text>
+  <line x1="60" y1="418" x2="188" y2="418" stroke="#f1f5f9"/>
+  <text x="124" y="438" text-anchor="middle" font-size="11" fill="#334155">Claude</text>
+  <text x="124" y="456" text-anchor="middle" font-size="11" fill="#334155">OpenCode</text>
+  <text x="124" y="474" text-anchor="middle" font-size="11" fill="#94a3b8">Gemini</text>
+  <text x="124" y="492" text-anchor="middle" font-size="11" fill="#94a3b8">Codex</text>
 
-  <!-- Trigger handlers row -->
-  <rect x="34" y="202" width="130" height="40" rx="6" fill="white" stroke="#bfdbfe" filter="url(#sh)"/>
-  <text x="99" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">GitHubWebhook</text>
-  <text x="99" y="234" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/github/:id</text>
+  <!-- Git -->
+  <rect x="224" y="356" width="168" height="148" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="224" y="356" width="168" height="4" rx="2" fill="#7c3aed"/>
+  <text x="308" y="386" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Git</text>
+  <text x="308" y="404" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">IGitProvider</text>
+  <line x1="244" y1="418" x2="372" y2="418" stroke="#f1f5f9"/>
+  <text x="308" y="438" text-anchor="middle" font-size="11" fill="#334155">GitHub</text>
+  <text x="308" y="456" text-anchor="middle" font-size="11" fill="#94a3b8">GitLab</text>
 
-  <rect x="174" y="202" width="130" height="40" rx="6" fill="white" stroke="#bfdbfe" filter="url(#sh)"/>
-  <text x="239" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">GitLabWebhook</text>
-  <text x="239" y="234" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/gitlab/:id</text>
+  <!-- Ticket -->
+  <rect x="408" y="356" width="168" height="148" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="408" y="356" width="168" height="4" rx="2" fill="#7c3aed"/>
+  <text x="492" y="386" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Ticket</text>
+  <text x="492" y="404" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">ITicketProvider</text>
+  <line x1="428" y1="418" x2="556" y2="418" stroke="#f1f5f9"/>
+  <text x="492" y="438" text-anchor="middle" font-size="11" fill="#334155">GitHub Issues</text>
+  <text x="492" y="456" text-anchor="middle" font-size="11" fill="#334155">GitHub Projects</text>
+  <text x="492" y="474" text-anchor="middle" font-size="11" fill="#94a3b8">Jira</text>
+  <text x="492" y="492" text-anchor="middle" font-size="11" fill="#94a3b8">Linear · Monday</text>
 
-  <rect x="314" y="202" width="120" height="40" rx="6" fill="white" stroke="#bfdbfe" filter="url(#sh)"/>
-  <text x="374" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">JiraWebhook</text>
-  <text x="374" y="234" text-anchor="middle" font-size="9" fill="#3b82f6">/webhooks/jira/:id</text>
+  <!-- Notification -->
+  <rect x="592" y="356" width="168" height="148" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="592" y="356" width="168" height="4" rx="2" fill="#7c3aed"/>
+  <text x="676" y="386" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Notification</text>
+  <text x="676" y="404" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">INotificationProvider</text>
+  <line x1="612" y1="418" x2="740" y2="418" stroke="#f1f5f9"/>
+  <text x="676" y="438" text-anchor="middle" font-size="11" fill="#334155">Console</text>
+  <text x="676" y="456" text-anchor="middle" font-size="11" fill="#94a3b8">Slack</text>
 
-  <rect x="444" y="202" width="100" height="40" rx="6" fill="white" stroke="#bfdbfe" filter="url(#sh)"/>
-  <text x="494" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">ApiTrigger</text>
-  <text x="494" y="234" text-anchor="middle" font-size="9" fill="#3b82f6">/api/trigger/:id</text>
+  <!-- Extensibility slot -->
+  <rect x="776" y="356" width="184" height="148" rx="10" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="868" y="392" text-anchor="middle" font-size="28" font-weight="300" fill="#94a3b8">+</text>
+  <text x="868" y="424" text-anchor="middle" font-size="12" font-weight="600" fill="#64748b">Your Provider</text>
+  <text x="868" y="446" text-anchor="middle" font-size="10" fill="#94a3b8">implement the</text>
+  <text x="868" y="462" text-anchor="middle" font-size="10" fill="#94a3b8">interface,</text>
+  <text x="868" y="478" text-anchor="middle" font-size="10" fill="#94a3b8">register, and</text>
+  <text x="868" y="494" text-anchor="middle" font-size="10" fill="#94a3b8">reference by id</text>
 
-  <rect x="554" y="202" width="160" height="40" rx="6" fill="#f0fdf4" stroke="#bbf7d0" filter="url(#sh)"/>
-  <text x="634" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#065f46">Management API</text>
-  <text x="634" y="234" text-anchor="middle" font-size="9" fill="#059669">/api/runs · SSE · /cancel · /resume</text>
+  <!-- Connecting lines from orchestrator down to providers -->
+  <line x1="124" y1="348" x2="124" y2="354" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="308" y1="348" x2="308" y2="354" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="492" y1="348" x2="492" y2="354" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="676" y1="348" x2="676" y2="354" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="868" y1="348" x2="868" y2="354" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="40" y1="348" x2="960" y2="348" stroke="#e2e8f0" stroke-width="1"/>
 
-  <!-- Dashed arrows: triggers → dispatcher -->
-  <line x1="99"  y1="242" x2="220" y2="274" stroke="#93c5fd" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ab)"/>
-  <line x1="239" y1="242" x2="290" y2="274" stroke="#93c5fd" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ab)"/>
-  <line x1="374" y1="242" x2="350" y2="274" stroke="#93c5fd" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ab)"/>
-  <line x1="494" y1="242" x2="420" y2="274" stroke="#93c5fd" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ab)"/>
-
-  <!-- Dispatcher -->
-  <rect x="160" y="268" width="420" height="82" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="370" y="290" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">Dispatcher</text>
-  <text x="370" y="308" text-anchor="middle" font-size="10" fill="#b45309">resolves flow · findActiveForTicket · TicketMutex · SemaphorePool</text>
-  <text x="370" y="324" text-anchor="middle" font-size="10" fill="#b45309">→ pipeline.run()   fire-and-forget · caller receives 202 immediately</text>
-
-  <!-- Dispatcher → pipeline arrow -->
-  <line x1="370" y1="350" x2="370" y2="424" stroke="#d97706" stroke-width="2" marker-end="url(#aa)"/>
-  <text x="382" y="392" font-size="10" fill="#92400e" font-style="italic">pipeline.run()</text>
-
-  <!-- ── @journeyman/pipeline ───────────────────────────────────── -->
-  <rect x="16" y="430" width="712" height="248" rx="12" fill="#f0fdf4" stroke="#059669" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="36" y="453" font-size="13" font-weight="700" fill="#065f46">@journeyman/pipeline</text>
-  <text x="36" y="469" font-size="10" fill="#059669">Orchestration — phases · registries · state · flow config · event bus · no HTTP dependency</text>
-
-  <!-- Registries -->
-  <rect x="34" y="480" width="160" height="68" rx="6" fill="white" stroke="#bbf7d0" filter="url(#sh)"/>
-  <text x="114" y="500" text-anchor="middle" font-size="11" font-weight="600" fill="#065f46">Registries</text>
-  <text x="114" y="516" text-anchor="middle" font-size="10" fill="#15803d">PhaseRegistry</text>
-  <text x="114" y="532" text-anchor="middle" font-size="10" fill="#15803d">ProviderRegistry</text>
-
-  <!-- Flow Config -->
-  <rect x="34" y="558" width="160" height="68" rx="6" fill="white" stroke="#bbf7d0" filter="url(#sh)"/>
-  <text x="114" y="578" text-anchor="middle" font-size="11" font-weight="600" fill="#065f46">Flow Config</text>
-  <text x="114" y="594" text-anchor="middle" font-size="10" fill="#15803d">YamlFlowConfigSource</text>
-  <text x="114" y="610" text-anchor="middle" font-size="10" fill="#15803d">FlowResolver · Validator</text>
-
-  <!-- Pipeline Runner (center) -->
-  <rect x="210" y="480" width="230" height="148" rx="8" fill="#dcfce7" stroke="#059669" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="325" y="502" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">Pipeline Runner</text>
-  <text x="325" y="520" text-anchor="middle" font-size="10" fill="#15803d">walks flow steps in order</text>
-  <text x="325" y="538" text-anchor="middle" font-size="10" fill="#15803d">retry · timeout · cancel</text>
-  <text x="325" y="556" text-anchor="middle" font-size="10" fill="#15803d">block · resume</text>
-  <text x="325" y="578" text-anchor="middle" font-size="10" fill="#15803d">12 built-in phases</text>
-  <text x="325" y="596" text-anchor="middle" font-size="9" fill="#16a34a">getTicket · cloneRepos · analyze · plan</text>
-  <text x="325" y="611" text-anchor="middle" font-size="9" fill="#16a34a">implement · commitPush · createPR · …</text>
-
-  <!-- Stores -->
-  <rect x="458" y="480" width="256" height="68" rx="6" fill="white" stroke="#bbf7d0" filter="url(#sh)"/>
-  <text x="586" y="500" text-anchor="middle" font-size="11" font-weight="600" fill="#065f46">Stores (per product)</text>
-  <text x="586" y="516" text-anchor="middle" font-size="10" fill="#15803d">FileStateStore · FileTraceLogger</text>
-  <text x="586" y="532" text-anchor="middle" font-size="10" fill="#15803d">FileArtifactStore</text>
-
-  <!-- EventBus -->
-  <rect x="458" y="558" width="256" height="68" rx="6" fill="white" stroke="#bbf7d0" filter="url(#sh)"/>
-  <text x="586" y="578" text-anchor="middle" font-size="11" font-weight="600" fill="#065f46">EventBus</text>
-  <text x="586" y="594" text-anchor="middle" font-size="10" fill="#15803d">in-process pub/sub · 500-event ring buffer</text>
-  <text x="586" y="610" text-anchor="middle" font-size="10" fill="#15803d">drives SSE stream to /api/runs/:id/stream</text>
-
-  <!-- runner ↔ registries / stores connectors -->
-  <line x1="194" y1="514" x2="210" y2="514" stroke="#86efac" stroke-width="1"/>
-  <line x1="194" y1="592" x2="210" y2="592" stroke="#86efac" stroke-width="1" stroke-dasharray="3,2"/>
-  <line x1="440" y1="514" x2="458" y2="514" stroke="#86efac" stroke-width="1"/>
-  <line x1="440" y1="592" x2="458" y2="592" stroke="#86efac" stroke-width="1" stroke-dasharray="3,2"/>
-
-  <!-- ── Adapter packages (right column) ───────────────────────── -->
-  <rect x="744" y="152" width="300" height="526" rx="12" fill="#faf5ff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="764" y="175" font-size="13" font-weight="700" fill="#5b21b6">Adapter packages</text>
-  <text x="764" y="191" font-size="10" fill="#7c3aed">implement interfaces from @journeyman/core</text>
-
-  <!-- coding-cli -->
-  <rect x="762" y="202" width="264" height="108" rx="6" fill="white" stroke="#ddd6fe" filter="url(#sh)"/>
-  <rect x="762" y="202" width="4" height="108" rx="2" fill="#7c3aed"/>
-  <text x="782" y="222" font-size="11" font-weight="700" fill="#5b21b6">@journeyman/coding-cli</text>
-  <text x="782" y="238" font-size="10" fill="#64748b">implements ICodingCLI</text>
-  <text x="782" y="256" font-size="10" fill="#374151">ClaudeProvider  ✓  implemented</text>
-  <text x="782" y="272" font-size="10" fill="#94a3b8">OpenCodeProvider  planned</text>
-  <text x="782" y="288" font-size="10" fill="#94a3b8">GeminiProvider · CodexProvider  stubs</text>
-
-  <!-- git-provider -->
-  <rect x="762" y="320" width="264" height="90" rx="6" fill="white" stroke="#ddd6fe" filter="url(#sh)"/>
-  <rect x="762" y="320" width="4" height="90" rx="2" fill="#7c3aed"/>
-  <text x="782" y="340" font-size="11" font-weight="700" fill="#5b21b6">@journeyman/git-provider</text>
-  <text x="782" y="356" font-size="10" fill="#64748b">implements IGitProvider</text>
-  <text x="782" y="374" font-size="10" fill="#374151">GitHubProvider  ✓  implemented</text>
-  <text x="782" y="390" font-size="10" fill="#94a3b8">GitLabProvider  stub</text>
-
-  <!-- ticket-provider -->
-  <rect x="762" y="420" width="264" height="130" rx="6" fill="white" stroke="#ddd6fe" filter="url(#sh)"/>
-  <rect x="762" y="420" width="4" height="130" rx="2" fill="#7c3aed"/>
-  <text x="782" y="440" font-size="11" font-weight="700" fill="#5b21b6">@journeyman/ticket-provider</text>
-  <text x="782" y="456" font-size="10" fill="#64748b">implements ITicketProvider</text>
-  <text x="782" y="474" font-size="10" fill="#374151">GitHubIssuesProvider  ✓  implemented</text>
-  <text x="782" y="490" font-size="10" fill="#374151">GitHubProjectsProvider  ✓  implemented</text>
-  <text x="782" y="506" font-size="10" fill="#94a3b8">JiraProvider  partial</text>
-  <text x="782" y="522" font-size="10" fill="#94a3b8">LinearProvider · MondayProvider  stubs</text>
-
-  <!-- notification-provider -->
-  <rect x="762" y="560" width="264" height="100" rx="6" fill="white" stroke="#ddd6fe" filter="url(#sh)"/>
-  <rect x="762" y="560" width="4" height="100" rx="2" fill="#7c3aed"/>
-  <text x="782" y="580" font-size="11" font-weight="700" fill="#5b21b6">@journeyman/notification-provider</text>
-  <text x="782" y="596" font-size="10" fill="#64748b">implements INotificationProvider</text>
-  <text x="782" y="614" font-size="10" fill="#374151">ConsoleProvider  ✓  implemented</text>
-  <text x="782" y="630" font-size="10" fill="#94a3b8">SlackProvider  stub</text>
-
-  <!-- Pipeline → Adapters arrow -->
-  <line x1="728" y1="554" x2="742" y2="460" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#av)"/>
-  <text x="720" y="515" text-anchor="end" font-size="10" fill="#7c3aed" font-style="italic">ctx.providers.*</text>
-
-  <!-- ── Per-product disk (bottom) ─────────────────────────────── -->
-  <rect x="16" y="694" width="1028" height="128" rx="12" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.5" filter="url(#sh)"/>
-  <text x="36" y="716" font-size="12" font-weight="700" fill="#92400e">workspaces/ — per-product disk layout</text>
-  <text x="36" y="736" font-size="10" font-family="'JetBrains Mono',monospace,ui-monospace" fill="#b45309">workspaces/edgereg/state/&lt;sid&gt;.json    logs/&lt;sid&gt;/&lt;step&gt;.log    artifacts/&lt;sid&gt;/&lt;key&gt;.md    runs/&lt;sid&gt;/repos/…</text>
-  <text x="36" y="754" font-size="10" font-family="'JetBrains Mono',monospace,ui-monospace" fill="#b45309">workspaces/cidms/state/ …</text>
-  <text x="36" y="774" font-size="9" fill="#d97706" font-style="italic">state · logs · artifacts survive cleanup · runs/ dir pruned after terminal states per workspaces.cleanupOn config</text>
-  <text x="36" y="812" font-size="9" fill="#d97706" font-style="italic">rm -rf workspaces/&lt;productId&gt;/ to wipe an entire tenant</text>
-
-  <!-- Pipeline → Disk arrow -->
-  <line x1="370" y1="678" x2="370" y2="692" stroke="#059669" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ae)"/>
+  <!-- Footer caption -->
+  <text x="500" y="536" text-anchor="middle" font-size="10" fill="#94a3b8" font-style="italic">Every provider satisfies an interface in @journeyman/core — implementations are resolved by id at boot.</text>
 </svg>

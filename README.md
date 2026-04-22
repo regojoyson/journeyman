@@ -129,6 +129,17 @@ How the interface-first design lets you swap Claude for Gemini or GitHub Issues 
   2. `ProviderRegistry.resolveForProduct(flow, productConfig)` looks those ids up per category and instantiates the classes, passing per-product options (`providerConfig.git.tokenEnv`, etc.).
   3. Phases call everything through the interface on `ctx.providers.*` — they never import a concrete class. Swapping `claude` → `gemini` in the flow is a one-line change and no phase code moves.
 
+### Sample flow
+
+A real flow wired up end-to-end — six stages with two human review gates. This is [`config/flows/advanced-flow.yaml`](config/flows/advanced-flow.yaml), an end-to-end ticket → PR workflow with approval checkpoints.
+
+![Flow — advanced-flow](docs/diagrams/advanced-flow.svg)
+
+**What to look at:**
+- **Six stages** — Setup · Analyze · Plan · *(gate)* · Implement · *(gate)* · Finish. Each stage is a sequence of phases from the [catalog](docs/phases.md).
+- **Two human gates** (amber) — `reviewLoop` steps that block the run until a reviewer changes the ticket status. On `*-approved` the pipeline advances; on `*-rework-requested` it re-runs the `onRework` sub-phases and blocks again.
+- **Auto-recovery** — `retryable: true` on the heavy AI steps (`analyze`, `plan`, `implement`, review gates). Side effects (`addComment`, `notify`, `updateStatus`) are `onFailure: skip` so a failed notification never stops the run.
+
 For more architectural detail, see the [spec](docs/superpowers/specs/2026-04-18-journeyman-pipeline-design.md) and the [phases catalog](docs/phases.md).
 
 ## Design principles
