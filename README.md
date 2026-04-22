@@ -77,8 +77,15 @@ npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
 - [Troubleshooting](docs/troubleshooting.md) — known failure modes and fixes
 
 ### Package READMEs
-- [`@journeyman/pipeline`](packages/pipeline/README.md)
-- [`@journeyman/pipeline-server`](packages/pipeline-server/README.md)
+- [`@journeyman/core`](packages/core/README.md) — interfaces + shared types
+- [`@journeyman/coding-cli`](packages/coding-cli/README.md) — Claude / Gemini / Codex / OpenCode
+- [`@journeyman/git-provider`](packages/git-provider/README.md) — GitHub / GitLab REST
+- [`@journeyman/github-api`](packages/github-api/README.md) — shared Octokit client
+- [`@journeyman/ticket-provider`](packages/ticket-provider/README.md) — Jira / Linear / Monday / GitHub Issues / GitHub Projects
+- [`@journeyman/notification-provider`](packages/notification-provider/README.md) — Slack / Console
+- [`@journeyman/pipeline`](packages/pipeline/README.md) — runner + phases + registries + CLI
+- [`@journeyman/pipeline-server`](packages/pipeline-server/README.md) — Fastify + webhooks + management API
+- [`@journeyman/ui`](packages/ui/README.md) — run visualizer (Vite + React)
 
 ## Architecture at a glance
 
