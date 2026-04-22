@@ -91,43 +91,39 @@ npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
 
 ### System architecture
 
-How external triggers flow through the server into the pipeline into adapters and onto disk.
+Three layers: the server takes a request, the orchestrator runs the flow, and providers do the actual work. Every provider is pluggable.
 
-![Journeyman Pipeline — System Architecture](docs/diagrams/architecture.svg)
+![Journeyman — Architecture](docs/diagrams/architecture.svg)
 
 **What to look at:**
-- **External layer** (top) — GitHub / GitLab / Jira webhooks and manual API calls are the only entry points.
-- **`@journeyman/pipeline-server`** (blue) — Fastify app. Mounts one trigger source per enabled webhook + the `ApiTrigger` + the management API. Everything funnels through the **Dispatcher** (yellow), which is the only place that talks to the runner.
-  - *Dispatcher* = resolves flow, does state-level dedup (`findActiveForTicket`), acquires the `TicketMutex` (in-process race protection), acquires the per-product `SemaphorePool` slot, then calls `pipeline.run()` fire-and-forget.
-- **`@journeyman/pipeline`** (green) — the orchestrator. Phase/provider registries, flow config + validator, state/trace/artifact stores, event bus, and the `Pipeline` runner itself. No HTTP dependency — this package can be embedded in a CLI, a job, or a test harness.
-- **Adapter packages** (purple) — each adapter package implements one interface from `@journeyman/core` with multiple concrete providers. The `ProviderRegistry` picks one per category based on the active flow's YAML.
-- **Per-product disk** (yellow, bottom) — `workspaces/<productId>/` is the single dir for all of a product's runtime state. `rm -rf` it to wipe a whole tenant.
+- **Pipeline Server** (top) — HTTP entry point. Accepts webhooks and API triggers.
+- **Pipeline Orchestrator** (middle) — runs the flow, executes phases, manages state and artifacts.
+- **Providers row** (bottom) — four pluggable categories: Coding CLI, Git, Ticket, Notification. The dashed **"+ Your Provider"** slot is literal: implement the interface, register it, reference it by id.
 
 ### Orchestrator — how a run actually executes
 
-Zoomed in on `Pipeline.run()`: the step loop, retry/timeout/cancel/block branches, and how the shared artifact bag grows phase by phase.
+A flow is a chain of steps. The runner walks them one at a time; each step produces one of four outcomes.
 
-![Pipeline Orchestrator — Run Lifecycle](docs/diagrams/orchestrator.svg)
+![Pipeline Orchestrator](docs/diagrams/orchestrator.svg)
 
 **What to look at:**
-- **Left column** — `PipelineRun.status` timeline. Starts `running`, walks steps, ends in one of four terminal states. A `blocked` run can be **resumed** (dashed purple arrow) via `POST /api/runs/:id/resume`; resume uses the frozen `flowSnapshot` on the run, not current config.
-- **Center column** — the three-stage per-step execution: (1) resolve phase + save record + emit `stepStarted`, (2) build a step-scoped `AbortSignal` with optional timeout and run the phase, (3) record outcome and save. On `failed` + attempts remaining, retry loops back to stage 2 (orange arrow).
-- **Right column** — collaborators the runner touches per step: registries (resolve phase class), stores (persist state, trace lines, artifacts), event bus (publish `stepStarted`/`stepEnded`/`logLine`), and the run's `AbortController` (cancel source).
-- **Artifact bag panel** (bottom) — the growing `ctx.artifacts` map. Each phase writes one top-level key named after what it produced. File blobs become `ArtifactHandle`s, stored in `FileArtifactStore` (survives `cleanup` phase — state references handles, not paths into the ephemeral clone).
+- **Flow** (top) — ordered list of steps from your YAML (`getTicket → analyze → plan → implement → createPR → …`).
+- **Run the step** (middle) — the per-step mechanic: *resolve phase → execute → record outcome*. Timeout / retry / cancel are applied around the execute stage.
+- **Outcome** (bottom) — four possibilities: `ok` advances the flow, `blocked` pauses for later resume, `retry` loops back with backoff, `failed` stops the run.
+- **Threaded through every step** — `ctx.artifacts` (growing bag of outputs), `ctx.providers` (resolved adapters), `ctx.signal` (cancel/timeout), and persisted state.
 
 ### Adapter pattern
 
-How the interface-first design lets you swap Claude for Gemini or GitHub Issues for Jira by editing one line of YAML.
+One interface in `@journeyman/core`, many implementations in adapter packages. Swap any provider by editing one line of YAML.
 
-![Adapter Pattern — Interfaces in Core, Implementations in Packages](docs/diagrams/adapter.svg)
+![Adapter Pattern](docs/diagrams/adapter.svg)
 
 **What to look at:**
-- **Center (blue)** — `@journeyman/core` holds the four interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) plus `IProviderMeta`. No logic lives here; just contracts.
-- **Purple panels** — each adapter package implements one interface. Every provider class exposes a **static `meta`** field with `{ id, name, description, category }`; the `ProviderRegistry` auto-indexes them at boot.
-- **Three-step resolution (bottom, green)**:
-  1. Flow YAML names provider ids: `coding: claude, git: github, ticket: github-issues, …`
-  2. `ProviderRegistry.resolveForProduct(flow, productConfig)` looks those ids up per category and instantiates the classes, passing per-product options (`providerConfig.git.tokenEnv`, etc.).
-  3. Phases call everything through the interface on `ctx.providers.*` — they never import a concrete class. Swapping `claude` → `gemini` in the flow is a one-line change and no phase code moves.
+- **YAML line** (top) — `coding: claude` is the only input to the resolution.
+- **Interface** (`ICodingCLI`) — the contract in `@journeyman/core`. Phase code only knows about this.
+- **Implementations row** — Claude, OpenCode, Gemini, Codex all implement the same interface. The dashed **"+ Your Provider"** slot shows how to extend: implement the interface, register with an id.
+- **Call site** — `ctx.providers.coding.analyze(…)` — phases never import a concrete provider. Swapping `claude` → `gemini` is genuinely a one-line YAML change.
+- **Four categories** (bottom) — the same pattern applies to Coding / Git / Ticket / Notification.
 
 ### Sample flow
 
