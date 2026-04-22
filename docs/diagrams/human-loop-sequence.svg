@@ -1,147 +1,139 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" font-family="system-ui, -apple-system, sans-serif" font-size="11">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 860"
+     font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <defs>
-    <marker id="s-arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="#475569"/>
-    </marker>
-    <marker id="s-arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="#16a34a"/>
-    </marker>
-    <marker id="s-arr-o" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="#f97316"/>
-    </marker>
+    <filter id="sh" x="-4%" y="-4%" width="108%" height="130%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+    <marker id="a"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#475569"/></marker>
+    <marker id="ae" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#059669"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#f97316"/></marker>
   </defs>
 
-  <rect width="1100" height="820" fill="#fafafa" rx="8"/>
-  <text x="550" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">Human Review Loop — Sequence (code-review rework cycle)</text>
+  <rect width="1100" height="860" fill="#f8fafc"/>
 
-  <!-- Lanes -->
-  <g font-size="12" font-weight="600" fill="white">
-    <rect x="60"   y="60" width="120" height="30" rx="6" fill="#6b21a8"/><text x="120"  y="80" text-anchor="middle">Human</text>
-    <rect x="210"  y="60" width="120" height="30" rx="6" fill="#2563eb"/><text x="270"  y="80" text-anchor="middle">GitHub Webhook</text>
-    <rect x="360"  y="60" width="120" height="30" rx="6" fill="#0369a1"/><text x="420"  y="80" text-anchor="middle">Dispatcher</text>
-    <rect x="510"  y="60" width="120" height="30" rx="6" fill="#1e40af"/><text x="570"  y="80" text-anchor="middle">Pipeline Runner</text>
-    <rect x="660"  y="60" width="150" height="30" rx="6" fill="#d97706"/><text x="735"  y="80" text-anchor="middle">reviewLoop phase</text>
-    <rect x="840"  y="60" width="100" height="30" rx="6" fill="#166534"/><text x="890"  y="80" text-anchor="middle">Providers</text>
-    <rect x="970"  y="60" width="100" height="30" rx="6" fill="#7c3aed"/><text x="1020" y="80" text-anchor="middle">State Store</text>
-  </g>
+  <!-- Title -->
+  <text x="550" y="32" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">Human Review Loop — Sequence (code-review rework cycle)</text>
+  <text x="550" y="52" text-anchor="middle" font-size="11" fill="#64748b">A single rework iteration starting from a blocked code-review step, through re-implementation, back to blocked</text>
 
-  <!-- Lifelines -->
-  <g stroke="#cbd5e1" stroke-dasharray="3,3">
-    <line x1="120"  y1="95" x2="120"  y2="780"/>
-    <line x1="270"  y1="95" x2="270"  y2="780"/>
-    <line x1="420"  y1="95" x2="420"  y2="780"/>
-    <line x1="570"  y1="95" x2="570"  y2="780"/>
-    <line x1="735"  y1="95" x2="735"  y2="780"/>
-    <line x1="890"  y1="95" x2="890"  y2="780"/>
-    <line x1="1020" y1="95" x2="1020" y2="780"/>
-  </g>
+  <!-- ─── Lane headers ─────────────────────────────────────────── -->
+  <!-- Human -->
+  <rect x="22"  y="68" width="112" height="36" rx="8" fill="#5b21b6" filter="url(#sh)"/>
+  <text x="78"  y="91" text-anchor="middle" fill="white" font-weight="600" font-size="12">Human</text>
 
-  <!-- Step 0: initial block (context) -->
-  <text x="60" y="118" fill="#64748b" font-style="italic">run is already blocked at code-review step from earlier — awaiting review</text>
+  <!-- GitHub Webhook -->
+  <rect x="156" y="68" width="128" height="36" rx="8" fill="#0f172a" filter="url(#sh)"/>
+  <text x="220" y="87" text-anchor="middle" fill="white" font-weight="600" font-size="11">GitHub</text>
+  <text x="220" y="101" text-anchor="middle" fill="#94a3b8" font-size="9">webhook</text>
 
-  <!-- Step 1: human applies "rework-requested" label -->
-  <g>
-    <line x1="120" y1="150" x2="265" y2="150" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="125" y="145" font-size="10" fill="#334155">① apply label "rework-requested"</text>
-  </g>
+  <!-- Dispatcher -->
+  <rect x="308" y="68" width="112" height="36" rx="8" fill="#0369a1" filter="url(#sh)"/>
+  <text x="364" y="91" text-anchor="middle" fill="white" font-weight="600" font-size="12">Dispatcher</text>
 
-  <!-- Step 2: webhook fires -->
-  <g>
-    <line x1="270" y1="180" x2="417" y2="180" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="275" y="175" font-size="10" fill="#334155">② POST /webhooks/github/:productId (labeled event)</text>
-    <text x="275" y="194" font-size="9"  fill="#64748b" font-style="italic">eventType="status-change", newStatus="rework-requested"</text>
-  </g>
+  <!-- Pipeline Runner -->
+  <rect x="446" y="68" width="128" height="36" rx="8" fill="#1e40af" filter="url(#sh)"/>
+  <text x="510" y="87" text-anchor="middle" fill="white" font-weight="600" font-size="11">Pipeline</text>
+  <text x="510" y="101" text-anchor="middle" fill="#bfdbfe" font-size="9">runner</text>
 
-  <!-- Step 3: dispatcher looks up run -->
-  <g>
-    <line x1="420" y1="225" x2="1017" y2="225" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="425" y="220" font-size="10" fill="#334155">③ findActiveForTicket(productId, "owner/repo#42")</text>
-  </g>
-  <g>
-    <line x1="1020" y1="250" x2="423" y2="250" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="850" y="245" font-size="10" fill="#334155">run { sessionId, status: "blocked" }</text>
-  </g>
+  <!-- reviewLoop phase -->
+  <rect x="600" y="68" width="148" height="36" rx="8" fill="#d97706" filter="url(#sh)"/>
+  <text x="674" y="87" text-anchor="middle" fill="white" font-weight="600" font-size="11">reviewLoop</text>
+  <text x="674" y="101" text-anchor="middle" fill="#fef3c7" font-size="9">phase</text>
 
-  <!-- Step 4: resume -->
-  <g>
-    <line x1="420" y1="285" x2="567" y2="285" stroke="#f97316" stroke-width="1.5" marker-end="url(#s-arr-o)"/>
-    <text x="425" y="280" font-size="10" fill="#9a3412">④ pipeline.resume(sessionId, {ticketStatus: "rework-requested"})</text>
+  <!-- Providers -->
+  <rect x="778" y="68" width="118" height="36" rx="8" fill="#065f46" filter="url(#sh)"/>
+  <text x="837" y="91" text-anchor="middle" fill="white" font-weight="600" font-size="12">Providers</text>
+
+  <!-- State Store -->
+  <rect x="920" y="68" width="156" height="36" rx="8" fill="#374151" filter="url(#sh)"/>
+  <text x="998" y="87" text-anchor="middle" fill="white" font-weight="600" font-size="11">State Store</text>
+  <text x="998" y="101" text-anchor="middle" fill="#d1d5db" font-size="9">FileStateStore</text>
+
+  <!-- ─── Lifelines ──────────────────────────────────────────────── -->
+  <g stroke="#e2e8f0" stroke-dasharray="4,4" stroke-width="1">
+    <line x1="78"  y1="108" x2="78"  y2="810"/>
+    <line x1="220" y1="108" x2="220" y2="810"/>
+    <line x1="364" y1="108" x2="364" y2="810"/>
+    <line x1="510" y1="108" x2="510" y2="810"/>
+    <line x1="674" y1="108" x2="674" y2="810"/>
+    <line x1="837" y1="108" x2="837" y2="810"/>
+    <line x1="998" y1="108" x2="998" y2="810"/>
   </g>
 
-  <!-- Step 5: runner sets artifact -->
-  <g>
-    <line x1="570" y1="315" x2="1017" y2="315" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="575" y="310" font-size="10" fill="#334155">⑤ load run + set artifacts.__resumeStatus="rework-requested"</text>
-  </g>
+  <!-- ─── Context note ──────────────────────────────────────────── -->
+  <rect x="22" y="120" width="400" height="30" rx="6" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="34" y="140" font-size="10" fill="#78350f" font-style="italic">Run is already blocked at the code-review step — awaiting reviewer action.</text>
 
-  <!-- Step 6: runner re-runs blocked step -->
-  <g>
-    <line x1="570" y1="350" x2="732" y2="350" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="575" y="345" font-size="10" fill="#334155">⑥ re-run blocked step (code-review) with ctx</text>
-  </g>
+  <!-- ─── Messages ─────────────────────────────────────────────── -->
 
-  <!-- Step 7: reviewLoop checks status, runs onRework -->
-  <rect x="660" y="370" width="160" height="32" rx="4" fill="#fef3c7" stroke="#d97706"/>
-  <text x="740" y="383" text-anchor="middle" font-size="10" fill="#92400e">resolveSemantic</text>
-  <text x="740" y="396" text-anchor="middle" font-size="9" fill="#92400e">"rework-requested" → reworkStatus</text>
+  <!-- ① Human applies "rework-requested" label -->
+  <line x1="78" y1="172" x2="213" y2="172" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="84" y="165" font-size="10" fill="#334155">① apply label "rework-requested" on GitHub issue</text>
 
-  <!-- Step 8: fetchPRComments -->
-  <g>
-    <line x1="735" y1="430" x2="887" y2="430" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="740" y="425" font-size="10" fill="#334155">⑦ git.listPRComments({prUrl})</text>
-  </g>
-  <g>
-    <line x1="890" y1="455" x2="738" y2="455" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="750" y="450" font-size="10" fill="#334155">[{author, body, path, line}, ...]</text>
-  </g>
+  <!-- ② Webhook fires to dispatcher -->
+  <line x1="220" y1="210" x2="357" y2="210" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="226" y="203" font-size="10" fill="#334155">② POST /webhooks/github/:productId</text>
+  <text x="226" y="222" font-size="9" fill="#64748b" font-style="italic">eventType="labeled", status="rework-requested"</text>
 
-  <!-- Step 9: re-plan -->
-  <g>
-    <line x1="735" y1="490" x2="887" y2="490" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="740" y="485" font-size="10" fill="#334155">⑧ coding.plan({reviewComments})</text>
-  </g>
-  <g>
-    <line x1="890" y1="515" x2="738" y2="515" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="760" y="510" font-size="10" fill="#334155">new plan</text>
-  </g>
+  <!-- ③ Dispatcher looks up active run in state store -->
+  <line x1="364" y1="252" x2="991" y2="252" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="370" y="245" font-size="10" fill="#334155">③ findActiveForTicket(productId, "owner/repo#42")</text>
 
-  <!-- Step 10: re-implement -->
-  <g>
-    <line x1="735" y1="545" x2="887" y2="545" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="740" y="540" font-size="10" fill="#334155">⑨ coding.implement({reviewComments})</text>
-  </g>
-  <g>
-    <line x1="890" y1="570" x2="738" y2="570" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="762" y="565" font-size="10" fill="#334155">code changed</text>
-  </g>
+  <!-- ③ response -->
+  <line x1="998" y1="275" x2="371" y2="275" stroke="#475569" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a)"/>
+  <text x="620" y="270" text-anchor="middle" font-size="9" fill="#64748b" font-style="italic">run { sessionId, status: "blocked" }</text>
 
-  <!-- Step 11: commitPush -->
-  <g>
-    <line x1="735" y1="600" x2="887" y2="600" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="740" y="595" font-size="10" fill="#334155">⑩ coding.commitPushRepos()</text>
-  </g>
+  <!-- ④ Dispatcher calls pipeline.resume -->
+  <line x1="364" y1="310" x2="503" y2="310" stroke="#f97316" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="370" y="303" font-size="10" fill="#c2410c">④ pipeline.resume(sessionId, { ticketStatus: "rework-requested" })</text>
 
-  <!-- Step 12: reviewLoop returns blocked again -->
-  <g>
-    <line x1="732" y1="640" x2="573" y2="640" stroke="#f97316" stroke-width="1.5" marker-end="url(#s-arr-o)"/>
-    <text x="580" y="635" font-size="10" fill="#9a3412">⑪ return blocked(cycles=1, "awaiting next review")</text>
-  </g>
+  <!-- ⑤ Runner sets artifact + loads state -->
+  <line x1="510" y1="348" x2="991" y2="348" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="516" y="341" font-size="10" fill="#334155">⑤ load run state · set artifacts.__resumeStatus = "rework-requested"</text>
 
-  <!-- Step 13: runner persists -->
-  <g>
-    <line x1="570" y1="670" x2="1017" y2="670" stroke="#475569" stroke-width="1.5" marker-end="url(#s-arr)"/>
-    <text x="575" y="665" font-size="10" fill="#334155">⑫ save run (status=blocked, artifacts merged, cycles+=1)</text>
-  </g>
+  <!-- ⑥ Runner re-runs blocked step -->
+  <line x1="510" y1="386" x2="666" y2="386" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="516" y="379" font-size="10" fill="#334155">⑥ re-run blocked step (code-review) with full ctx</text>
 
-  <!-- Step 14: notify human (optional Slack side-channel not shown) -->
-  <g>
-    <line x1="565" y1="700" x2="125" y2="700" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#s-arr)"/>
-    <text x="200" y="695" font-size="10" fill="#334155" font-style="italic">(optional notify phase — side-effect of next step on next resume)</text>
-  </g>
+  <!-- reviewLoop internal box -->
+  <rect x="600" y="400" width="220" height="40" rx="6" fill="#fef3c7" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="710" y="416" text-anchor="middle" font-size="10" font-weight="600" fill="#92400e">resolveSemantic(__resumeStatus)</text>
+  <text x="710" y="432" text-anchor="middle" font-size="9" fill="#92400e">"rework-requested" → reworkStatus → run onRework</text>
 
-  <!-- Step 15: next cycle — human labels "completed" -->
-  <g>
-    <line x1="120" y1="745" x2="265" y2="745" stroke="#16a34a" stroke-width="1.5" marker-end="url(#s-arr-g)"/>
-    <text x="125" y="740" font-size="10" fill="#166534">⑬ next iteration: label "completed" → resume → reviewLoop.ok() → pipeline continues</text>
-  </g>
+  <!-- ⑦ fetchPRComments -->
+  <line x1="674" y1="458" x2="830" y2="458" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="680" y="451" font-size="10" fill="#334155">⑦ git.listPRComments({ prUrl })</text>
+
+  <line x1="837" y1="480" x2="681" y2="480" stroke="#475569" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a)"/>
+  <text x="760" y="475" text-anchor="middle" font-size="9" fill="#64748b" font-style="italic">[{ author, body, path, line }, …]</text>
+
+  <!-- ⑧ re-plan -->
+  <line x1="674" y1="516" x2="830" y2="516" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="680" y="509" font-size="10" fill="#334155">⑧ coding.plan({ reviewComments })</text>
+
+  <line x1="837" y1="538" x2="681" y2="538" stroke="#475569" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a)"/>
+  <text x="756" y="533" text-anchor="middle" font-size="9" fill="#64748b" font-style="italic">new plan artifact</text>
+
+  <!-- ⑨ re-implement -->
+  <line x1="674" y1="574" x2="830" y2="574" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="680" y="567" font-size="10" fill="#334155">⑨ coding.implement({ reviewComments })</text>
+
+  <line x1="837" y1="596" x2="681" y2="596" stroke="#475569" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a)"/>
+  <text x="756" y="591" text-anchor="middle" font-size="9" fill="#64748b" font-style="italic">implementation artifact</text>
+
+  <!-- ⑩ commitPush -->
+  <line x1="674" y1="632" x2="830" y2="632" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="680" y="625" font-size="10" fill="#334155">⑩ coding.commitPushRepos()  → commit artifact</text>
+
+  <!-- ⑪ reviewLoop returns blocked again -->
+  <line x1="666" y1="668" x2="517" y2="668" stroke="#f97316" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="586" y="661" text-anchor="middle" font-size="10" fill="#c2410c">⑪ return blocked(cycles += 1, "awaiting next review")</text>
+
+  <!-- ⑫ Runner persists state -->
+  <line x1="510" y1="704" x2="991" y2="704" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="516" y="697" font-size="10" fill="#334155">⑫ save run (status=blocked · artifacts merged · cycles incremented)</text>
+
+  <!-- ⑬ Next cycle note -->
+  <line x1="78" y1="762" x2="213" y2="762" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
+  <text x="84" y="755" font-size="10" fill="#065f46">⑬ next iteration: human labels "completed"</text>
+  <text x="84" y="778" font-size="9" fill="#64748b" font-style="italic">→ resume → reviewLoop returns ok() → pipeline continues to next step</text>
 </svg>

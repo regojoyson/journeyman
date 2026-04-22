@@ -1,126 +1,158 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" font-family="system-ui, -apple-system, sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 730"
+     font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <defs>
-    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
-    </marker>
-    <marker id="arr-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
-    </marker>
-    <marker id="arr-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#22c55e"/>
-    </marker>
-    <marker id="arr-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
-    </marker>
+    <filter id="sh" x="-4%" y="-4%" width="108%" height="130%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+    <marker id="a"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#475569"/></marker>
+    <marker id="ae" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#059669"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#f97316"/></marker>
+    <marker id="av" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#7c3aed"/></marker>
   </defs>
 
-  <rect width="1000" height="680" fill="#fafafa" rx="8"/>
-  <text x="500" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">Human Review Loop — Pipeline Overview</text>
-  <text x="500" y="52" text-anchor="middle" font-size="11" fill="#64748b">Same reviewLoop phase reused for analyze / plan / code gates</text>
+  <rect width="1040" height="730" fill="#f8fafc"/>
 
-  <!-- Start -->
-  <rect x="40" y="80" width="130" height="40" rx="8" fill="#2563eb"/>
-  <text x="105" y="104" text-anchor="middle" fill="white" font-weight="600">Ticket trigger</text>
+  <!-- Title -->
+  <text x="520" y="34" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">Human Review Loop — Pipeline Overview</text>
+  <text x="520" y="54" text-anchor="middle" font-size="11" fill="#64748b">The same reviewLoop phase reused for analyze gate · plan gate · code-review gate</text>
 
-  <!-- fetch + clone + checkout (collapsed) -->
-  <rect x="200" y="80" width="170" height="40" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
-  <text x="285" y="104" text-anchor="middle" fill="#0369a1" font-weight="600">fetch • clone • checkout</text>
+  <!-- ─── PIPELINE FLOW ──────────────────────────────────────── -->
 
-  <line x1="170" y1="100" x2="198" y2="100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Row 1: ticket trigger → setup → analyze → [reviewLoop] -->
 
-  <!-- analyze -->
-  <rect x="400" y="80" width="120" height="40" rx="8" fill="#e0f2fe" stroke="#0369a1"/>
-  <text x="460" y="104" text-anchor="middle" fill="#0369a1" font-weight="600">analyze</text>
-  <line x1="370" y1="100" x2="398" y2="100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Ticket trigger -->
+  <rect x="36" y="82" width="130" height="48" rx="8" fill="#2563eb" filter="url(#sh)"/>
+  <text x="101" y="106" text-anchor="middle" fill="white" font-weight="700" font-size="13">Ticket trigger</text>
+  <text x="101" y="122" text-anchor="middle" fill="#bfdbfe" font-size="10">label / webhook / API</text>
 
-  <!-- analyze-review -->
-  <rect x="550" y="70" width="200" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="650" y="90" text-anchor="middle" fill="#92400e" font-weight="700">reviewLoop</text>
-  <text x="650" y="106" text-anchor="middle" fill="#92400e" font-size="10">approve: analyze-approved</text>
-  <text x="650" y="120" text-anchor="middle" fill="#92400e" font-size="10">rework: [fetchTicketComments, analyze]</text>
-  <line x1="520" y1="100" x2="548" y2="100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="166" y1="106" x2="186" y2="106" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <!-- plan -->
-  <rect x="400" y="200" width="120" height="40" rx="8" fill="#dbeafe" stroke="#1e40af"/>
-  <text x="460" y="224" text-anchor="middle" fill="#1e40af" font-weight="600">plan</text>
+  <!-- Setup box -->
+  <rect x="186" y="82" width="168" height="48" rx="8" fill="white" stroke="#bfdbfe" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="270" y="106" text-anchor="middle" fill="#1e40af" font-weight="600" font-size="12">fetch · clone · checkout</text>
+  <text x="270" y="122" text-anchor="middle" fill="#64748b" font-size="10">mark development-started</text>
 
-  <!-- Arrow from analyze-review down to plan -->
-  <path d="M 650 130 L 650 180 L 460 180 L 460 198" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
-  <text x="560" y="172" font-size="10" fill="#16a34a" font-style="italic">approved</text>
+  <line x1="354" y1="106" x2="374" y2="106" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <!-- plan-review -->
-  <rect x="550" y="190" width="200" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="650" y="210" text-anchor="middle" fill="#92400e" font-weight="700">reviewLoop</text>
-  <text x="650" y="226" text-anchor="middle" fill="#92400e" font-size="10">approve: plan-approved</text>
-  <text x="650" y="240" text-anchor="middle" fill="#92400e" font-size="10">rework: [fetchTicketComments, plan]</text>
-  <line x1="520" y1="220" x2="548" y2="220" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Analyze box -->
+  <rect x="374" y="82" width="130" height="48" rx="8" fill="white" stroke="#bfdbfe" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="439" y="106" text-anchor="middle" fill="#1e40af" font-weight="600" font-size="12">analyze</text>
+  <text x="439" y="122" text-anchor="middle" fill="#64748b" font-size="10">AI code analysis</text>
 
-  <!-- implement -->
-  <rect x="400" y="320" width="120" height="40" rx="8" fill="#dcfce7" stroke="#166534"/>
-  <text x="460" y="344" text-anchor="middle" fill="#166534" font-weight="600">implement</text>
-  <path d="M 650 250 L 650 300 L 460 300 L 460 318" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
-  <text x="560" y="292" font-size="10" fill="#16a34a" font-style="italic">approved</text>
+  <line x1="504" y1="106" x2="524" y2="106" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <!-- commit-push + open-pr -->
-  <rect x="550" y="320" width="170" height="40" rx="8" fill="#dcfce7" stroke="#166534"/>
-  <text x="635" y="344" text-anchor="middle" fill="#166534" font-weight="600">commit • push • openPR</text>
-  <line x1="520" y1="340" x2="548" y2="340" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- reviewLoop #1 -->
+  <rect x="524" y="70" width="242" height="72" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="2" filter="url(#sh)"/>
+  <text x="645" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">reviewLoop  ①</text>
+  <text x="645" y="110" text-anchor="middle" font-size="10" fill="#b45309">approve: analyze-approved</text>
+  <text x="645" y="126" text-anchor="middle" font-size="10" fill="#b45309">rework: [fetchTicketComments, analyze]</text>
 
-  <!-- code-review -->
-  <rect x="330" y="420" width="390" height="70" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="525" y="442" text-anchor="middle" fill="#92400e" font-weight="700">reviewLoop (code review)</text>
-  <text x="525" y="458" text-anchor="middle" fill="#92400e" font-size="10">approve: completed  •  rework: rework-requested  •  maxCycles: 3</text>
-  <text x="525" y="475" text-anchor="middle" fill="#92400e" font-size="10">onRework: [fetchPRComments, plan, implement, commitPushRepos]</text>
-  <path d="M 635 360 L 635 418" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- approved → down to plan row -->
+  <path d="M 645 142 L 645 178 L 439 178 L 439 210" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
+  <text x="540" y="170" font-size="10" fill="#059669" font-style="italic">approved →</text>
 
-  <!-- completed -->
-  <rect x="780" y="435" width="110" height="40" rx="8" fill="#166534"/>
-  <text x="835" y="459" text-anchor="middle" fill="white" font-weight="600">notify → done</text>
-  <line x1="720" y1="455" x2="778" y2="455" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
-  <text x="748" y="448" font-size="10" fill="#16a34a" font-style="italic">approved</text>
+  <!-- Row 2: plan → [reviewLoop] -->
 
-  <!-- failed -->
-  <rect x="780" y="495" width="110" height="36" rx="8" fill="#991b1b"/>
-  <text x="835" y="517" text-anchor="middle" fill="white" font-weight="600">run failed</text>
-  <path d="M 720 475 L 780 511" fill="none" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
-  <text x="750" y="498" font-size="10" fill="#991b1b" font-style="italic">max cycles</text>
+  <!-- Plan box -->
+  <rect x="374" y="214" width="130" height="48" rx="8" fill="white" stroke="#a5f3fc" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="439" y="238" text-anchor="middle" fill="#0e7490" font-weight="600" font-size="12">plan</text>
+  <text x="439" y="254" text-anchor="middle" fill="#64748b" font-size="10">AI implementation plan</text>
 
-  <!-- Human lane -->
-  <rect x="40" y="160" width="300" height="300" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="190" y="184" text-anchor="middle" fill="#6b21a8" font-weight="700">Human (developer)</text>
-  <text x="190" y="206" text-anchor="middle" fill="#7c3aed" font-size="11">1. Reads analysis / plan / PR</text>
-  <text x="190" y="226" text-anchor="middle" fill="#7c3aed" font-size="11">2. Optionally edits plan/analyze docs</text>
-  <text x="190" y="246" text-anchor="middle" fill="#7c3aed" font-size="11">3. Adds comments on ticket or PR</text>
-  <text x="190" y="266" text-anchor="middle" fill="#7c3aed" font-size="11">4. Changes ticket status:</text>
-  <text x="190" y="286" text-anchor="middle" fill="#16a34a" font-size="11">   • *-approved  → proceed</text>
-  <text x="190" y="304" text-anchor="middle" fill="#f97316" font-size="11">   • *-rework    → re-run phases</text>
-  <text x="190" y="322" text-anchor="middle" fill="#ef4444" font-size="11">   • failed       → fail run</text>
+  <line x1="504" y1="238" x2="524" y2="238" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
 
-  <text x="190" y="360" text-anchor="middle" fill="#6b21a8" font-weight="600" font-size="11">webhook → dispatcher</text>
-  <text x="190" y="380" text-anchor="middle" fill="#7c3aed" font-size="10">findActiveForTicket(productId, ticketKey)</text>
-  <text x="190" y="396" text-anchor="middle" fill="#7c3aed" font-size="10">→ pipeline.resume(sessionId, {status})</text>
+  <!-- reviewLoop #2 -->
+  <rect x="524" y="202" width="242" height="72" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="2" filter="url(#sh)"/>
+  <text x="645" y="224" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">reviewLoop  ②</text>
+  <text x="645" y="242" text-anchor="middle" font-size="10" fill="#b45309">approve: plan-approved</text>
+  <text x="645" y="258" text-anchor="middle" font-size="10" fill="#b45309">rework: [fetchTicketComments, plan]</text>
 
-  <path d="M 340 300 L 548 225" fill="none" stroke="#f97316" stroke-width="1.5" marker-end="url(#arr-orange)" stroke-dasharray="4,3"/>
-  <path d="M 340 270 L 548 105" fill="none" stroke="#f97316" stroke-width="1.5" marker-end="url(#arr-orange)" stroke-dasharray="4,3"/>
-  <path d="M 340 330 L 328 455" fill="none" stroke="#f97316" stroke-width="1.5" marker-end="url(#arr-orange)" stroke-dasharray="4,3"/>
-  <text x="300" y="435" font-size="10" fill="#f97316" font-style="italic" transform="rotate(-90, 300, 435)">status-change webhook</text>
+  <!-- approved → down to implement row -->
+  <path d="M 645 274 L 645 310 L 439 310 L 439 342" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
+  <text x="540" y="302" font-size="10" fill="#059669" font-style="italic">approved →</text>
 
-  <!-- Legend -->
-  <rect x="40" y="560" width="920" height="100" rx="6" fill="white" stroke="#e5e7eb"/>
-  <text x="60" y="582" font-size="12" font-weight="600" fill="#374151">Legend</text>
+  <!-- Row 3: implement → commit → PR → [reviewLoop] -->
 
-  <rect x="60" y="595" width="14" height="14" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-  <text x="80" y="607" font-size="11" fill="#555">reviewLoop — blocks until ticket status changes</text>
+  <!-- Implement box -->
+  <rect x="374" y="346" width="130" height="48" rx="8" fill="#dcfce7" stroke="#059669" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="439" y="370" text-anchor="middle" fill="#065f46" font-weight="600" font-size="12">implement</text>
+  <text x="439" y="386" text-anchor="middle" fill="#15803d" font-size="10">AI code changes</text>
 
-  <rect x="360" y="595" width="14" height="14" rx="3" fill="#dcfce7" stroke="#166534"/>
-  <text x="380" y="607" font-size="11" fill="#555">Automated phase (analyze / plan / implement / git)</text>
+  <line x1="504" y1="370" x2="524" y2="370" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
 
-  <rect x="60" y="622" width="14" height="14" rx="3" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="80" y="634" font-size="11" fill="#555">Human interaction (comments + status changes)</text>
+  <!-- Commit + PR box -->
+  <rect x="524" y="346" width="188" height="48" rx="8" fill="#dcfce7" stroke="#059669" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="618" y="370" text-anchor="middle" fill="#065f46" font-weight="600" font-size="12">commit · push · openPR</text>
+  <text x="618" y="386" text-anchor="middle" fill="#15803d" font-size="10">auto-named branch · PR opened</text>
 
-  <line x1="360" y1="629" x2="380" y2="629" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="385" y="634" font-size="11" fill="#555">Rework path (status = *-rework)</text>
+  <line x1="712" y1="370" x2="732" y2="370" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
 
-  <line x1="560" y1="629" x2="580" y2="629" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="585" y="634" font-size="11" fill="#555">Approved path (status = *-approved)</text>
+  <!-- reviewLoop #3 — code review -->
+  <rect x="732" y="326" width="274" height="100" rx="8" fill="#fffbeb" stroke="#fbbf24" stroke-width="2" filter="url(#sh)"/>
+  <text x="869" y="352" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">reviewLoop  ③  code review</text>
+  <text x="869" y="370" text-anchor="middle" font-size="10" fill="#b45309">approve: completed  ·  maxCycles: 3</text>
+  <text x="869" y="386" text-anchor="middle" font-size="10" fill="#b45309">rework: rework-requested</text>
+  <text x="869" y="402" text-anchor="middle" font-size="10" fill="#b45309">onRework: [fetchPRComments, plan, implement, commitPushRepos]</text>
+
+  <!-- approved → done -->
+  <line x1="869" y1="426" x2="869" y2="468" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
+  <text x="881" y="452" font-size="10" fill="#059669" font-style="italic">approved →</text>
+
+  <!-- Done -->
+  <rect x="800" y="472" width="138" height="46" rx="8" fill="#059669" filter="url(#sh)"/>
+  <text x="869" y="496" text-anchor="middle" fill="white" font-weight="700" font-size="13">notify → done</text>
+  <text x="869" y="512" text-anchor="middle" fill="#d1fae5" font-size="10">cleanup repos</text>
+
+  <!-- max cycles → failed -->
+  <path d="M 1006 376 Q 1020 376 1020 520 L 960 520" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a)"/>
+  <text x="1024" y="440" font-size="10" fill="#991b1b" transform="rotate(90,1024,440)">max cycles</text>
+  <rect x="870" y="526" width="86" height="36" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="913" y="548" text-anchor="middle" fill="#7f1d1d" font-weight="700" font-size="11">run failed</text>
+
+  <!-- ─── HUMAN LANE ───────────────────────────────────────────── -->
+  <rect x="36" y="180" width="300" height="356" rx="12" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="186" y="206" text-anchor="middle" font-size="13" font-weight="700" fill="#5b21b6">Human reviewer</text>
+
+  <text x="60" y="232" font-size="11" fill="#7c3aed">1.  Reads analysis / plan report or PR</text>
+  <text x="60" y="254" font-size="11" fill="#7c3aed">2.  Optionally adds ticket comments</text>
+  <text x="60" y="276" font-size="11" fill="#7c3aed">3.  Changes ticket status / label:</text>
+
+  <rect x="60" y="288" width="256" height="86" rx="6" fill="white" stroke="#ede9fe" filter="url(#sh)"/>
+  <text x="78" y="310" font-size="11" fill="#059669">• *-approved   →   proceed</text>
+  <text x="78" y="330" font-size="11" fill="#f97316">• *-rework     →   re-run phases</text>
+  <text x="78" y="350" font-size="11" fill="#dc2626">• failed        →   fail run</text>
+  <text x="78" y="366" font-size="9" fill="#94a3b8" font-style="italic">(unknown status → stays blocked)</text>
+
+  <line x1="186" y1="388" x2="186" y2="408" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="60" y="408" width="256" height="62" rx="6" fill="white" stroke="#ede9fe" filter="url(#sh)"/>
+  <text x="186" y="427" text-anchor="middle" font-size="10" font-weight="600" fill="#5b21b6">webhook → dispatcher</text>
+  <text x="186" y="444" text-anchor="middle" font-size="10" fill="#7c3aed">findActiveForTicket(productId, ticketKey)</text>
+  <text x="186" y="460" text-anchor="middle" font-size="10" fill="#7c3aed">→ pipeline.resume(sessionId, {status})</text>
+
+  <!-- Human → reviewLoop arrows (rework path) -->
+  <path d="M 336 285 Q 470 285 522 238" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <path d="M 336 300 Q 480 300 522 108" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <path d="M 336 320 L 732 370" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <text x="416" y="282" font-size="9" fill="#f97316" font-style="italic">status-change webhook</text>
+
+  <!-- ─── LEGEND ────────────────────────────────────────────────── -->
+  <rect x="36" y="598" width="966" height="116" rx="10" fill="white" stroke="#e2e8f0" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="56" y="622" font-size="12" font-weight="700" fill="#0f172a">Legend</text>
+
+  <rect x="56" y="636" width="16" height="16" rx="3" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/>
+  <text x="78" y="649" font-size="11" fill="#374151">reviewLoop — blocks run until ticket status changes; loops on rework</text>
+
+  <rect x="56" y="664" width="16" height="16" rx="3" fill="#dcfce7" stroke="#059669" stroke-width="1.5"/>
+  <text x="78" y="677" font-size="11" fill="#374151">Automated phase (analyze · plan · implement · git)</text>
+
+  <rect x="56" y="692" width="16" height="16" rx="3" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="78" y="705" font-size="11" fill="#374151">Human lane — reads reports, adds comments, changes ticket status</text>
+
+  <line x1="440" y1="644" x2="468" y2="644" stroke="#f97316" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <text x="474" y="649" font-size="11" fill="#374151">Rework path (status = *-rework) → re-run onRework sub-phases</text>
+
+  <line x1="440" y1="672" x2="468" y2="672" stroke="#059669" stroke-width="1.5" marker-end="url(#ae)"/>
+  <text x="474" y="677" font-size="11" fill="#374151">Approved path (status = *-approved) → pipeline advances</text>
+
+  <line x1="440" y1="700" x2="468" y2="700" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a)"/>
+  <text x="474" y="705" font-size="11" fill="#374151">Failure path (max cycles exceeded or sub-phase error)</text>
 </svg>
