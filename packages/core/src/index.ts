@@ -31,6 +31,12 @@ export type {
   IOrchestratorEngine, SubmitRunArgs,
 } from "./interfaces/orchestrator-engine.interface.ts";
 export type {
+  IPauseableEngine, IRetryableEngine,
+} from "./interfaces/orchestrator-capabilities.interface.ts";
+export {
+  isPauseableEngine, isRetryableEngine,
+} from "./interfaces/orchestrator-capabilities.interface.ts";
+export type {
   IFlowStore, IFlowVersionStore, CreateFlowArgs,
 } from "./interfaces/flow-store.interface.ts";
 export type {

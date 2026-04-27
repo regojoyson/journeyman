@@ -84,6 +84,20 @@ export class ConductorClient {
     await this.request(`/workflow/${workflowId}${q}`, { method: "DELETE" });
   }
 
+  async pauseWorkflow(workflowId: string): Promise<void> {
+    await this.request(`/workflow/${encodeURIComponent(workflowId)}/pause`, { method: "PUT" });
+  }
+
+  async resumeWorkflow(workflowId: string): Promise<void> {
+    await this.request(`/workflow/${encodeURIComponent(workflowId)}/resume`, { method: "PUT" });
+  }
+
+  /** Resume a failed/terminated workflow, optionally from a specific failed task. */
+  async retryWorkflow(workflowId: string, opts: { taskId?: string } = {}): Promise<void> {
+    const q = opts.taskId ? `?taskId=${encodeURIComponent(opts.taskId)}` : "";
+    await this.request(`/workflow/${encodeURIComponent(workflowId)}/retry${q}`, { method: "POST" });
+  }
+
   async pollTask(taskType: string, workerId: string): Promise<PolledTask | null> {
     const r = await this.request<PolledTask | null>(
       `/tasks/poll/${encodeURIComponent(taskType)}?workerid=${encodeURIComponent(workerId)}`,

@@ -31,6 +31,11 @@ export function RunViewer(props: RunViewerProps & { flowName?: string }) {
         flowName={props.flowName ?? "Run"}
         run={props.run}
         onRerun={props.onRerun}
+        onCancel={props.onCancel}
+        onPause={props.onPause}
+        onResume={props.onResume}
+        onExport={props.onExport}
+        onFork={props.onFork}
       />
       <div className="je-runview__body">
         <ReadOnlyCanvas
@@ -45,6 +50,9 @@ export function RunViewer(props: RunViewerProps & { flowName?: string }) {
           status={selectedNodeId ? (statuses.get(selectedNodeId) ?? null) : null}
           events={eventsForSelected}
           executions={execsForSelected}
+          onRetryStep={selectedNodeId && props.onRetryStep
+            ? () => props.onRetryStep!(selectedNodeId)
+            : undefined}
         />
       </div>
     </div>

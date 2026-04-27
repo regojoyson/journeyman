@@ -68,6 +68,13 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { version };
   });
 
+  app.get("/flow_versions/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const version = await c.flowVersions.getById(id);
+    if (!version) { reply.code(404); return { error: "not_found" }; }
+    return { version };
+  });
+
   app.post("/flows/:id/runs", async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = createRunBody.parse(req.body);

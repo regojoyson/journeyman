@@ -76,7 +76,8 @@ export class WorkerHarness {
 
     const runId = task.workflowInstanceId;
     const nodeId = task.taskDefName;
-    const ws = await this.deps.workspace.create({ runId, nodeId });
+    const userId = ((task.inputData ?? {}) as { startedByUserId?: string | null }).startedByUserId ?? null;
+    const ws = await this.deps.workspace.create({ runId, nodeId, userId });
     const abort = new AbortController();
 
     const declaredCreds = ((task.inputData ?? {}) as { credentials?: Record<string, string> }).credentials ?? {};

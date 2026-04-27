@@ -1,5 +1,6 @@
 import type {
-  IOrchestratorEngine, IRunStore, Run, RunStatus, SubmitRunArgs,
+  IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
+  IRunStore, Run, RunStatus, SubmitRunArgs,
 } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import type { IFlowJsonConverter } from "@journeyman/core";
@@ -11,7 +12,7 @@ export interface ConductorOrchestratorDeps {
   runs: IRunStore;
 }
 
-export class ConductorOrchestrator implements IOrchestratorEngine {
+export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
   constructor(private deps: ConductorOrchestratorDeps) {}
 
   async submit(args: SubmitRunArgs): Promise<{ runId: string; engineWorkflowId: string }> {
@@ -48,6 +49,27 @@ export class ConductorOrchestrator implements IOrchestratorEngine {
     if (!r?.engineWorkflowId) return;
     await this.deps.client.terminate(r.engineWorkflowId, reason);
     await this.deps.runs.setStatus(runId, "cancelled");
+  }
+
+  async pause(runId: string): Promise<void> {
+    const r = await this.deps.runs.getById(runId);
+    if (!r?.engineWorkflowId) return;
+    await this.deps.client.pauseWorkflow(r.engineWorkflowId);
+    await this.deps.runs.setStatus(runId, "paused");
+  }
+
+  async resume(runId: string): Promise<void> {
+    const r = await this.deps.runs.getById(runId);
+    if (!r?.engineWorkflowId) return;
+    await this.deps.client.resumeWorkflow(r.engineWorkflowId);
+    await this.deps.runs.setStatus(runId, "running");
+  }
+
+  async retryFromTask(runId: string, nodeId: string | undefined): Promise<void> {
+    const r = await this.deps.runs.getById(runId);
+    if (!r?.engineWorkflowId) throw new Error("Run has no engine workflow id");
+    await this.deps.client.retryWorkflow(r.engineWorkflowId, { taskId: nodeId });
+    await this.deps.runs.setStatus(runId, "running");
   }
 
   async syncStatus(runId: string): Promise<RunStatus> {

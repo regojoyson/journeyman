@@ -25,5 +25,10 @@ export interface RunViewerProps {
   executions: NodeExecution[];
   onRerun?: () => void;
   onCancel?: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onExport?: () => void;
+  onRetryStep?: (nodeId: string) => void;
+  onFork?: () => void;
   initialSelectedNodeId?: string | null;
 }

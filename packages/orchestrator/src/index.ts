@@ -40,3 +40,7 @@ export { WorkerHarness } from "./workers/worker-harness.ts";
 export { AnalyzePhaseHandler } from "./workers/phases/analyze-phase-handler.ts";
 export { createPool } from "./stores/postgres/pg-pool.ts";
 export { RunSyncer } from "./sync/run-syncer.ts";
+export { rerunFromExisting } from "./actions/rerun.ts";
+export { forkFromRun } from "./actions/fork.ts";
+export type { RerunDeps, RerunResult } from "./actions/rerun.ts";
+export type { ForkDeps } from "./actions/fork.ts";

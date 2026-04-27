@@ -7,6 +7,7 @@ export interface NodeDetailDrawerProps {
   status: ResolvedNodeStatus | null;
   events: RunEvent[];
   executions: NodeExecution[];
+  onRetryStep?: () => void;
 }
 
 export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
@@ -75,6 +76,19 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
           ))}
         </div>
       </div>
+
+      {p.status?.status === "failed" && p.onRetryStep && (
+        <div className="je-runview__section">
+          <button
+            onClick={p.onRetryStep}
+            style={{
+              background: "#fdcb6e", border: "none", color: "#1a1a24",
+              padding: "6px 12px", borderRadius: 4, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", width: "100%",
+            }}
+          >↻ Retry from this step</button>
+        </div>
+      )}
     </aside>
   );
 }

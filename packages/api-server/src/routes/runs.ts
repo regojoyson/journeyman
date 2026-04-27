@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type { Composition } from "../composition.ts";
 import { openSseStream } from "../sse/sse-stream.ts";
-import type { RunStatus } from "@journeyman/core";
+import { isPauseableEngine, isRetryableEngine, type RunStatus } from "@journeyman/core";
+import { rerunFromExisting, forkFromRun } from "@journeyman/orchestrator";
 
 const PING_INTERVAL_MS = 15_000;
 
@@ -56,5 +57,80 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       clearInterval(ping);
       await stream.close();
     }
+  });
+
+  app.post("/runs/:id/cancel", async (req) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { reason?: string };
+    await c.orchestrator.cancel(id, body.reason);
+    return { ok: true };
+  });
+
+  app.post("/runs/:id/pause", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!isPauseableEngine(c.orchestrator)) {
+      reply.code(501); return { error: "pause_not_supported_by_engine" };
+    }
+    await c.orchestrator.pause(id);
+    return { ok: true };
+  });
+
+  app.post("/runs/:id/resume", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!isPauseableEngine(c.orchestrator)) {
+      reply.code(501); return { error: "resume_not_supported_by_engine" };
+    }
+    await c.orchestrator.resume(id);
+    return { ok: true };
+  });
+
+  app.post("/runs/:id/retry-step", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { node_id?: string };
+    if (!isRetryableEngine(c.orchestrator)) {
+      reply.code(501); return { error: "retry_not_supported_by_engine" };
+    }
+    await c.orchestrator.retryFromTask(id, body.node_id);
+    return { ok: true };
+  });
+
+  app.post("/runs/:id/rerun", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const user = await c.auth.authenticate(req);
+    const result = await rerunFromExisting(
+      { runs: c.runs, flowVersions: c.flowVersions, orchestrator: c.orchestrator },
+      id,
+      { startedByUserId: user.userId },
+    );
+    reply.code(202);
+    return result;
+  });
+
+  app.post("/runs/:id/fork", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { name?: string };
+    const user = await c.auth.authenticate(req);
+    const result = await forkFromRun(
+      { runs: c.runs, flows: c.flows, flowVersions: c.flowVersions },
+      id,
+      { name: body.name, createdByUserId: user.userId, ownerUserId: user.userId },
+    );
+    reply.code(201);
+    return result;
+  });
+
+  app.get("/runs/:id/export", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const run = await c.runs.getById(id);
+    if (!run) { reply.code(404); return { error: "not_found" }; }
+    const version = await c.flowVersions.getById(run.flowVersionId);
+    const executions = await c.nodeExecutions.listByRun(id);
+    const events = await c.events.list(id, { limit: 5000 });
+    reply.header("Content-Type", "application/json");
+    reply.header("Content-Disposition", `attachment; filename="run-${id}.json"`);
+    return {
+      exportedAt: new Date().toISOString(),
+      run, version, executions, events,
+    };
   });
 }
