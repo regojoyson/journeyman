@@ -1,0 +1,21 @@
+{
+  "name": "analyze-only",
+  "description": "Phase 1 smoke: a single 'analyze' phase with hand-supplied inputs.",
+  "definition": {
+    "schemaVersion": 1,
+    "nodes": [
+      { "id": "s",  "type": "start" },
+      {
+        "id": "step_analyze",
+        "type": "phase",
+        "phaseType": "analyze",
+        "config": {}
+      },
+      { "id": "e",  "type": "end" }
+    ],
+    "edges": [
+      { "id": "e1", "source": "s", "target": "step_analyze" },
+      { "id": "e2", "source": "step_analyze", "target": "e" }
+    ]
+  }
+}

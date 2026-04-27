@@ -1,0 +1,25 @@
+{
+  "name": "@journeyman/orchestrator",
+  "version": "0.1.0",
+  "description": "Engine-agnostic orchestration layer. Conductor adapter, flow JSON converter, worker harness, and pluggable stores.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "@journeyman/coding-cli": "*",
+    "json-logic-js": "^2.0.5",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/json-logic-js": "^2.0.7",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

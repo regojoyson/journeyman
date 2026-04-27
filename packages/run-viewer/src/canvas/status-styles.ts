@@ -1,0 +1,19 @@
+import type { NodeStatus } from "../types.ts";
+
+export const STATUS_CLASS: Record<NodeStatus, string> = {
+  "pending":       "je-runnode--pending",
+  "running":       "je-runnode--running",
+  "retry-backoff": "je-runnode--retry",
+  "completed":     "je-runnode--completed",
+  "failed":        "je-runnode--failed",
+  "cancelled":     "je-runnode--cancelled",
+};
+
+export const STATUS_LABEL: Record<NodeStatus, string> = {
+  "pending":       "pending",
+  "running":       "running",
+  "retry-backoff": "retry…",
+  "completed":     "✓",
+  "failed":        "✗",
+  "cancelled":     "cancelled",
+};

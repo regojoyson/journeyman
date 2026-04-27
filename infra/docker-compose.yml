@@ -1,0 +1,44 @@
+# infra/docker-compose.yml
+# Local dev stack for Phase 1: Conductor + Redis + Postgres.
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: journeyman
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  conductor:
+    image: orkesio/orkes-conductor-community-standalone:latest
+    ports:
+      - "8080:8080"   # Conductor REST API
+      - "5000:5000"   # Conductor UI
+    environment:
+      - CONFIG_PROP=/app/config/conductor.properties
+    volumes:
+      - ./conductor-config:/app/config
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

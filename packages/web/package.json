@@ -1,0 +1,35 @@
+{
+  "name": "@journeyman/web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Journeyman web shell. Hosts the flow editor and (later) run viewer + runs list. Talks to @journeyman/api-server.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "@journeyman/flow-editor": "*",
+    "@journeyman/run-viewer": "*",
+    "@journeyman/runs-list": "*",
+    "@tanstack/react-query": "^5.50.0",
+    "@xyflow/react": "^12.3.5",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^6.0.3",
+    "vite": "^5.4.0"
+  }
+}

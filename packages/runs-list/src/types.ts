@@ -1,0 +1,16 @@
+import type { Run } from "@journeyman/core";
+
+export interface RunFilter {
+  status?: Run["status"];
+  flowId?: string;
+}
+
+export interface RunsListProps {
+  runs: Run[];
+  isLoading?: boolean;
+  filter: RunFilter;
+  onFilterChange: (next: RunFilter) => void;
+  onSelectRun: (runId: string) => void;
+  onRerun?: (run: Run) => void;
+  flowNameByVersionId?: Record<string, string>;
+}
