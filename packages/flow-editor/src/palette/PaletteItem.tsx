@@ -1,12 +1,21 @@
-import type { PhaseCatalogEntry } from "../types.ts";
+export interface PaletteItemEntryLike {
+  label: string;
+  description?: string;
+  color: string;
+  icon: string;
+  phaseType?: string;
+  nodeType?: string;
+  dragMime: string;
+}
 
 export interface PaletteItemProps {
-  entry: PhaseCatalogEntry;
+  entry: PaletteItemEntryLike;
 }
 
 export function PaletteItem({ entry }: PaletteItemProps) {
   const onDragStart = (ev: React.DragEvent) => {
-    ev.dataTransfer.setData("application/journeyman-phase", entry.phaseType);
+    const value = entry.phaseType ?? entry.nodeType ?? "";
+    ev.dataTransfer.setData(entry.dragMime, value);
     ev.dataTransfer.effectAllowed = "move";
   };
   return (

@@ -3,9 +3,20 @@ export { ConductorOrchestrator } from "./engines/conductor/conductor-orchestrato
 export {
   ConductorJsonConverter,
   UnsupportedNodeTypeError,
-  type ConductorWorkflowDef,
-  type ConductorTaskDef,
+  FlowValidationError,
 } from "./flow-json/conductor-converter.ts";
+export type {
+  ConductorWorkflowDef,
+  ConductorTaskDef,
+  SimpleTask,
+  SwitchTask,
+  ForkJoinTask,
+  JoinTask,
+  DoWhileTask,
+  WaitTask,
+  SubWorkflowTask,
+  TerminateTask,
+} from "./flow-json/conductor-types.ts";
 export {
   PostgresFlowStore, PostgresFlowVersionStore,
 } from "./stores/postgres/postgres-flow-store.ts";

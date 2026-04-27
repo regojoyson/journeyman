@@ -73,3 +73,5 @@ export function isLinearAndComplete(flow: FlowGraph): { ok: boolean; reason?: st
   }
   return { ok: true };
 }
+
+export { isValidPhase4Graph } from "./validation.ts";

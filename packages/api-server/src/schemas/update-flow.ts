@@ -12,6 +12,8 @@ export const updateFlowBody = z.object({
       phaseType: z.string().optional(),
       config: z.record(z.unknown()).optional(),
       position: z.object({ x: z.number(), y: z.number() }).optional(),
+      outcome: z.string().optional(),
+      retry: z.record(z.unknown()).optional(),
     })),
     edges: z.array(z.object({
       id: z.string(),
@@ -20,6 +22,7 @@ export const updateFlowBody = z.object({
       type: z.enum(["default", "conditional", "error", "else"]).optional(),
       condition: z.unknown().optional(),
       label: z.string().optional(),
+      branchLabel: z.string().optional(),
     })),
     maxCycleVisits: z.number().int().nonnegative().optional(),
   }).optional(),

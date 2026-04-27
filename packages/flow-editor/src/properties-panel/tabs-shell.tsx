@@ -4,32 +4,33 @@ export type TabId = "config" | "mcp" | "credentials" | "retry" | "io";
 
 export interface TabShellProps {
   active: TabId;
+  onChange: (tab: TabId) => void;
   children: ReactNode;
 }
 
-const TABS: Array<{ id: TabId; label: string; enabled: boolean }> = [
-  { id: "config",      label: "Config",      enabled: true  },
-  { id: "mcp",         label: "MCP",         enabled: false },
-  { id: "credentials", label: "Credentials", enabled: false },
-  { id: "retry",       label: "Retry",       enabled: false },
-  { id: "io",          label: "I/O",         enabled: false },
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: "config",      label: "Config"      },
+  { id: "mcp",         label: "MCP & Tools" },
+  { id: "credentials", label: "Credentials" },
+  { id: "retry",       label: "Retry"       },
+  { id: "io",          label: "I/O"         },
 ];
 
-export function TabsShell({ active, children }: TabShellProps) {
+export function TabsShell({ active, onChange, children }: TabShellProps) {
   return (
     <div>
-      <div style={{ display: "flex", gap: 4, fontSize: 11, marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 4, fontSize: 11, marginBottom: 10, flexWrap: "wrap" }}>
         {TABS.map(t => (
           <div
             key={t.id}
+            onClick={() => onChange(t.id)}
             style={{
               padding: "6px 8px",
               borderBottom: t.id === active ? "2px solid #4a9eff" : "2px solid transparent",
-              color: !t.enabled ? "#555" : (t.id === active ? "#4a9eff" : "#aaa"),
+              color: t.id === active ? "#4a9eff" : "#aaa",
               fontWeight: t.id === active ? 600 : 400,
-              cursor: t.enabled ? "pointer" : "not-allowed",
+              cursor: "pointer",
             }}
-            title={!t.enabled ? "Coming in a later phase" : ""}
           >
             {t.label}
           </div>

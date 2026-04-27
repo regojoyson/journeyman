@@ -3,7 +3,7 @@ import type {
 } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import type { IFlowJsonConverter } from "@journeyman/core";
-import type { ConductorWorkflowDef } from "../../flow-json/conductor-converter.ts";
+import type { ConductorWorkflowDef } from "../../flow-json/conductor-types.ts";
 
 export interface ConductorOrchestratorDeps {
   client: ConductorClient;

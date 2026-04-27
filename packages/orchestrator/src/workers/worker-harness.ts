@@ -3,6 +3,7 @@ import type {
   ICredentialStore, IEventBus, IPhaseRegistry, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
+import { VisitCounter } from "./visit-counter.ts";
 
 const log = createLogger("orchestrator:worker");
 
@@ -18,6 +19,7 @@ export interface WorkerHarnessDeps {
 
 export class WorkerHarness {
   private running = false;
+  private visitCounter = new VisitCounter(Number(process.env.CYCLE_VISIT_LIMIT ?? 100));
 
   constructor(private deps: WorkerHarnessDeps) {}
 
@@ -55,10 +57,32 @@ export class WorkerHarness {
       return;
     }
 
+    const visit = this.visitCounter.recordVisit(task.workflowInstanceId, task.taskDefName);
+    if (visit.exceeded) {
+      await this.deps.events.append({
+        runId: task.workflowInstanceId,
+        nodeId: task.taskDefName,
+        eventType: "node.cycled",
+        payload: { count: visit.count, limit: -1 },
+      });
+      await this.deps.client.completeTask({
+        workflowInstanceId: task.workflowInstanceId,
+        taskId: task.taskId,
+        status: "FAILED_WITH_TERMINAL_ERROR",
+        reasonForIncompletion: `CycleLimitExceeded: node '${task.taskDefName}' visited ${visit.count} times`,
+      });
+      return;
+    }
+
     const runId = task.workflowInstanceId;
     const nodeId = task.taskDefName;
     const ws = await this.deps.workspace.create({ runId, nodeId });
     const abort = new AbortController();
+
+    const declaredCreds = ((task.inputData ?? {}) as { credentials?: Record<string, string> }).credentials ?? {};
+    const resolvedEnv = await this.deps.credentials
+      .resolve(declaredCreds, { userId: null, flowId: null })
+      .catch(() => ({}));
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",
       payload: { attempt: task.retryCount + 1 },
@@ -68,7 +92,7 @@ export class WorkerHarness {
       const result = await handler.run(task.inputData, {
         runId, nodeId, attempt: task.retryCount + 1,
         workspaceDir: ws.path, signal: abort.signal,
-        env: process.env as Record<string, string>,
+        env: { ...(process.env as Record<string, string>), ...resolvedEnv },
         log: (line, meta) => {
           this.deps.events.append({
             runId, nodeId, eventType: "phase.log", payload: { line, meta },
@@ -86,13 +110,22 @@ export class WorkerHarness {
           status: "COMPLETED", outputData: result.output,
         });
       } else {
+        const retry = ((task.inputData ?? {}) as { retry?: { retryOn?: string[]; stopOn?: string[] } }).retry ?? {};
+        const cls = result.failure.errorClass ?? "Error";
+        const matchesAny = (patterns?: string[]) =>
+          Array.isArray(patterns) && patterns.some(p => {
+            try { return new RegExp(p).test(cls); } catch { return false; }
+          });
+        const stop = matchesAny(retry.stopOn);
+        const retryable = !stop && (result.failure.retryable ?? matchesAny(retry.retryOn));
+
         await this.deps.events.append({
           runId, nodeId, eventType: "phase.failed",
-          payload: { error: result.failure },
+          payload: { error: result.failure, classified: { retryable, stop } },
         });
         await this.deps.client.completeTask({
           workflowInstanceId: runId, taskId: task.taskId,
-          status: result.failure.retryable ? "FAILED" : "FAILED_WITH_TERMINAL_ERROR",
+          status: retryable ? "FAILED" : "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: result.failure.message,
         });
       }

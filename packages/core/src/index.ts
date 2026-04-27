@@ -57,6 +57,8 @@ export type { IFlowJsonConverter } from "./interfaces/flow-json-converter.interf
 export type {
   Flow, FlowGraph, FlowEdge, FlowEdgeType, FlowNode, FlowNodeType, FlowVersion,
   FlowSchemaVersion,
+  RetryPolicy, FlowRetryPolicy, BackoffStrategy,
+  McpServerConfig, McpTransport, NodeInputBinding,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {

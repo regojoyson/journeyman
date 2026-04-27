@@ -1,4 +1,4 @@
-import type { FlowGraph } from "@journeyman/core";
+import type { FlowGraph, FlowNodeType, McpTransport } from "@journeyman/core";
 
 export interface PhaseCatalogEntry {
   /** Stable phase type id, e.g. "analyze". */
@@ -17,23 +17,39 @@ export interface PhaseCatalogEntry {
 
 export type PhaseCatalog = PhaseCatalogEntry[];
 
+export interface ControlNodeCatalogEntry {
+  nodeType: FlowNodeType;
+  label: string;
+  category: string;
+  description?: string;
+  color: string;
+  icon: string;
+}
+export type ControlNodeCatalog = ControlNodeCatalogEntry[];
+
+export interface McpCatalogEntry {
+  id: string;
+  label: string;
+  source: "builtin" | "provided";
+  transport: McpTransport;
+  command?: string;
+  args?: string[];
+  url?: string;
+  requiredEnv?: string[];
+  description?: string;
+}
+export type McpCatalog = McpCatalogEntry[];
+
 export interface FlowEditorProps {
-  /** The flow graph being edited. Treated as the canonical state. */
   flow: FlowGraph;
-  /** Display name shown in the topbar. */
   flowName: string;
-  /** Phase types available in the palette. */
   phaseCatalog: PhaseCatalog;
-  /** Called whenever the user changes the graph (drag, edit, etc.). */
+  controlCatalog?: ControlNodeCatalog;
+  mcpCatalog?: McpCatalog;
   onChange: (flow: FlowGraph) => void;
-  /** Called when the user clicks Save in the topbar. */
   onSave?: (flow: FlowGraph) => void | Promise<void>;
-  /** Called when the user clicks Run. */
   onRun?: (flow: FlowGraph) => void | Promise<void>;
-  /** Read-only mode — disables editing, hides Save. Used later for Run view. */
   readOnly?: boolean;
-  /** "Saving…" / "Running…" indicator. */
   busy?: boolean;
-  /** Header rename callback. Optional — omit to make the title read-only. */
   onRename?: (newName: string) => void;
 }

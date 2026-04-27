@@ -23,7 +23,14 @@ export function PhaseNode(props: NodeProps) {
           <div className="je-node__subtitle">{subtitle}</div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} id="default" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="error"
+        style={{ background: "#ff7675", border: "2px solid #1a1a24" }}
+        title="Error output"
+      />
     </div>
   );
 }
