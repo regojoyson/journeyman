@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { FlowGraph } from "@journeyman/core";
 import { getFlow, getCurrentFlowVersion, runFlow, updateFlowDefinition } from "../api/flows.ts";
-import { builtInPhaseCatalog } from "../catalogs/built-in-phase-catalog.ts";
+import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
@@ -64,7 +64,7 @@ export function FlowEditorPage() {
         <FlowEditor
           flow={graph}
           flowName={flowQ.data.name}
-          phaseCatalog={builtInPhaseCatalog}
+          phases={builtInPhases}
           controlCatalog={defaultControlCatalog}
           mcpCatalog={defaultMcpCatalog}
           onChange={(next) => { setGraph(next); setDirty(true); }}

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background, Controls, ReactFlow, ReactFlowProvider,
-  applyNodeChanges, applyEdgeChanges,
+  ConnectionMode,
+  useNodesState, useEdgesState,
   type Connection, type Edge, type Node,
   type NodeChange, type EdgeChange,
 } from "@xyflow/react";
@@ -9,23 +10,31 @@ import "@xyflow/react/dist/style.css";
 import type { FlowEdge, FlowEdgeType, FlowGraph, FlowNode, FlowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
 import { newPhaseNode, newEdge } from "../state/flow-graph.ts";
-import type { PhaseCatalog } from "../types.ts";
+import type { PhaseRunState } from "../phase-definition.ts";
+import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import {
+  KNOWN_NODE_TYPES,
+  toReactFlowEdges,
+  structuralSig,
+  buildFlowFromInternal,
+} from "./flow-rf-adapters.ts";
+import { HelpPanel } from "./HelpPanel.tsx";
+import { defaultProviderFor } from "../executor-common-config.ts";
 
 export interface CanvasProps {
   flow: FlowGraph;
-  catalog: PhaseCatalog;
   selectedNodeId: string | null;
   onChange: (next: FlowGraph) => void;
   onSelect: (nodeId: string | null) => void;
   readOnly?: boolean;
+  phaseRunStates?: Record<string, PhaseRunState>;
 }
 
-const KNOWN_NODE_TYPES = new Set([
-  "start", "end", "phase",
-  "gateway-xor", "gateway-and", "loop", "subflow", "if", "timer",
-]);
-
-function toReactFlowNodes(flow: FlowGraph, catalog: PhaseCatalog, selectedId: string | null): Node[] {
+function toReactFlowNodes(
+  flow: FlowGraph,
+  selectedId: string | null,
+  runStates?: Record<string, PhaseRunState>,
+): Node[] {
   return flow.nodes.map(n => ({
     id: n.id,
     type: KNOWN_NODE_TYPES.has(n.type) ? n.type : "phase",
@@ -34,7 +43,8 @@ function toReactFlowNodes(flow: FlowGraph, catalog: PhaseCatalog, selectedId: st
       ? {
           displayName: n.displayName ?? n.phaseType ?? "Phase",
           phaseType: n.phaseType ?? "",
-          catalogEntry: catalog.find(c => c.phaseType === n.phaseType),
+          config: n.config ?? {},
+          runState: runStates?.[n.id],
         }
       : {
           displayName: n.displayName ?? n.type,
@@ -46,47 +56,96 @@ function toReactFlowNodes(flow: FlowGraph, catalog: PhaseCatalog, selectedId: st
   }));
 }
 
-function toReactFlowEdges(flow: FlowGraph): Edge[] {
-  return flow.edges.map(e => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    type: e.type ?? "default",
-    data: { branchLabel: e.branchLabel, condition: e.condition },
-  }));
-}
-
 function CanvasInner(p: CanvasProps) {
   const wrapper = useRef<HTMLDivElement>(null);
+  const registry = usePhaseRegistry();
 
-  const rfNodes = useMemo(() => toReactFlowNodes(p.flow, p.catalog, p.selectedNodeId), [p.flow, p.catalog, p.selectedNodeId]);
-  const rfEdges = useMemo(() => toReactFlowEdges(p.flow), [p.flow]);
+  const [nodes, setNodes, onNodesChangeInternal] = useNodesState<Node>(
+    toReactFlowNodes(p.flow, p.selectedNodeId, p.phaseRunStates),
+  );
+  const [edges, setEdges, onEdgesChangeInternal] = useEdgesState<Edge>(
+    toReactFlowEdges(p.flow),
+  );
+
+  // Tracks the structural signature of the FlowGraph that we last emitted
+  // ourselves via p.onChange. The effect below skips resyncing when the parent
+  // is just echoing back our own change — that prevents the rerender feedback
+  // loop that hits when an edge is deleted (parent updates → effect resyncs →
+  // RF emits a selection change → effect runs again, etc.).
+  const propagatedSigRef = useRef<string>(structuralSig(p.flow));
+  const lastSigRef = useRef<string>(structuralSig(p.flow));
+  const lastSelectedRef = useRef<string | null>(p.selectedNodeId);
+
+  useEffect(() => {
+    const sig = structuralSig(p.flow);
+    if (sig === propagatedSigRef.current) {
+      // Echoed back our own change — accept it without resyncing internal RF state.
+      lastSigRef.current = sig;
+      return;
+    }
+    if (sig !== lastSigRef.current || p.selectedNodeId !== lastSelectedRef.current) {
+      lastSigRef.current = sig;
+      lastSelectedRef.current = p.selectedNodeId;
+      setNodes(toReactFlowNodes(p.flow, p.selectedNodeId, p.phaseRunStates));
+      setEdges(toReactFlowEdges(p.flow));
+    }
+  }, [p.flow, p.selectedNodeId, p.phaseRunStates, setNodes, setEdges]);
+
+  /** Build a fresh FlowGraph from current internal RF state + previous flow's metadata. */
+  const buildFlow = useCallback(
+    (rfNodes: Node[], rfEdges: Edge[]): FlowGraph => buildFlowFromInternal(p.flow, rfNodes, rfEdges),
+    [p.flow],
+  );
+
+  /** Propagate a change to the parent and remember its sig so the resync effect skips the echo. */
+  const propagate = useCallback((next: FlowGraph) => {
+    propagatedSigRef.current = structuralSig(next);
+    p.onChange(next);
+  }, [p]);
+
+  /**
+   * For changes that DON'T originate from React Flow's internal pipeline
+   * (palette drops, programmatic edge additions, edge splits): React Flow's
+   * internal state hasn't seen them yet. We must (a) push them into internal
+   * state so the canvas renders them and (b) propagate to the parent. The
+   * propagate-side updates `propagatedSigRef`, which keeps the resync effect
+   * from echoing the change back and undoing the internal update.
+   */
+  const applyExternalChange = useCallback((next: FlowGraph) => {
+    setNodes(toReactFlowNodes(next, p.selectedNodeId, p.phaseRunStates));
+    setEdges(toReactFlowEdges(next));
+    propagate(next);
+  }, [setNodes, setEdges, propagate, p.selectedNodeId, p.phaseRunStates]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (p.readOnly) return;
-    const updated = applyNodeChanges(changes, rfNodes);
-    const nextNodes: FlowNode[] = p.flow.nodes.map(n => {
-      const found = updated.find(u => u.id === n.id);
-      if (!found) return n;
-      return { ...n, position: found.position };
+    onNodesChangeInternal(changes);
+
+    const meaningful = changes.some(c => {
+      if (c.type === "position") return (c as { dragging?: boolean }).dragging === false;
+      if (c.type === "remove") return true;
+      return false;
     });
-    const deletedIds = new Set(
-      changes.filter(c => c.type === "remove").map((c) => (c as { id: string }).id),
-    );
-    const filteredNodes = nextNodes.filter(n => !deletedIds.has(n.id));
-    const filteredEdges = p.flow.edges.filter(e => !deletedIds.has(e.source) && !deletedIds.has(e.target));
-    p.onChange({ ...p.flow, nodes: filteredNodes, edges: filteredEdges });
-  }, [p, rfNodes]);
+    if (!meaningful) return;
+
+    setNodes(curr => {
+      queueMicrotask(() => propagate(buildFlow(curr, edges)));
+      return curr;
+    });
+  }, [p.readOnly, onNodesChangeInternal, setNodes, buildFlow, edges, propagate]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (p.readOnly) return;
-    const updated = applyEdgeChanges(changes, rfEdges);
-    const nextEdges: FlowEdge[] = updated.map(e => {
-      const existing = p.flow.edges.find(x => x.id === e.id);
-      return existing ?? { id: e.id, source: e.source, target: e.target };
+    onEdgesChangeInternal(changes);
+
+    const meaningful = changes.some(c => c.type === "remove");
+    if (!meaningful) return;
+
+    setEdges(curr => {
+      queueMicrotask(() => propagate(buildFlow(nodes, curr)));
+      return curr;
     });
-    p.onChange({ ...p.flow, edges: nextEdges });
-  }, [p, rfEdges]);
+  }, [p.readOnly, onEdgesChangeInternal, setEdges, buildFlow, nodes, propagate]);
 
   const handleConnect = useCallback((conn: Connection) => {
     if (p.readOnly) return;
@@ -97,8 +156,8 @@ function CanvasInner(p: CanvasProps) {
     if (conn.sourceHandle === "error") edgeType = "error";
     if (conn.sourceHandle === "else")  edgeType = "else";
     const next: FlowEdge = { ...newEdge(conn.source, conn.target), type: edgeType };
-    p.onChange({ ...p.flow, edges: [...p.flow.edges, next] });
-  }, [p]);
+    applyExternalChange({ ...p.flow, edges: [...p.flow.edges, next] });
+  }, [p, applyExternalChange]);
 
   const handleDrop = useCallback((ev: React.DragEvent) => {
     if (p.readOnly) return;
@@ -110,36 +169,55 @@ function CanvasInner(p: CanvasProps) {
       ? { x: ev.clientX - rect.left - 80, y: ev.clientY - rect.top - 30 }
       : { x: 200, y: 200 };
 
+    let newNode: FlowNode | null = null;
     if (phaseType) {
-      const entry = p.catalog.find(c => c.phaseType === phaseType);
-      const node = newPhaseNode({ phaseType, displayName: entry?.label ?? phaseType, position });
-      p.onChange({ ...p.flow, nodes: [...p.flow.nodes, node] });
-      return;
-    }
-    if (controlType) {
-      const node: FlowNode = {
+      const def = registry.get(phaseType);
+      const base = newPhaseNode({
+        phaseType,
+        displayName: def?.label ?? phaseType,
+        position,
+      });
+      newNode = def
+        ? {
+            ...base,
+            config: { ...(def.defaultConfig as Record<string, unknown>) },
+            executorConfig: (() => {
+              const provider = defaultProviderFor(def.executor.kind);
+              return provider ? { provider } : undefined;
+            })(),
+          }
+        : base;
+    } else if (controlType) {
+      newNode = {
         id: `${controlType}_${Math.random().toString(36).slice(2, 8)}`,
         type: controlType as FlowNodeType,
         displayName: controlType,
         config: {},
         position,
       };
-      p.onChange({ ...p.flow, nodes: [...p.flow.nodes, node] });
     }
-  }, [p]);
+    if (!newNode) return;
+
+    // Just place the node at the drop point. The user wires it up themselves
+    // by dragging from the handles. No auto-edge-splitting, no auto-connect.
+    applyExternalChange({ ...p.flow, nodes: [...p.flow.nodes, newNode] });
+  }, [p, applyExternalChange, registry]);
 
   const handleDragOver = useCallback((ev: React.DragEvent) => {
     ev.preventDefault();
     ev.dataTransfer.dropEffect = "move";
   }, []);
 
+  const stableNodeTypes = useMemo(() => nodeTypes, []);
+  const stableEdgeTypes = useMemo(() => edgeTypes, []);
+
   return (
     <div ref={wrapper} className="je-editor__canvas" onDrop={handleDrop} onDragOver={handleDragOver}>
       <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={stableNodeTypes}
+        edgeTypes={stableEdgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
@@ -148,11 +226,20 @@ function CanvasInner(p: CanvasProps) {
           p.onSelect(id);
         }}
         fitView
+        fitViewOptions={{ padding: 0.25 }}
+        connectionRadius={40}
+        connectionMode={ConnectionMode.Loose}
+        selectNodesOnDrag={false}
+        panOnScroll
+        panOnScrollSpeed={0.6}
+        zoomOnScroll
+        zoomOnPinch
         proOptions={{ hideAttribution: true }}
       >
         <Background />
-        <Controls />
+        <Controls showInteractive={false} />
       </ReactFlow>
+      <HelpPanel />
     </div>
   );
 }

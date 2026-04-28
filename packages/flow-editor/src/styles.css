@@ -1,5 +1,5 @@
 /* @journeyman/flow-editor — scoped utility styles */
-.je-editor { display: grid; grid-template-rows: 44px 1fr; height: 100%; background: #1a1a24; color: #fff; font-family: system-ui, -apple-system, sans-serif; }
+.je-editor { display: grid; grid-template-rows: auto 1fr; height: 100%; background: #1a1a24; color: #fff; font-family: system-ui, -apple-system, sans-serif; }
 .je-editor__topbar { display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #11111a; border-bottom: 1px solid #2a2a3a; font-size: 13px; }
 .je-editor__topbar h1 { font-size: 14px; margin: 0; font-weight: 600; }
 .je-editor__topbar .spacer { flex: 1; }
@@ -8,7 +8,7 @@
 .je-editor__topbar button:disabled { opacity: 0.5; cursor: not-allowed; }
 .je-editor__body { display: grid; grid-template-columns: 200px 1fr 280px; min-height: 0; }
 .je-editor__palette { background: #11111a; border-right: 1px solid #2a2a3a; padding: 10px; overflow: auto; }
-.je-editor__canvas { position: relative; background: #1a1a24; }
+.je-editor__canvas { position: relative; background: #1a1a24; overflow: hidden; }
 .je-editor__props { background: #11111a; border-left: 1px solid #2a2a3a; padding: 12px; overflow: auto; }
 .je-palette__group { font-size: 10px; text-transform: uppercase; color: #888; margin: 12px 0 6px; letter-spacing: 0.05em; }
 .je-palette__item { display: flex; align-items: center; gap: 8px; background: #1f1f2c; border: 1px solid #2a2a3a; border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; font-size: 12px; cursor: grab; user-select: none; }
@@ -43,3 +43,196 @@
 .je-node--subflow { border-color: #a29bfe; }
 .je-node--if { border-color: #74b9ff; }
 .je-node--timer { border-color: #fdcb6e; }
+
+/* === React Flow handle overrides — bigger, brighter, easier to grab ===
+   IMPORTANT: never override `transform` here. React Flow uses
+   `transform: translate(-50%, -50%)` to center each handle on its node edge,
+   and any override (including a hover scale) breaks the centering. We only
+   animate box-shadow + background; size and shape are stable.            */
+.react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  background: #4a9eff !important;
+  border: 2px solid #11111a !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.25);
+  transition: box-shadow 120ms ease, background 120ms ease;
+}
+.react-flow__handle:hover {
+  background: #6eb8ff !important;
+  box-shadow: 0 0 0 5px rgba(74, 158, 255, 0.55);
+  cursor: crosshair;
+}
+.react-flow__handle.connectingfrom {
+  background: #00b894 !important;
+  box-shadow: 0 0 0 5px rgba(0, 184, 148, 0.55);
+}
+/* Error handle (originally right, now bottom of phase nodes) — red */
+.react-flow__handle[data-handleid="error"] {
+  background: #ff7675 !important;
+  box-shadow: 0 0 0 2px rgba(255, 118, 117, 0.25);
+}
+.react-flow__handle[data-handleid="error"]:hover {
+  background: #ff8a89 !important;
+  box-shadow: 0 0 0 5px rgba(255, 118, 117, 0.55);
+}
+/* Make the connection line itself thicker and obvious while drawing */
+.react-flow__connection-path {
+  stroke: #4a9eff !important;
+  stroke-width: 3 !important;
+}
+/* Selected nodes — strong outer glow */
+.react-flow__node.selected .je-node {
+  box-shadow: 0 0 0 3px #4a9eff, 0 0 12px 2px rgba(74, 158, 255, 0.5);
+  filter: brightness(1.08);
+}
+/* Selected edges — thicker, brighter, with a glow */
+.react-flow__edge.selected path.react-flow__edge-path {
+  stroke: #4a9eff !important;
+  stroke-width: 3.5 !important;
+  filter: drop-shadow(0 0 4px rgba(74, 158, 255, 0.6));
+}
+/* Make the edge itself easier to click — bigger transparent hit area */
+.react-flow__edge .react-flow__edge-interaction {
+  stroke-width: 14 !important;
+}
+
+/* ---------- Zoom controls (bottom-left) ---------- */
+.react-flow__controls {
+  background: #11111a;
+  border: 1px solid #2a2a3a;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: #1f1f2c;
+  border: none;
+  border-bottom: 1px solid #2a2a3a;
+  color: #ddd;
+  width: 26px;
+  height: 26px;
+}
+.react-flow__controls-button:last-child { border-bottom: none; }
+.react-flow__controls-button:hover { background: #262638; }
+.react-flow__controls-button svg { fill: #ddd; }
+
+/* ---------- Help panel ---------- */
+.je-help-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #2a2a3e;
+  color: #ddd;
+  border: 1px solid #444;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.je-help-btn:hover {
+  background: #34344a;
+}
+
+.je-help-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  background: #1a1a26;
+  border-left: 1px solid #2a2a3e;
+  color: #ddd;
+  transform: translateX(100%);
+  transition: transform 180ms ease;
+  display: flex;
+  flex-direction: column;
+  z-index: 6;
+  overflow: hidden;
+}
+.je-help-panel--open {
+  transform: translateX(0);
+}
+.je-help-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a2a3e;
+  font-weight: 600;
+}
+.je-help-panel__close {
+  background: transparent;
+  color: #aaa;
+  border: 0;
+  font-size: 18px;
+  cursor: pointer;
+}
+.je-help-panel__close:hover { color: #fff; }
+.je-help-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.je-help-panel__section { margin-bottom: 18px; }
+.je-help-panel__section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin: 0 0 8px;
+}
+.je-help-panel__row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.je-help-panel__row-label {
+  font-size: 13px;
+  color: #eee;
+}
+.je-help-panel__row-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+}
+.je-help-panel__icon {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  color: #ccc;
+}
+.je-help-panel__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #bbb;
+  line-height: 1.5;
+}
+.je-help-panel__para {
+  margin: 0;
+  font-size: 12px;
+  color: #bbb;
+  line-height: 1.5;
+}
+.je-help-panel__footer {
+  padding: 10px 14px;
+  border-top: 1px solid #2a2a3e;
+  font-size: 11px;
+  color: #777;
+}
+.je-help-panel__footer kbd {
+  background: #2a2a3e;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #ddd;
+}

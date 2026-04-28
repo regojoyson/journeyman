@@ -1,21 +1,57 @@
+// packages/flow-editor/src/canvas/nodes/PhaseNode.tsx
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { PhaseCatalogEntry } from "../../types.ts";
+import { handleBlue, handleRed } from "../handle-styles.ts";
+import { usePhaseRegistry } from "../../state/phase-registry-context.tsx";
+import type { PhaseRunState } from "../../phase-definition.ts";
 
 export interface PhaseNodeData {
   displayName: string;
   phaseType: string;
-  catalogEntry?: PhaseCatalogEntry;
+  config?: Record<string, unknown>;
+  runState?: PhaseRunState;
   [key: string]: unknown;
+}
+
+const STATUS_COLORS: Record<PhaseRunState["status"], string> = {
+  idle:      "#999",
+  running:   "#4a9eff",
+  succeeded: "#00b894",
+  failed:    "#ff7675",
+};
+
+function DefaultStatusBadge({ state }: { state: PhaseRunState }) {
+  return (
+    <div
+      title={state.message ?? state.status}
+      style={{
+        position: "absolute",
+        top: 4,
+        right: 4,
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: STATUS_COLORS[state.status],
+      }}
+    />
+  );
 }
 
 export function PhaseNode(props: NodeProps) {
   const data = props.data as PhaseNodeData;
-  const accent = data.catalogEntry?.color ?? "#6c5ce7";
-  const icon = data.catalogEntry?.icon ?? "⚙";
-  const subtitle = data.catalogEntry?.label ?? data.phaseType;
+  const registry = usePhaseRegistry();
+  const definition = registry.get(data.phaseType);
+  const accent = definition?.color ?? "#6c5ce7";
+  const icon = definition?.icon ?? "⚙";
+  const subtitle =
+    (definition?.summary && data.config && definition.summary(data.config)) ||
+    definition?.label ||
+    data.phaseType;
+  const Badge = definition?.StatusBadge ?? DefaultStatusBadge;
+
   return (
-    <div className="je-node je-node--phase" style={{ borderColor: accent }}>
-      <Handle type="target" position={Position.Top} />
+    <div className="je-node je-node--phase" style={{ borderColor: accent, position: "relative" }}>
+      {data.runState && <Badge state={data.runState} />}
+      <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: accent }}>{icon}</div>
         <div className="je-node__text">
@@ -23,14 +59,8 @@ export function PhaseNode(props: NodeProps) {
           <div className="je-node__subtitle">{subtitle}</div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} id="default" />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="error"
-        style={{ background: "#ff7675", border: "2px solid #1a1a24" }}
-        title="Error output"
-      />
+      <Handle type="source" position={Position.Right} id="default" style={handleBlue} />
+      <Handle type="source" position={Position.Bottom} id="error" style={handleRed} title="Error output" />
     </div>
   );
 }

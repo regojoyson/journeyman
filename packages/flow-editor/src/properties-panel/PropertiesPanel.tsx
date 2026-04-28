@@ -1,25 +1,34 @@
+// packages/flow-editor/src/properties-panel/PropertiesPanel.tsx
 import { useState } from "react";
 import type { FlowGraph, FlowNode } from "@journeyman/core";
-import type { McpCatalog, PhaseCatalog } from "../types.ts";
-import { TabsShell, type TabId } from "./tabs-shell.tsx";
+import type { McpCatalog } from "../types.ts";
+import { TabsShell, type TabId, type TabsVisibility } from "./tabs-shell.tsx";
 import { ConfigTab } from "./ConfigTab.tsx";
 import { McpToolsTab } from "./McpToolsTab.tsx";
 import { CredentialsTab } from "./CredentialsTab.tsx";
 import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
 import { FlowSettingsView } from "./FlowSettingsView.tsx";
+import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 
 export interface PropertiesPanelProps {
   flow: FlowGraph;
   node: FlowNode | null;
-  catalog: PhaseCatalog;
   mcpCatalog: McpCatalog;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
 }
 
+const DEFAULT_VISIBILITY: TabsVisibility = {
+  io:          "shown",
+  credentials: "shown",
+  mcp:         "shown",
+  retry:       "shown",
+};
+
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { flow, node, catalog, mcpCatalog, onChange, readOnly } = props;
+  const { flow, node, mcpCatalog, onChange, readOnly } = props;
+  const registry = usePhaseRegistry();
   const [active, setActive] = useState<TabId>("config");
 
   if (!node) {
@@ -39,17 +48,38 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   }
 
   const isPhase = node.type === "phase";
+  const definition = isPhase ? registry.get(node.phaseType) : undefined;
+  const visibility: TabsVisibility = definition
+    ? { io: definition.tabs.io, credentials: definition.tabs.credentials, mcp: definition.tabs.mcp, retry: definition.tabs.retry }
+    : DEFAULT_VISIBILITY;
+
+  // "required + empty" indicators
+  const requiredEmpty = {
+    io: !((node as { inputs?: unknown[] }).inputs?.length || (node as { outputs?: unknown[] }).outputs?.length),
+    credentials: !(node as { credentials?: unknown }).credentials,
+    mcp: !((node as { mcpTools?: unknown[] }).mcpTools?.length),
+    retry: !node.retry,
+  };
+
+  // If the active tab gets hidden due to definition change, fall back to config.
+  const effectiveActive: TabId =
+    active !== "config" && visibility[active] === "hidden" ? "config" : active;
 
   return (
     <aside className="je-editor__props">
       <div className="je-props__title">{node.displayName ?? node.type}</div>
       {isPhase ? (
-        <TabsShell active={active} onChange={setActive}>
-          {active === "config"      && <ConfigTab    node={node} catalog={catalog} onChange={onChange} readOnly={readOnly} />}
-          {active === "mcp"         && <McpToolsTab  node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
-          {active === "credentials" && <CredentialsTab node={node} onChange={onChange} readOnly={readOnly} />}
-          {active === "retry"       && <RetryTab     node={node} onChange={onChange} readOnly={readOnly} />}
-          {active === "io"          && <IoTab        flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
+        <TabsShell
+          active={effectiveActive}
+          onChange={setActive}
+          visibility={visibility}
+          requiredEmpty={requiredEmpty}
+        >
+          {effectiveActive === "config"      && <ConfigTab    node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
+          {effectiveActive === "mcp"         && <McpToolsTab  node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "credentials" && <CredentialsTab node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "retry"       && <RetryTab     node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "io"          && <IoTab        flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
       ) : (
         <div className="je-empty">

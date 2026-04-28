@@ -3,9 +3,10 @@ import { FLOW_SCHEMA_VERSION, type FlowEdge, type FlowGraph, type FlowNode } fro
 export function createBlankFlow(): FlowGraph {
   return {
     schemaVersion: FLOW_SCHEMA_VERSION,
+    // Horizontal layout: start on the left, end on the right.
     nodes: [
-      { id: "start", type: "start", position: { x: 80, y: 80 } },
-      { id: "end",   type: "end",   position: { x: 80, y: 320 } },
+      { id: "start", type: "start", position: { x: 80,  y: 200 } },
+      { id: "end",   type: "end",   position: { x: 480, y: 200 } },
     ],
     edges: [
       { id: "e_start_end", source: "start", target: "end" },

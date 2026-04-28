@@ -30,6 +30,12 @@ export interface FlowNode {
   phaseType?: string;
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
+  /**
+   * Common configuration shared by all phases of the same executor kind
+   * (e.g. coding-cli phases all carry `{ provider: "claude" | "gemini" | "codex" }`).
+   * Kept separate from `config` so phase-specific and kind-shared fields never collide.
+   */
+  executorConfig?: { provider?: string };
   /** Per-phase retry policy. */
   retry?: RetryPolicy;
   /** Position on canvas — opaque to engine; preserved on round-trip. */

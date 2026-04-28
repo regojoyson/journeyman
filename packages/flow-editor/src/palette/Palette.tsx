@@ -1,9 +1,11 @@
+// packages/flow-editor/src/palette/Palette.tsx
 import { useMemo } from "react";
 import { PaletteItem } from "./PaletteItem.tsx";
-import type { ControlNodeCatalog, PhaseCatalog } from "../types.ts";
+import type { ControlNodeCatalog } from "../types.ts";
+import type { PhaseDefinition } from "../phase-definition.ts";
 
 export interface PaletteProps {
-  catalog: PhaseCatalog;
+  phases: PhaseDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
 }
 
@@ -11,11 +13,19 @@ type AnyEntry =
   | { kind: "phase";   phaseType: string; label: string; category: string; color: string; icon: string; description?: string }
   | { kind: "control"; nodeType: string;  label: string; category: string; color: string; icon: string; description?: string };
 
-export function Palette({ catalog, controlCatalog }: PaletteProps) {
+export function Palette({ phases, controlCatalog }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
-    ...catalog.map(c => ({ kind: "phase" as const, ...c })),
+    ...phases.map(p => ({
+      kind: "phase" as const,
+      phaseType: p.phaseType,
+      label: p.label,
+      category: p.category,
+      color: p.color,
+      icon: p.icon,
+      description: p.description,
+    })),
     ...(controlCatalog ?? []).map(c => ({ kind: "control" as const, ...c })),
-  ], [catalog, controlCatalog]);
+  ], [phases, controlCatalog]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, AnyEntry[]>();

@@ -13,6 +13,7 @@
   "dependencies": {
     "@journeyman/core": "*",
     "@journeyman/flow-editor": "*",
+    "@journeyman/phases": "*",
     "@journeyman/run-viewer": "*",
     "@journeyman/runs-list": "*",
     "@tanstack/react-query": "^5.50.0",

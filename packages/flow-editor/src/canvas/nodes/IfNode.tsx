@@ -1,10 +1,11 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { handleBlue } from "../handle-styles.ts";
 
 export function IfNode(props: NodeProps) {
   const data = props.data as { displayName?: string };
   return (
     <div className="je-node je-node--if">
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: "#74b9ff" }}>?</div>
         <div className="je-node__text">
@@ -12,8 +13,9 @@ export function IfNode(props: NodeProps) {
           <div className="je-node__subtitle">then / else</div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} id="then" style={{ left: "30%" }} />
-      <Handle type="source" position={Position.Bottom} id="else" style={{ left: "70%" }} />
+      {/* Two outputs stacked on the right edge: top = then, bottom = else. */}
+      <Handle type="source" position={Position.Right} id="then" style={{ ...handleBlue, top: "30%" }} />
+      <Handle type="source" position={Position.Right} id="else" style={{ ...handleBlue, top: "70%" }} />
     </div>
   );
 }

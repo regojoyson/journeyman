@@ -16,7 +16,8 @@
   "dependencies": {
     "@journeyman/core": "*",
     "@xyflow/react": "^12.3.5",
-    "lucide-react": "^0.400.0"
+    "lucide-react": "^0.400.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

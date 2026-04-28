@@ -1,21 +1,5 @@
 import type { FlowGraph, FlowNodeType, McpTransport } from "@journeyman/core";
-
-export interface PhaseCatalogEntry {
-  /** Stable phase type id, e.g. "analyze". */
-  phaseType: string;
-  /** Label shown in the palette and as default node display name. */
-  label: string;
-  /** Category grouping in the palette: "AI" | "Tickets" | "Repos" | "Custom". */
-  category: string;
-  /** Short description shown on hover. */
-  description?: string;
-  /** Tailwind/hex color used for the tile accent. */
-  color: string;
-  /** Single emoji or icon character. Phase 2 uses emoji; Phase 5 swaps for SVGs. */
-  icon: string;
-}
-
-export type PhaseCatalog = PhaseCatalogEntry[];
+import type { PhaseDefinition, PhaseRunState } from "./phase-definition.ts";
 
 export interface ControlNodeCatalogEntry {
   nodeType: FlowNodeType;
@@ -43,9 +27,12 @@ export type McpCatalog = McpCatalogEntry[];
 export interface FlowEditorProps {
   flow: FlowGraph;
   flowName: string;
-  phaseCatalog: PhaseCatalog;
+  /** Built-in or extension phase definitions, used to power the palette, properties panel, and canvas. */
+  phases: PhaseDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
   mcpCatalog?: McpCatalog;
+  /** Optional runtime status keyed by node id. When undefined, no status badge is rendered. */
+  phaseRunStates?: Record<string, PhaseRunState>;
   onChange: (flow: FlowGraph) => void;
   onSave?: (flow: FlowGraph) => void | Promise<void>;
   onRun?: (flow: FlowGraph) => void | Promise<void>;

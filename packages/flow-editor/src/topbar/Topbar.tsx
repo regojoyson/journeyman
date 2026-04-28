@@ -17,7 +17,7 @@ export function Topbar(p: TopbarProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(p.flowName);
   return (
-    <>
+    <div>
       <header className="je-editor__topbar">
         {editing && p.onRename ? (
           <input
@@ -58,6 +58,6 @@ export function Topbar(p: TopbarProps) {
             : `${p.validationErrors.length} validation issues — ${p.validationErrors[0]}`}
         </div>
       )}
-    </>
+    </div>
   );
 }
