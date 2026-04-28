@@ -6,6 +6,7 @@ import type { Composition } from "./composition.ts";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { registerFlowRoutes } from "./routes/flows.ts";
 import { registerRunRoutes } from "./routes/runs.ts";
+import { registerIdentityRoutes } from "@journeyman/identity";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -21,6 +22,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   });
 
   registerHealthRoutes(app);
+  await registerIdentityRoutes(app, c.pool!);
   registerFlowRoutes(app, c);
   registerRunRoutes(app, c);
   return app;

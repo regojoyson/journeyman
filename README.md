@@ -31,18 +31,34 @@ journeyman/
 See [**Quickstart**](docs/quickstart.md) — minimum viable setup in ~10 minutes.
 
 ```bash
+# 1. install deps
 npm install
-# create config/pipeline.yaml + config/flows/default.yaml  (see docs/setup.md)
-# set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN
-# (ANTHROPIC_API_KEY only if you haven't run `claude login`)
-npm run validate
-npm start                        # or: npx journeyman serve
+
+# 2. configure env — copy .env.example to .env and fill in:
+#    - JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN
+#    - JWT_SECRET   (generate with: openssl rand -hex 32)
+#    - IDENTITY_ENFORCE=false   (keep dev fallback until credential vault lands)
+cp .env.example .env
+
+# 3. start Postgres + apply migrations
+npm run infra:up
+npm run migrate
+
+# 4. start backend + frontend (two terminals)
+npm run start:api-server   # terminal 1 — Fastify API on :3000
+npm run dev:web            # terminal 2 — Vite dev server (web UI)
 ```
 
-Or trigger a single run via CLI without the server:
+Open the web UI — on a fresh DB you'll see the **Setup wizard**. Create the first
+organization and admin user, then sign in with those credentials.
+
+Headless alternative — bootstrap from the CLI instead of the UI:
 
 ```bash
-npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
+npx tsx packages/identity/src/cli/bootstrap.ts \
+  --org "Cadmium" --slug cadmium \
+  --username admin --password 'change-me' \
+  --display-name 'Admin'
 ```
 
 ## Commands
@@ -51,10 +67,13 @@ npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
 |---|---|
 | `npm install` | Install workspace dependencies |
 | `npm run typecheck` | Typecheck all packages |
-| `npm run validate` | Validate `config/pipeline.yaml` + flows |
-| `npm start` | Start the HTTP pipeline server |
-| `npm run run-once -- --product <id> --ticket <key>` | Run one ticket end-to-end (no server) |
-| `npm run sweep` | Clean up old workspace directories |
+| `npm run infra:up` / `infra:down` / `infra:reset` | Start / stop / wipe local Postgres (docker-compose) |
+| `npm run migrate` | Apply DB migrations from `@journeyman/migrations` |
+| `npm run start:api-server` | Start the Fastify API server (reads `.env` via dotenv) |
+| `npm run start:worker` | Start the orchestrator worker |
+| `npm run dev:web` | Vite dev server for the web UI |
+| `npm run build:web` | Production build of the web UI |
+| `npx tsx packages/identity/src/cli/bootstrap.ts ...` | Create the first org + admin (headless alternative to the setup wizard) |
 
 ## Documentation
 

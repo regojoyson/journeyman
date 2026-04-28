@@ -3,11 +3,14 @@ import type { Composition } from "../composition.ts";
 import { openSseStream } from "../sse/sse-stream.ts";
 import { isPauseableEngine, isRetryableEngine, type RunStatus } from "@journeyman/core";
 import { rerunFromExisting, forkFromRun } from "@journeyman/orchestrator";
+import { makeRequireAuth } from "@journeyman/identity";
 
 const PING_INTERVAL_MS = 15_000;
 
 export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
-  app.get("/runs", async (req) => {
+  const requireAuth = makeRequireAuth({ pool: c.pool! });
+
+  app.get("/runs", { preHandler: requireAuth() }, async (req) => {
     const q = req.query as { flow_id?: string; status?: string; limit?: string };
     const limit = q.limit ? Number(q.limit) : undefined;
     const status = q.status as RunStatus | undefined;
@@ -15,7 +18,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return { runs };
   });
 
-  app.get("/runs/:id", async (req, reply) => {
+  app.get("/runs/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await c.orchestrator.syncStatus(id).catch(() => { /* best-effort */ });
     const run = await c.runs.getById(id);
@@ -25,7 +28,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return { run, executions, events };
   });
 
-  app.get("/runs/:id/events", async (req, reply) => {
+  app.get("/runs/:id/events", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const sinceId = (req.query as { since?: string }).since;
     const since = sinceId ? Number(sinceId) : 0;
@@ -59,14 +62,14 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     }
   });
 
-  app.post("/runs/:id/cancel", async (req) => {
+  app.post("/runs/:id/cancel", { preHandler: requireAuth() }, async (req) => {
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as { reason?: string };
     await c.orchestrator.cancel(id, body.reason);
     return { ok: true };
   });
 
-  app.post("/runs/:id/pause", async (req, reply) => {
+  app.post("/runs/:id/pause", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     if (!isPauseableEngine(c.orchestrator)) {
       reply.code(501); return { error: "pause_not_supported_by_engine" };
@@ -75,7 +78,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return { ok: true };
   });
 
-  app.post("/runs/:id/resume", async (req, reply) => {
+  app.post("/runs/:id/resume", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     if (!isPauseableEngine(c.orchestrator)) {
       reply.code(501); return { error: "resume_not_supported_by_engine" };
@@ -84,7 +87,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return { ok: true };
   });
 
-  app.post("/runs/:id/retry-step", async (req, reply) => {
+  app.post("/runs/:id/retry-step", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as { node_id?: string };
     if (!isRetryableEngine(c.orchestrator)) {
@@ -94,7 +97,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return { ok: true };
   });
 
-  app.post("/runs/:id/rerun", async (req, reply) => {
+  app.post("/runs/:id/rerun", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const user = await c.auth.authenticate(req);
     const result = await rerunFromExisting(
@@ -106,7 +109,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return result;
   });
 
-  app.post("/runs/:id/fork", async (req, reply) => {
+  app.post("/runs/:id/fork", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as { name?: string };
     const user = await c.auth.authenticate(req);
@@ -119,7 +122,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     return result;
   });
 
-  app.get("/runs/:id/export", async (req, reply) => {
+  app.get("/runs/:id/export", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const run = await c.runs.getById(id);
     if (!run) { reply.code(404); return { error: "not_found" }; }

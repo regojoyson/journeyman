@@ -4,9 +4,12 @@ import { createFlowBody } from "../schemas/flow.ts";
 import { createRunBody } from "../schemas/run.ts";
 import { updateFlowBody } from "../schemas/update-flow.ts";
 import type { FlowGraph } from "@journeyman/core";
+import { makeRequireAuth } from "@journeyman/identity";
 
 export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
-  app.post("/flows", async (req, reply) => {
+  const requireAuth = makeRequireAuth({ pool: c.pool! });
+
+  app.post("/flows", { preHandler: requireAuth() }, async (req, reply) => {
     const body = createFlowBody.parse(req.body);
     const user = await c.auth.authenticate(req);
     const { flow, version } = await c.flows.create({
@@ -20,7 +23,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { flow, version };
   });
 
-  app.get("/flows", async (req) => {
+  app.get("/flows", { preHandler: requireAuth() }, async (req) => {
     const q = req.query as { ownerUserId?: string; limit?: string };
     const ownerUserId = q.ownerUserId === undefined
       ? undefined
@@ -30,14 +33,14 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { flows };
   });
 
-  app.get("/flows/:id", async (req, reply) => {
+  app.get("/flows/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const flow = await c.flows.getById(id);
     if (!flow) { reply.code(404); return { error: "not_found" }; }
     return { flow };
   });
 
-  app.put("/flows/:id", async (req, reply) => {
+  app.put("/flows/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = updateFlowBody.parse(req.body);
     const user = await c.auth.authenticate(req);
@@ -58,7 +61,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { flow: updated, version: newVersion };
   });
 
-  app.get("/flows/:id/versions/current", async (req, reply) => {
+  app.get("/flows/:id/versions/current", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const flow = await c.flows.getById(id);
     if (!flow) { reply.code(404); return { error: "not_found" }; }
@@ -68,14 +71,14 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { version };
   });
 
-  app.get("/flow_versions/:id", async (req, reply) => {
+  app.get("/flow_versions/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const version = await c.flowVersions.getById(id);
     if (!version) { reply.code(404); return { error: "not_found" }; }
     return { version };
   });
 
-  app.post("/flows/:id/runs", async (req, reply) => {
+  app.post("/flows/:id/runs", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = createRunBody.parse(req.body);
     const user = await c.auth.authenticate(req);

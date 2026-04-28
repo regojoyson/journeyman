@@ -1,15 +1,40 @@
 #!/usr/bin/env node
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createLogger } from "@journeyman/core";
 import { RunSyncer } from "@journeyman/orchestrator";
 import { buildComposition } from "./composition.ts";
 import { buildServer } from "./server.ts";
 
 const log = createLogger("api-server:cli");
-const envFile = resolve(process.cwd(), ".env");
-if (existsSync(envFile)) loadDotenv({ path: envFile, override: false });
+
+// Find .env by walking up from cwd and from this file's location
+// (npm workspaces change cwd to the package dir, so cwd alone misses the repo root).
+function findEnvFile(): string | null {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  for (const start of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+    let dir = start;
+    while (true) {
+      if (!seen.has(dir)) {
+        seen.add(dir);
+        candidates.push(resolve(dir, ".env"));
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  return candidates.find(p => existsSync(p)) ?? null;
+}
+
+const envFile = findEnvFile();
+if (envFile) {
+  loadDotenv({ path: envFile, override: false });
+  log.info({ envFile }, "loaded .env");
+}
 
 const cfg = {
   databaseUrl: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/journeyman",

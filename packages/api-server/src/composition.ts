@@ -14,6 +14,7 @@ import type {
   IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
   IPhaseRegistry, IRunStore, IWorkspaceProvider,
 } from "@journeyman/core";
+import type { FastifyRequest } from "fastify";
 import {
   ConductorClient,
   ConductorOrchestrator,
@@ -29,7 +30,6 @@ import {
   MemoryNodeExecutionStore,
   MemoryEventBus,
   EnvCredentialStore,
-  NoAuthProvider,
   DirectoryWorkspaceProvider,
   InMemoryPhaseRegistry,
   JsonLogicEvaluator,
@@ -48,6 +48,8 @@ export interface Composition {
   credentials: ICredentialStore;
   auth: IAuthProvider;
   conditions: IConditionEvaluator;
+  /** The pg Pool (null when using the memory backend). */
+  pool: Pool | null;
   /** Closed when the server shuts down. */
   shutdown: () => Promise<void>;
 }
@@ -96,12 +98,18 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const registry = new InMemoryPhaseRegistry();
   const workspace = new DirectoryWorkspaceProvider();
   const credentials = new EnvCredentialStore();
-  const auth = new NoAuthProvider();
+  // Inline anonymous auth provider
+  const auth: IAuthProvider = {
+    async authenticate(_req: FastifyRequest) {
+      return { userId: null, roles: ["anonymous"] };
+    },
+  };
   const conditions = new JsonLogicEvaluator();
 
   return {
     flows, flowVersions, runs, nodeExecutions, events,
     orchestrator, registry, workspace, credentials, auth, conditions,
+    pool,
     shutdown: async () => { if (pool) await pool.end(); },
   };
 }

@@ -11,6 +11,7 @@ export type * from "./types/ticket.types.ts";
 export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";
 export type * from "./types/pipeline.types.ts";
+export * from "./types/identity.types.ts";
 // Logger
 export { createLogger, type Logger } from "./logger.ts";
 

@@ -34,7 +34,6 @@ export { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 export { InMemoryPhaseRegistry } from "./registry/in-memory-phase-registry.ts";
 export { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";
 export { EnvCredentialStore } from "./credentials/env-credential-store.ts";
-export { NoAuthProvider } from "./auth/no-auth-provider.ts";
 export { JsonLogicEvaluator } from "./conditions/jsonlogic-evaluator.ts";
 export { WorkerHarness } from "./workers/worker-harness.ts";
 export { AnalyzePhaseHandler } from "./workers/phases/analyze-phase-handler.ts";
