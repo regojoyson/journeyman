@@ -1,4 +1,5 @@
-import type { FlowNode, FlowRetryPolicy } from "@journeyman/core";
+import type { FlowNode, FlowRetryPolicy, RunInputDef } from "@journeyman/core";
+import { RunInputsEditor } from "./RunInputsEditor.tsx";
 
 export interface FlowSettingsViewProps {
   startNode: FlowNode;
@@ -19,6 +20,13 @@ function getCycleVisits(node: FlowNode): number {
 }
 function setCycleVisits(node: FlowNode, n: number): FlowNode {
   return { ...node, config: { ...(node.config ?? {}), maxCycleVisits: n } };
+}
+function getRunInputs(node: FlowNode): RunInputDef[] {
+  const cfg = (node.config ?? {}) as { runInputs?: RunInputDef[] };
+  return cfg.runInputs ?? [];
+}
+function setRunInputs(node: FlowNode, inputs: RunInputDef[]): FlowNode {
+  return { ...node, config: { ...(node.config ?? {}), runInputs: inputs } };
 }
 
 export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettingsViewProps) {
@@ -58,6 +66,13 @@ export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettings
           value={visits}
           disabled={readOnly}
           onChange={e => onChange(setCycleVisits(startNode, Number(e.target.value) || 1))}
+        />
+      </div>
+
+      <div className="je-props__field">
+        <RunInputsEditor
+          value={getRunInputs(startNode)}
+          onChange={(inputs: RunInputDef[]) => onChange(setRunInputs(startNode, inputs))}
         />
       </div>
     </div>

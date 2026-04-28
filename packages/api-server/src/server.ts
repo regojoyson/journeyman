@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import type { Composition } from "./composition.ts";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { registerFlowRoutes } from "./routes/flows.ts";
+import { registerPhasesRoutes } from "./routes/phases.ts";
 import { registerFlowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerRunRoutes } from "./routes/runs.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
@@ -29,6 +30,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerSecretsRoutes(app, c.pool);
   }
   registerFlowRoutes(app, c);
+  registerPhasesRoutes(app);
   registerFlowGrantsRoutes(app, c);
   registerRunRoutes(app, c);
   return app;

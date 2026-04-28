@@ -4,6 +4,7 @@ import type { Flow } from "@journeyman/core";
 import { listFlows } from "../api/flows.ts";
 import { cloneFlow, promoteFlow, deleteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
+import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
 function canEditFlow(
   flow: Flow,
@@ -76,106 +77,136 @@ export function FlowsListPage() {
     }
   }
 
+  const filterLabel = (s: typeof scopeFilter) =>
+    s === "user" ? "Mine" : s === "org" ? "Organization" : s === "global" ? "Global" : "All";
+
+  const scopeBadge = (scope: Flow["scope"]) => {
+    const cls =
+      scope === "global"
+        ? "bg-violet-900/40 text-violet-200 border-violet-800/60"
+        : scope === "org"
+        ? "bg-blue-900/40 text-blue-200 border-blue-800/60"
+        : "bg-slate-800/60 text-slate-300 border-slate-700";
+    return (
+      <span className={`ml-2 inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
+        {scope}
+      </span>
+    );
+  };
+
   return (
-    <div style={{ padding: 24, height: "100%", overflow: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Flows</h2>
-        <div style={{ flex: 1 }} />
-        <Link
-          to="/flows/new"
-          style={{ background: "#00b894", color: "#fff", padding: "6px 14px", borderRadius: 5, textDecoration: "none", fontSize: 13, fontWeight: 600 }}
-        >+ New flow</Link>
-      </div>
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
+        <header className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-100">Flows</h1>
+            <p className="mt-1 text-sm text-slate-400">Browse, edit, clone and promote flows.</p>
+          </div>
+          <Link to="/flows/new" className={btnPrimary}>+ New flow</Link>
+        </header>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        {(["all", "user", "org", "global"] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setScopeFilter(s)}
-            style={{
-              padding: "4px 10px",
-              background: scopeFilter === s ? "#222" : "#eee",
-              color: scopeFilter === s ? "#fff" : "#222",
-              borderRadius: 4, border: "none",
-              cursor: "pointer",
-            }}
-          >
-            {s === "user" ? "Mine" : s === "org" ? "Organization" : s === "global" ? "Global" : "All"}
-          </button>
-        ))}
-      </div>
+        <div className="flex flex-wrap gap-2">
+          {(["all", "user", "org", "global"] as const).map(s => {
+            const active = scopeFilter === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setScopeFilter(s)}
+                className={
+                  active
+                    ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-3 py-1.5 text-xs font-medium text-indigo-200 transition"
+                    : btnGhost
+                }
+              >
+                {filterLabel(s)}
+              </button>
+            );
+          })}
+        </div>
 
-      {loading && <div style={{ color: "#888" }}>Loading…</div>}
-      {error && <div style={{ color: "#ff7675" }}>Error: {error}</div>}
-      {!loading && !error && flows.length === 0 && (
-        <div style={{ color: "#888" }}>No flows yet. Click "+ New flow" to create one.</div>
-      )}
-      {!loading && !error && flows.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ color: "#888", textAlign: "left", borderBottom: "1px solid #2a2a3a" }}>
-              <th style={{ padding: "8px 6px" }}>Name</th>
-              <th style={{ padding: "8px 6px" }}>Description</th>
-              <th style={{ padding: "8px 6px" }}>Updated</th>
-              <th style={{ padding: "8px 6px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flows.map(f => {
-              const editable = canEditFlow(f, ctx);
-              return (
-                <tr key={f.id} style={{ borderBottom: "1px solid #1f1f2c" }}>
-                  <td style={{ padding: "10px 6px" }}>
-                    {f.name}
-                    <span style={{
-                      fontSize: 11, padding: "1px 6px", marginLeft: 8,
-                      background: f.scope === "global" ? "#7c3aed" : f.scope === "org" ? "#2563eb" : "#6b7280",
-                      color: "#fff", borderRadius: 3,
-                    }}>{f.scope}</span>
-                  </td>
-                  <td style={{ padding: "10px 6px", color: "#aaa" }}>{f.description ?? ""}</td>
-                  <td style={{ padding: "10px 6px", color: "#888" }}>{new Date(f.updatedAt).toLocaleString()}</td>
-                  <td style={{ padding: "10px 6px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {editable ? (
-                      <>
-                        <Link to={`/flows/${f.id}/edit`} style={{ color: "#4a9eff" }}>Edit</Link>
-                        <button
-                          onClick={() => handleClone(f)}
-                          style={{ color: "#4a9eff", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}
-                        >Clone</button>
-                        <button
-                          onClick={() => handleDelete(f)}
-                          style={{ color: "#ff7675", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}
-                        >Delete</button>
-                        {f.scope === "user" && (
-                          <button
-                            onClick={() => handlePromote(f, "org")}
-                            style={{ color: "#f59e0b", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}
-                          >Promote → Org</button>
-                        )}
-                        {(f.scope === "org" || f.scope === "user") && (
-                          <button
-                            onClick={() => handlePromote(f, "global")}
-                            style={{ color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}
-                          >Promote → Global</button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleClone(f)}
-                          style={{ color: "#4a9eff", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}
-                        >Clone to my flows</button>
-                        <Link to={`/flows/${f.id}/edit`} style={{ color: "#888" }}>Open (read-only)</Link>
-                      </>
-                    )}
-                  </td>
+        <section className={`${card} overflow-hidden`}>
+          {loading ? (
+            <div className="p-10 text-center text-sm text-slate-500">Loading…</div>
+          ) : error ? (
+            <div className="p-6 text-sm text-rose-300 border border-rose-900/40 bg-rose-950/30 rounded-md">
+              Error: {error}
+            </div>
+          ) : flows.length === 0 ? (
+            <div className="p-10 text-center text-sm text-slate-500">
+              No flows yet. Click "+ New flow" to create one.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+                <tr>
+                  <th className="text-left font-medium px-6 py-3">Name</th>
+                  <th className="text-left font-medium px-6 py-3">Description</th>
+                  <th className="text-left font-medium px-6 py-3">Updated</th>
+                  <th className="text-left font-medium px-6 py-3">Actions</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {flows.map(f => {
+                  const editable = canEditFlow(f, ctx);
+                  return (
+                    <tr key={f.id} className="hover:bg-slate-800/30">
+                      <td className="px-6 py-3 text-slate-100 font-medium">
+                        {f.name}
+                        {scopeBadge(f.scope)}
+                      </td>
+                      <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
+                      <td className="px-6 py-3 text-slate-500">
+                        {new Date(f.updatedAt).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          {editable ? (
+                            <>
+                              <Link to={`/flows/${f.id}/edit`} className="text-indigo-300 hover:text-indigo-200">
+                                Edit
+                              </Link>
+                              <button
+                                onClick={() => handleClone(f)}
+                                className="text-indigo-300 hover:text-indigo-200"
+                              >Clone</button>
+                              <button
+                                onClick={() => handleDelete(f)}
+                                className="text-rose-300 hover:text-rose-200"
+                              >Delete</button>
+                              {f.scope === "user" && (
+                                <button
+                                  onClick={() => handlePromote(f, "org")}
+                                  className="text-amber-300 hover:text-amber-200"
+                                >Promote → Org</button>
+                              )}
+                              {(f.scope === "org" || f.scope === "user") && (
+                                <button
+                                  onClick={() => handlePromote(f, "global")}
+                                  className="text-violet-300 hover:text-violet-200"
+                                >Promote → Global</button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleClone(f)}
+                                className="text-indigo-300 hover:text-indigo-200"
+                              >Clone to my flows</button>
+                              <Link to={`/flows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
+                                Open (read-only)
+                              </Link>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

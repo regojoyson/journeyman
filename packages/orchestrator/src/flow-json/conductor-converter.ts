@@ -4,6 +4,8 @@ import type {
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
   SubWorkflowTask, TerminateTask, SimpleTask,
 } from "./conductor-types.ts";
+import { resolveInputs, parseRef } from "./resolve-inputs.ts";
+import { dominators } from "./reachability.ts";
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -17,6 +19,10 @@ export class FlowValidationError extends Error {
 }
 
 export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkflowDef> {
+  static validateGraph(graph: FlowGraph): void {
+    new ConvertCtx(graph).validate();
+  }
+
   toEngineJson(def: FlowGraph, opts: {
     workflowName: string;
     workflowVersion: number;
@@ -59,6 +65,36 @@ class ConvertCtx {
     if (starts.length !== 1) throw new FlowValidationError("Flow must have exactly one start node");
     const ends = this.flow.nodes.filter(n => n.type === "end");
     if (ends.length === 0) throw new FlowValidationError("Flow must have at least one end node");
+
+    const nodeIds = new Set(this.flow.nodes.map(n => n.id));
+    const startNode = this.flow.nodes.find(n => n.type === "start");
+    const runInputDefs = ((startNode?.config as { runInputs?: Array<{ name: string }> } | undefined)?.runInputs ?? []);
+    const runInputNames = new Set(runInputDefs.map(d => d.name));
+
+    for (const node of this.flow.nodes) {
+      for (const [field, val] of Object.entries(node.inputs ?? {})) {
+        if (val.kind !== "ref") continue;
+        const parsed = parseRef(val.ref);
+        if (!parsed) {
+          throw new FlowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${val.ref}'`);
+        }
+        if (parsed.source === "workflow.input") {
+          if (!runInputNames.has(parsed.field)) {
+            throw new FlowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
+          }
+          continue;
+        }
+        if (!nodeIds.has(parsed.source)) {
+          throw new FlowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
+        }
+        const doms = dominators(this.flow, node.id);
+        if (!doms.has(parsed.source)) {
+          throw new FlowValidationError(
+            `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
+          );
+        }
+      }
+    }
   }
 
   startNode(): FlowNode { return this.flow.nodes.find(n => n.type === "start")!; }
@@ -126,6 +162,7 @@ class ConvertCtx {
         }
         return {
           ...(node.config ?? {}),
+          ...resolveInputs(node.inputs),
           retry: node.retry ?? {},
           credentials: creds,
         };
@@ -227,7 +264,7 @@ class ConvertCtx {
       taskReferenceName: node.id,
       loopCondition: condition,
       loopOver: body,
-      inputParameters: { ...(node.config ?? {}) },
+      inputParameters: { ...(node.config ?? {}), ...resolveInputs(node.inputs) },
     };
 
     const exit = outs[1]?.target ?? null;
@@ -255,7 +292,7 @@ class ConvertCtx {
       name: `sub_${node.id}`,
       taskReferenceName: node.id,
       subWorkflowParam: { name: target.workflowName, version: target.workflowVersion },
-      inputParameters: { ...(node.config ?? {}) },
+      inputParameters: { ...(node.config ?? {}), ...resolveInputs(node.inputs) },
     };
     return { tasks: [task], nextNodeId: this.successor(node.id) };
   }

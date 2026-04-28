@@ -21,6 +21,17 @@ export type FlowNodeType =
   | "try-catch"
   | "human-task";
 
+export type FlowInputValue =
+  | { kind: "literal"; value: unknown }
+  | { kind: "ref"; ref: string };
+
+export interface RunInputDef {
+  name: string;
+  type: "string" | "number" | "boolean" | "json";
+  description?: string;
+  required?: boolean;
+}
+
 export interface FlowNode {
   id: string;
   type: FlowNodeType;
@@ -30,6 +41,8 @@ export interface FlowNode {
   phaseType?: string;
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
+  /** Wires from upstream nodes / run inputs. Resolved by converter to Conductor refs. */
+  inputs?: Record<string, FlowInputValue>;
   /**
    * Common configuration shared by all phases of the same executor kind
    * (e.g. coding-cli phases all carry `{ provider: "claude" | "gemini" | "codex" }`).
@@ -143,8 +156,4 @@ export interface McpServerConfig {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
-}
-
-export interface NodeInputBinding {
-  from: string;
 }

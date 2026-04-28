@@ -1,6 +1,12 @@
 // packages/phases/src/tickets/add-ticket-comment.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import {
+  ADD_TICKET_COMMENT_PHASE_TYPE,
+  ADD_TICKET_COMMENT_LABEL,
+  ADD_TICKET_COMMENT_CATEGORY,
+  addTicketCommentOutputSchema,
+} from "./add-ticket-comment.meta.ts";
 
 interface AddTicketCommentConfig {
   ticketKey: string;
@@ -9,9 +15,9 @@ interface AddTicketCommentConfig {
 }
 
 export const addTicketCommentPhase: PhaseDefinition<AddTicketCommentConfig> = {
-  phaseType: "add-ticket-comment",
-  label: "Add Ticket Comment",
-  category: "Tickets",
+  phaseType: ADD_TICKET_COMMENT_PHASE_TYPE,
+  label: ADD_TICKET_COMMENT_LABEL,
+  category: ADD_TICKET_COMMENT_CATEGORY,
   description: "Post a comment on a ticket, optionally rendered from a template.",
   color: "#a29bfe",
   icon: "💭",
@@ -29,4 +35,5 @@ export const addTicketCommentPhase: PhaseDefinition<AddTicketCommentConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
   summary: c => c.template || c.ticketKey || "(no target)",
   executor: { kind: "ticket-provider", method: "addComment" },
+  outputSchema: addTicketCommentOutputSchema,
 };

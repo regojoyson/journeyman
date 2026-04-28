@@ -1,26 +1,29 @@
 // packages/phases/src/repos/cleanup-repos.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import {
+  CLEANUP_REPOS_PHASE_TYPE,
+  CLEANUP_REPOS_LABEL,
+  CLEANUP_REPOS_CATEGORY,
+  cleanupReposOutputSchema,
+} from "./cleanup-repos.meta.ts";
 
 interface CleanupReposConfig {
-  workspaceDir: string;
   mode: "soft" | "hard";
 }
 
 export const cleanupReposPhase: PhaseDefinition<CleanupReposConfig> = {
-  phaseType: "cleanup-repos",
-  label: "Cleanup Repos",
-  category: "Repos",
+  phaseType: CLEANUP_REPOS_PHASE_TYPE,
+  label: CLEANUP_REPOS_LABEL,
+  category: CLEANUP_REPOS_CATEGORY,
   description: "Reset and optionally delete repos in a workspace.",
   color: "#fdcb6e",
   icon: "🧹",
-  defaultConfig: { workspaceDir: "", mode: "soft" },
+  defaultConfig: { mode: "soft" },
   configSchema: z.object({
-    workspaceDir: z.string().min(1),
     mode: z.enum(["soft", "hard"]),
   }),
   configFields: {
-    workspaceDir: { label: "Workspace dir", widget: "text" },
     mode: {
       label: "Mode", widget: "select",
       options: [
@@ -30,6 +33,7 @@ export const cleanupReposPhase: PhaseDefinition<CleanupReposConfig> = {
     },
   },
   tabs: { io: "shown", credentials: "hidden", mcp: "hidden", retry: "shown" },
-  summary: c => `${c.mode}: ${c.workspaceDir}`,
+  summary: c => c.mode,
   executor: { kind: "coding-cli", method: "cleanupRepos" },
+  outputSchema: cleanupReposOutputSchema,
 };

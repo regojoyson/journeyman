@@ -1,6 +1,7 @@
 // packages/phases/src/git/get-repo.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { GET_REPO_PHASE_TYPE, GET_REPO_LABEL, GET_REPO_CATEGORY } from "./get-repo.meta.ts";
 
 interface GetRepoConfig {
   owner: string;
@@ -8,9 +9,9 @@ interface GetRepoConfig {
 }
 
 export const getRepoPhase: PhaseDefinition<GetRepoConfig> = {
-  phaseType: "get-repo",
-  label: "Get Repo",
-  category: "Git",
+  phaseType: GET_REPO_PHASE_TYPE,
+  label: GET_REPO_LABEL,
+  category: GET_REPO_CATEGORY,
   description: "Fetch metadata for a remote repository.",
   color: "#74b9ff",
   icon: "🗂",

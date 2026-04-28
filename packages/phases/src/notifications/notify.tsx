@@ -1,6 +1,12 @@
 // packages/phases/src/notifications/notify.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import {
+  NOTIFY_PHASE_TYPE,
+  NOTIFY_LABEL,
+  NOTIFY_CATEGORY,
+  notifyOutputSchema,
+} from "./notify.meta.ts";
 
 interface NotifyConfig {
   channel: string;
@@ -9,9 +15,9 @@ interface NotifyConfig {
 }
 
 export const notifyPhase: PhaseDefinition<NotifyConfig> = {
-  phaseType: "notify",
-  label: "Notify",
-  category: "Notifications",
+  phaseType: NOTIFY_PHASE_TYPE,
+  label: NOTIFY_LABEL,
+  category: NOTIFY_CATEGORY,
   description: "Send a notification via the configured provider (Slack, etc).",
   color: "#fd79a8",
   icon: "💬",
@@ -29,4 +35,5 @@ export const notifyPhase: PhaseDefinition<NotifyConfig> = {
   tabs: { io: "hidden", credentials: "required", mcp: "hidden", retry: "shown" },
   summary: c => c.channel || "(no channel)",
   executor: { kind: "notification", method: "send" },
+  outputSchema: notifyOutputSchema,
 };

@@ -27,7 +27,8 @@ export async function getRun(runId: string): Promise<RunDetail> {
   return await api<RunDetail>(`/runs/${encodeURIComponent(runId)}`);
 }
 
-const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:4000";
+// Same-origin default; localhost dev value lives in packages/web/.env.development.
+const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
 export function openRunEventStream(args: {
   runId: string;

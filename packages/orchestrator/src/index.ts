@@ -5,6 +5,7 @@ export {
   UnsupportedNodeTypeError,
   FlowValidationError,
 } from "./flow-json/conductor-converter.ts";
+export { parseRef, resolveInputs } from "./flow-json/resolve-inputs.ts";
 export type {
   ConductorWorkflowDef,
   ConductorTaskDef,

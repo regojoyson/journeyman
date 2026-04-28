@@ -19,6 +19,7 @@
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
     "@journeyman/orchestrator": "*",
+    "@journeyman/phases": "*",
     "@journeyman/secrets": "*",
     "dotenv": "^17.4.2",
     "fastify": "^4.28.1",

@@ -39,6 +39,7 @@ export function FlowEditor(props: FlowEditorProps) {
           onRename={props.onRename}
           onSave={props.onSave ? () => props.onSave!(props.flow) : undefined}
           onRun={props.onRun ? () => props.onRun!(props.flow) : undefined}
+          onValidate={props.onValidate ? () => props.onValidate!(props.flow) : undefined}
           busy={props.busy}
           saveEnabled={!props.readOnly && !!props.onSave}
           runEnabled={!props.readOnly && !!props.onRun && validity.ok}

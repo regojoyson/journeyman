@@ -20,6 +20,40 @@ import {
 } from "./flow-rf-adapters.ts";
 import { HelpPanel } from "./HelpPanel.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
+import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+
+/**
+ * Best-effort: for each required input field on `newNode`, scan existing phase
+ * nodes for one whose outputSchema declares a field of the same name. If
+ * exactly one match exists, bind. If 0 or >1, skip — user picks manually.
+ */
+function autoBindNewNode(
+  newNode: FlowNode,
+  existingNodes: FlowNode[],
+  catalog: ReturnType<typeof usePhaseCatalog>,
+): FlowNode {
+  if (newNode.type !== "phase" || !newNode.phaseType) return newNode;
+  const required = catalog[newNode.phaseType]?.inputFields ?? {};
+  const inputs: Record<string, { kind: "ref"; ref: string }> = {
+    ...((newNode.inputs ?? {}) as Record<string, { kind: "ref"; ref: string }>),
+  };
+  let changed = false;
+  for (const [fieldName, meta] of Object.entries(required)) {
+    if (!(meta as { required?: boolean }).required) continue;
+    if (inputs[fieldName]) continue; // already bound
+    // Find candidate upstream nodes whose output declares fieldName.
+    const candidates = existingNodes.filter(n => {
+      if (n.type !== "phase" || !n.phaseType) return false;
+      const out = catalog[n.phaseType]?.outputSchema ?? {};
+      return out && fieldName in out;
+    });
+    if (candidates.length === 1) {
+      inputs[fieldName] = { kind: "ref", ref: `${candidates[0].id}.output.${fieldName}` };
+      changed = true;
+    }
+  }
+  return changed ? { ...newNode, inputs: inputs as FlowNode["inputs"] } : newNode;
+}
 
 export interface CanvasProps {
   flow: FlowGraph;
@@ -57,6 +91,7 @@ function toReactFlowNodes(
 }
 
 function CanvasInner(p: CanvasProps) {
+  const catalog = usePhaseCatalog();
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = usePhaseRegistry();
 
@@ -198,10 +233,14 @@ function CanvasInner(p: CanvasProps) {
     }
     if (!newNode) return;
 
-    // Just place the node at the drop point. The user wires it up themselves
-    // by dragging from the handles. No auto-edge-splitting, no auto-connect.
+    // Best-effort auto-bind: if the new phase has required input fields and an
+    // existing node has a matching output field name, pre-bind it. Reduces clicks
+    // for the common case (e.g. checkout-repo's workspaceDir → create-workspace.output.workspaceDir).
+    newNode = autoBindNewNode(newNode, p.flow.nodes, catalog);
+
+    // Just place the node at the drop point. The user wires edges themselves.
     applyExternalChange({ ...p.flow, nodes: [...p.flow.nodes, newNode] });
-  }, [p, applyExternalChange, registry]);
+  }, [p, applyExternalChange, registry, catalog]);
 
   const handleDragOver = useCallback((ev: React.DragEvent) => {
     ev.preventDefault();

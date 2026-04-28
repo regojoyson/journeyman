@@ -67,7 +67,7 @@ export type {
   Flow, FlowGraph, FlowEdge, FlowEdgeType, FlowNode, FlowNodeType, FlowVersion,
   FlowSchemaVersion,
   RetryPolicy, FlowRetryPolicy, BackoffStrategy,
-  McpServerConfig, McpTransport, NodeInputBinding,
+  McpServerConfig, McpTransport, FlowInputValue, RunInputDef,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {
@@ -85,5 +85,6 @@ export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
 export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
   PhaseContext, PhaseFailure, PhaseInput, PhaseOutput,
+  OutputSchema, OutputFieldSchema, OutputFieldType,
 } from "./types/phase-handler.types.ts";
 export * from "./types/secrets.types.ts";

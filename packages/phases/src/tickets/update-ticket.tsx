@@ -1,6 +1,12 @@
 // packages/phases/src/tickets/update-ticket.tsx
 import { z } from "zod";
 import type { PhaseDefinition, PhaseFormProps } from "@journeyman/flow-editor";
+import {
+  UPDATE_TICKET_PHASE_TYPE,
+  UPDATE_TICKET_LABEL,
+  UPDATE_TICKET_CATEGORY,
+  updateTicketOutputSchema,
+} from "./update-ticket.meta.ts";
 
 interface UpdateTicketConfig {
   ticketKey: string;
@@ -71,9 +77,9 @@ function UpdateTicketConfigForm({ config, onChange, readOnly }: PhaseFormProps<U
 }
 
 export const updateTicketPhase: PhaseDefinition<UpdateTicketConfig> = {
-  phaseType: "update-ticket",
-  label: "Update Ticket",
-  category: "Tickets",
+  phaseType: UPDATE_TICKET_PHASE_TYPE,
+  label: UPDATE_TICKET_LABEL,
+  category: UPDATE_TICKET_CATEGORY,
   description: "Update fields on an existing ticket.",
   color: "#a29bfe",
   icon: "✏️",
@@ -86,4 +92,5 @@ export const updateTicketPhase: PhaseDefinition<UpdateTicketConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
   summary: c => c.ticketKey || "(no ticket)",
   executor: { kind: "ticket-provider", method: "updateTicket" },
+  outputSchema: updateTicketOutputSchema,
 };

@@ -25,6 +25,18 @@ export interface PhaseContext {
   signal: AbortSignal;
   /** Resolved env vars for this phase (from ICredentialStore). */
   env: Record<string, string>;
+  /** Frozen copy of workflow.input — values declared on the start node's runInputs. */
+  runInputs: Record<string, unknown>;
   /** Append a phase.log event for live UI streaming. */
   log(line: string, meta?: Record<string, unknown>): void;
 }
+
+export type OutputFieldType = "string" | "number" | "boolean" | "string[]" | "json" | "enum";
+
+export interface OutputFieldSchema {
+  type: OutputFieldType;
+  description?: string;
+  values?: readonly string[];
+}
+
+export type OutputSchema = Record<string, OutputFieldSchema>;

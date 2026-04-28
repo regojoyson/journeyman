@@ -1,6 +1,7 @@
 // packages/phases/src/ai/plan.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { PLAN_PHASE_TYPE, PLAN_LABEL, PLAN_CATEGORY, planOutputSchema } from "./plan.meta.ts";
 
 interface PlanConfig {
   ticketKey: string;
@@ -9,9 +10,9 @@ interface PlanConfig {
 }
 
 export const planPhase: PhaseDefinition<PlanConfig> = {
-  phaseType: "plan",
-  label: "Plan",
-  category: "AI",
+  phaseType: PLAN_PHASE_TYPE,
+  label: PLAN_LABEL,
+  category: PLAN_CATEGORY,
   description: "Produce an implementation plan from a ticket and (optionally) a prior analysis.",
   color: "#0984e3",
   icon: "📝",
@@ -29,4 +30,5 @@ export const planPhase: PhaseDefinition<PlanConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
   summary: c => c.ticketKey || "(no ticket)",
   executor: { kind: "coding-cli", method: "plan" },
+  outputSchema: planOutputSchema,
 };

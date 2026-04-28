@@ -1,6 +1,12 @@
 // packages/phases/src/tickets/create-ticket.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import {
+  CREATE_TICKET_PHASE_TYPE,
+  CREATE_TICKET_LABEL,
+  CREATE_TICKET_CATEGORY,
+  createTicketOutputSchema,
+} from "./create-ticket.meta.ts";
 
 interface CreateTicketConfig {
   project: string;
@@ -10,9 +16,9 @@ interface CreateTicketConfig {
 }
 
 export const createTicketPhase: PhaseDefinition<CreateTicketConfig> = {
-  phaseType: "create-ticket",
-  label: "Create Ticket",
-  category: "Tickets",
+  phaseType: CREATE_TICKET_PHASE_TYPE,
+  label: CREATE_TICKET_LABEL,
+  category: CREATE_TICKET_CATEGORY,
   description: "Create a ticket on the configured tracker.",
   color: "#a29bfe",
   icon: "🎫",
@@ -32,4 +38,5 @@ export const createTicketPhase: PhaseDefinition<CreateTicketConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
   summary: c => c.title || c.project,
   executor: { kind: "ticket-provider", method: "createTicket" },
+  outputSchema: createTicketOutputSchema,
 };

@@ -1,0 +1,17 @@
+import type { OutputSchema } from "@journeyman/core";
+import type { InputFields } from "../shared-meta.ts";
+
+export const GET_TICKET_PHASE_TYPE = "get-ticket";
+export const GET_TICKET_LABEL = "Get Ticket";
+export const GET_TICKET_CATEGORY = "Tickets";
+export const getTicketOutputSchema: OutputSchema = {
+  id: { type: "string" },
+  title: { type: "string" },
+  description: { type: "string" },
+  labels: { type: "string[]" },
+  status: { type: "string" },
+};
+
+export const getTicketInputFields: InputFields = {
+  ticketKey: { type: "string", label: "Ticket key", required: true },
+};

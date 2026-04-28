@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Flow, FlowGraph } from "@journeyman/core";
-import { getFlow, getCurrentFlowVersion, runFlow, updateFlowDefinition } from "../api/flows.ts";
+import { getFlow, getCurrentFlowVersion, runFlow, updateFlowDefinition, validateFlowDefinition } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
@@ -104,6 +104,7 @@ export function FlowEditorPage() {
           onChange={(next) => { setGraph(next); setDirty(true); }}
           onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
           onRun={async () => { await runM.mutateAsync(); }}
+          onValidate={async (next) => await validateFlowDefinition(next)}
           busy={saveM.isPending || runM.isPending}
         />
       </div>

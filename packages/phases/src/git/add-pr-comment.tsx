@@ -1,6 +1,7 @@
 // packages/phases/src/git/add-pr-comment.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { ADD_PR_COMMENT_PHASE_TYPE, ADD_PR_COMMENT_LABEL, ADD_PR_COMMENT_CATEGORY } from "./add-pr-comment.meta.ts";
 
 interface AddPrCommentConfig {
   owner: string;
@@ -11,9 +12,9 @@ interface AddPrCommentConfig {
 }
 
 export const addPrCommentPhase: PhaseDefinition<AddPrCommentConfig> = {
-  phaseType: "add-pr-comment",
-  label: "Add PR Comment",
-  category: "Git",
+  phaseType: ADD_PR_COMMENT_PHASE_TYPE,
+  label: ADD_PR_COMMENT_LABEL,
+  category: ADD_PR_COMMENT_CATEGORY,
   description: "Post a comment on a pull/merge request, optionally rendered from a template.",
   color: "#74b9ff",
   icon: "💬",

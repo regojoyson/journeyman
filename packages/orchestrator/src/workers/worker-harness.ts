@@ -109,10 +109,12 @@ export class WorkerHarness {
     });
 
     try {
+      const runInputs = ((task.inputData as { __workflowInput?: Record<string, unknown> } | undefined)?.__workflowInput) ?? {};
       const result = await handler.run(task.inputData, {
         runId, nodeId, attempt: task.retryCount + 1,
         workspaceDir: ws.path, signal: abort.signal,
         env: { ...(process.env as Record<string, string>), ...resolvedEnv },
+        runInputs,
         log: (line, meta) => {
           this.deps.events.append({
             runId, nodeId, eventType: "phase.log", payload: { line, meta },

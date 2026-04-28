@@ -1,3 +1,11 @@
+// TODO(T9): Edge condition (`FlowEdge.condition`, JSONLogic) is not yet
+// editable from a properties surface. When an edge inspector is added,
+// reuse `ValuePicker` from `properties-panel/ValuePicker.tsx` with
+// `surface = "jsonlogic"` (see `insertRef` in
+// `properties-panel/ControlNodeConfigTab.tsx`) and merge the picked
+// `{ var: ref }` into the existing JSONLogic value (or replace if empty).
+// The upstream `sourceNodeId` for the picker is `props.source` (this
+// edge's origin node).
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from "@xyflow/react";
 
 export function ConditionalEdge(props: EdgeProps) {

@@ -1,4 +1,4 @@
-import type { FlowGraph, FlowNode, NodeInputBinding } from "@journeyman/core";
+import type { FlowGraph, FlowNode, FlowInputValue } from "@journeyman/core";
 
 export interface IoTabProps {
   flow: FlowGraph;
@@ -7,16 +7,20 @@ export interface IoTabProps {
   readOnly?: boolean;
 }
 
-function getInputs(node: FlowNode): Record<string, NodeInputBinding> {
-  const cfg = (node.config ?? {}) as { inputs?: Record<string, NodeInputBinding> };
+function getInputs(node: FlowNode): Record<string, FlowInputValue> {
+  const cfg = (node.config ?? {}) as { inputs?: Record<string, FlowInputValue> };
   return cfg.inputs ?? {};
 }
 function getOutputSchema(node: FlowNode): unknown {
   const cfg = (node.config ?? {}) as { outputSchema?: unknown };
   return cfg.outputSchema ?? {};
 }
-function setInputs(node: FlowNode, inputs: Record<string, NodeInputBinding>): FlowNode {
+function setInputs(node: FlowNode, inputs: Record<string, FlowInputValue>): FlowNode {
   return { ...node, config: { ...(node.config ?? {}), inputs } };
+}
+
+function getRef(v: FlowInputValue): string {
+  return v.kind === "ref" ? v.ref : "";
 }
 function setOutputSchema(node: FlowNode, schema: unknown): FlowNode {
   return { ...node, config: { ...(node.config ?? {}), outputSchema: schema } };
@@ -47,7 +51,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
   const setRow = (oldKey: string | null, key: string, from: string) => {
     const next = { ...inputs };
     if (oldKey && oldKey !== key) delete next[oldKey];
-    if (key) next[key] = { from };
+    if (key) next[key] = { kind: "ref", ref: from };
     onChange(setInputs(node, next));
   };
   const removeRow = (key: string) => {
@@ -55,7 +59,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
     delete next[key];
     onChange(setInputs(node, next));
   };
-  const addRow = () => onChange(setInputs(node, { ...inputs, "": { from: "" } }));
+  const addRow = () => onChange(setInputs(node, { ...inputs, "": { kind: "ref", ref: "" } }));
 
   return (
     <div>
@@ -69,10 +73,10 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
                 disabled={readOnly}
                 placeholder="inputName"
                 style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}
-                onChange={e => setRow(k, e.target.value, v.from)}
+                onChange={e => setRow(k, e.target.value, getRef(v))}
               />
               <input
-                type="text" value={v.from}
+                type="text" value={getRef(v)}
                 disabled={readOnly}
                 placeholder="step1.output.foo"
                 style={{ flex: 2, fontFamily: "ui-monospace, monospace" }}

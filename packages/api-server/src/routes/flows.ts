@@ -6,7 +6,89 @@ import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { FlowGraph, FlowScope } from "@journeyman/core";
+import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
+import { phaseCatalog } from "@journeyman/phases/catalog";
 import { makeRequireAuth } from "@journeyman/identity";
+
+export interface FlowValidationReport {
+  ok: boolean;
+  errors: string[];      // hard failures (graph structure, ref reachability)
+  missing: string[];     // required inputs without a typed value or binding
+  warnings: string[];    // refs to undeclared fields — non-blocking
+}
+
+/** Pure function — does not mutate any reply. Returns the full report. */
+export function computeValidationReport(definition: FlowGraph): FlowValidationReport {
+  const errors: string[] = [];
+  const missing: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    ConductorJsonConverter.validateGraph(definition);
+  } catch (e: unknown) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  const outputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.outputSchema ?? {}]));
+  const inputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.inputFields ?? {}]));
+
+  // Check 1: required input fields are satisfied (typed value or binding) on every phase node.
+  for (const node of definition.nodes) {
+    if (node.type !== "phase" || !node.phaseType) continue;
+    const declared = inputsByPhase.get(node.phaseType) ?? {};
+    const config = (node.config ?? {}) as Record<string, unknown>;
+    const inputs = (node.inputs ?? {}) as Record<string, { kind?: string }>;
+    for (const [fieldName, meta] of Object.entries(declared)) {
+      const m = meta as { required?: boolean };
+      if (!m.required) continue;
+      const hasBinding = inputs[fieldName]?.kind === "ref";
+      const cv = config[fieldName];
+      const hasTyped = cv !== undefined && cv !== null && cv !== "";
+      if (!hasBinding && !hasTyped) {
+        missing.push(`'${node.displayName ?? node.id}' (${node.phaseType}) is missing required input '${fieldName}'`);
+      }
+    }
+  }
+
+  // Check 2: ref points at declared field on upstream phase (warning only).
+  for (const node of definition.nodes) {
+    for (const [field, v] of Object.entries(node.inputs ?? {})) {
+      if (v.kind !== "ref") continue;
+      const parsed = parseRef(v.ref);
+      if (!parsed || parsed.scope === "workflow.input") continue;
+      const upstream = definition.nodes.find((n) => n.id === parsed.source);
+      if (!upstream?.phaseType) continue;
+      const declared =
+        parsed.scope === "input"
+          ? (inputsByPhase.get(upstream.phaseType) ?? {})
+          : (outputsByPhase.get(upstream.phaseType) ?? {});
+      if (!(parsed.field in declared))
+        warnings.push(
+          `'${node.id}.${field}' uses undeclared ${parsed.scope} field '${parsed.field}' on '${upstream.phaseType}'`,
+        );
+    }
+  }
+
+  return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings };
+}
+
+/** Save-path adapter: writes 400 to reply if invalid. */
+function validateAndWarnDefinition(
+  definition: FlowGraph,
+  reply: import("fastify").FastifyReply,
+): { ok: true } | { ok: false } {
+  const report = computeValidationReport(definition);
+  if (report.errors.length) {
+    reply.code(400).send({ error: "FlowValidationError", message: report.errors[0], errors: report.errors });
+    return { ok: false };
+  }
+  if (report.missing.length) {
+    reply.code(400).send({ error: "FlowValidationError", message: "Required inputs missing", missing: report.missing });
+    return { ok: false };
+  }
+  if (report.warnings.length) console.warn("[flow save warnings]", report.warnings);
+  return { ok: true };
+}
 import {
   canCreateAtScope, canDelete, canEdit, canPromoteTo, canRead,
   type Caller,
@@ -23,6 +105,16 @@ function callerFromCtx(ctx: NonNullable<import("fastify").FastifyRequest["runCon
 
 export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
+
+  // Non-destructive validation — caller passes a definition, we return the full report.
+  app.post("/flows/validate", { preHandler: requireAuth() }, async (req, reply) => {
+    const body = req.body as { definition?: FlowGraph };
+    if (!body?.definition || typeof body.definition !== "object") {
+      reply.code(400);
+      return { error: "bad_request", message: "definition is required" };
+    }
+    return computeValidationReport(body.definition);
+  });
 
   app.post("/flows", { preHandler: requireAuth() }, async (req, reply) => {
     const ctx = req.runContext!;
@@ -43,6 +135,9 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     }
 
     const ownerUserId = body.scope === "user" ? caller.userId : null;
+
+    const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
+    if (!_v.ok) return;
 
     const { flow, version } = await c.flows.create({
       scope: body.scope as FlowScope,
@@ -95,6 +190,8 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     }
     let newVersion = null;
     if (body.definition) {
+      const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
+      if (!_v.ok) return;
       newVersion = await c.flowVersions.appendVersion({
         flowId: id, definition: body.definition as FlowGraph, createdByUserId: caller.userId,
       });

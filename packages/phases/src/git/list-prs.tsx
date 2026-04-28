@@ -1,6 +1,7 @@
 // packages/phases/src/git/list-prs.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { LIST_PRS_PHASE_TYPE, LIST_PRS_LABEL, LIST_PRS_CATEGORY } from "./list-prs.meta.ts";
 
 interface ListPrsConfig {
   owner: string;
@@ -9,9 +10,9 @@ interface ListPrsConfig {
 }
 
 export const listPrsPhase: PhaseDefinition<ListPrsConfig> = {
-  phaseType: "list-prs",
-  label: "List PRs",
-  category: "Git",
+  phaseType: LIST_PRS_PHASE_TYPE,
+  label: LIST_PRS_LABEL,
+  category: LIST_PRS_CATEGORY,
   description: "List pull/merge requests by state.",
   color: "#74b9ff",
   icon: "📋",

@@ -1,6 +1,7 @@
 // packages/phases/src/ai/analyze.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { ANALYZE_PHASE_TYPE, ANALYZE_LABEL, ANALYZE_CATEGORY, analyzeOutputSchema } from "./analyze.meta.ts";
 
 interface AnalyzeConfig {
   ticketKey: string;
@@ -9,9 +10,9 @@ interface AnalyzeConfig {
 }
 
 export const analyzePhase: PhaseDefinition<AnalyzeConfig> = {
-  phaseType: "analyze",
-  label: "Analyze",
-  category: "AI",
+  phaseType: ANALYZE_PHASE_TYPE,
+  label: ANALYZE_LABEL,
+  category: ANALYZE_CATEGORY,
   description: "Analyze a repo against a ticket using a coding-cli provider.",
   color: "#00b894",
   icon: "🤖",
@@ -29,4 +30,5 @@ export const analyzePhase: PhaseDefinition<AnalyzeConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
   summary: c => c.ticketKey || "(no ticket)",
   executor: { kind: "coding-cli", method: "analyze" },
+  outputSchema: analyzeOutputSchema,
 };

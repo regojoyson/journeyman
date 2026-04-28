@@ -9,6 +9,7 @@ import { CredentialsTab } from "./CredentialsTab.tsx";
 import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
 import { FlowSettingsView } from "./FlowSettingsView.tsx";
+import { ControlNodeConfigTab } from "./ControlNodeConfigTab.tsx";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 
 export interface PropertiesPanelProps {
@@ -75,12 +76,14 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           visibility={visibility}
           requiredEmpty={requiredEmpty}
         >
-          {effectiveActive === "config"      && <ConfigTab    node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
+          {effectiveActive === "config"      && <ConfigTab    flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
           {effectiveActive === "mcp"         && <McpToolsTab  node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "credentials" && <CredentialsTab node={node} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "retry"       && <RetryTab     node={node} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "io"          && <IoTab        flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
+      ) : node.type === "loop" || node.type === "timer" ? (
+        <ControlNodeConfigTab flow={flow} node={node} onChange={onChange} readOnly={readOnly} />
       ) : (
         <div className="je-empty">
           {node.type === "end" ? "End node — set the outcome label in the Inspector (Phase 6)." : "Control nodes have no per-tab config in v0."}

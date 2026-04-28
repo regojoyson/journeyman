@@ -1,6 +1,7 @@
 // packages/phases/src/git/fetch-pr-comments.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { FETCH_PR_COMMENTS_PHASE_TYPE, FETCH_PR_COMMENTS_LABEL, FETCH_PR_COMMENTS_CATEGORY } from "./fetch-pr-comments.meta.ts";
 
 interface FetchPrCommentsConfig {
   owner: string;
@@ -9,9 +10,9 @@ interface FetchPrCommentsConfig {
 }
 
 export const fetchPrCommentsPhase: PhaseDefinition<FetchPrCommentsConfig> = {
-  phaseType: "fetch-pr-comments",
-  label: "Fetch PR Comments",
-  category: "Git",
+  phaseType: FETCH_PR_COMMENTS_PHASE_TYPE,
+  label: FETCH_PR_COMMENTS_LABEL,
+  category: FETCH_PR_COMMENTS_CATEGORY,
   description: "Read all comments from a pull/merge request.",
   color: "#74b9ff",
   icon: "📨",

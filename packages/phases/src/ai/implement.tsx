@@ -1,6 +1,7 @@
 // packages/phases/src/ai/implement.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { IMPLEMENT_PHASE_TYPE, IMPLEMENT_LABEL, IMPLEMENT_CATEGORY, implementOutputSchema } from "./implement.meta.ts";
 
 interface ImplementConfig {
   planRef: string;
@@ -8,9 +9,9 @@ interface ImplementConfig {
 }
 
 export const implementPhase: PhaseDefinition<ImplementConfig> = {
-  phaseType: "implement",
-  label: "Implement",
-  category: "AI",
+  phaseType: IMPLEMENT_PHASE_TYPE,
+  label: IMPLEMENT_LABEL,
+  category: IMPLEMENT_CATEGORY,
   description: "Execute a plan against a repo using a coding-cli provider.",
   color: "#6c5ce7",
   icon: "🛠",
@@ -26,4 +27,5 @@ export const implementPhase: PhaseDefinition<ImplementConfig> = {
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
   summary: c => c.planRef || "(no plan)",
   executor: { kind: "coding-cli", method: "implement" },
+  outputSchema: implementOutputSchema,
 };

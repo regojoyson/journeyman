@@ -1,23 +1,101 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
-import type { FlowNode } from "@journeyman/core";
+import { useState } from "react";
+import type { FlowGraph, FlowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
+import { ValuePicker } from "./ValuePicker.tsx";
+import { useUpstreamSources } from "./use-upstream-sources.ts";
+import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
 export interface ConfigTabProps {
+  flow: FlowGraph;
   node: FlowNode;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
   mcpCatalog?: McpCatalog;
 }
 
-export function ConfigTab({ node, onChange, readOnly, mcpCatalog }: ConfigTabProps) {
+export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: ConfigTabProps) {
   const registry = usePhaseRegistry();
   const definition = registry.get(node.phaseType);
   const config = (node.config ?? {}) as Record<string, unknown>;
   const executorConfig = node.executorConfig ?? {};
+
+  const catalog = usePhaseCatalog();
+  const sources = useUpstreamSources(flow, node.id, catalog);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+
+  const handlePick = (fieldKey: string, ref: string) => {
+    const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
+    inputs[fieldKey] = { kind: "ref", ref };
+    onChange({ ...node, inputs: inputs as FlowNode["inputs"] });
+    setPickerFor(null);
+  };
+
+  const handleUnbind = (fieldKey: string) => {
+    const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
+    delete inputs[fieldKey];
+    onChange({ ...node, inputs: inputs as FlowNode["inputs"] });
+  };
+
+  /** Append `${ref}` to the field's literal config value (template-string mode). */
+  const handleInsert = (fieldKey: string, ref: string) => {
+    const cfg = { ...config };
+    const existing = typeof cfg[fieldKey] === "string" ? (cfg[fieldKey] as string) : "";
+    cfg[fieldKey] = existing + "${" + ref + "}";
+    onChange({ ...node, config: cfg });
+    setPickerFor(null);
+  };
+
+  const inputsMap = (node.inputs ?? {}) as Record<string, { kind: string; ref?: string; value?: unknown }>;
+  const boundKeys = new Set(
+    Object.entries(inputsMap)
+      .filter(([, v]) => v?.kind === "ref")
+      .map(([k]) => k),
+  );
+
+  // Fields declared in the catalog as bindable-only (no typed UI). Shown as a separate "Required bindings" section.
+  const catalogEntry = node.phaseType ? catalog[node.phaseType] : undefined;
+  const configFieldKeys = new Set(definition?.configFields ? Object.keys(definition.configFields) : []);
+  const bindOnlyFields = Object.entries(catalogEntry?.inputFields ?? {}).filter(
+    ([key, meta]) => (meta as { bindOnly?: boolean }).bindOnly === true && !configFieldKeys.has(key),
+  ) as [string, { type: string; label?: string; required?: boolean; bindOnly?: boolean }][];
+
+  const renderFieldBindControl = (key: string) => {
+    if (readOnly) return null;
+    const isBound = boundKeys.has(key);
+    return (
+      <button
+        type="button"
+        className={`je-props__bind-icon${isBound ? " je-props__bind-icon--bound" : ""}`}
+        onClick={() => setPickerFor(pickerFor === key ? null : key)}
+        title={isBound ? `bound to ${inputsMap[key]?.ref}` : "bind to upstream value"}
+      >
+        {`{x}`}
+      </button>
+    );
+  };
+
+  const renderBoundPill = (key: string) => {
+    const ref = inputsMap[key]?.ref ?? "";
+    return (
+      <div className="je-props__bound-pill">
+        <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
+        <code className="je-props__bound-pill-ref">{ref}</code>
+        {!readOnly && (
+          <button
+            type="button"
+            className="je-props__bound-pill-unbind"
+            onClick={() => handleUnbind(key)}
+            title="unbind"
+          >×</button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -72,18 +150,60 @@ export function ConfigTab({ node, onChange, readOnly, mcpCatalog }: ConfigTabPro
         />
       )}
 
-      {definition?.configFields && (
-        <SchemaForm
-          config={config}
-          fields={definition.configFields}
-          schema={definition.configSchema}
-          onChange={next => onChange({ ...node, config: next })}
-          readOnly={readOnly}
-        />
+      {(definition?.configFields || bindOnlyFields.length > 0) && (
+        <div style={{ position: "relative" }}>
+          {definition?.configFields && (
+            <SchemaForm
+              config={config}
+              fields={definition.configFields}
+              schema={definition.configSchema}
+              onChange={next => onChange({ ...node, config: next })}
+              readOnly={readOnly}
+              boundKeys={boundKeys}
+              renderFieldBindControl={renderFieldBindControl}
+              renderBoundPill={renderBoundPill}
+            />
+          )}
+          {bindOnlyFields.length > 0 && (
+            <div className="je-props__bind-only-section">
+              <div className="je-props__bind-only-title">Required bindings</div>
+              {bindOnlyFields.map(([key, meta]) => {
+                const isBound = boundKeys.has(key);
+                const isRequired = !!meta.required;
+                return (
+                  <div key={key} className="je-props__field">
+                    <div className="je-props__field-label-row">
+                      <label>
+                        {meta.label ?? key}
+                        {isRequired && <span className="je-props__required-mark">*</span>}
+                      </label>
+                      {renderFieldBindControl(key)}
+                    </div>
+                    {isBound ? renderBoundPill(key) : (
+                      <div className="je-props__bind-only-empty">
+                        {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {pickerFor && (
+            <div className="je-props__picker-popover">
+              <ValuePicker
+                sources={sources}
+                onPick={ref => handlePick(pickerFor, ref)}
+                onInsert={ref => handleInsert(pickerFor, ref)}
+                onClose={() => setPickerFor(null)}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {definition?.description && (
-        <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>{definition.description}</div>
+        <div className="je-props__phase-desc">{definition.description}</div>
       )}
     </div>
   );

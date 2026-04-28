@@ -1,4 +1,5 @@
 // packages/flow-editor/src/phase-definition.ts
+import type { OutputSchema } from "@journeyman/core";
 import type { ZodTypeAny } from "zod";
 import type { ComponentType } from "react";
 import type { McpCatalog } from "./types.ts";
@@ -65,4 +66,7 @@ export interface PhaseDefinition<TConfig = unknown> {
     kind: ExecutorKind;
     method: string;
   };
+
+  /** Declared shape of this phase's output — drives the editor picker. */
+  outputSchema?: OutputSchema;
 }

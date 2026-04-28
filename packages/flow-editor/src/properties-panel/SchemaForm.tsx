@@ -1,5 +1,6 @@
 // packages/flow-editor/src/properties-panel/SchemaForm.tsx
 import type { ZodTypeAny } from "zod";
+import type { ReactNode } from "react";
 import type { FieldMeta } from "../phase-definition.ts";
 
 export interface SchemaFormProps {
@@ -8,38 +9,59 @@ export interface SchemaFormProps {
   schema?: ZodTypeAny;
   onChange: (next: Record<string, unknown>) => void;
   readOnly?: boolean;
+  /** Keys whose value is supplied at runtime via a binding — input is replaced by the pill, errors suppressed. */
+  boundKeys?: Set<string>;
+  /** Renders the binding affordance (e.g. an `{x}` button) shown next to each field's label. */
+  renderFieldBindControl?: (key: string) => ReactNode;
+  /** Renders the bound-state pill that replaces the input when a key is bound. */
+  renderBoundPill?: (key: string) => ReactNode;
 }
 
-export function SchemaForm({ config, fields, schema, onChange, readOnly }: SchemaFormProps) {
+export function SchemaForm({
+  config, fields, schema, onChange, readOnly,
+  boundKeys, renderFieldBindControl, renderBoundPill,
+}: SchemaFormProps) {
   const set = (key: string, value: unknown) => onChange({ ...config, [key]: value });
 
-  const errors: string[] = [];
+  const errors: Array<{ key: string; message: string }> = [];
   if (schema) {
     const parsed = schema.safeParse(config);
     if (!parsed.success) {
       for (const i of parsed.error.issues) {
-        errors.push(`${i.path.join(".") || "(root)"}: ${i.message}`);
+        const key = String(i.path[0] ?? "");
+        if (boundKeys?.has(key)) continue; // bound at runtime — skip
+        errors.push({ key: key || "(root)", message: i.message });
       }
     }
   }
 
   return (
     <div>
-      {Object.entries(fields).map(([key, meta]) => (
-        <div key={key} className="je-props__field">
-          <label>{meta.label}</label>
-          <FieldInput
-            meta={meta}
-            value={config[key]}
-            disabled={readOnly}
-            onChange={v => set(key, v)}
-          />
-          {meta.help && <div style={{ fontSize: 11, color: "#888" }}>{meta.help}</div>}
-        </div>
-      ))}
+      {Object.entries(fields).map(([key, meta]) => {
+        const isBound = !!boundKeys?.has(key);
+        return (
+          <div key={key} className="je-props__field">
+            <div className="je-props__field-label-row">
+              <label>{meta.label}</label>
+              {renderFieldBindControl?.(key)}
+            </div>
+            {isBound && renderBoundPill ? (
+              renderBoundPill(key)
+            ) : (
+              <FieldInput
+                meta={meta}
+                value={config[key]}
+                disabled={readOnly}
+                onChange={v => set(key, v)}
+              />
+            )}
+            {meta.help && <div className="je-props__field-help">{meta.help}</div>}
+          </div>
+        );
+      })}
       {errors.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#ff7675" }}>
-          {errors.map((e, i) => <div key={i}>{e}</div>)}
+        <div className="je-props__field-error">
+          {errors.map((e, i) => <div key={i}>{e.key}: {e.message}</div>)}
         </div>
       )}
     </div>

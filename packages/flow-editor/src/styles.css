@@ -236,3 +236,232 @@
   font-size: 10px;
   color: #ddd;
 }
+
+/* Dark-themed value picker — matches editor panels (#11111a / #1f1f2c). */
+.value-picker {
+  background: #1f1f2c;
+  border: 1px solid #2a2a3a;
+  border-radius: 6px;
+  padding: 10px;
+  min-width: 360px;
+  color: #ddd;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.value-picker-cols { display: grid; grid-template-columns: 140px 1fr; gap: 8px; }
+.vp-sources, .vp-fields { list-style: none; padding: 0; margin: 0; }
+.vp-sources { max-height: 280px; overflow-y: auto; }
+.vp-fields-container { max-height: 280px; overflow-y: auto; }
+.vp-group { margin-bottom: 8px; }
+.vp-group:last-child { margin-bottom: 0; }
+.vp-group-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  padding: 2px 6px;
+  margin-bottom: 2px;
+}
+.vp-fields li { display: flex; justify-content: space-between; align-items: center; }
+.vp-field-scope {
+  font-size: 9px;
+  color: #888;
+  font-family: ui-monospace, monospace;
+  margin-left: 8px;
+  text-transform: uppercase;
+}
+.vp-empty { padding: 10px 6px; color: #888; font-size: 11px; font-style: italic; }
+
+.value-picker-help {
+  font-size: 10px;
+  color: #888;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid #2a2a3a;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.value-picker-help code { background: #11111a; padding: 1px 4px; border-radius: 3px; color: #c4b5fd; }
+
+.vp-fields li { padding: 0; }
+.vp-field-name {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: #ccc;
+  padding: 5px 8px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px 0 0 4px;
+}
+.vp-field-name:hover { background: #2a2a3e; color: #fff; }
+.vp-field-insert {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid #2a2a3a;
+  color: #888;
+  padding: 0 8px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 0 4px 4px 0;
+  font-weight: 700;
+}
+.vp-field-insert:hover { background: #2a2a3e; color: #c4b5fd; }
+
+/* Bindable-only fields (workspaceDir, etc.) — shown in a dedicated section. */
+.je-props__bind-only-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #2a2a3a;
+}
+.je-props__bind-only-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin-bottom: 8px;
+}
+.je-props__bind-only-empty {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  padding: 4px 0;
+}
+.je-props__required-mark { color: #ff7675; margin-left: 2px; }
+
+/* Validation panel — slides under the topbar after the user clicks Validate. */
+.je-validate-panel {
+  background: #11111a;
+  border-bottom: 1px solid #2a2a3a;
+  font-size: 12px;
+  color: #ddd;
+}
+.je-validate-panel__header {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid #2a2a3a;
+}
+.je-validate-panel__status { font-weight: 600; flex: 1; }
+.je-validate-panel__status.ok { color: #00b894; }
+.je-validate-panel__status.fail { color: #ff7675; }
+.je-validate-panel__close {
+  background: transparent;
+  border: 0;
+  color: #888;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 6px;
+  line-height: 1;
+}
+.je-validate-panel__close:hover { color: #fff; }
+.je-validate-panel__body {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px 14px;
+}
+.je-validate-panel__ok { color: #888; font-style: italic; padding: 4px 0; }
+
+.je-validate-section { margin-bottom: 10px; }
+.je-validate-section:last-child { margin-bottom: 0; }
+.je-validate-section__title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.je-validate-section--error .je-validate-section__title { color: #ff7675; }
+.je-validate-section--warn  .je-validate-section__title { color: #fdcb6e; }
+.je-validate-section ul { list-style: none; padding: 0; margin: 0; }
+.je-validate-section li {
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.je-validate-section--error li { border-left-color: #ff7675; color: #ffb0af; background: rgba(255, 118, 117, 0.06); }
+.je-validate-section--warn  li { border-left-color: #fdcb6e; color: #ffe2a8; background: rgba(253, 203, 110, 0.06); }
+.vp-sources li, .vp-fields li { padding: 5px 8px; cursor: pointer; border-radius: 4px; color: #ccc; }
+.vp-sources li.active { background: #6c5ce7; color: #fff; }
+.vp-sources li:hover, .vp-fields li:hover { background: #2a2a3e; color: #fff; }
+.vp-custom { font-style: italic; color: #888; }
+.vp-custom-input { display: flex; gap: 6px; margin-top: 8px; }
+.vp-custom-input input {
+  flex: 1; background: #11111a; border: 1px solid #2a2a3a; color: #fff;
+  border-radius: 4px; padding: 5px 8px; font-size: 12px;
+}
+.vp-custom-input button, .vp-close {
+  background: #2a2a3e; border: 1px solid #3a3a4e; color: #ddd;
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+}
+.vp-custom-input button:hover, .vp-close:hover { background: #34344a; }
+.vp-close { margin-top: 8px; }
+
+/* Per-field label row holds the field label + the inline bind icon. */
+.je-props__field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.je-props__field-label-row label { margin-bottom: 0; }
+
+/* Inline {x} bind icon next to a field label. */
+.je-props__bind-icon {
+  background: transparent;
+  border: 1px solid #2a2a3a;
+  color: #888;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.je-props__bind-icon:hover { color: #fff; border-color: #6c5ce7; }
+.je-props__bind-icon--bound { color: #c4b5fd; border-color: #6c5ce7; background: rgba(108, 92, 231, 0.12); }
+
+/* Pill replacing the input when a field is bound. */
+.je-props__bound-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(108, 92, 231, 0.10);
+  border: 1px solid #6c5ce7;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.je-props__bound-pill-icon { color: #c4b5fd; font-weight: 700; }
+.je-props__bound-pill-ref {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+  color: #e9e7ff;
+  background: transparent;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.je-props__bound-pill-unbind {
+  background: transparent;
+  border: 0;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.je-props__bound-pill-unbind:hover { color: #ff7675; }
+
+/* Picker popover — positioned beneath the field row that opened it. */
+.je-props__picker-popover {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+}
+
+.je-props__field-help { font-size: 11px; color: #888; margin-top: 4px; }
+.je-props__field-error { margin-top: 8px; font-size: 11px; color: #ff7675; }
+.je-props__phase-desc { font-size: 11px; color: #888; margin-top: 8px; line-height: 1.4; }

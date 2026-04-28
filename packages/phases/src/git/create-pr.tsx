@@ -1,6 +1,7 @@
 // packages/phases/src/git/create-pr.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { CREATE_PR_PHASE_TYPE, CREATE_PR_LABEL, CREATE_PR_CATEGORY } from "./create-pr.meta.ts";
 
 interface CreatePrConfig {
   owner: string;
@@ -12,9 +13,9 @@ interface CreatePrConfig {
 }
 
 export const createPrPhase: PhaseDefinition<CreatePrConfig> = {
-  phaseType: "create-pr",
-  label: "Create PR",
-  category: "Git",
+  phaseType: CREATE_PR_PHASE_TYPE,
+  label: CREATE_PR_LABEL,
+  category: CREATE_PR_CATEGORY,
   description: "Open a pull/merge request on the remote.",
   color: "#74b9ff",
   icon: "🔀",

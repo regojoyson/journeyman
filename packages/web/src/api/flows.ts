@@ -52,3 +52,18 @@ export async function getCurrentFlowVersion(flowId: string): Promise<FlowVersion
   const res = await api<{ version: FlowVersion }>(`/flows/${encodeURIComponent(flowId)}/versions/current`);
   return res.version;
 }
+
+export interface FlowValidationReport {
+  ok: boolean;
+  errors: string[];
+  missing: string[];
+  warnings: string[];
+}
+
+/** Non-destructive validation. Returns the full report; never throws on validation issues. */
+export async function validateFlowDefinition(definition: FlowGraph): Promise<FlowValidationReport> {
+  return await api<FlowValidationReport>(
+    "/flows/validate",
+    { method: "POST", body: JSON.stringify({ definition }) },
+  );
+}

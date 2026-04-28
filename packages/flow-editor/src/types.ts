@@ -36,6 +36,10 @@ export interface FlowEditorProps {
   onChange: (flow: FlowGraph) => void;
   onSave?: (flow: FlowGraph) => void | Promise<void>;
   onRun?: (flow: FlowGraph) => void | Promise<void>;
+  /** Non-destructive preflight check. Returns a structured report. */
+  onValidate?: (flow: FlowGraph) => Promise<{
+    ok: boolean; errors: string[]; missing: string[]; warnings: string[];
+  }>;
   readOnly?: boolean;
   busy?: boolean;
   onRename?: (newName: string) => void;

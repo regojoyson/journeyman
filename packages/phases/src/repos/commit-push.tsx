@@ -1,6 +1,12 @@
 // packages/phases/src/repos/commit-push.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import {
+  COMMIT_PUSH_PHASE_TYPE,
+  COMMIT_PUSH_LABEL,
+  COMMIT_PUSH_CATEGORY,
+  commitPushOutputSchema,
+} from "./commit-push.meta.ts";
 
 interface CommitPushConfig {
   repoPath: string;
@@ -9,9 +15,9 @@ interface CommitPushConfig {
 }
 
 export const commitPushPhase: PhaseDefinition<CommitPushConfig> = {
-  phaseType: "commit-push",
-  label: "Commit & Push",
-  category: "Repos",
+  phaseType: COMMIT_PUSH_PHASE_TYPE,
+  label: COMMIT_PUSH_LABEL,
+  category: COMMIT_PUSH_CATEGORY,
   description: "Stage all changes, commit, and push to remote.",
   color: "#fdcb6e",
   icon: "⬆",
@@ -29,4 +35,5 @@ export const commitPushPhase: PhaseDefinition<CommitPushConfig> = {
   tabs: { io: "shown", credentials: "hidden", mcp: "hidden", retry: "shown" },
   summary: c => c.message ? `"${c.message.slice(0, 40)}"` : c.repoPath,
   executor: { kind: "coding-cli", method: "commitPushRepos" },
+  outputSchema: commitPushOutputSchema,
 };
