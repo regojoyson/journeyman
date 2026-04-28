@@ -20,6 +20,7 @@ export function RunDetailPage() {
   });
 
   const versionId = detailQ.data?.run.flowVersionId;
+  const isViewer = detailQ.data?.run.effectiveRole === "viewer";
   const versionQ = useQuery({
     queryKey: ["flow-version-by-id", versionId],
     queryFn: () => getFlowVersionById(versionId!),
@@ -53,19 +54,31 @@ export function RunDetailPage() {
 
   return (
     <div style={{ height: "100%" }}>
+      {isViewer && (
+        <div style={{
+          padding: "8px 16px",
+          margin: "0 0 8px",
+          background: "#2a2a3a",
+          borderLeft: "3px solid #6c8eff",
+          color: "#cfd6e4",
+          fontSize: 13,
+        }}>
+          You're viewing this run as an org peer. Only the run's owner or an org admin can pause, retry, or cancel.
+        </div>
+      )}
       <RunViewer
         flow={versionQ.data.definition}
         flowName={`Flow v${versionQ.data.versionNumber}`}
         run={detailQ.data.run}
         events={allEvents}
         executions={detailQ.data.executions}
-        onCancel={() => actions.cancel.mutate()}
-        onPause={() => actions.pause.mutate()}
-        onResume={() => actions.resume.mutate()}
-        onExport={actions.exportRun}
-        onRetryStep={(nodeId) => actions.retry.mutate(nodeId)}
-        onRerun={() => actions.rerun.mutate()}
-        onFork={() => actions.fork.mutate()}
+        onCancel={isViewer ? undefined : () => actions.cancel.mutate()}
+        onPause={isViewer ? undefined : () => actions.pause.mutate()}
+        onResume={isViewer ? undefined : () => actions.resume.mutate()}
+        onExport={isViewer ? undefined : actions.exportRun}
+        onRetryStep={isViewer ? undefined : (nodeId) => actions.retry.mutate(nodeId)}
+        onRerun={isViewer ? undefined : () => actions.rerun.mutate()}
+        onFork={isViewer ? undefined : () => actions.fork.mutate()}
       />
       {busy && (
         <div style={{ position: "fixed", bottom: 16, left: 16, color: "#888", fontSize: 11 }}>

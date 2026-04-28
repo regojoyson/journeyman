@@ -6,6 +6,7 @@ import { registerOrgRoutes } from "./orgs.ts";
 import { registerUserRoutes } from "./users.ts";
 import { registerApiTokenRoutes } from "./api-tokens.ts";
 import { registerUserManagementRoutes } from "./user-management.ts";
+import { registerPlatformAdminRoutes } from "./admin-platform.ts";
 
 export async function registerIdentityRoutes(app: FastifyInstance, pool: Pool) {
   await registerBootstrapRoutes(app, pool);
@@ -14,6 +15,7 @@ export async function registerIdentityRoutes(app: FastifyInstance, pool: Pool) {
   await registerUserRoutes(app, pool);
   await registerApiTokenRoutes(app, pool);
   await registerUserManagementRoutes(app, pool);
+  registerPlatformAdminRoutes(app, pool);
 }
 
 export { makeRequireAuth } from "../middleware.ts";

@@ -4,7 +4,9 @@ import type { MembershipRecord, OrgRecord, Role, UserRecord } from "@journeyman/
 function rowToUser(r: any): UserRecord {
   return {
     id: r.id, username: r.username, displayName: r.display_name,
-    status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
+    status: r.status,
+    isPlatformAdmin: !!r.is_platform_admin,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 function rowToOrg(r: any): OrgRecord {
@@ -278,4 +280,27 @@ export async function adminUpdateUserProfile(
     "UPDATE jm_users SET display_name = $1, updated_at = now() WHERE id = $2",
     [displayName, userId],
   );
+}
+
+export async function setUserPlatformAdmin(
+  pool: Pool, userId: string, value: boolean,
+): Promise<void> {
+  await pool.query(
+    "UPDATE jm_users SET is_platform_admin = $1, updated_at = now() WHERE id = $2",
+    [value, userId],
+  );
+}
+
+export async function countPlatformAdmins(pool: Pool): Promise<number> {
+  const r = await pool.query(
+    "SELECT COUNT(*)::int AS n FROM jm_users WHERE is_platform_admin = TRUE AND status = 'active'",
+  );
+  return r.rows[0].n;
+}
+
+export async function isUserPlatformAdmin(pool: Pool, userId: string): Promise<boolean> {
+  const r = await pool.query(
+    "SELECT is_platform_admin FROM jm_users WHERE id = $1", [userId],
+  );
+  return !!r.rows[0]?.is_platform_admin;
 }

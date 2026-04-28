@@ -3,15 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createBlankFlow } from "@journeyman/flow-editor";
 import { createFlow } from "../api/flows.ts";
+import { useAuth } from "../AuthContext.tsx";
 
 export function NewFlowPage() {
   const [name, setName] = useState("New flow");
   const [description, setDescription] = useState("");
+  const [scope, setScope] = useState<"user" | "org" | "global">("user");
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { role, isPlatformAdmin } = useAuth();
+
+  const allowed: ("user" | "org" | "global")[] = [
+    "user",
+    ...(role === "admin" || isPlatformAdmin ? ["org"] as const : []),
+    ...(isPlatformAdmin ? ["global"] as const : []),
+  ];
 
   const m = useMutation({
-    mutationFn: () => createFlow({ name, description: description || undefined, definition: createBlankFlow() }),
+    mutationFn: () => createFlow({ scope, name, description: description || undefined, definition: createBlankFlow() }),
     onSuccess: ({ flow }) => {
       qc.invalidateQueries({ queryKey: ["flows"] });
       qc.setQueryData(["flow-graph", flow.id], createBlankFlow());
@@ -26,9 +35,19 @@ export function NewFlowPage() {
         <label style={{ display: "block", color: "#aaa", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Name</label>
         <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
       </div>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <label style={{ display: "block", color: "#aaa", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Description (optional)</label>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} style={inputStyle} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", color: "#aaa", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Scope</label>
+        <select value={scope} onChange={e => setScope(e.target.value as any)} style={inputStyle}>
+          {allowed.map(s => (
+            <option key={s} value={s} style={{ background: "#1f1f2c", color: "#fff" }}>
+              {s === "user" ? "Personal (only me)" : s === "org" ? "Organization" : "Global (all orgs)"}
+            </option>
+          ))}
+        </select>
       </div>
       <button
         disabled={!name.trim() || m.isPending}

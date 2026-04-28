@@ -46,6 +46,10 @@ export async function bootstrap(
       [userRes.rows[0].id, orgRes.rows[0].id],
     );
     await client.query(
+      "UPDATE jm_users SET is_platform_admin = TRUE WHERE id = $1",
+      [userRes.rows[0].id],
+    );
+    await client.query(
       "UPDATE jm_system_state SET bootstrapped_at = now() WHERE id = 1",
     );
     await client.query("COMMIT");
@@ -62,6 +66,7 @@ export async function bootstrap(
         username: userRes.rows[0].username,
         displayName: userRes.rows[0].display_name,
         status: userRes.rows[0].status,
+        isPlatformAdmin: true,
         createdAt: userRes.rows[0].created_at,
         updatedAt: userRes.rows[0].updated_at,
       },

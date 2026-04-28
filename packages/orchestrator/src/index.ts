@@ -43,3 +43,7 @@ export { rerunFromExisting } from "./actions/rerun.ts";
 export { forkFromRun } from "./actions/fork.ts";
 export type { RerunDeps, RerunResult } from "./actions/rerun.ts";
 export type { ForkDeps } from "./actions/fork.ts";
+export { PostgresFlowGrantsStore } from "./stores/postgres/postgres-flow-grants-store.ts";
+export { MemoryFlowGrantsStore } from "./stores/memory/memory-flow-grants-store.ts";
+export { MemoryRunGrantsStore } from "./stores/memory/memory-run-grants-store.ts";
+export { PostgresRunGrantsStore } from "./stores/postgres/postgres-run-grants-store.ts";

@@ -38,11 +38,13 @@ export {
   isPauseableEngine, isRetryableEngine,
 } from "./interfaces/orchestrator-capabilities.interface.ts";
 export type {
-  IFlowStore, IFlowVersionStore, CreateFlowArgs,
+  IFlowStore, IFlowVersionStore, IFlowGrantsStore,
+  CreateFlowArgs, FlowListFilter, CreateGrantArgs,
 } from "./interfaces/flow-store.interface.ts";
 export type {
   IRunStore, INodeExecutionStore, CreateRunArgs,
 } from "./interfaces/run-store.interface.ts";
+export type { IRunGrantsStore } from "./interfaces/run-grants-store.interface.ts";
 export type {
   IEventBus, AppendEventArgs,
 } from "./interfaces/event-bus.interface.ts";
@@ -69,9 +71,18 @@ export type {
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {
+  FlowScope, FlowGrantPrincipalType, FlowGrantRole, FlowGrant,
+} from "./types/flow.types.ts";
+export type {
+  RunGrant, RunGrantPrincipalType, RunGrantRole,
+  CreateRunGrantArgs, ActorContext, RunListScope,
+} from "./types/run-grants.types.ts";
+export type {
   Run, RunEvent, RunEventType, RunStatus, TriggerSource,
   NodeExecution, NodeExecutionStatus,
 } from "./types/run.types.ts";
+export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
+export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
   PhaseContext, PhaseFailure, PhaseInput, PhaseOutput,
 } from "./types/phase-handler.types.ts";

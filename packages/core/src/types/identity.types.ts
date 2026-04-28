@@ -12,6 +12,7 @@ export interface UserRecord {
   username: string;
   displayName: string | null;
   status: "active" | "disabled" | "deleted";
+  isPlatformAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +30,7 @@ export interface RunContext {
   org: { id: string; slug: string };
   membershipId: string;
   role: Role;
+  isPlatformAdmin: boolean;
   tokenKind: "access-jwt" | "api-token";
   apiTokenId?: string;
 }
@@ -37,6 +39,7 @@ export interface AccessTokenClaims {
   sub: string;
   org: string;
   role: Role;
+  pa: boolean;        // is_platform_admin (short key for token size)
   kind: "access";
   iat: number;
   exp: number;

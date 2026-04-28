@@ -6,15 +6,17 @@ import { AuthContext, type AuthOrg, type AuthUser } from "./AuthContext.tsx";
 type Phase = "loading" | "setup" | "login" | "ready";
 
 interface MePayload {
-  user?: { id: string; username: string; displayName: string | null };
+  user?: { id: string; username: string; displayName: string | null; isPlatformAdmin?: boolean };
   activeOrg?: { id: string; slug?: string; name?: string };
   role?: string;
+  isPlatformAdmin?: boolean;
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [activeOrgId, setActiveOrgId] = useState("");
   const [role, setRole] = useState("");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [org, setOrg] = useState<AuthOrg | null>(null);
 
@@ -27,6 +29,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       const me: MePayload = await meRes.json();
       setActiveOrgId(me.activeOrg?.id ?? "");
       setRole(me.role ?? "");
+      setIsPlatformAdmin(me.isPlatformAdmin ?? me.user?.isPlatformAdmin ?? false);
       setUser(me.user
         ? { id: me.user.id, username: me.user.username, displayName: me.user.displayName ?? null }
         : null);
@@ -44,7 +47,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch { /* ignore — fall through to login regardless */ }
-    setUser(null); setOrg(null); setActiveOrgId(""); setRole("");
+    setUser(null); setOrg(null); setActiveOrgId(""); setRole(""); setIsPlatformAdmin(false);
     setPhase("login");
   }
 
@@ -52,7 +55,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (phase === "setup")   return <SetupWizardPage onDone={() => setPhase("login")} />;
   if (phase === "login")   return <LoginPage onLoggedIn={() => { check(); }} />;
   return (
-    <AuthContext.Provider value={{ activeOrgId, role, user, org, logout }}>
+    <AuthContext.Provider value={{ activeOrgId, role, isPlatformAdmin, user, org, logout }}>
       {children}
     </AuthContext.Provider>
   );

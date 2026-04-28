@@ -14,6 +14,7 @@ export interface AuthOrg {
 export interface AuthCtx {
   activeOrgId: string;
   role: "admin" | "member" | string;
+  isPlatformAdmin: boolean;
   user: AuthUser | null;
   org: AuthOrg | null;
   logout: () => Promise<void>;
@@ -22,6 +23,7 @@ export interface AuthCtx {
 export const AuthContext = createContext<AuthCtx>({
   activeOrgId: "",
   role: "",
+  isPlatformAdmin: false,
   user: null,
   org: null,
   logout: async () => {},

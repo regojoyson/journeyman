@@ -8,6 +8,7 @@ import { RunDetailPage } from "./routes/RunDetailPage.tsx";
 import { MySecretsPage } from "./routes/MySecretsPage.tsx";
 import { AdminSecretsPage } from "./routes/AdminSecretsPage.tsx";
 import { AdminUsersPage } from "./routes/AdminUsersPage.tsx";
+import { AdminFlowsPage } from "./routes/AdminFlowsPage.tsx";
 import { ChangePasswordPage } from "./routes/ChangePasswordPage.tsx";
 import { useAuth } from "./AuthContext.tsx";
 
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/me/password" element={<ChangePasswordPage />} />
         <Route path="/admin/secrets" element={role === "admin" ? <AdminSecretsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/users" element={role === "admin" ? <AdminUsersPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
+        <Route path="/admin/flows" element={role === "admin" ? <AdminFlowsPage /> : <Navigate to="/" replace />} />
       </Route>
     </Routes>
   );

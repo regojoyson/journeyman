@@ -2,10 +2,15 @@ import type { FlowGraph } from "../types/flow.types.ts";
 import type { Run, RunStatus } from "../types/run.types.ts";
 
 export interface SubmitRunArgs {
-  flowVersionId: string;
-  flowDefinition: FlowGraph;
+  flowId: string | null;
+  flowVersionId: string | null;
+  flowNameSnapshot: string;
+  flowScopeSnapshot: "user" | "org" | "global";
+  definitionSnapshot: FlowGraph;
   inputs: Record<string, unknown>;
   startedByUserId: string | null;
+  /** Caller's org at run-start. Null when the caller has no org context. */
+  startedByOrgId: string | null;
 }
 
 export interface IOrchestratorEngine {

@@ -10,11 +10,14 @@ export type TriggerSource = "manual" | "webhook" | "schedule" | "api";
 
 export interface Run {
   id: string;
-  flowVersionId: string;
+  flowId: string | null;            // advisory; nullable if source flow deleted
+  flowVersionId: string | null;     // advisory; nullable if source version deleted
+  flowNameSnapshot: string;
+  flowScopeSnapshot: "user" | "org" | "global";
+  definitionSnapshot: import("./flow.types.ts").FlowGraph;
   status: RunStatus;
   triggerSource: TriggerSource;
   startedByUserId: string | null;
-  /** Engine-side workflow id (Conductor's `workflowId`). */
   engineWorkflowId: string | null;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -22,6 +25,8 @@ export interface Run {
   failedAtNodeId: string | null;
   inputs: Record<string, unknown>;
   outputs: Record<string, unknown> | null;
+  /** Hydrated by the API layer for the calling actor. */
+  effectiveRole?: import("./run-grants.types.ts").RunGrantRole;
 }
 
 export type RunEventType =

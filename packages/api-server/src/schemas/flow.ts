@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 export const createFlowBody = z.object({
+  scope: z.enum(["user", "org", "global"]).default("user"),
+  orgId: z.string().uuid().optional(),
   name: z.string().min(1),
   description: z.string().optional(),
-  ownerUserId: z.string().nullable().optional(),
+  // ownerUserId removed — server derives from caller for user-scope.
   definition: z.object({
     schemaVersion: z.literal(1),
     nodes: z.array(z.object({

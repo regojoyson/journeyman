@@ -20,15 +20,20 @@ export async function forkFromRun(
 ): Promise<{ flow: Flow; version: FlowVersion }> {
   const run = await deps.runs.getById(originalRunId);
   if (!run) throw new Error(`Run not found: ${originalRunId}`);
-  const version = await deps.flowVersions.getById(run.flowVersionId);
-  if (!version) throw new Error(`Flow version not found: ${run.flowVersionId}`);
+
+  // flowVersionId is advisory/nullable — fall back to the definition snapshot baked into the run
+  const definition = run.flowVersionId
+    ? ((await deps.flowVersions.getById(run.flowVersionId))?.definition ?? run.definitionSnapshot)
+    : run.definitionSnapshot;
 
   const name = opts.name ?? `Fork of run ${originalRunId.slice(0, 8)}`;
   return await deps.flows.create({
+    scope: run.flowScopeSnapshot,
+    orgId: null,
     name,
     description: `Forked from run ${originalRunId}.`,
     ownerUserId: opts.ownerUserId ?? run.startedByUserId ?? null,
-    initialDefinition: version.definition,
+    initialDefinition: definition,
     createdByUserId: opts.createdByUserId ?? run.startedByUserId ?? null,
   });
 }

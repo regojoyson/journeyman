@@ -1,8 +1,14 @@
 import type { Flow, FlowGraph, FlowVersion } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
 
-export async function listFlows(): Promise<Flow[]> {
-  const res = await api<{ flows: Flow[] }>("/flows");
+export async function listFlows(
+  filter?: { scope?: "user" | "org" | "global"; orgId?: string },
+): Promise<Flow[]> {
+  const params = new URLSearchParams();
+  if (filter?.scope) params.set("scope", filter.scope);
+  if (filter?.orgId) params.set("orgId", filter.orgId);
+  const qs = params.toString();
+  const res = await api<{ flows: Flow[] }>(`/flows${qs ? `?${qs}` : ""}`);
   return res.flows;
 }
 
@@ -16,7 +22,13 @@ export async function getFlow(id: string): Promise<Flow | null> {
   }
 }
 
-export async function createFlow(args: { name: string; description?: string; definition: FlowGraph }): Promise<{ flow: Flow; version: FlowVersion }> {
+export async function createFlow(args: {
+  scope: "user" | "org" | "global";
+  orgId?: string;
+  name: string;
+  description?: string;
+  definition: FlowGraph;
+}): Promise<{ flow: Flow; version: FlowVersion }> {
   return await api<{ flow: Flow; version: FlowVersion }>("/flows", {
     method: "POST", body: JSON.stringify(args),
   });

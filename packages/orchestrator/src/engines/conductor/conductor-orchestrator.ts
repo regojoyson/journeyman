@@ -1,6 +1,6 @@
 import type {
   IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
-  IRunStore, Run, RunStatus, SubmitRunArgs,
+  IRunStore, IRunGrantsStore, Run, RunStatus, SubmitRunArgs,
 } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import type { IFlowJsonConverter } from "@journeyman/core";
@@ -10,25 +10,53 @@ export interface ConductorOrchestratorDeps {
   client: ConductorClient;
   converter: IFlowJsonConverter<ConductorWorkflowDef>;
   runs: IRunStore;
+  runGrants: IRunGrantsStore;
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
   constructor(private deps: ConductorOrchestratorDeps) {}
 
   async submit(args: SubmitRunArgs): Promise<{ runId: string; engineWorkflowId: string }> {
-    const wfName = `journeyman_v${args.flowVersionId.replace(/-/g, "_")}`;
-    const wfDef = this.deps.converter.toEngineJson(args.flowDefinition, {
+    const versionSuffix = args.flowVersionId ? args.flowVersionId.replace(/-/g, "_") : "unknown";
+    const wfName = `journeyman_v${versionSuffix}`;
+    const wfDef = this.deps.converter.toEngineJson(args.definitionSnapshot, {
       workflowName: wfName, workflowVersion: 1,
     });
 
     await this.deps.client.putWorkflowDef(wfDef);
 
     const run = await this.deps.runs.create({
+      flowId: args.flowId,
       flowVersionId: args.flowVersionId,
+      flowNameSnapshot: args.flowNameSnapshot,
+      flowScopeSnapshot: args.flowScopeSnapshot,
+      definitionSnapshot: args.definitionSnapshot,
       triggerSource: "api",
       startedByUserId: args.startedByUserId,
+      startedByOrgId: args.startedByOrgId,
       inputs: args.inputs,
     });
+
+    // Write run grants: ('user', starter, 'owner') always; ('org', org, 'viewer') when known.
+    const grantsToWrite: Array<{
+      principalType: "user" | "org" | "global";
+      principalId: string | null;
+      role: "owner" | "editor" | "viewer";
+      createdBy: string | null;
+    }> = [];
+    if (args.startedByUserId) {
+      grantsToWrite.push({
+        principalType: "user", principalId: args.startedByUserId,
+        role: "owner", createdBy: args.startedByUserId,
+      });
+    }
+    if (args.startedByOrgId) {
+      grantsToWrite.push({
+        principalType: "org", principalId: args.startedByOrgId,
+        role: "viewer", createdBy: args.startedByUserId,
+      });
+    }
+    if (grantsToWrite.length > 0) await this.deps.runGrants.createForRun(run.id, grantsToWrite);
 
     const engineWorkflowId = await this.deps.client.startWorkflow({
       name: wfName, version: 1, input: args.inputs,

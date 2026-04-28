@@ -11,19 +11,23 @@
 import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, ICredentialStore, IEventBus,
-  IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IPhaseRegistry, IRunStore, IWorkspaceProvider,
+  IFlowGrantsStore, IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
+  IPhaseRegistry, IRunGrantsStore, IRunStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
   ConductorClient,
   ConductorOrchestrator,
   ConductorJsonConverter,
+  PostgresFlowGrantsStore,
+  PostgresRunGrantsStore,
   PostgresFlowStore,
   PostgresFlowVersionStore,
   PostgresRunStore,
   PostgresNodeExecutionStore,
   PostgresEventBus,
+  MemoryFlowGrantsStore,
+  MemoryRunGrantsStore,
   MemoryFlowStore,
   MemoryFlowVersionStore,
   MemoryRunStore,
@@ -39,6 +43,8 @@ import { SecretsCredentialStore } from "@journeyman/secrets";
 import { findMembership, getOrg, getUser } from "@journeyman/identity";
 
 export interface Composition {
+  flowGrants: IFlowGrantsStore;
+  runGrants: IRunGrantsStore;
   flows: IFlowStore;
   flowVersions: IFlowVersionStore;
   runs: IRunStore;
@@ -66,6 +72,8 @@ export interface CompositionConfig {
 export function buildComposition(cfg: CompositionConfig): Composition {
   const useMemory = cfg.storeBackend === "memory";
 
+  let flowGrants: IFlowGrantsStore;
+  let runGrants: IRunGrantsStore;
   let flows: IFlowStore;
   let flowVersions: IFlowVersionStore;
   let runs: IRunStore;
@@ -76,7 +84,9 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   if (useMemory) {
     const v = new MemoryFlowVersionStore();
     flowVersions = v;
-    flows = new MemoryFlowStore(v);
+    flowGrants = new MemoryFlowGrantsStore();
+    runGrants = new MemoryRunGrantsStore();
+    flows = new MemoryFlowStore(v, flowGrants);
     runs = new MemoryRunStore();
     nodeExecutions = new MemoryNodeExecutionStore();
     events = new MemoryEventBus();
@@ -84,7 +94,9 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     pool = createPool({ connectionString: cfg.databaseUrl });
     const v = new PostgresFlowVersionStore(pool);
     flowVersions = v;
-    flows = new PostgresFlowStore(pool, v);
+    flowGrants = new PostgresFlowGrantsStore(pool);
+    runGrants = new PostgresRunGrantsStore(pool);
+    flows = new PostgresFlowStore(pool, v, flowGrants);
     runs = new PostgresRunStore(pool);
     nodeExecutions = new PostgresNodeExecutionStore(pool);
     events = new PostgresEventBus(pool);
@@ -95,6 +107,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     client: conductorClient,
     converter: new ConductorJsonConverter(),
     runs,
+    runGrants,
   });
 
   const registry = new InMemoryPhaseRegistry();
@@ -119,6 +132,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
           org: { id: o.id, slug: o.slug },
           membershipId: m.id,
           role: m.role,
+          isPlatformAdmin: u.isPlatformAdmin,
           tokenKind: "access-jwt",
         };
       },
@@ -135,7 +149,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const conditions = new JsonLogicEvaluator();
 
   return {
-    flows, flowVersions, runs, nodeExecutions, events,
+    flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events,
     orchestrator, registry, workspace, credentials, auth, conditions,
     pool,
     shutdown: async () => { if (pool) await pool.end(); },

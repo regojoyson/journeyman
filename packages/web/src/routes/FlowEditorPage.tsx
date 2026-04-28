@@ -2,12 +2,24 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
-import type { FlowGraph } from "@journeyman/core";
+import type { Flow, FlowGraph } from "@journeyman/core";
 import { getFlow, getCurrentFlowVersion, runFlow, updateFlowDefinition } from "../api/flows.ts";
+import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
+import { useAuth } from "../AuthContext.tsx";
+
+function canEditFlow(
+  flow: Flow,
+  ctx: { userId: string | null; orgId: string; role: string; isPlatformAdmin: boolean },
+): boolean {
+  if (ctx.isPlatformAdmin) return true;
+  if (flow.scope === "global") return false;
+  if (flow.scope === "org") return ctx.role === "admin" && flow.orgId === ctx.orgId;
+  return flow.ownerUserId === ctx.userId;
+}
 
 export function FlowEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +28,7 @@ export function FlowEditorPage() {
   const [graph, setGraph] = useState<FlowGraph | null>(null);
   const [, setDirty] = useState(false);
   const [toast, setToast] = useState<{ runId: string; engineWorkflowId: string } | null>(null);
+  const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
 
   const flowQ = useQuery({
     queryKey: ["flow", id],
@@ -58,17 +71,38 @@ export function FlowEditorPage() {
     return <div style={{ padding: 24, color: "#ff7675" }}>Flow not found.</div>;
   }
 
+  const flow = flowQ.data;
+  const editable = canEditFlow(flow, {
+    userId: user?.id ?? null,
+    orgId: activeOrgId,
+    role,
+    isPlatformAdmin,
+  });
+
+  const onClone = async () => {
+    const { id: newId } = await cloneFlow(flow.id);
+    navigate(`/flows/${newId}/edit`);
+  };
+
   return (
     <>
       <div style={{ height: "100%" }}>
+        {!editable && (
+          <div style={{
+            padding: "8px 12px", marginBottom: 12,
+            background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 4,
+          }}>
+            This is a {flow.scope} template. <button onClick={onClone}>Clone to my flows</button> to make changes.
+          </div>
+        )}
         <FlowEditor
           flow={graph}
-          flowName={flowQ.data.name}
+          flowName={flow.name}
           phases={builtInPhases}
           controlCatalog={defaultControlCatalog}
           mcpCatalog={defaultMcpCatalog}
           onChange={(next) => { setGraph(next); setDirty(true); }}
-          onSave={async (next) => { await saveM.mutateAsync(next); }}
+          onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
           onRun={async () => { await runM.mutateAsync(); }}
           busy={saveM.isPending || runM.isPending}
         />

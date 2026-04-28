@@ -1,9 +1,16 @@
+import type { FlowGraph } from "../types/flow.types.ts";
 import type { Run, NodeExecution, RunStatus, TriggerSource } from "../types/run.types.ts";
+import type { ActorContext, RunListScope } from "../types/run-grants.types.ts";
 
 export interface CreateRunArgs {
-  flowVersionId: string;
+  flowId: string | null;
+  flowVersionId: string | null;
+  flowNameSnapshot: string;
+  flowScopeSnapshot: "user" | "org" | "global";
+  definitionSnapshot: FlowGraph;
   triggerSource: TriggerSource;
   startedByUserId: string | null;
+  startedByOrgId: string | null;
   inputs: Record<string, unknown>;
 }
 
@@ -21,6 +28,8 @@ export interface IRunStore {
     flowId?: string;
     status?: RunStatus;
     limit?: number;
+    actor?: ActorContext;
+    scope?: RunListScope;
   }): Promise<Run[]>;
 }
 

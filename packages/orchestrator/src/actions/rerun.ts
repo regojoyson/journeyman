@@ -17,17 +17,24 @@ export interface RerunResult {
 export async function rerunFromExisting(
   deps: RerunDeps,
   originalRunId: string,
-  opts: { startedByUserId?: string | null } = {},
+  opts: { startedByUserId?: string | null; startedByOrgId?: string | null } = {},
 ): Promise<RerunResult> {
   const original = await deps.runs.getById(originalRunId);
   if (!original) throw new Error(`Run not found: ${originalRunId}`);
-  const version = await deps.flowVersions.getById(original.flowVersionId);
-  if (!version) throw new Error(`Flow version not found: ${original.flowVersionId}`);
+
+  // flowVersionId is advisory/nullable — fall back to the definition snapshot baked into the run
+  const definitionSnapshot = original.flowVersionId
+    ? ((await deps.flowVersions.getById(original.flowVersionId))?.definition ?? original.definitionSnapshot)
+    : original.definitionSnapshot;
 
   return await deps.orchestrator.submit({
-    flowVersionId: version.id,
-    flowDefinition: version.definition,
+    flowId: original.flowId,
+    flowVersionId: original.flowVersionId,
+    flowNameSnapshot: original.flowNameSnapshot,
+    flowScopeSnapshot: original.flowScopeSnapshot,
+    definitionSnapshot,
     inputs: original.inputs ?? {},
     startedByUserId: opts.startedByUserId ?? original.startedByUserId,
+    startedByOrgId: opts.startedByOrgId ?? null,
   });
 }

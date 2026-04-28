@@ -32,7 +32,10 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
 
     const active = memberships[0];
     const access = signAccessToken({
-      userId: found.user.id, orgId: active.membership.orgId, role: active.membership.role,
+      userId: found.user.id,
+      orgId: active.membership.orgId,
+      role: active.membership.role,
+      isPlatformAdmin: found.user.isPlatformAdmin,
     });
     const { plaintext: refresh, hash } = newRefreshToken();
     await insertRefreshToken(pool, {
@@ -57,7 +60,13 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     if (!m) return reply.code(403).send({ error: "Membership missing" });
 
     await revokeRefreshToken(pool, row.token_hash);
-    const access = signAccessToken({ userId: row.user_id, orgId: row.active_org_id, role: m.role });
+    const user = await getUser(pool, row.user_id);
+    const access = signAccessToken({
+      userId: row.user_id,
+      orgId: row.active_org_id,
+      role: m.role,
+      isPlatformAdmin: user?.isPlatformAdmin ?? false,
+    });
     const { plaintext: newRefresh, hash } = newRefreshToken();
     await insertRefreshToken(pool, {
       userId: row.user_id, tokenHash: hash, activeOrgId: row.active_org_id,
@@ -84,7 +93,13 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     const refresh = readRefreshCookie(req);
     if (refresh) await revokeRefreshToken(pool, sha256(refresh));
 
-    const access = signAccessToken({ userId: ctx.user.id, orgId: body.orgId, role: m.role });
+    const userRecord = await getUser(pool, ctx.user.id);
+    const access = signAccessToken({
+      userId: ctx.user.id,
+      orgId: body.orgId,
+      role: m.role,
+      isPlatformAdmin: userRecord?.isPlatformAdmin ?? false,
+    });
     const { plaintext: newRefresh, hash } = newRefreshToken();
     await insertRefreshToken(pool, {
       userId: ctx.user.id, tokenHash: hash, activeOrgId: body.orgId,
@@ -100,9 +115,10 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     // skip the DB lookup and return what the gate needs.
     if (ctx.user.id === "dev-user") {
       return {
-        user: { id: ctx.user.id, username: ctx.user.username, displayName: null, status: "active" },
+        user: { id: ctx.user.id, username: ctx.user.username, displayName: null, status: "active", isPlatformAdmin: false },
         activeOrg: { id: ctx.org.id, slug: ctx.org.slug, name: "dev" },
         role: ctx.role,
+        isPlatformAdmin: false,
         memberships: [],
       };
     }
@@ -110,6 +126,6 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     const o = await getOrg(pool, ctx.org.id);
     if (!u || !o) return reply.code(401).send({ error: "Stale session" });
     const memberships = await listMembershipsForUser(pool, ctx.user.id);
-    return { user: u, activeOrg: o, role: ctx.role, memberships };
+    return { user: u, activeOrg: o, role: ctx.role, isPlatformAdmin: ctx.isPlatformAdmin ?? false, memberships };
   });
 }

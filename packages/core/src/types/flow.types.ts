@@ -83,12 +83,32 @@ export interface FlowVersion {
 
 export interface Flow {
   id: string;
-  ownerUserId: string | null;
   name: string;
   description: string | null;
   currentVersionId: string | null;
+  createdByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
+
+  // Hydrated from owner grant by the API/store layer:
+  scope: FlowScope;
+  orgId: string | null;
+  ownerUserId: string | null;
+  grants?: FlowGrant[];
+}
+
+export type FlowScope = "user" | "org" | "global";
+export type FlowGrantPrincipalType = FlowScope;
+export type FlowGrantRole = "owner" | "editor" | "viewer";
+
+export interface FlowGrant {
+  id: string;
+  flowId: string;
+  principalType: FlowGrantPrincipalType;
+  principalId: string | null;
+  role: FlowGrantRole;
+  createdAt: Date;
+  createdBy: string | null;
 }
 
 // === Phase 5 additions ===

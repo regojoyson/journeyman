@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   CreateRunArgs, INodeExecutionStore, IRunStore, NodeExecution, Run, RunStatus,
+  ActorContext, RunListScope,
 } from "@journeyman/core";
 
 export class MemoryRunStore implements IRunStore {
@@ -9,7 +10,11 @@ export class MemoryRunStore implements IRunStore {
   async create(args: CreateRunArgs): Promise<Run> {
     const run: Run = {
       id: randomUUID(),
+      flowId: args.flowId,
       flowVersionId: args.flowVersionId,
+      flowNameSnapshot: args.flowNameSnapshot,
+      flowScopeSnapshot: args.flowScopeSnapshot,
+      definitionSnapshot: args.definitionSnapshot,
       status: "pending",
       triggerSource: args.triggerSource,
       startedByUserId: args.startedByUserId,
@@ -54,9 +59,18 @@ export class MemoryRunStore implements IRunStore {
     });
   }
 
-  async list(opts: { flowId?: string; status?: RunStatus; limit?: number } = {}): Promise<Run[]> {
+  async list(opts: {
+    flowId?: string;
+    status?: RunStatus;
+    limit?: number;
+    actor?: ActorContext;
+    scope?: RunListScope;
+  } = {}): Promise<Run[]> {
     let out = [...this.rows.values()];
+    if (opts.flowId) out = out.filter(r => r.flowId === opts.flowId);
     if (opts.status) out = out.filter(r => r.status === opts.status);
+    // Memory backend trusts the API layer to apply actor/scope filtering via
+    // runGrants.matchForActor when needed; the postgres backend joins in SQL.
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }

@@ -50,6 +50,7 @@ export default function AppShell() {
         <NavLink to="/me/secrets" style={navStyle}>My Secrets</NavLink>
         {role === "admin" && <NavLink to="/admin/users" style={navStyle}>Users</NavLink>}
         {role === "admin" && <NavLink to="/admin/secrets" style={navStyle}>Org Secrets</NavLink>}
+        {role === "admin" && <NavLink to="/admin/flows" style={navStyle}>Admin → Flows</NavLink>}
 
         <div style={{ marginLeft: "auto" }} ref={menuRef} className="relative">
           <button

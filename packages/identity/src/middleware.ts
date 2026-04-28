@@ -5,7 +5,7 @@ import {
 } from "@journeyman/core";
 import { verifyAccessToken } from "./jwt.ts";
 import { isApiToken, sha256 } from "./tokens.ts";
-import { findActiveApiToken, findMembership, getOrg, getUser, touchApiTokenLastUsed } from "./db.ts";
+import { findActiveApiToken, findMembership, getOrg, getUser, isUserPlatformAdmin, touchApiTokenLastUsed } from "./db.ts";
 
 declare module "fastify" {
   interface FastifyRequest { runContext?: RunContext; }
@@ -24,6 +24,7 @@ export function makeRequireAuth(deps: RequireAuthDeps) {
             org:  { id: "dev-org",  slug: "dev" },
             membershipId: "dev-membership",
             role: "admin",
+            isPlatformAdmin: true,
             tokenKind: "access-jwt",
           };
           return;
@@ -35,6 +36,7 @@ export function makeRequireAuth(deps: RequireAuthDeps) {
         let userId: string, orgId: string, role: Role;
         let tokenKind: RunContext["tokenKind"];
         let apiTokenId: string | undefined;
+        let isPlatformAdmin = false;
 
         if (isApiToken(tok)) {
           const row = await findActiveApiToken(deps.pool, sha256(tok));
@@ -45,10 +47,13 @@ export function makeRequireAuth(deps: RequireAuthDeps) {
           const m = await findMembership(deps.pool, userId, orgId);
           if (!m) throw new ForbiddenError("Membership missing");
           role = m.role;
+          // For api tokens, look up the flag fresh.
+          isPlatformAdmin = await isUserPlatformAdmin(deps.pool, userId);
         } else {
           const claims = verifyAccessToken(tok);
           userId = claims.sub; orgId = claims.org; role = claims.role;
           tokenKind = "access-jwt";
+          isPlatformAdmin = !!claims.pa;
         }
 
         if (opts.role === "admin" && role !== "admin") {
@@ -66,6 +71,7 @@ export function makeRequireAuth(deps: RequireAuthDeps) {
           org:  { id: o.id, slug: o.slug },
           membershipId: m.id,
           role,
+          isPlatformAdmin,
           tokenKind,
           apiTokenId,
         };

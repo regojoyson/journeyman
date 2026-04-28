@@ -1,11 +1,17 @@
-import type { Flow, FlowVersion, NodeExecution, Run, RunEvent } from "@journeyman/core";
+import type { Flow, FlowVersion, NodeExecution, Run, RunEvent, RunListScope } from "@journeyman/core";
 import { api } from "./client.ts";
 
-export async function listRuns(filter: { status?: Run["status"]; flowId?: string; limit?: number } = {}): Promise<Run[]> {
+export async function listRuns(filter: {
+  status?: Run["status"];
+  flowId?: string;
+  limit?: number;
+  scope?: RunListScope;
+} = {}): Promise<Run[]> {
   const qs = new URLSearchParams();
   if (filter.status) qs.set("status", filter.status);
   if (filter.flowId) qs.set("flow_id", filter.flowId);
   if (filter.limit) qs.set("limit", String(filter.limit));
+  if (filter.scope) qs.set("scope", filter.scope);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await api<{ runs: Run[] }>(`/runs${suffix}`);
   return res.runs;

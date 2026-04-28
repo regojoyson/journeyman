@@ -1,12 +1,16 @@
 import type { Pool } from "pg";
 import type {
-  CreateRunArgs, INodeExecutionStore, IRunStore, NodeExecution, Run, RunStatus,
+  ActorContext, CreateRunArgs, INodeExecutionStore, IRunStore, NodeExecution, Run, RunListScope, RunStatus,
 } from "@journeyman/core";
 
 function rowToRun(row: any): Run {
   return {
     id: row.id,
+    flowId: row.flow_id,
     flowVersionId: row.flow_version_id,
+    flowNameSnapshot: row.flow_name_snapshot,
+    flowScopeSnapshot: row.flow_scope_snapshot,
+    definitionSnapshot: row.definition_snapshot,
     status: row.status,
     triggerSource: row.trigger_source,
     startedByUserId: row.started_by_user_id,
@@ -20,14 +24,61 @@ function rowToRun(row: any): Run {
   };
 }
 
+function grantMatchSql(
+  actor: ActorContext,
+  scope: RunListScope | undefined,
+  params: any[],
+  nextIdx: () => number,
+): string {
+  const clauses: string[] = [];
+
+  if (scope === "mine") {
+    if (actor.userId) {
+      clauses.push(`(g.principal_type = 'user' AND g.principal_id = $${nextIdx()} AND g.role = 'owner')`);
+      params.push(actor.userId);
+    }
+    if (actor.role === "admin" && actor.orgId) {
+      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
+      params.push(actor.orgId);
+    }
+  } else if (scope === "org") {
+    if (actor.orgId) {
+      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
+      params.push(actor.orgId);
+    }
+  } else {
+    // default scope (no filter): everything actor can see
+    if (actor.userId) {
+      clauses.push(`(g.principal_type = 'user' AND g.principal_id = $${nextIdx()})`);
+      params.push(actor.userId);
+    }
+    if (actor.orgId) {
+      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
+      params.push(actor.orgId);
+    }
+    clauses.push(`(g.principal_type = 'global')`);
+  }
+
+  return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
+}
+
 export class PostgresRunStore implements IRunStore {
   constructor(private pool: Pool) {}
 
   async create(args: CreateRunArgs): Promise<Run> {
     const { rows } = await this.pool.query(
-      `INSERT INTO jm_runs (flow_version_id, status, trigger_source, started_by_user_id, inputs)
-       VALUES ($1, 'pending', $2, $3, $4::jsonb) RETURNING *`,
-      [args.flowVersionId, args.triggerSource, args.startedByUserId, JSON.stringify(args.inputs)],
+      `INSERT INTO jm_runs
+         (flow_id, flow_version_id, flow_name_snapshot, flow_scope_snapshot, definition_snapshot,
+          status, trigger_source, started_by_user_id, inputs)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb)
+       RETURNING *`,
+      [
+        args.flowId, args.flowVersionId,
+        args.flowNameSnapshot, args.flowScopeSnapshot,
+        JSON.stringify(args.definitionSnapshot),
+        args.triggerSource, args.startedByUserId,
+        JSON.stringify(args.inputs),
+      ],
     );
     return rowToRun(rows[0]);
   }
@@ -69,19 +120,45 @@ export class PostgresRunStore implements IRunStore {
     );
   }
 
-  async list(opts: { flowId?: string; status?: RunStatus; limit?: number } = {}): Promise<Run[]> {
+  async list(opts: {
+    flowId?: string;
+    status?: import("@journeyman/core").RunStatus;
+    limit?: number;
+    actor?: ActorContext;
+    scope?: RunListScope;
+  } = {}): Promise<import("@journeyman/core").Run[]> {
     const conds: string[] = [];
     const params: any[] = [];
-    if (opts.status) { params.push(opts.status); conds.push(`status = $${params.length}`); }
-    if (opts.flowId) {
-      params.push(opts.flowId);
-      conds.push(`flow_version_id IN (SELECT id FROM jm_flow_versions WHERE flow_id = $${params.length})`);
+    let i = 1;
+    const nextIdx = () => i++;
+
+    if (opts.flowId) { conds.push(`r.flow_id = $${nextIdx()}`); params.push(opts.flowId); }
+    if (opts.status) { conds.push(`r.status = $${nextIdx()}`); params.push(opts.status); }
+
+    let joinClause = "";
+    if (opts.actor && !(opts.actor.isPlatformAdmin && opts.scope === "all")) {
+      joinClause = `
+      JOIN LATERAL (
+        SELECT 1 FROM jm_run_grants g
+        WHERE g.run_id = r.id
+          AND ${grantMatchSql(opts.actor, opts.scope, params, nextIdx)}
+        LIMIT 1
+      ) gm ON TRUE
+    `;
     }
-    const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-    const limit = opts.limit ? `LIMIT ${Number(opts.limit)}` : "LIMIT 100";
-    const { rows } = await this.pool.query(
-      `SELECT * FROM jm_runs ${where} ORDER BY created_at DESC ${limit}`, params,
-    );
+
+    const whereSql = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+    const limitSql = opts.limit ? `LIMIT $${nextIdx()}` : "";
+    if (opts.limit) params.push(opts.limit);
+
+    const sql = `
+    SELECT DISTINCT r.* FROM jm_runs r
+    ${joinClause}
+    ${whereSql}
+    ORDER BY r.started_at DESC NULLS LAST
+    ${limitSql}
+  `;
+    const { rows } = await this.pool.query(sql, params);
     return rows.map(rowToRun);
   }
 }
