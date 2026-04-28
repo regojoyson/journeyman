@@ -80,10 +80,29 @@ export class WorkerHarness {
     const ws = await this.deps.workspace.create({ runId, nodeId, userId });
     const abort = new AbortController();
 
+    const flowId = ((task.inputData ?? {}) as { flowId?: string | null }).flowId ?? null;
     const declaredCreds = ((task.inputData ?? {}) as { credentials?: Record<string, string> }).credentials ?? {};
-    const resolvedEnv = await this.deps.credentials
-      .resolve(declaredCreds, { userId: null, flowId: null })
-      .catch(() => ({}));
+    let resolvedEnv: Record<string, string>;
+    try {
+      resolvedEnv = await this.deps.credentials.resolve(declaredCreds, { userId, flowId });
+    } catch (err: any) {
+      const isCredErr =
+        err?.name === "CredentialNotFoundError" || err?.name === "MissingSecretsError";
+      if (isCredErr) {
+        const missing: string[] = err.missing ?? (err.ref ? [String(err.ref)] : []);
+        await this.deps.events.append({
+          runId, nodeId, eventType: "phase.failed",
+          payload: { reason: "missing_secrets", missing, message: String(err?.message ?? "") },
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: runId, taskId: task.taskId,
+          status: "FAILED_WITH_TERMINAL_ERROR",
+          reasonForIncompletion: `missing_secrets: ${missing.join(", ") || err?.message || "unknown"}`,
+        });
+        return;
+      }
+      throw err;
+    }
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",
       payload: { attempt: task.retryCount + 1 },

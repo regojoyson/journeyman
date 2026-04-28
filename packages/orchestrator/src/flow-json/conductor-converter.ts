@@ -117,11 +117,19 @@ class ConvertCtx {
       type: "SIMPLE",
       name: node.phaseType,
       taskReferenceName: node.id,
-      inputParameters: {
-        ...(node.config ?? {}),
-        retry: node.retry ?? {},
-        credentials: ((node.config ?? {}) as { credentials?: Record<string, string> }).credentials ?? {},
-      },
+      inputParameters: (() => {
+        const creds: Record<string, string> = {
+          ...((node.config as { credentials?: Record<string, string> } | undefined)?.credentials ?? {}),
+        };
+        for (const name of node.requiredSecrets ?? []) {
+          creds[name] = `env:${name}`;
+        }
+        return {
+          ...(node.config ?? {}),
+          retry: node.retry ?? {},
+          credentials: creds,
+        };
+      })(),
       retryCount: enabled ? (r.maxAttempts ?? 3) : 0,
       retryLogic: enabled ? mapBackoff(r.backoff ?? "exponential") : "FIXED",
       retryDelaySeconds: enabled ? (r.backoffSeconds ?? 5) : 0,

@@ -5,7 +5,8 @@ import type { Pool } from "pg";
 import type { Role } from "@journeyman/core";
 import { makeRequireAuth } from "../middleware.ts";
 import {
-  createInvite, deleteMembership, listMembershipsForOrg, updateMembershipRole,
+  countActiveAdminsInOrg, createInvite, deleteMembership, isOrgAdmin,
+  listMembershipsForOrg, updateMembershipRole,
 } from "../db.ts";
 
 export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
@@ -42,6 +43,10 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (await isOrgAdmin(pool, orgId, userId)) {
+        const remaining = await countActiveAdminsInOrg(pool, orgId);
+        if (remaining <= 1) return reply.code(409).send({ error: "Cannot remove last admin" });
+      }
       await deleteMembership(pool, orgId, userId);
       return { ok: true };
     });
@@ -53,6 +58,10 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { role?: Role };
       if (body?.role !== "admin" && body?.role !== "member") return reply.code(400).send({ error: "Bad role" });
+      if (body.role === "member" && await isOrgAdmin(pool, orgId, userId)) {
+        const remaining = await countActiveAdminsInOrg(pool, orgId);
+        if (remaining <= 1) return reply.code(409).send({ error: "Cannot demote last admin" });
+      }
       await updateMembershipRole(pool, orgId, userId, body.role);
       return { ok: true };
     });

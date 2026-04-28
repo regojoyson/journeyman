@@ -35,6 +35,8 @@ import {
   JsonLogicEvaluator,
   createPool,
 } from "@journeyman/orchestrator";
+import { SecretsCredentialStore } from "@journeyman/secrets";
+import { findMembership, getOrg, getUser } from "@journeyman/identity";
 
 export interface Composition {
   flows: IFlowStore;
@@ -97,7 +99,33 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   const registry = new InMemoryPhaseRegistry();
   const workspace = new DirectoryWorkspaceProvider();
-  const credentials = new EnvCredentialStore();
+  let credentials: ICredentialStore;
+  if (pool) {
+    const dbPool = pool;
+    credentials = new SecretsCredentialStore({
+      pool: dbPool,
+      async getRunContext(input) {
+        if (!input.userId) return null;
+        const u = await getUser(dbPool, input.userId);
+        if (!u) return null;
+        const memQ = await dbPool.query(
+          "SELECT id, org_id, role FROM jm_memberships WHERE user_id = $1 ORDER BY created_at LIMIT 1",
+          [input.userId],
+        );
+        const m = memQ.rows[0]; if (!m) return null;
+        const o = await getOrg(dbPool, m.org_id); if (!o) return null;
+        return {
+          user: { id: u.id, username: u.username },
+          org: { id: o.id, slug: o.slug },
+          membershipId: m.id,
+          role: m.role,
+          tokenKind: "access-jwt",
+        };
+      },
+    });
+  } else {
+    credentials = new EnvCredentialStore();
+  }
   // Inline anonymous auth provider
   const auth: IAuthProvider = {
     async authenticate(_req: FastifyRequest) {

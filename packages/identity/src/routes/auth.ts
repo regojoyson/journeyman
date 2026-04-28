@@ -94,10 +94,21 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     return { activeOrgId: body.orgId };
   });
 
-  app.get("/api/auth/me", { preHandler: requireAuth() }, async (req) => {
+  app.get("/api/auth/me", { preHandler: requireAuth() }, async (req, reply) => {
     const ctx = req.runContext!;
+    // Dev-fallback context (IDENTITY_ENFORCE=false) plants non-UUID synthetic ids;
+    // skip the DB lookup and return what the gate needs.
+    if (ctx.user.id === "dev-user") {
+      return {
+        user: { id: ctx.user.id, username: ctx.user.username, displayName: null, status: "active" },
+        activeOrg: { id: ctx.org.id, slug: ctx.org.slug, name: "dev" },
+        role: ctx.role,
+        memberships: [],
+      };
+    }
     const u = await getUser(pool, ctx.user.id);
     const o = await getOrg(pool, ctx.org.id);
+    if (!u || !o) return reply.code(401).send({ error: "Stale session" });
     const memberships = await listMembershipsForUser(pool, ctx.user.id);
     return { user: u, activeOrg: o, role: ctx.role, memberships };
   });

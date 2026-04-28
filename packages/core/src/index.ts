@@ -75,3 +75,4 @@ export type {
 export type {
   PhaseContext, PhaseFailure, PhaseInput, PhaseOutput,
 } from "./types/phase-handler.types.ts";
+export * from "./types/secrets.types.ts";

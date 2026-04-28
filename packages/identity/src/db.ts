@@ -221,3 +221,61 @@ export async function updateUserProfile(pool: Pool, userId: string, displayName:
     [displayName, userId],
   );
 }
+
+export async function listUsersInOrg(pool: Pool, orgId: string) {
+  const r = await pool.query(
+    `SELECT u.id, u.username, u.display_name, u.status, u.created_at, u.updated_at,
+            m.id AS membership_id, m.role, m.created_at AS joined_at
+       FROM jm_memberships m
+       JOIN jm_users u ON u.id = m.user_id
+      WHERE m.org_id = $1
+      ORDER BY u.username`,
+    [orgId],
+  );
+  return r.rows.map((row: any) => ({
+    user: {
+      id: row.id, username: row.username, displayName: row.display_name,
+      status: row.status, createdAt: row.created_at, updatedAt: row.updated_at,
+    },
+    membership: {
+      id: row.membership_id, userId: row.id, orgId,
+      role: row.role, createdAt: row.joined_at,
+    },
+  }));
+}
+
+export async function setUserStatus(
+  pool: Pool, userId: string, status: "active" | "disabled",
+) {
+  await pool.query(
+    "UPDATE jm_users SET status = $1, updated_at = now() WHERE id = $2",
+    [status, userId],
+  );
+}
+
+export async function countActiveAdminsInOrg(pool: Pool, orgId: string): Promise<number> {
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS n
+       FROM jm_memberships m JOIN jm_users u ON u.id = m.user_id
+      WHERE m.org_id = $1 AND m.role = 'admin' AND u.status = 'active'`,
+    [orgId],
+  );
+  return r.rows[0].n;
+}
+
+export async function isOrgAdmin(pool: Pool, orgId: string, userId: string): Promise<boolean> {
+  const r = await pool.query(
+    "SELECT 1 FROM jm_memberships WHERE org_id = $1 AND user_id = $2 AND role = 'admin'",
+    [orgId, userId],
+  );
+  return r.rows.length > 0;
+}
+
+export async function adminUpdateUserProfile(
+  pool: Pool, userId: string, displayName: string | null,
+) {
+  await pool.query(
+    "UPDATE jm_users SET display_name = $1, updated_at = now() WHERE id = $2",
+    [displayName, userId],
+  );
+}

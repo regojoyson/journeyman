@@ -7,10 +7,11 @@ import { registerHealthRoutes } from "./routes/health.ts";
 import { registerFlowRoutes } from "./routes/flows.ts";
 import { registerRunRoutes } from "./routes/runs.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
+import { registerSecretsRoutes } from "@journeyman/secrets";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
 
   app.setErrorHandler((err, _req, reply) => {
@@ -23,6 +24,9 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
 
   registerHealthRoutes(app);
   await registerIdentityRoutes(app, c.pool!);
+  if (c.pool) {
+    await registerSecretsRoutes(app, c.pool);
+  }
   registerFlowRoutes(app, c);
   registerRunRoutes(app, c);
   return app;

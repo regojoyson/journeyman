@@ -38,6 +38,11 @@ export interface FlowNode {
   executorConfig?: { provider?: string };
   /** Per-phase retry policy. */
   retry?: RetryPolicy;
+  /**
+   * Names of env-vars that must be resolved before this node executes.
+   * The converter maps each name to an `env:<NAME>` ref in `inputParameters.credentials`.
+   */
+  requiredSecrets?: string[];
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
   /** Only meaningful on `end` nodes — surfaced as the run's outcome label. */
