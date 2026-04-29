@@ -3,8 +3,8 @@ import type { Pool } from "pg";
 import {
   ForbiddenError, type RunContext, type Role, UnauthorizedError,
 } from "@journeyman/core";
-import { verifyAccessToken } from "./jwt.ts";
-import { isApiToken, sha256 } from "./tokens.ts";
+import { verifyAccessToken, ACCESS_TOKEN_TTL_SECONDS } from "./jwt.ts";
+import { isApiToken, REFRESH_TTL_SECONDS, sha256 } from "./tokens.ts";
 import { findActiveApiToken, findMembership, getOrg, getUser, isUserPlatformAdmin, touchApiTokenLastUsed } from "./db.ts";
 
 declare module "fastify" {
@@ -105,8 +105,8 @@ export function readRefreshCookie(req: FastifyRequest): string | null {
 export function setAuthCookies(reply: FastifyReply, access: string, refresh: string) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   reply.header("Set-Cookie", [
-    `jm_access=${encodeURIComponent(access)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=900${secure}`,
-    `jm_refresh=${encodeURIComponent(refresh)}; Path=/api/auth/refresh; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}`,
+    `jm_access=${encodeURIComponent(access)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ACCESS_TOKEN_TTL_SECONDS}${secure}`,
+    `jm_refresh=${encodeURIComponent(refresh)}; Path=/api/auth/refresh; HttpOnly; SameSite=Lax; Max-Age=${REFRESH_TTL_SECONDS}${secure}`,
   ]);
 }
 

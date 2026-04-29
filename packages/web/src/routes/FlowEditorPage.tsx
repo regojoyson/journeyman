@@ -9,6 +9,7 @@ import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
+import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
 function canEditFlow(
@@ -28,6 +29,7 @@ export function FlowEditorPage() {
   const [graph, setGraph] = useState<FlowGraph | null>(null);
   const [, setDirty] = useState(false);
   const [toast, setToast] = useState<{ runId: string; engineWorkflowId: string } | null>(null);
+  const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
 
   const flowQ = useQuery({
@@ -55,6 +57,11 @@ export function FlowEditorPage() {
       qc.setQueryData(["flow-graph", id], next);
       qc.invalidateQueries({ queryKey: ["flow-version-current", id] });
       setDirty(false);
+      setSaveToast({ kind: "success", message: "Flow saved." });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Could not save the flow.";
+      setSaveToast({ kind: "error", message: msg });
     },
   });
 
@@ -114,6 +121,13 @@ export function FlowEditorPage() {
           engineWorkflowId={toast.engineWorkflowId}
           onViewLive={() => navigate(`/runs/${toast.runId}`)}
           onDismiss={() => setToast(null)}
+        />
+      )}
+      {saveToast && (
+        <StatusToast
+          kind={saveToast.kind}
+          message={saveToast.message}
+          onDismiss={() => setSaveToast(null)}
         />
       )}
     </>

@@ -27,6 +27,42 @@ export interface PhaseRunState {
   endedAt?: string;
 }
 
+export interface PhaseSummaryCtx {
+  /** node.inputs map (ref bindings). */
+  inputs?: Record<string, { kind: string; ref?: string; value?: unknown } | undefined>;
+}
+
+/**
+ * Render a binding ref as a short, human-friendly token for canvas display.
+ * `flow.input.ticketUrl` → `${ticketUrl}`
+ * `node-abc.output.summary` → `${node-abc.summary}`
+ */
+export function formatRefShort(ref: string | undefined | null): string {
+  if (!ref) return "";
+  const parts = ref.split(".");
+  if (parts.length >= 2 && parts[0] === "workflow" && parts[1] === "input") {
+    return "${" + parts.slice(2).join(".") + "}";
+  }
+  if (parts.length >= 3 && (parts[1] === "input" || parts[1] === "output")) {
+    return "${" + parts[0] + "." + parts.slice(2).join(".") + "}";
+  }
+  return "${" + ref + "}";
+}
+
+/** Resolve a config field's display value, falling back to its `inputs` binding when bound. */
+export function summaryValue(
+  config: unknown,
+  ctx: PhaseSummaryCtx | undefined,
+  key: string,
+): string {
+  const cfg = config as Record<string, unknown> | undefined;
+  const v = cfg?.[key];
+  if (typeof v === "string" && v.length > 0) return v;
+  const binding = ctx?.inputs?.[key];
+  if (binding && binding.kind === "ref" && binding.ref) return formatRefShort(binding.ref);
+  return "";
+}
+
 export interface PhaseFormProps<TConfig> {
   config: TConfig;
   onChange: (next: TConfig) => void;
@@ -58,7 +94,7 @@ export interface PhaseDefinition<TConfig = unknown> {
   };
 
   // canvas display
-  summary?: (config: TConfig) => string;
+  summary?: (config: TConfig, ctx?: PhaseSummaryCtx) => string;
   StatusBadge?: ComponentType<{ state: PhaseRunState }>;
 
   // executor binding (no runtime; intent only)

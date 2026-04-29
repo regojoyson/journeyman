@@ -1,6 +1,7 @@
 // packages/phases/src/tickets/update-ticket.tsx
 import { z } from "zod";
 import type { PhaseDefinition, PhaseFormProps } from "@journeyman/flow-editor";
+import { summaryValue } from "@journeyman/flow-editor";
 import {
   UPDATE_TICKET_PHASE_TYPE,
   UPDATE_TICKET_LABEL,
@@ -90,7 +91,7 @@ export const updateTicketPhase: PhaseDefinition<UpdateTicketConfig> = {
   }),
   ConfigForm: UpdateTicketConfigForm,
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  summary: c => c.ticketKey || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "updateTicket" },
   outputSchema: updateTicketOutputSchema,
 };

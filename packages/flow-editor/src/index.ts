@@ -10,10 +10,12 @@ export type {
   PhaseDefinition,
   PhaseRunState,
   PhaseFormProps,
+  PhaseSummaryCtx,
   FieldMeta,
   TabVisibility,
   ExecutorKind,
 } from "./phase-definition.ts";
+export { formatRefShort, summaryValue } from "./phase-definition.ts";
 export { executorCommonConfig, defaultProviderFor } from "./executor-common-config.ts";
 export { PhaseRegistry } from "./state/phase-registry.ts";
 export { defaultControlCatalog } from "./palette/built-in-categories.ts";

@@ -1,6 +1,7 @@
 // packages/phases/src/ai/analyze.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { summaryValue } from "@journeyman/flow-editor";
 import { ANALYZE_PHASE_TYPE, ANALYZE_LABEL, ANALYZE_CATEGORY, analyzeOutputSchema } from "./analyze.meta.ts";
 
 interface AnalyzeConfig {
@@ -28,7 +29,7 @@ export const analyzePhase: PhaseDefinition<AnalyzeConfig> = {
     instructions: { label: "Extra instructions", widget: "textarea", help: "Optional additional analysis instructions" },
   },
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  summary: c => c.ticketKey || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "coding-cli", method: "analyze" },
   outputSchema: analyzeOutputSchema,
 };

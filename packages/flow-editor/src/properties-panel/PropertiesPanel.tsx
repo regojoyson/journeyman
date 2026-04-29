@@ -1,6 +1,37 @@
 // packages/flow-editor/src/properties-panel/PropertiesPanel.tsx
 import { useState } from "react";
 import type { FlowGraph, FlowNode } from "@journeyman/core";
+
+function EndNodeConfig({ node, onChange, readOnly }: { node: FlowNode; onChange: (next: FlowNode) => void; readOnly?: boolean }) {
+  return (
+    <div>
+      <div className="je-props__field">
+        <label>Display name</label>
+        <input
+          type="text"
+          value={node.displayName ?? ""}
+          disabled={readOnly}
+          placeholder="End"
+          onChange={e => onChange({ ...node, displayName: e.target.value })}
+        />
+      </div>
+      <div className="je-props__field">
+        <label>Outcome label</label>
+        <input
+          type="text"
+          value={node.outcome ?? ""}
+          disabled={readOnly}
+          placeholder="success"
+          onChange={e => onChange({ ...node, outcome: e.target.value })}
+        />
+        <div className="je-props__field-help">
+          Surfaced as the run's outcome when this end node is reached. Examples: <code>success</code>, <code>failed</code>, <code>cancelled</code>, <code>code-rejected</code>. Multiple end nodes per flow are allowed; the first one reached wins.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 import type { McpCatalog } from "../types.ts";
 import { TabsShell, type TabId, type TabsVisibility } from "./tabs-shell.tsx";
 import { ConfigTab } from "./ConfigTab.tsx";
@@ -84,10 +115,10 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </TabsShell>
       ) : node.type === "loop" || node.type === "timer" ? (
         <ControlNodeConfigTab flow={flow} node={node} onChange={onChange} readOnly={readOnly} />
+      ) : node.type === "end" ? (
+        <EndNodeConfig node={node} onChange={onChange} readOnly={readOnly} />
       ) : (
-        <div className="je-empty">
-          {node.type === "end" ? "End node — set the outcome label in the Inspector (Phase 6)." : "Control nodes have no per-tab config in v0."}
-        </div>
+        <div className="je-empty">Control nodes have no per-tab config in v0.</div>
       )}
     </aside>
   );

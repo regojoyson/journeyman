@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-export function LoginPage(props: { onLoggedIn: () => void }) {
+export function LoginPage(props: {
+  onLoggedIn: () => void;
+  onLogin: (username: string, password: string) => Promise<void>;
+}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -10,13 +13,7 @@ export function LoginPage(props: { onLoggedIn: () => void }) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Login failed");
+      await props.onLogin(username, password);
       props.onLoggedIn();
     } catch (err: any) { setError(err.message); }
     finally { setBusy(false); }

@@ -1,6 +1,7 @@
 // packages/phases/src/ai/plan.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import { summaryValue } from "@journeyman/flow-editor";
 import { PLAN_PHASE_TYPE, PLAN_LABEL, PLAN_CATEGORY, planOutputSchema } from "./plan.meta.ts";
 
 interface PlanConfig {
@@ -28,7 +29,7 @@ export const planPhase: PhaseDefinition<PlanConfig> = {
     analysisRef: { label: "Analysis ref", widget: "text", help: "Optional reference to a prior analyze output" },
   },
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  summary: c => c.ticketKey || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "coding-cli", method: "plan" },
   outputSchema: planOutputSchema,
 };

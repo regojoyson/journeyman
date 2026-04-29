@@ -1,7 +1,14 @@
 import jwt from "jsonwebtoken";
 import type { AccessTokenClaims, Role } from "@journeyman/core";
 
-const ACCESS_TTL_SECONDS = 15 * 60;
+function envSeconds(name: string, fallback: number): number {
+  const v = process.env[name];
+  if (!v) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+const ACCESS_TTL_SECONDS = envSeconds("ACCESS_TOKEN_TTL_SECONDS", 15 * 60);
 
 function secret(): string {
   const s = process.env.JWT_SECRET;

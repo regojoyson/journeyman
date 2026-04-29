@@ -1,3 +1,4 @@
+// packages/web/src/AuthContext.tsx
 import { createContext, useContext } from "react";
 
 export interface AuthUser {
@@ -5,6 +6,7 @@ export interface AuthUser {
   username: string;
   displayName: string | null;
 }
+
 export interface AuthOrg {
   id: string;
   slug?: string;
@@ -17,7 +19,10 @@ export interface AuthCtx {
   isPlatformAdmin: boolean;
   user: AuthUser | null;
   org: AuthOrg | null;
+  exp: number;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+  extend: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthCtx>({
@@ -26,7 +31,10 @@ export const AuthContext = createContext<AuthCtx>({
   isPlatformAdmin: false,
   user: null,
   org: null,
+  exp: 0,
   logout: async () => {},
+  refresh: async () => {},
+  extend: async () => {},
 });
 
 export function useAuth(): AuthCtx {

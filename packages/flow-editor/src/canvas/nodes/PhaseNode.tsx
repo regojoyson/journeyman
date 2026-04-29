@@ -8,6 +8,7 @@ export interface PhaseNodeData {
   displayName: string;
   phaseType: string;
   config?: Record<string, unknown>;
+  inputs?: Record<string, { kind: string; ref?: string; value?: unknown } | undefined>;
   runState?: PhaseRunState;
   [key: string]: unknown;
 }
@@ -43,7 +44,7 @@ export function PhaseNode(props: NodeProps) {
   const accent = definition?.color ?? "#6c5ce7";
   const icon = definition?.icon ?? "⚙";
   const subtitle =
-    (definition?.summary && data.config && definition.summary(data.config)) ||
+    (definition?.summary && definition.summary(data.config ?? {}, { inputs: data.inputs })) ||
     definition?.label ||
     data.phaseType;
   const Badge = definition?.StatusBadge ?? DefaultStatusBadge;

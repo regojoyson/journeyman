@@ -44,10 +44,13 @@ cp .env.example .env
 npm run infra:up
 npm run migrate
 
-# 4. start backend + frontend (two terminals)
-npm run start:api-server   # terminal 1 — Fastify API on :3000
-npm run dev:web            # terminal 2 — Vite dev server (web UI)
+# 4. start backend + worker + frontend (three terminals)
+npm run start:api-server   # terminal 1 — Fastify API on :4000 (handles editor traffic, submits runs to Conductor)
+npm run start:worker       # terminal 2 — polls Conductor for queued tasks and executes phase handlers
+npm run dev:web            # terminal 3 — Vite dev server (web UI)
 ```
+
+**All three are needed for end-to-end runs.** Without the worker, runs start in Conductor but stay queued — nothing actually executes. See [`@journeyman/orchestrator`](packages/orchestrator/README.md) for what the worker does and how to extend its phase handler coverage.
 
 Open the web UI — on a fresh DB you'll see the **Setup wizard**. Create the first
 organization and admin user, then sign in with those credentials.
@@ -69,8 +72,8 @@ npx tsx packages/identity/src/cli/bootstrap.ts \
 | `npm run typecheck` | Typecheck all packages |
 | `npm run infra:up` / `infra:down` / `infra:reset` | Start / stop / wipe local Postgres (docker-compose) |
 | `npm run migrate` | Apply DB migrations from `@journeyman/migrations` |
-| `npm run start:api-server` | Start the Fastify API server (reads `.env` via dotenv) |
-| `npm run start:worker` | Start the orchestrator worker |
+| `npm run start:api-server` | Start the Fastify API server. Handles editor HTTP traffic; submits runs to Conductor but does **not** execute phases itself. |
+| `npm run start:worker` | Start the orchestrator worker. Polls Conductor for queued tasks and runs the matching phase handler — this is what actually executes `analyze`, `checkout-repo`, etc. **Required for runs to make progress.** See [`@journeyman/orchestrator`](packages/orchestrator/README.md). |
 | `npm run dev:web` | Vite dev server for the web UI |
 | `npm run build:web` | Production build of the web UI |
 | `npx tsx packages/identity/src/cli/bootstrap.ts ...` | Create the first org + admin (headless alternative to the setup wizard) |

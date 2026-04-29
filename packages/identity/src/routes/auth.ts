@@ -1,7 +1,21 @@
 import bcrypt from "bcrypt";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { signAccessToken } from "../jwt.ts";
+import jwt from "jsonwebtoken";
+import { signAccessToken, ACCESS_TOKEN_TTL_SECONDS } from "../jwt.ts";
+
+function readAccessExp(req: FastifyRequest): number {
+  const cookieHeader = req.headers.cookie ?? "";
+  const m = /(?:^|;\s*)jm_access=([^;]+)/.exec(cookieHeader);
+  const fallback = Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS;
+  if (!m) return fallback;
+  try {
+    const decoded = jwt.decode(decodeURIComponent(m[1])) as { exp?: number } | null;
+    return decoded?.exp ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 import {
   newRefreshToken, sha256, REFRESH_TTL_SECONDS,
 } from "../tokens.ts";
@@ -43,10 +57,15 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
       expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
     });
     setAuthCookies(reply, access, refresh);
+    const activeOrg = await getOrg(pool, active.membership.orgId);
     return {
       user: found.user,
       memberships,
       activeOrgId: active.membership.orgId,
+      activeOrg,
+      role: active.membership.role,
+      isPlatformAdmin: found.user.isPlatformAdmin,
+      exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
     };
   });
 
@@ -73,7 +92,17 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
       expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
     });
     setAuthCookies(reply, access, newRefresh);
-    return { ok: true };
+    const activeOrg = await getOrg(pool, row.active_org_id);
+    const memberships = await listMembershipsForUser(pool, row.user_id);
+    return {
+      user,
+      activeOrg,
+      activeOrgId: row.active_org_id,
+      role: m.role,
+      isPlatformAdmin: user?.isPlatformAdmin ?? false,
+      memberships,
+      exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
+    };
   });
 
   app.post("/api/auth/logout", async (req, reply) => {
@@ -126,6 +155,13 @@ export async function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     const o = await getOrg(pool, ctx.org.id);
     if (!u || !o) return reply.code(401).send({ error: "Stale session" });
     const memberships = await listMembershipsForUser(pool, ctx.user.id);
-    return { user: u, activeOrg: o, role: ctx.role, isPlatformAdmin: ctx.isPlatformAdmin ?? false, memberships };
+    return {
+      user: u,
+      activeOrg: o,
+      role: ctx.role,
+      isPlatformAdmin: ctx.isPlatformAdmin ?? false,
+      memberships,
+      exp: readAccessExp(req),
+    };
   });
 }

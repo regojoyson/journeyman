@@ -78,6 +78,7 @@ function toReactFlowNodes(
           displayName: n.displayName ?? n.phaseType ?? "Phase",
           phaseType: n.phaseType ?? "",
           config: n.config ?? {},
+          inputs: n.inputs ?? {},
           runState: runStates?.[n.id],
         }
       : {
@@ -154,9 +155,33 @@ function CanvasInner(p: CanvasProps) {
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (p.readOnly) return;
-    onNodesChangeInternal(changes);
 
-    const meaningful = changes.some(c => {
+    // Delete-protection: never allow removing the start node, and don't allow
+    // removing the last remaining end node. Filter out blocked changes before
+    // they reach React Flow's internal state.
+    let blockedRemoval: { id: string; reason: string } | null = null;
+    const endCount = p.flow.nodes.filter(n => n.type === "end").length;
+    const filtered = changes.filter(c => {
+      if (c.type !== "remove") return true;
+      const node = p.flow.nodes.find(n => n.id === c.id);
+      if (!node) return true;
+      if (node.type === "start") {
+        blockedRemoval = { id: c.id, reason: "Cannot delete the start node — every flow needs exactly one." };
+        return false;
+      }
+      if (node.type === "end" && endCount <= 1) {
+        blockedRemoval = { id: c.id, reason: "Cannot delete the only end node — flows need at least one terminal." };
+        return false;
+      }
+      return true;
+    });
+    if (blockedRemoval) {
+      console.info(`[flow-editor] ${(blockedRemoval as { reason: string }).reason}`);
+    }
+
+    onNodesChangeInternal(filtered);
+
+    const meaningful = filtered.some(c => {
       if (c.type === "position") return (c as { dragging?: boolean }).dragging === false;
       if (c.type === "remove") return true;
       return false;
@@ -167,7 +192,7 @@ function CanvasInner(p: CanvasProps) {
       queueMicrotask(() => propagate(buildFlow(curr, edges)));
       return curr;
     });
-  }, [p.readOnly, onNodesChangeInternal, setNodes, buildFlow, edges, propagate]);
+  }, [p.readOnly, p.flow.nodes, onNodesChangeInternal, setNodes, buildFlow, edges, propagate]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (p.readOnly) return;

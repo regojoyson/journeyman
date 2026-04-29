@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { FlowGraph } from "@journeyman/core";
+import { toYaml } from "./yaml-serialize.ts";
 
 export interface ValidationReport {
   ok: boolean;
@@ -13,6 +15,8 @@ export interface TopbarProps {
   onSave?: () => void;
   onRun?: () => void;
   onValidate?: () => Promise<ValidationReport>;
+  /** Snapshot of the flow definition; used by the export viewer. */
+  flow?: FlowGraph;
   busy?: boolean;
   dirty?: boolean;
   saveEnabled?: boolean;
@@ -26,6 +30,7 @@ export function Topbar(p: TopbarProps) {
   const [draft, setDraft] = useState(p.flowName);
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [validating, setValidating] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const runValidate = async () => {
     if (!p.onValidate) return;
@@ -67,6 +72,11 @@ export function Topbar(p: TopbarProps) {
         )}
         {p.dirty && <span style={{ color: "#fdcb6e", fontSize: 11 }}>● unsaved</span>}
         <div className="spacer" />
+        {p.flow && (
+          <button onClick={() => setExportOpen(true)} title="View the flow as JSON / YAML">
+            View JSON
+          </button>
+        )}
         {p.onValidate && (
           <button disabled={p.busy || validating} onClick={runValidate} title="Check the flow without saving">
             {validating ? "Validating…" : "Validate"}
@@ -95,6 +105,63 @@ export function Topbar(p: TopbarProps) {
       {report && (
         <ValidationPanel report={report} onClose={() => setReport(null)} />
       )}
+      {exportOpen && p.flow && (
+        <ExportPanel flow={p.flow} flowName={p.flowName} onClose={() => setExportOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: string; onClose: () => void }) {
+  const [format, setFormat] = useState<"json" | "yaml">("json");
+  const [copied, setCopied] = useState(false);
+
+  const text = useMemo(() => {
+    return format === "json" ? JSON.stringify(flow, null, 2) : toYaml(flow);
+  }, [flow, format]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore — older browsers without clipboard API */
+    }
+  };
+
+  const handleDownload = () => {
+    const slug = flowName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "flow";
+    const ext = format === "json" ? "json" : "yaml";
+    const mime = format === "json" ? "application/json" : "application/x-yaml";
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="je-export-panel">
+      <div className="je-export-panel__header">
+        <div className="je-export-panel__tabs">
+          <button
+            className={format === "json" ? "active" : ""}
+            onClick={() => setFormat("json")}
+          >JSON</button>
+          <button
+            className={format === "yaml" ? "active" : ""}
+            onClick={() => setFormat("yaml")}
+          >YAML</button>
+        </div>
+        <div className="je-export-panel__spacer" />
+        <button onClick={handleCopy}>{copied ? "Copied ✓" : "Copy"}</button>
+        <button onClick={handleDownload}>Download</button>
+        <button className="je-export-panel__close" onClick={onClose}>×</button>
+      </div>
+      <pre className="je-export-panel__body"><code>{text}</code></pre>
     </div>
   );
 }

@@ -45,7 +45,7 @@ export function isLinearAndComplete(flow: FlowGraph): { ok: boolean; reason?: st
   const starts = flow.nodes.filter(n => n.type === "start");
   if (starts.length !== 1) return { ok: false, reason: "Flow must have exactly one start node" };
   const ends = flow.nodes.filter(n => n.type === "end");
-  if (ends.length !== 1) return { ok: false, reason: "Flow must have exactly one end node" };
+  if (ends.length === 0) return { ok: false, reason: "Flow must have at least one end node" };
 
   const outgoing = new Map<string, string[]>();
   for (const e of flow.edges) {
