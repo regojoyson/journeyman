@@ -19,7 +19,7 @@ export function RetryTab({ node, onChange, readOnly }: RetryTabProps) {
   return (
     <div>
       <div className="je-props__field">
-        <label style={{ display: "flex", alignItems: "center", gap: 6, textTransform: "none" }}>
+        <label className="je-props__check-row">
           <input
             type="checkbox"
             checked={!!r.enabled}

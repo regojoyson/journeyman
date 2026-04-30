@@ -39,6 +39,22 @@ export function SchemaForm({
     <div>
       {Object.entries(fields).map(([key, meta]) => {
         const isBound = !!boundKeys?.has(key);
+        if (meta.widget === "checkbox" && !isBound) {
+          return (
+            <div key={key} className="je-props__field">
+              <label className="je-props__check-row">
+                <input
+                  type="checkbox"
+                  checked={Boolean(config[key])}
+                  disabled={readOnly}
+                  onChange={e => set(key, e.target.checked)}
+                />
+                {meta.label}
+              </label>
+              {meta.help && <div className="je-props__field-help">{meta.help}</div>}
+            </div>
+          );
+        }
         return (
           <div key={key} className="je-props__field">
             <div className="je-props__field-label-row">

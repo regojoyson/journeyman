@@ -11,6 +11,10 @@ export const implementOutputSchema: OutputSchema = {
 };
 
 export const implementInputFields: InputFields = {
-  planRef:  { type: "string", label: "Plan ref", required: true },
-  repoPath: { type: "string", label: "Repo path", required: true },
+  dirPath:            { type: "string", label: "Repo path", required: true },
+  planReportPath:     { type: "string", label: "Plan report path", required: true },
+  ticketContent:      { type: "string", label: "Ticket content" },
+  analyzeReportPath:  { type: "string", label: "Analyze report path" },
+  focus:              { type: "string", label: "Focus / scope narrowing" },
+  reviewComments:     { type: "string", label: "Reviewer comments" },
 };

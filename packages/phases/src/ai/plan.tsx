@@ -5,9 +5,9 @@ import { summaryValue } from "@journeyman/flow-editor";
 import { PLAN_PHASE_TYPE, PLAN_LABEL, PLAN_CATEGORY, planOutputSchema } from "./plan.meta.ts";
 
 interface PlanConfig {
-  ticketKey: string;
-  repoPath: string;
-  analysisRef?: string;
+  dirPath: string;
+  ticketContent?: string;
+  analyzeReportPath?: string;
 }
 
 export const planPhase: PhaseDefinition<PlanConfig> = {
@@ -17,19 +17,19 @@ export const planPhase: PhaseDefinition<PlanConfig> = {
   description: "Produce an implementation plan from a ticket and (optionally) a prior analysis.",
   color: "#0984e3",
   icon: "📝",
-  defaultConfig: { ticketKey: "", repoPath: "", analysisRef: "" },
+  defaultConfig: { dirPath: "", ticketContent: "", analyzeReportPath: "" },
   configSchema: z.object({
-    ticketKey: z.string().min(1),
-    repoPath: z.string().min(1),
-    analysisRef: z.string().optional(),
+    dirPath: z.string().min(1),
+    ticketContent: z.string().optional(),
+    analyzeReportPath: z.string().optional(),
   }),
   configFields: {
-    ticketKey:   { label: "Ticket key", widget: "text" },
-    repoPath:    { label: "Repo path",  widget: "text" },
-    analysisRef: { label: "Analysis ref", widget: "text", help: "Optional reference to a prior analyze output" },
+    dirPath:           { label: "Repo path",           widget: "text" },
+    ticketContent:     { label: "Ticket content",     widget: "textarea", help: "Markdown body of the ticket" },
+    analyzeReportPath: { label: "Analyze report path", widget: "text", help: "Optional path to a prior analyze output" },
   },
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "dirPath") || "(no repo)",
   executor: { kind: "coding-cli", method: "plan" },
   outputSchema: planOutputSchema,
 };

@@ -15,6 +15,8 @@ import { EnvCredentialStore } from "./credentials/env-credential-store.ts";
 import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
 import { AnalyzePhaseHandler } from "./workers/phases/analyze-phase-handler.ts";
+import { PlanPhaseHandler } from "./workers/phases/plan-phase-handler.ts";
+import { ImplementPhaseHandler } from "./workers/phases/implement-phase-handler.ts";
 
 const log = createLogger("worker:cli");
 const envFile = resolve(process.cwd(), ".env");
@@ -24,7 +26,10 @@ const baseUrl = process.env.CONDUCTOR_BASE_URL ?? "http://localhost:8080/api";
 const client = new ConductorClient({ baseUrl });
 
 const registry = new InMemoryPhaseRegistry();
-registry.register(new AnalyzePhaseHandler({ coding: new ClaudeProvider() }));
+const coding = new ClaudeProvider();
+registry.register(new AnalyzePhaseHandler({ coding }));
+registry.register(new PlanPhaseHandler({ coding }));
+registry.register(new ImplementPhaseHandler({ coding }));
 
 // Register matching task definitions (idempotent)
 for (const handler of registry.list()) {

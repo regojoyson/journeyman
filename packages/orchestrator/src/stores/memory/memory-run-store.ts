@@ -25,6 +25,7 @@ export class MemoryRunStore implements IRunStore {
       failedAtNodeId: null,
       inputs: args.inputs,
       outputs: null,
+      attemptNumber: 1,
     };
     this.rows.set(run.id, run);
     return run;
@@ -38,6 +39,12 @@ export class MemoryRunStore implements IRunStore {
     const r = this.rows.get(runId);
     if (!r) return;
     this.rows.set(runId, { ...r, engineWorkflowId });
+  }
+
+  async setAttemptNumber(runId: string, attemptNumber: number): Promise<void> {
+    const r = this.rows.get(runId);
+    if (!r) return;
+    this.rows.set(runId, { ...r, attemptNumber });
   }
 
   async setStatus(runId: string, status: RunStatus, opts: {

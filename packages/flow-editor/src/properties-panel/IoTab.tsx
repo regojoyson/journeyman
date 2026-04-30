@@ -1,4 +1,8 @@
+import { useState } from "react";
 import type { FlowGraph, FlowNode, FlowInputValue } from "@journeyman/core";
+import { ValuePicker } from "./ValuePicker.tsx";
+import { useUpstreamSources } from "./use-upstream-sources.ts";
+import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
 export interface IoTabProps {
   flow: FlowGraph;
@@ -26,32 +30,22 @@ function setOutputSchema(node: FlowNode, schema: unknown): FlowNode {
   return { ...node, config: { ...(node.config ?? {}), outputSchema: schema } };
 }
 
-function upstreamNodeIds(flow: FlowGraph, nodeId: string): string[] {
-  const incoming = new Map<string, string[]>();
-  for (const e of flow.edges) {
-    const arr = incoming.get(e.target) ?? [];
-    arr.push(e.source);
-    incoming.set(e.target, arr);
-  }
-  const out = new Set<string>();
-  const stack = [nodeId];
-  while (stack.length) {
-    const cur = stack.pop()!;
-    for (const src of incoming.get(cur) ?? []) {
-      if (!out.has(src)) { out.add(src); stack.push(src); }
-    }
-  }
-  return [...out];
-}
-
 export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
   const inputs = getInputs(node);
-  const upstream = upstreamNodeIds(flow, node.id);
+  const catalog = usePhaseCatalog();
+  const sources = useUpstreamSources(flow, node.id, catalog);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
-  const setRow = (oldKey: string | null, key: string, from: string) => {
-    const next = { ...inputs };
-    if (oldKey && oldKey !== key) delete next[oldKey];
-    if (key) next[key] = { kind: "ref", ref: from };
+  const renameKey = (oldKey: string, newKey: string) => {
+    if (oldKey === newKey) return;
+    const next: Record<string, FlowInputValue> = {};
+    for (const [k, v] of Object.entries(inputs)) {
+      next[k === oldKey ? newKey : k] = v;
+    }
+    onChange(setInputs(node, next));
+  };
+  const setRef = (key: string, ref: string) => {
+    const next = { ...inputs, [key]: { kind: "ref", ref } as FlowInputValue };
     onChange(setInputs(node, next));
   };
   const removeRow = (key: string) => {
@@ -63,32 +57,52 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
 
   return (
     <div>
-      <div className="je-props__field">
+      <div className="je-props__field" style={{ position: "relative" }}>
         <label>Inputs (wire from upstream nodes)</label>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {Object.entries(inputs).map(([k, v]) => (
-            <div key={k} style={{ display: "flex", gap: 4 }}>
-              <input
-                type="text" value={k}
-                disabled={readOnly}
-                placeholder="inputName"
-                style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}
-                onChange={e => setRow(k, e.target.value, getRef(v))}
-              />
-              <input
-                type="text" value={getRef(v)}
-                disabled={readOnly}
-                placeholder="step1.output.foo"
-                style={{ flex: 2, fontFamily: "ui-monospace, monospace" }}
-                onChange={e => setRow(null, k, e.target.value)}
-              />
-              <button
-                disabled={readOnly}
-                onClick={() => removeRow(k)}
-                style={{ background: "transparent", border: "1px solid #444", color: "#888", padding: "0 8px", borderRadius: 4, cursor: "pointer" }}
-              >×</button>
-            </div>
-          ))}
+          {Object.entries(inputs).map(([k, v]) => {
+            const ref = getRef(v);
+            const isPicking = pickerFor === k;
+            return (
+              <div key={k} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input
+                  type="text" value={k}
+                  disabled={readOnly}
+                  placeholder="inputName"
+                  style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}
+                  onChange={e => renameKey(k, e.target.value)}
+                />
+                {ref ? (
+                  <div className="je-props__bound-pill" style={{ flex: 2 }}>
+                    <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
+                    <code className="je-props__bound-pill-ref">{ref}</code>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="je-props__bound-pill-unbind"
+                        onClick={() => setRef(k, "")}
+                        title="unbind"
+                      >×</button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setPickerFor(isPicking ? null : k)}
+                    style={{ flex: 2, background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {`{x} Pick value…`}
+                  </button>
+                )}
+                <button
+                  disabled={readOnly}
+                  onClick={() => removeRow(k)}
+                  style={{ background: "transparent", border: "1px solid #444", color: "#888", padding: "0 8px", borderRadius: 4, cursor: "pointer" }}
+                >×</button>
+              </div>
+            );
+          })}
         </div>
         {!readOnly && (
           <button
@@ -96,9 +110,13 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
             style={{ marginTop: 6, background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}
           >+ Add</button>
         )}
-        {upstream.length > 0 && (
-          <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
-            Upstream: {upstream.join(", ")} · also <code>$flow.input.&lt;name&gt;</code>
+        {pickerFor !== null && (
+          <div className="je-props__picker-popover">
+            <ValuePicker
+              sources={sources}
+              onPick={ref => { setRef(pickerFor, ref); setPickerFor(null); }}
+              onClose={() => setPickerFor(null)}
+            />
           </div>
         )}
       </div>

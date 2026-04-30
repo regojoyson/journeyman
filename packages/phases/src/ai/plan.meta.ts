@@ -11,7 +11,9 @@ export const planOutputSchema: OutputSchema = {
 };
 
 export const planInputFields: InputFields = {
-  ticketKey:   { type: "string", label: "Ticket key", required: true },
-  repoPath:    { type: "string", label: "Repo path", required: true },
-  analysisRef: { type: "string", label: "Analysis ref" },
+  dirPath:            { type: "string", label: "Repo path", required: true },
+  ticketContent:      { type: "string", label: "Ticket content" },
+  analyzeReportPath:  { type: "string", label: "Analyze report path" },
+  focus:              { type: "string", label: "Focus / scope narrowing" },
+  reviewComments:     { type: "string", label: "Reviewer comments" },
 };

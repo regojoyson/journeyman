@@ -1,10 +1,21 @@
 import type {
+  FlowGraph,
   IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
   IRunStore, IRunGrantsStore, Run, RunStatus, SubmitRunArgs,
 } from "@journeyman/core";
+import { createLogger } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import type { IFlowJsonConverter } from "@journeyman/core";
 import type { ConductorWorkflowDef } from "../../flow-json/conductor-types.ts";
+
+const log = createLogger("orchestrator:conductor");
+
+interface FlowRetryPolicy { maxAttempts?: number; backoffSeconds?: number }
+
+function readFlowRetry(def: FlowGraph): FlowRetryPolicy | undefined {
+  const start = def.nodes.find((n) => n.type === "start");
+  return (start?.config as { flowRetry?: FlowRetryPolicy } | undefined)?.flowRetry;
+}
 
 export interface ConductorOrchestratorDeps {
   client: ConductorClient;
@@ -14,6 +25,9 @@ export interface ConductorOrchestratorDeps {
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
+  /** runIds with a pending flowRetry timer — guards against the syncer firing multiple retries. Transient by design. */
+  private flowRetryPending = new Set<string>();
+
   constructor(private deps: ConductorOrchestratorDeps) {}
 
   async submit(args: SubmitRunArgs): Promise<{ runId: string; engineWorkflowId: string }> {
@@ -105,6 +119,12 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     if (!r?.engineWorkflowId) return r?.status ?? "pending";
     const live = await this.deps.client.getWorkflow(r.engineWorkflowId);
     const mapped = mapConductorStatus(live.status);
+
+    if (mapped === "failed" && this.shouldFlowRetry(r)) {
+      this.scheduleFlowRetry(r);
+      return "running";
+    }
+
     if (mapped !== r.status) {
       const completedAt = ["completed", "failed", "cancelled"].includes(mapped)
         ? new Date() : undefined;
@@ -116,6 +136,36 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       });
     }
     return mapped;
+  }
+
+  private shouldFlowRetry(r: Run): boolean {
+    if (this.flowRetryPending.has(r.id)) return true;
+    const policy = readFlowRetry(r.definitionSnapshot);
+    if (!policy) return false;
+    const max = policy.maxAttempts ?? 1;
+    return r.attemptNumber < max;
+  }
+
+  private scheduleFlowRetry(r: Run): void {
+    if (this.flowRetryPending.has(r.id)) return;
+    const policy = readFlowRetry(r.definitionSnapshot);
+    if (!policy) return;
+    this.flowRetryPending.add(r.id);
+    const delayMs = (policy.backoffSeconds ?? 0) * 1000;
+    const nextAttempt = r.attemptNumber + 1;
+    log.info({ runId: r.id, attempt: nextAttempt, delayMs }, "flow-retry scheduled");
+    setTimeout(async () => {
+      try {
+        if (!r.engineWorkflowId) return;
+        await this.deps.client.retryWorkflow(r.engineWorkflowId);
+        await this.deps.runs.setAttemptNumber(r.id, nextAttempt);
+        log.info({ runId: r.id, attempt: nextAttempt }, "flow-retry triggered");
+      } catch (err) {
+        log.error({ runId: r.id, err: (err as Error)?.message }, "flow-retry failed");
+      } finally {
+        this.flowRetryPending.delete(r.id);
+      }
+    }, delayMs);
   }
 }
 

@@ -21,6 +21,7 @@ function rowToRun(row: any): Run {
     failedAtNodeId: row.failed_at_node_id,
     inputs: row.inputs ?? {},
     outputs: row.outputs,
+    attemptNumber: row.attempt_number ?? 1,
   };
 }
 
@@ -91,6 +92,12 @@ export class PostgresRunStore implements IRunStore {
   async setEngineWorkflowId(runId: string, engineWorkflowId: string): Promise<void> {
     await this.pool.query(
       "UPDATE jm_runs SET engine_workflow_id = $1 WHERE id = $2", [engineWorkflowId, runId],
+    );
+  }
+
+  async setAttemptNumber(runId: string, attemptNumber: number): Promise<void> {
+    await this.pool.query(
+      "UPDATE jm_runs SET attempt_number = $1 WHERE id = $2", [attemptNumber, runId],
     );
   }
 

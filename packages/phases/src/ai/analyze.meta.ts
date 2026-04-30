@@ -12,7 +12,6 @@ export const analyzeOutputSchema: OutputSchema = {
 };
 
 export const analyzeInputFields: InputFields = {
-  ticketKey:    { type: "string", label: "Ticket key", required: true },
-  repoPath:     { type: "string", label: "Repo path", required: true },
-  instructions: { type: "string", label: "Extra instructions" },
+  dirPath:       { type: "string", label: "Repo path", required: true },
+  ticketContent: { type: "string", label: "Ticket content", required: true },
 };

@@ -24,6 +24,7 @@ export interface IRunStore {
     durationMs?: number;
     outputs?: Record<string, unknown>;
   }): Promise<void>;
+  setAttemptNumber(runId: string, attemptNumber: number): Promise<void>;
   list(opts?: {
     flowId?: string;
     status?: RunStatus;

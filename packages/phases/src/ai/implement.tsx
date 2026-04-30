@@ -4,8 +4,10 @@ import type { PhaseDefinition } from "@journeyman/flow-editor";
 import { IMPLEMENT_PHASE_TYPE, IMPLEMENT_LABEL, IMPLEMENT_CATEGORY, implementOutputSchema } from "./implement.meta.ts";
 
 interface ImplementConfig {
-  planRef: string;
-  repoPath: string;
+  dirPath: string;
+  planReportPath: string;
+  ticketContent?: string;
+  analyzeReportPath?: string;
 }
 
 export const implementPhase: PhaseDefinition<ImplementConfig> = {
@@ -15,17 +17,21 @@ export const implementPhase: PhaseDefinition<ImplementConfig> = {
   description: "Execute a plan against a repo using a coding-cli provider.",
   color: "#6c5ce7",
   icon: "🛠",
-  defaultConfig: { planRef: "", repoPath: "" },
+  defaultConfig: { dirPath: "", planReportPath: "", ticketContent: "", analyzeReportPath: "" },
   configSchema: z.object({
-    planRef: z.string().min(1),
-    repoPath: z.string().min(1),
+    dirPath: z.string().min(1),
+    planReportPath: z.string().min(1),
+    ticketContent: z.string().optional(),
+    analyzeReportPath: z.string().optional(),
   }),
   configFields: {
-    planRef:  { label: "Plan ref", widget: "text", help: "Reference to a plan-phase output" },
-    repoPath: { label: "Repo path", widget: "text" },
+    dirPath:           { label: "Repo path",            widget: "text" },
+    planReportPath:    { label: "Plan report path",     widget: "text", help: "Path to a prior plan output" },
+    ticketContent:     { label: "Ticket content",       widget: "textarea", help: "Markdown body of the ticket" },
+    analyzeReportPath: { label: "Analyze report path",  widget: "text", help: "Optional path to a prior analyze output" },
   },
   tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  summary: c => c.planRef || "(no plan)",
+  summary: c => c.planReportPath || "(no plan)",
   executor: { kind: "coding-cli", method: "implement" },
   outputSchema: implementOutputSchema,
 };
