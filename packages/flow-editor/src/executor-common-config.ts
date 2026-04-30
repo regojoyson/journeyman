@@ -1,41 +1,53 @@
 // packages/flow-editor/src/executor-common-config.ts
+import {
+  PROVIDER_CATALOG,
+  implementedProvidersForKind,
+  defaultProviderForKind,
+} from "@journeyman/core";
 import type { ExecutorKind } from "./phase-definition.ts";
 
-export interface ProviderOption { value: string; label: string }
+export interface ProviderOption {
+  value: string;
+  label: string;
+  implemented: boolean;
+}
 
 export interface ExecutorKindCommonConfig {
   provider?: ProviderOption[];
 }
 
-export const executorCommonConfig: Record<ExecutorKind, ExecutorKindCommonConfig> = {
-  "coding-cli": {
-    provider: [
-      { value: "claude", label: "Claude" },
-      { value: "gemini", label: "Gemini" },
-      { value: "codex",  label: "Codex"  },
-    ],
-  },
-  "git-provider": {
-    provider: [
-      { value: "github", label: "GitHub" },
-      { value: "gitlab", label: "GitLab" },
-    ],
-  },
-  "ticket-provider": {
-    provider: [
-      { value: "jira",   label: "Jira"   },
-      { value: "linear", label: "Linear" },
-      { value: "monday", label: "Monday" },
-    ],
-  },
-  "notification": {
-    provider: [
-      { value: "slack", label: "Slack" },
-    ],
-  },
-  "control": {},
-};
+const EDITOR_KINDS = ["coding-cli", "git-provider", "ticket-provider", "notification"] as const;
+
+function buildCommonConfig(): Record<ExecutorKind, ExecutorKindCommonConfig> {
+  const out: Record<ExecutorKind, ExecutorKindCommonConfig> = {
+    "coding-cli": {},
+    "git-provider": {},
+    "ticket-provider": {},
+    "notification": {},
+    "control": {},
+  };
+  for (const kind of EDITOR_KINDS) {
+    out[kind] = {
+      provider: PROVIDER_CATALOG
+        .filter(p => p.kind === kind)
+        .map(p => ({ value: p.value, label: p.label, implemented: p.implemented })),
+    };
+  }
+  return out;
+}
+
+export const executorCommonConfig: Record<ExecutorKind, ExecutorKindCommonConfig> = buildCommonConfig();
+
+export function visibleProvidersFor(kind: ExecutorKind): ProviderOption[] {
+  if (kind === "control") return [];
+  return implementedProvidersForKind(kind).map(p => ({
+    value: p.value,
+    label: p.label,
+    implemented: p.implemented,
+  }));
+}
 
 export function defaultProviderFor(kind: ExecutorKind): string | undefined {
-  return executorCommonConfig[kind].provider?.[0]?.value;
+  if (kind === "control") return undefined;
+  return defaultProviderForKind(kind)?.value;
 }

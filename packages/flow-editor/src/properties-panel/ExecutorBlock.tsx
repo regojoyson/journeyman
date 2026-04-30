@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/ExecutorBlock.tsx
 import type { ExecutorKind } from "../phase-definition.ts";
-import { executorCommonConfig } from "../executor-common-config.ts";
+import { executorCommonConfig, visibleProvidersFor } from "../executor-common-config.ts";
 
 export interface ExecutorBlockProps {
   kind: ExecutorKind;
@@ -12,6 +12,8 @@ export interface ExecutorBlockProps {
 export function ExecutorBlock({ kind, value, onChange, readOnly }: ExecutorBlockProps) {
   const cfg = executorCommonConfig[kind];
   if (!cfg.provider || cfg.provider.length === 0) return null;
+  const options = visibleProvidersFor(kind);
+  if (options.length === 0) return null;
 
   return (
     <div className="je-props__field">
@@ -21,7 +23,7 @@ export function ExecutorBlock({ kind, value, onChange, readOnly }: ExecutorBlock
         disabled={readOnly}
         onChange={e => onChange({ ...(value ?? {}), provider: e.target.value })}
       >
-        {cfg.provider.map(o => (
+        {options.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>

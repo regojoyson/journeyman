@@ -3,6 +3,7 @@ import type { FlowGraph, FlowNode, FlowInputValue } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { sanitizeRef } from "./sanitize-ref.ts";
 
 export interface IoTabProps {
   flow: FlowGraph;
@@ -45,7 +46,8 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
     onChange(setInputs(node, next));
   };
   const setRef = (key: string, ref: string) => {
-    const next = { ...inputs, [key]: { kind: "ref", ref } as FlowInputValue };
+    const clean = sanitizeRef(ref);
+    const next = { ...inputs, [key]: { kind: "ref", ref: clean } as FlowInputValue };
     onChange(setInputs(node, next));
   };
   const removeRow = (key: string) => {

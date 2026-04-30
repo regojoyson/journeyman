@@ -6,7 +6,7 @@ export function resolveInputs(
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(inputs ?? {})) {
     if (v.kind === "literal") out[k] = v.value;
-    else out[k] = "${" + v.ref + "}";
+    else out[k] = "${" + sanitizeRef(v.ref) + "}";
   }
   return out;
 }
@@ -25,10 +25,26 @@ export interface ParsedRef {
  *   - "<nodeId>.input.X"     → upstream phase's resolved input
  *   - "<nodeId>.output.X"    → upstream phase's output
  */
-export function parseRef(ref: string): ParsedRef | null {
-  if (ref.startsWith("workflow.input.")) {
-    return { source: "workflow.input", scope: "workflow.input", field: ref.slice("workflow.input.".length) };
+/**
+ * Strip markdown autolink syntax `[text](url)` that some clients introduce when
+ * domain-shaped tokens (e.g. `node.output.id`) are pasted into rich-text fields.
+ * Repeats until no more link patterns remain so nested/multiple wrappings are handled.
+ */
+export function sanitizeRef(ref: string): string {
+  let out = ref;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const next = out.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+    if (next === out) return next;
+    out = next;
   }
-  const m = /^([^.]+)\.(input|output)\.(.+)$/.exec(ref);
+}
+
+export function parseRef(ref: string): ParsedRef | null {
+  const clean = sanitizeRef(ref);
+  if (clean.startsWith("workflow.input.")) {
+    return { source: "workflow.input", scope: "workflow.input", field: clean.slice("workflow.input.".length) };
+  }
+  const m = /^([^.]+)\.(input|output)\.(.+)$/.exec(clean);
   return m ? { source: m[1], scope: m[2] as RefScope, field: m[3] } : null;
 }

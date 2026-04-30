@@ -61,6 +61,17 @@ export { CredentialNotFoundError } from "./interfaces/credential-store.interface
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
 export type { IFlowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";
+export type { ProviderResolver } from "./interfaces/provider-resolver.interface.ts";
+
+export {
+  PROVIDER_CATALOG,
+  providersForKind,
+  implementedProvidersForKind,
+  defaultProviderForKind,
+} from "./registries/provider-catalog.ts";
+export type { ProviderEntry } from "./registries/provider-catalog.ts";
+// Aliased to avoid colliding with flow-editor's own ExecutorKind (which includes "control").
+export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-catalog.ts";
 
 // === Phase 1 data types ===
 export type {

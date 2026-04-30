@@ -1,6 +1,6 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult,
+  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver,
 } from "@journeyman/core";
 
 const log = createLogger("worker:analyze");
@@ -19,7 +19,7 @@ const log = createLogger("worker:analyze");
 export class AnalyzePhaseHandler implements IPhaseHandler {
   readonly phaseType = "analyze";
 
-  constructor(private deps: { coding: ICodingCLI }) {}
+  constructor(private deps: { coding: ProviderResolver<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const dirPath = input.dirPath;
@@ -34,8 +34,11 @@ export class AnalyzePhaseHandler implements IPhaseHandler {
         },
       };
     }
+    const coding = this.deps.coding.resolve(
+      typeof input.provider === "string" ? input.provider : undefined,
+    );
     ctx.log(`Analyzing ${dirPath}`);
-    const result = await this.deps.coding.analyze({
+    const result = await coding.analyze({
       dirPath,
       ticketContent,
       sessionId: ctx.runId,

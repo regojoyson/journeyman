@@ -7,6 +7,7 @@ import { ExecutorBlock } from "./ExecutorBlock.tsx";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { ValuePicker } from "./ValuePicker.tsx";
+import { sanitizeRef } from "./sanitize-ref.ts";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
@@ -29,8 +30,9 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: Config
   const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const handlePick = (fieldKey: string, ref: string) => {
+    const clean = sanitizeRef(ref);
     const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
-    inputs[fieldKey] = { kind: "ref", ref };
+    inputs[fieldKey] = { kind: "ref", ref: clean };
     onChange({ ...node, inputs: inputs as FlowNode["inputs"] });
     setPickerFor(null);
   };
@@ -43,9 +45,10 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: Config
 
   /** Append `${ref}` to the field's literal config value (template-string mode). */
   const handleInsert = (fieldKey: string, ref: string) => {
+    const clean = sanitizeRef(ref);
     const cfg = { ...config };
     const existing = typeof cfg[fieldKey] === "string" ? (cfg[fieldKey] as string) : "";
-    cfg[fieldKey] = existing + "${" + ref + "}";
+    cfg[fieldKey] = existing + "${" + clean + "}";
     onChange({ ...node, config: cfg });
     setPickerFor(null);
   };
