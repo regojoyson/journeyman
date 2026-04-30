@@ -89,9 +89,26 @@ export interface PhaseDefinition<TConfig = unknown> {
   tabs: {
     io: TabVisibility;
     credentials: TabVisibility;
+    requiredSecrets?: TabVisibility;
     mcp: TabVisibility;
     retry: TabVisibility;
   };
+
+  /**
+   * Names of env-vars this phase typically needs at run time. Used for two purposes:
+   *   - When a node is dropped onto the canvas, this list is copied into
+   *     `node.requiredSecrets` so the user starts pre-filled.
+   *   - The Required Secrets tab shows these as a "typically needs" hint
+   *     even if the user later removes them from the node.
+   */
+  defaultRequiredSecrets?: string[];
+
+  /**
+   * Names of env-vars this phase can optionally use (e.g. to override an
+   * ambient default). NOT auto-added on drop — only surfaced as a hint
+   * in the Required Secrets tab so the user knows they can pass them.
+   */
+  optionalSecrets?: string[];
 
   // canvas display
   summary?: (config: TConfig, ctx?: PhaseSummaryCtx) => string;

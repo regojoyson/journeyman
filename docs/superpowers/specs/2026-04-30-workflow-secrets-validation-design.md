@@ -141,6 +141,8 @@ HTTP status: `200` (PATCH) / `201` (create) — same as a clean save. The presen
 
 In the flow PATCH/POST handler, after Zod parses the body but before the response is returned. Reuses the existing `RunContext` derivation in `composition.ts`. No new auth wiring.
 
+The same check is also surfaced by the **non-destructive validate endpoint** (`POST /flows/validate`, the editor's "Validate" button): it computes the same inaccessible-secrets warnings and includes them in the response, so the user sees the warning without saving. The save and validate paths share one helper.
+
 ### 6.5 Edge cases
 
 - **Empty `requiredSecrets`** on every step → no check needed, no warnings.

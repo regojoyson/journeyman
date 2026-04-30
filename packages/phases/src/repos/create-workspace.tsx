@@ -5,6 +5,7 @@ import {
   CREATE_WORKSPACE_PHASE_TYPE,
   CREATE_WORKSPACE_LABEL,
   CREATE_WORKSPACE_CATEGORY,
+  CREATE_WORKSPACE_DESCRIPTION,
   createWorkspaceOutputSchema,
 } from "./create-workspace.meta.ts";
 
@@ -17,7 +18,7 @@ export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
   phaseType: CREATE_WORKSPACE_PHASE_TYPE,
   label: CREATE_WORKSPACE_LABEL,
   category: CREATE_WORKSPACE_CATEGORY,
-  description: "Create a new workspace directory for repo operations.",
+  description: CREATE_WORKSPACE_DESCRIPTION,
   color: "#fdcb6e",
   icon: "📁",
   defaultConfig: { name: "", baseDir: "" },

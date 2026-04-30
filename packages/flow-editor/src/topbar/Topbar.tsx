@@ -1,12 +1,25 @@
 import { useMemo, useState } from "react";
-import type { FlowGraph } from "@journeyman/core";
+import type { FlowGraph, FlowSaveWarning } from "@journeyman/core";
+import {
+  Check,
+  Copy,
+  Download,
+  FileCode2,
+  Loader2,
+  Play,
+  Save,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { toYaml } from "./yaml-serialize.ts";
+import { IconButton } from "./IconButton.tsx";
 
 export interface ValidationReport {
   ok: boolean;
   errors: string[];
   missing: string[];
   warnings: string[];
+  secretWarnings?: FlowSaveWarning[];
 }
 
 export interface TopbarProps {
@@ -44,6 +57,7 @@ export function Topbar(p: TopbarProps) {
         errors: [`Validation request failed: ${(e as Error).message}`],
         missing: [],
         warnings: [],
+        secretWarnings: [],
       });
     } finally {
       setValidating(false);
@@ -73,24 +87,47 @@ export function Topbar(p: TopbarProps) {
         {p.dirty && <span style={{ color: "#fdcb6e", fontSize: 11 }}>● unsaved</span>}
         <div className="spacer" />
         {p.flow && (
-          <button onClick={() => setExportOpen(true)} title="View the flow as JSON / YAML">
-            View JSON
-          </button>
+          <IconButton
+            label="View JSON"
+            hint="View the flow as JSON / YAML"
+            icon={<FileCode2 size={16} aria-hidden="true" focusable="false" />}
+            onClick={() => setExportOpen(true)}
+          />
         )}
         {p.onValidate && (
-          <button disabled={p.busy || validating} onClick={runValidate} title="Check the flow without saving">
-            {validating ? "Validating…" : "Validate"}
-          </button>
+          <IconButton
+            label={validating ? "Validating…" : "Validate"}
+            hint={validating ? "Checking the flow…" : "Check the flow without saving"}
+            disabled={p.busy || validating}
+            busy={validating}
+            onClick={runValidate}
+            icon={
+              validating
+                ? <Loader2 size={16} className="je-spin" aria-hidden="true" focusable="false" />
+                : <ShieldCheck size={16} aria-hidden="true" focusable="false" />
+            }
+          />
         )}
-        <button disabled={p.busy || !p.saveEnabled} onClick={p.onSave}>
-          {p.busy ? "Saving…" : "Save"}
-        </button>
-        <button
+        <IconButton
+          label={p.busy ? "Saving…" : "Save"}
+          hint={p.busy ? "Saving the flow…" : "Save changes to this flow"}
+          disabled={p.busy || !p.saveEnabled}
+          busy={p.busy}
+          onClick={p.onSave}
+          icon={
+            p.busy
+              ? <Loader2 size={16} className="je-spin" aria-hidden="true" focusable="false" />
+              : <Save size={16} aria-hidden="true" focusable="false" />
+          }
+        />
+        <IconButton
           className="primary"
+          label="Run"
+          hint={p.runDisabledReason ?? "Execute this flow"}
           disabled={p.busy || !p.runEnabled}
-          title={p.runDisabledReason}
           onClick={p.onRun}
-        >▶ Run</button>
+          icon={<Play size={16} fill="currentColor" aria-hidden="true" focusable="false" />}
+        />
       </header>
       {p.validationErrors && p.validationErrors.length > 0 && (
         <div style={{
@@ -157,9 +194,28 @@ function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: s
           >YAML</button>
         </div>
         <div className="je-export-panel__spacer" />
-        <button onClick={handleCopy}>{copied ? "Copied ✓" : "Copy"}</button>
-        <button onClick={handleDownload}>Download</button>
-        <button className="je-export-panel__close" onClick={onClose}>×</button>
+        <IconButton
+          label={copied ? "Copied" : "Copy"}
+          hint={copied ? "Copied to clipboard" : "Copy to clipboard"}
+          onClick={handleCopy}
+          icon={
+            copied
+              ? <Check size={16} aria-hidden="true" focusable="false" />
+              : <Copy size={16} aria-hidden="true" focusable="false" />
+          }
+        />
+        <IconButton
+          label="Download"
+          hint={`Download as .${format}`}
+          onClick={handleDownload}
+          icon={<Download size={16} aria-hidden="true" focusable="false" />}
+        />
+        <IconButton
+          className="je-export-panel__close"
+          label="Close"
+          onClick={onClose}
+          icon={<X size={16} aria-hidden="true" focusable="false" />}
+        />
       </div>
       <pre className="je-export-panel__body"><code>{text}</code></pre>
     </div>
@@ -167,12 +223,18 @@ function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: s
 }
 
 function ValidationPanel({ report, onClose }: { report: ValidationReport; onClose: () => void }) {
-  const total = report.errors.length + report.missing.length + report.warnings.length;
+  const secretWarnings = report.secretWarnings ?? [];
+  const total =
+    report.errors.length + report.missing.length + report.warnings.length + secretWarnings.length;
   return (
     <div className="je-validate-panel">
       <div className="je-validate-panel__header">
         <span className={`je-validate-panel__status ${report.ok ? "ok" : "fail"}`}>
-          {report.ok ? "✓ Flow looks good" : `✕ ${total} issue${total === 1 ? "" : "s"}`}
+          {report.ok && secretWarnings.length === 0
+            ? "✓ Flow looks good"
+            : report.ok
+              ? `⚠ ${secretWarnings.length} warning${secretWarnings.length === 1 ? "" : "s"}`
+              : `✕ ${total} issue${total === 1 ? "" : "s"}`}
         </span>
         <button className="je-validate-panel__close" onClick={onClose}>×</button>
       </div>
@@ -189,7 +251,38 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
         {report.warnings.length > 0 && (
           <Section title="Warnings" tone="warn" items={report.warnings} />
         )}
+        {secretWarnings.length > 0 && (
+          <SecretWarningsSection warnings={secretWarnings} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function SecretWarningsSection({ warnings }: { warnings: FlowSaveWarning[] }) {
+  return (
+    <div className="je-validate-section je-validate-section--warn">
+      <div className="je-validate-section__title">Inaccessible secrets ({warnings.length})</div>
+      {warnings.map((w, i) => (
+        <div key={i} style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 4 }}>{w.message}</div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {w.names.map(n => (
+              <code
+                key={n}
+                style={{
+                  padding: "1px 6px",
+                  border: "1px solid #c08a3e",
+                  color: "#f0c97a",
+                  borderRadius: 3,
+                  fontSize: 11,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >{n}</code>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

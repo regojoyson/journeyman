@@ -1,4 +1,4 @@
-import type { FlowGraph, FlowNodeType, McpTransport } from "@journeyman/core";
+import type { FlowGraph, FlowNodeType, FlowSaveWarning, McpTransport } from "@journeyman/core";
 import type { PhaseDefinition, PhaseRunState } from "./phase-definition.ts";
 
 export interface ControlNodeCatalogEntry {
@@ -27,6 +27,8 @@ export type McpCatalog = McpCatalogEntry[];
 export interface FlowEditorProps {
   flow: FlowGraph;
   flowName: string;
+  /** Active org id of the caller — used to scope visible-secret lookups. */
+  orgId: string;
   /** Built-in or extension phase definitions, used to power the palette, properties panel, and canvas. */
   phases: PhaseDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
@@ -38,7 +40,11 @@ export interface FlowEditorProps {
   onRun?: (flow: FlowGraph) => void | Promise<void>;
   /** Non-destructive preflight check. Returns a structured report. */
   onValidate?: (flow: FlowGraph) => Promise<{
-    ok: boolean; errors: string[]; missing: string[]; warnings: string[];
+    ok: boolean;
+    errors: string[];
+    missing: string[];
+    warnings: string[];
+    secretWarnings?: FlowSaveWarning[];
   }>;
   readOnly?: boolean;
   busy?: boolean;

@@ -3,7 +3,10 @@ import type { InputFields } from "../shared-meta.ts";
 
 export const CREATE_TICKET_PHASE_TYPE = "create-ticket";
 export const CREATE_TICKET_LABEL = "Create Ticket";
-export const CREATE_TICKET_CATEGORY = "Tickets";
+export const CREATE_TICKET_CATEGORY = "Issue Tracker";
+export const CREATE_TICKET_DESCRIPTION =
+  "Create a ticket on the configured tracker.";
+
 export const createTicketOutputSchema: OutputSchema = {
   id: { type: "string" },
   url: { type: "string" },

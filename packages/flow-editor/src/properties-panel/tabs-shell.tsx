@@ -2,12 +2,13 @@
 import type { ReactNode } from "react";
 import type { TabVisibility } from "../phase-definition.ts";
 
-export type TabId = "config" | "mcp" | "credentials" | "retry" | "io";
+export type TabId = "config" | "mcp" | "credentials" | "requiredSecrets" | "retry" | "io";
 
 export interface TabsVisibility {
   config?: TabVisibility; // always shown effectively; declared for symmetry
   io: TabVisibility;
   credentials: TabVisibility;
+  requiredSecrets: TabVisibility;
   mcp: TabVisibility;
   retry: TabVisibility;
 }
@@ -15,6 +16,7 @@ export interface TabsVisibility {
 export interface TabRequiredFlags {
   io?: boolean;
   credentials?: boolean;
+  requiredSecrets?: boolean;
   mcp?: boolean;
   retry?: boolean;
 }
@@ -29,11 +31,12 @@ export interface TabShellProps {
 }
 
 const ALL_TABS: Array<{ id: TabId; label: string }> = [
-  { id: "config",      label: "Config"      },
-  { id: "mcp",         label: "MCP & Tools" },
-  { id: "credentials", label: "Credentials" },
-  { id: "retry",       label: "Retry"       },
-  { id: "io",          label: "I/O"         },
+  { id: "config",          label: "Config"           },
+  { id: "mcp",             label: "MCP & Tools"      },
+  { id: "credentials",     label: "Credentials"      },
+  { id: "requiredSecrets", label: "Required secrets" },
+  { id: "retry",           label: "Retry"            },
+  { id: "io",              label: "I/O"              },
 ];
 
 function visibilityOf(id: TabId, v: TabsVisibility): TabVisibility {

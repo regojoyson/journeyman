@@ -56,8 +56,8 @@ export function PhaseNode(props: NodeProps) {
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: accent }}>{icon}</div>
         <div className="je-node__text">
-          <div className="je-node__label">{data.displayName}</div>
-          <div className="je-node__subtitle">{subtitle}</div>
+          <div className="je-node__label" title={data.displayName}>{data.displayName}</div>
+          <div className="je-node__subtitle" title={typeof subtitle === "string" ? subtitle : undefined}>{subtitle}</div>
         </div>
       </div>
       <Handle type="source" position={Position.Right} id="default" style={handleBlue} />

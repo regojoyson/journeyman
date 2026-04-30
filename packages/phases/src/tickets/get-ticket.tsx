@@ -6,6 +6,7 @@ import {
   GET_TICKET_PHASE_TYPE,
   GET_TICKET_LABEL,
   GET_TICKET_CATEGORY,
+  GET_TICKET_DESCRIPTION,
   getTicketOutputSchema,
 } from "./get-ticket.meta.ts";
 
@@ -17,7 +18,7 @@ export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
   phaseType: GET_TICKET_PHASE_TYPE,
   label: GET_TICKET_LABEL,
   category: GET_TICKET_CATEGORY,
-  description: "Fetch a ticket from the configured tracker.",
+  description: GET_TICKET_DESCRIPTION,
   color: "#a29bfe",
   icon: "📥",
   defaultConfig: { ticketKey: "" },
@@ -28,6 +29,7 @@ export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
     ticketKey: { label: "Ticket key", widget: "text", help: "e.g. PROJ-123 (supports #{ticket} placeholder)" },
   },
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
+  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
   summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "getTicket" },
   outputSchema: getTicketOutputSchema,

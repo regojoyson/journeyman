@@ -245,6 +245,9 @@ function CanvasInner(p: CanvasProps) {
               const provider = defaultProviderFor(def.executor.kind);
               return provider ? { provider } : undefined;
             })(),
+            requiredSecrets: def.defaultRequiredSecrets?.length
+              ? [...def.defaultRequiredSecrets]
+              : undefined,
           }
         : base;
     } else if (controlType) {

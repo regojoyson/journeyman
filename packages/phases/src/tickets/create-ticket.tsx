@@ -5,6 +5,7 @@ import {
   CREATE_TICKET_PHASE_TYPE,
   CREATE_TICKET_LABEL,
   CREATE_TICKET_CATEGORY,
+  CREATE_TICKET_DESCRIPTION,
   createTicketOutputSchema,
 } from "./create-ticket.meta.ts";
 
@@ -19,7 +20,7 @@ export const createTicketPhase: PhaseDefinition<CreateTicketConfig> = {
   phaseType: CREATE_TICKET_PHASE_TYPE,
   label: CREATE_TICKET_LABEL,
   category: CREATE_TICKET_CATEGORY,
-  description: "Create a ticket on the configured tracker.",
+  description: CREATE_TICKET_DESCRIPTION,
   color: "#a29bfe",
   icon: "🎫",
   defaultConfig: { project: "", title: "", description: "", labels: [] },
@@ -36,6 +37,7 @@ export const createTicketPhase: PhaseDefinition<CreateTicketConfig> = {
     // labels rendered as comma-separated string for round 1; the schema enforces array shape via the form's array handling below.
   },
   tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
+  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
   summary: c => c.title || c.project,
   executor: { kind: "ticket-provider", method: "createTicket" },
   outputSchema: createTicketOutputSchema,

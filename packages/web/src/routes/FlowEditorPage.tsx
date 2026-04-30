@@ -105,6 +105,7 @@ export function FlowEditorPage() {
         <FlowEditor
           flow={graph}
           flowName={flow.name}
+          orgId={activeOrgId}
           phases={builtInPhases}
           controlCatalog={defaultControlCatalog}
           mcpCatalog={defaultMcpCatalog}

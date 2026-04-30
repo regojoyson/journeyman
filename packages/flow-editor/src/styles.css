@@ -40,6 +40,54 @@
   border-color: #11c9a3;
 }
 .je-editor__topbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+.je-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 9px !important;
+  line-height: 0;
+}
+.je-icon-btn svg { display: block; }
+.je-icon-btn__icon { display: inline-flex; }
+.je-icon-btn:focus-visible {
+  outline: 2px solid #74b9ff;
+  outline-offset: 2px;
+}
+.je-icon-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Tooltip — WAI-ARIA APG pattern. Visible on hover and focus, dismissible with Escape. */
+.je-tooltip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  pointer-events: none;
+  background: #1a1a24;
+  color: #f5f5f5;
+  border: 1px solid #3a3a4e;
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+}
+.je-tooltip--bottom { top: calc(100% + 6px); }
+.je-tooltip--top { bottom: calc(100% + 6px); }
+.je-tooltip__label { font-weight: 600; }
+.je-tooltip__hint { color: #b8b8c8; font-weight: 400; white-space: normal; }
+@media (prefers-reduced-motion: reduce) {
+  .je-spin { animation: none; }
+}
+.je-spin { animation: je-spin 0.9s linear infinite; }
+@keyframes je-spin { to { transform: rotate(360deg); } }
 .je-editor__body { display: grid; grid-template-columns: 200px 1fr 280px; min-height: 0; }
 .je-editor__palette { background: #11111a; border-right: 1px solid #2a2a3a; padding: 10px; overflow: auto; }
 .je-editor__canvas { position: relative; background: #1a1a24; overflow: hidden; }
@@ -109,15 +157,16 @@
   from { opacity: 0; transform: translateX(-4px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-.je-node { background: #2a2a3e; color: #fff; border: 2px solid #6c5ce7; border-radius: 10px; padding: 8px 12px; min-width: 160px; font-family: inherit; font-size: 12px; }
+.je-node { background: #2a2a3e; color: #fff; border: 2px solid #6c5ce7; border-radius: 10px; padding: 8px 12px; min-width: 180px; max-width: 240px; font-family: inherit; font-size: 12px; box-sizing: border-box; }
 .je-node.selected { box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.4); }
-.je-node--terminal { display: flex; align-items: center; gap: 8px; padding: 6px 12px; min-width: 80px; }
+.je-node--terminal { display: flex; align-items: center; gap: 8px; padding: 6px 12px; min-width: 80px; max-width: 140px; }
 .je-node--start { border-color: #4a9eff; }
 .je-node--end { border-color: #ff7675; }
-.je-node__row { display: flex; align-items: center; gap: 10px; }
-.je-node__icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #6c5ce7; font-size: 14px; }
-.je-node__label { font-weight: 600; font-size: 13px; }
-.je-node__subtitle { font-size: 11px; color: #aaa; }
+.je-node__row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.je-node__icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #6c5ce7; font-size: 14px; flex-shrink: 0; }
+.je-node__text { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.je-node__label { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.je-node__subtitle { font-size: 11px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .je-props__title { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
 .je-props__field { margin-bottom: 10px; }
 .je-props__field label { display: block; font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -142,6 +191,127 @@
 }
 .je-props__field label.je-props__check-row input[disabled] { cursor: not-allowed; opacity: 0.5; }
 .je-empty { color: #888; font-size: 12px; text-align: center; padding: 20px 12px; }
+
+/* Run inputs editor — card list (replaces the unstyled table). */
+.je-run-inputs { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.je-run-inputs__header {
+  display: flex; align-items: center; gap: 8px;
+}
+.je-run-inputs__title {
+  margin: 0; font-size: 12px; font-weight: 600; color: #ddd;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.je-run-inputs__count {
+  font-size: 10px; font-weight: 600; color: #aaa;
+  background: #2a2a3e; padding: 1px 7px; border-radius: 10px; min-width: 18px; text-align: center;
+}
+.je-run-inputs__empty {
+  font-size: 11px; color: #888; line-height: 1.45;
+  background: #14141e; border: 1px dashed #2a2a3a; border-radius: 6px;
+  padding: 12px; text-align: center;
+}
+.je-run-inputs__list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.je-run-inputs__card {
+  background: #1a1a26; border: 1px solid #2a2a3a; border-radius: 6px;
+  padding: 10px; display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.12s;
+}
+.je-run-inputs__card:focus-within { border-color: #4a4a5e; }
+.je-run-inputs__row { display: flex; gap: 8px; }
+.je-run-inputs__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.je-run-inputs__field--grow { flex: 1 1 auto; }
+.je-run-inputs__field--type { flex: 0 0 96px; }
+.je-run-inputs__field label {
+  font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;
+}
+.je-run-inputs__input {
+  width: 100%; box-sizing: border-box;
+  background: #11111a; color: #f5f5f5;
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 6px 8px; font-size: 12px; font-family: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+.je-run-inputs__input::placeholder { color: #5a5a6a; }
+.je-run-inputs__input:hover { border-color: #3a3a4e; }
+.je-run-inputs__input:focus-visible {
+  outline: none; border-color: #74b9ff; background: #14141e;
+  box-shadow: 0 0 0 2px rgba(116, 185, 255, 0.25);
+}
+select.je-run-inputs__input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #888 50%), linear-gradient(135deg, #888 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 22px;
+}
+.je-run-inputs__footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-top: 4px;
+}
+.je-run-inputs__remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: #888; cursor: pointer; transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.je-run-inputs__remove:hover { color: #ff7675; background: rgba(255, 118, 117, 0.1); border-color: rgba(255, 118, 117, 0.3); }
+.je-run-inputs__remove:focus-visible { outline: 2px solid #74b9ff; outline-offset: 2px; }
+.je-run-inputs__add {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: #1f1f2c; color: #ddd;
+  border: 1px dashed #3a3a4e; border-radius: 5px;
+  padding: 8px 12px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.je-run-inputs__add:hover { background: #2a2a3e; border-color: #4a4a5e; border-style: solid; color: #fff; }
+.je-run-inputs__add:focus-visible { outline: 2px solid #74b9ff; outline-offset: 2px; }
+
+/* Toggle switch — accessible custom control wrapping a real <input type="checkbox">. */
+label.je-switch,
+.je-switch {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0;
+  cursor: pointer; user-select: none;
+  font-size: 12px; color: #ddd;
+  text-transform: none; letter-spacing: normal; font-weight: 500;
+}
+.je-switch input[type="checkbox"] {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+.je-switch__track {
+  position: relative;
+  width: 30px; height: 16px; flex-shrink: 0;
+  background: #2a2a3a; border: 1px solid #3a3a4e; border-radius: 999px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.je-switch__thumb {
+  position: absolute; top: 1px; left: 1px;
+  width: 12px; height: 12px; background: #888;
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+}
+.je-switch input:checked + .je-switch__track {
+  background: #4a9eff; border-color: #4a9eff;
+}
+.je-switch input:checked + .je-switch__track .je-switch__thumb {
+  transform: translateX(14px); background: #fff;
+}
+.je-switch input:focus-visible + .je-switch__track {
+  outline: 2px solid #74b9ff; outline-offset: 2px;
+}
+.je-switch__label { font-weight: 500; }
 
 /* Phase 4 — new node variants */
 .je-node--gateway { width: 64px; height: 64px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(45deg); border-radius: 8px; min-width: 0; }

@@ -79,6 +79,7 @@ export type {
   FlowSchemaVersion,
   RetryPolicy, FlowRetryPolicy, BackoffStrategy,
   McpServerConfig, McpTransport, FlowInputValue, RunInputDef,
+  FlowSaveWarning,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {

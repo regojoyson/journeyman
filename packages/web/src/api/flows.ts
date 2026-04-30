@@ -1,4 +1,4 @@
-import type { Flow, FlowGraph, FlowVersion } from "@journeyman/core";
+import type { Flow, FlowGraph, FlowSaveWarning, FlowVersion } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
 
 export async function listFlows(
@@ -58,6 +58,7 @@ export interface FlowValidationReport {
   errors: string[];
   missing: string[];
   warnings: string[];
+  secretWarnings: FlowSaveWarning[];
 }
 
 /** Non-destructive validation. Returns the full report; never throws on validation issues. */

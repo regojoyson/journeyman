@@ -108,6 +108,7 @@ export function FlowEditor(props: FlowEditorProps) {
             flow={heal.healed}
             node={s.selectedNode}
             mcpCatalog={props.mcpCatalog ?? []}
+            orgId={props.orgId}
             onChange={onUpdateNode}
             readOnly={props.readOnly}
           />

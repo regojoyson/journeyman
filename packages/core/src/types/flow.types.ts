@@ -37,7 +37,7 @@ export interface FlowNode {
   type: FlowNodeType;
   /** Human-readable label shown on the canvas tile. */
   displayName?: string;
-  /** Phase type ("analyze", "clone-repos", …) — required when type === "phase". */
+  /** Phase type ("analyze-repo", "clone-repos", …) — required when type === "phase". */
   phaseType?: string;
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
@@ -157,3 +157,14 @@ export interface McpServerConfig {
   url?: string;
   env?: Record<string, string>;
 }
+
+/**
+ * Non-blocking warning returned alongside a successful flow save.
+ * The save itself always succeeds when the body is well-formed.
+ */
+export type FlowSaveWarning =
+  | {
+      code: "inaccessible_secrets";
+      message: string;
+      names: string[];
+    };

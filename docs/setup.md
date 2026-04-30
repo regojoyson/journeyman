@@ -583,3 +583,22 @@ Or run it on a cron:
 - [Flows reference](flows.md) — authoring custom flows.
 - [Phases catalog](phases.md) — writing custom phases.
 - [Troubleshooting](troubleshooting.md) — when things go wrong.
+
+---
+
+## Secrets resolution: api-server vs cli-worker
+
+Two execution paths resolve secrets differently:
+
+- **api-server** (production / web-driven runs): uses `SecretsCredentialStore`,
+  resolving in the order **user > org > global**. User-scope and org-scope
+  secrets stored in Postgres are visible. Missing secrets fail the run with
+  `reason: "missing_secrets"` before any phase executes.
+
+- **cli-worker** (`packages/orchestrator/src/cli-worker.ts`): uses
+  `EnvCredentialStore`. **Only the global tier is resolved** —
+  `process.env.NAME` and `process.env.JM_GLOBAL_NAME`. User-scope and
+  org-scope rows in the database are not visible to the CLI worker.
+
+For local development against user/org secrets, run via api-server. The CLI
+worker is intended for global-tier flows and quick smoke tests.

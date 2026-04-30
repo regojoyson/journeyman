@@ -37,6 +37,7 @@ import { TabsShell, type TabId, type TabsVisibility } from "./tabs-shell.tsx";
 import { ConfigTab } from "./ConfigTab.tsx";
 import { McpToolsTab } from "./McpToolsTab.tsx";
 import { CredentialsTab } from "./CredentialsTab.tsx";
+import { RequiredSecretsTab } from "./RequiredSecretsTab.tsx";
 import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
 import { FlowSettingsView } from "./FlowSettingsView.tsx";
@@ -47,19 +48,21 @@ export interface PropertiesPanelProps {
   flow: FlowGraph;
   node: FlowNode | null;
   mcpCatalog: McpCatalog;
+  orgId: string;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
 }
 
 const DEFAULT_VISIBILITY: TabsVisibility = {
-  io:          "shown",
-  credentials: "shown",
-  mcp:         "shown",
-  retry:       "shown",
+  io:              "shown",
+  credentials:     "shown",
+  requiredSecrets: "shown",
+  mcp:             "shown",
+  retry:           "shown",
 };
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { flow, node, mcpCatalog, onChange, readOnly } = props;
+  const { flow, node, mcpCatalog, orgId, onChange, readOnly } = props;
   const registry = usePhaseRegistry();
   const [active, setActive] = useState<TabId>("config");
 
@@ -82,13 +85,20 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   const isPhase = node.type === "phase";
   const definition = isPhase ? registry.get(node.phaseType) : undefined;
   const visibility: TabsVisibility = definition
-    ? { io: definition.tabs.io, credentials: definition.tabs.credentials, mcp: definition.tabs.mcp, retry: definition.tabs.retry }
+    ? {
+        io: definition.tabs.io,
+        credentials: definition.tabs.credentials,
+        requiredSecrets: definition.tabs.requiredSecrets ?? definition.tabs.credentials,
+        mcp: definition.tabs.mcp,
+        retry: definition.tabs.retry,
+      }
     : DEFAULT_VISIBILITY;
 
   // "required + empty" indicators
   const requiredEmpty = {
     io: !((node as { inputs?: unknown[] }).inputs?.length || (node as { outputs?: unknown[] }).outputs?.length),
     credentials: !(node as { credentials?: unknown }).credentials,
+    requiredSecrets: !(node.requiredSecrets?.length),
     mcp: !((node as { mcpTools?: unknown[] }).mcpTools?.length),
     retry: !node.retry,
   };
@@ -107,11 +117,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           visibility={visibility}
           requiredEmpty={requiredEmpty}
         >
-          {effectiveActive === "config"      && <ConfigTab    flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
-          {effectiveActive === "mcp"         && <McpToolsTab  node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
-          {effectiveActive === "credentials" && <CredentialsTab node={node} onChange={onChange} readOnly={readOnly} />}
-          {effectiveActive === "retry"       && <RetryTab     node={node} onChange={onChange} readOnly={readOnly} />}
-          {effectiveActive === "io"          && <IoTab        flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "config"          && <ConfigTab          flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
+          {effectiveActive === "mcp"             && <McpToolsTab        node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "credentials"     && <CredentialsTab     node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "requiredSecrets" && <RequiredSecretsTab node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
       ) : node.type === "loop" || node.type === "timer" ? (
         <ControlNodeConfigTab flow={flow} node={node} onChange={onChange} readOnly={readOnly} />

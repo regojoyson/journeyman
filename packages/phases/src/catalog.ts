@@ -6,106 +6,142 @@ import type { OutputSchema } from "@journeyman/core";
 import type { InputFields } from "./shared-meta.ts";
 
 import {
-  ANALYZE_PHASE_TYPE, ANALYZE_LABEL, ANALYZE_CATEGORY, analyzeOutputSchema, analyzeInputFields,
-} from "./ai/analyze.meta.ts";
+  ANALYZE_REPO_PHASE_TYPE, ANALYZE_REPO_LABEL, ANALYZE_REPO_CATEGORY, ANALYZE_REPO_DESCRIPTION,
+  analyzeRepoOutputSchema, analyzeRepoInputFields,
+} from "./ai/analyze-repo.meta.ts";
 import {
-  PLAN_PHASE_TYPE, PLAN_LABEL, PLAN_CATEGORY, planOutputSchema, planInputFields,
-} from "./ai/plan.meta.ts";
+  PLAN_IMPLEMENTATION_PHASE_TYPE, PLAN_IMPLEMENTATION_LABEL, PLAN_IMPLEMENTATION_CATEGORY,
+  PLAN_IMPLEMENTATION_DESCRIPTION,
+  planImplementationOutputSchema, planImplementationInputFields,
+} from "./ai/plan-implementation.meta.ts";
 import {
-  IMPLEMENT_PHASE_TYPE, IMPLEMENT_LABEL, IMPLEMENT_CATEGORY, implementOutputSchema, implementInputFields,
-} from "./ai/implement.meta.ts";
+  IMPLEMENT_CHANGES_PHASE_TYPE, IMPLEMENT_CHANGES_LABEL, IMPLEMENT_CHANGES_CATEGORY,
+  IMPLEMENT_CHANGES_DESCRIPTION,
+  implementChangesOutputSchema, implementChangesInputFields,
+} from "./ai/implement-changes.meta.ts";
 
 import {
-  SCAN_REPOS_PHASE_TYPE, SCAN_REPOS_LABEL, SCAN_REPOS_CATEGORY, scanReposOutputSchema, scanReposInputFields,
-} from "./repos/scan-repos.meta.ts";
+  LIST_WORKSPACE_FILES_PHASE_TYPE, LIST_WORKSPACE_FILES_LABEL, LIST_WORKSPACE_FILES_CATEGORY,
+  LIST_WORKSPACE_FILES_DESCRIPTION,
+  listWorkspaceFilesOutputSchema, listWorkspaceFilesInputFields,
+} from "./repos/list-workspace-files.meta.ts";
 import {
-  CHECKOUT_REPO_PHASE_TYPE, CHECKOUT_REPO_LABEL, CHECKOUT_REPO_CATEGORY, checkoutRepoOutputSchema, checkoutRepoInputFields,
-} from "./repos/checkout-repo.meta.ts";
+  START_FEATURE_BRANCH_PHASE_TYPE, START_FEATURE_BRANCH_LABEL, START_FEATURE_BRANCH_CATEGORY,
+  START_FEATURE_BRANCH_DESCRIPTION,
+  startFeatureBranchOutputSchema, startFeatureBranchInputFields,
+} from "./repos/start-feature-branch.meta.ts";
 import {
-  COMMIT_PUSH_PHASE_TYPE, COMMIT_PUSH_LABEL, COMMIT_PUSH_CATEGORY, commitPushOutputSchema, commitPushInputFields,
-} from "./repos/commit-push.meta.ts";
+  COMMIT_AND_PUSH_PHASE_TYPE, COMMIT_AND_PUSH_LABEL, COMMIT_AND_PUSH_CATEGORY,
+  COMMIT_AND_PUSH_DESCRIPTION,
+  commitAndPushOutputSchema, commitAndPushInputFields,
+} from "./repos/commit-and-push.meta.ts";
 import {
-  CLEANUP_REPOS_PHASE_TYPE, CLEANUP_REPOS_LABEL, CLEANUP_REPOS_CATEGORY, cleanupReposOutputSchema, cleanupReposInputFields,
-} from "./repos/cleanup-repos.meta.ts";
+  CLEANUP_WORKSPACE_PHASE_TYPE, CLEANUP_WORKSPACE_LABEL, CLEANUP_WORKSPACE_CATEGORY,
+  CLEANUP_WORKSPACE_DESCRIPTION,
+  cleanupWorkspaceOutputSchema, cleanupWorkspaceInputFields,
+} from "./repos/cleanup-workspace.meta.ts";
 import {
-  CREATE_WORKSPACE_PHASE_TYPE, CREATE_WORKSPACE_LABEL, CREATE_WORKSPACE_CATEGORY, createWorkspaceOutputSchema, createWorkspaceInputFields,
+  CREATE_WORKSPACE_PHASE_TYPE, CREATE_WORKSPACE_LABEL, CREATE_WORKSPACE_CATEGORY,
+  CREATE_WORKSPACE_DESCRIPTION,
+  createWorkspaceOutputSchema, createWorkspaceInputFields,
 } from "./repos/create-workspace.meta.ts";
 
 import {
-  GET_REPO_PHASE_TYPE, GET_REPO_LABEL, GET_REPO_CATEGORY, getRepoInputFields,
-} from "./git/get-repo.meta.ts";
+  GET_REPOSITORY_PHASE_TYPE, GET_REPOSITORY_LABEL, GET_REPOSITORY_CATEGORY,
+  GET_REPOSITORY_DESCRIPTION,
+  getRepositoryInputFields,
+} from "./git/get-repository.meta.ts";
 import {
-  CLONE_REPOS_PHASE_TYPE, CLONE_REPOS_LABEL, CLONE_REPOS_CATEGORY, cloneReposInputFields,
+  CLONE_REPOS_PHASE_TYPE, CLONE_REPOS_LABEL, CLONE_REPOS_CATEGORY, CLONE_REPOS_DESCRIPTION,
+  cloneReposInputFields,
 } from "./git/clone-repos.meta.ts";
 import {
-  CREATE_PR_PHASE_TYPE, CREATE_PR_LABEL, CREATE_PR_CATEGORY, createPrInputFields,
-} from "./git/create-pr.meta.ts";
+  OPEN_PULL_REQUEST_PHASE_TYPE, OPEN_PULL_REQUEST_LABEL, OPEN_PULL_REQUEST_CATEGORY,
+  OPEN_PULL_REQUEST_DESCRIPTION,
+  openPullRequestInputFields,
+} from "./git/open-pull-request.meta.ts";
 import {
-  LIST_PRS_PHASE_TYPE, LIST_PRS_LABEL, LIST_PRS_CATEGORY, listPrsInputFields,
-} from "./git/list-prs.meta.ts";
+  LIST_PULL_REQUESTS_PHASE_TYPE, LIST_PULL_REQUESTS_LABEL, LIST_PULL_REQUESTS_CATEGORY,
+  LIST_PULL_REQUESTS_DESCRIPTION,
+  listPullRequestsInputFields,
+} from "./git/list-pull-requests.meta.ts";
 import {
-  ADD_PR_COMMENT_PHASE_TYPE, ADD_PR_COMMENT_LABEL, ADD_PR_COMMENT_CATEGORY, addPrCommentInputFields,
-} from "./git/add-pr-comment.meta.ts";
+  COMMENT_ON_PULL_REQUEST_PHASE_TYPE, COMMENT_ON_PULL_REQUEST_LABEL, COMMENT_ON_PULL_REQUEST_CATEGORY,
+  COMMENT_ON_PULL_REQUEST_DESCRIPTION,
+  commentOnPullRequestInputFields,
+} from "./git/comment-on-pull-request.meta.ts";
 import {
-  FETCH_PR_COMMENTS_PHASE_TYPE, FETCH_PR_COMMENTS_LABEL, FETCH_PR_COMMENTS_CATEGORY, fetchPrCommentsInputFields,
-} from "./git/fetch-pr-comments.meta.ts";
+  LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE, LIST_PULL_REQUEST_COMMENTS_LABEL, LIST_PULL_REQUEST_COMMENTS_CATEGORY,
+  LIST_PULL_REQUEST_COMMENTS_DESCRIPTION,
+  listPullRequestCommentsInputFields,
+} from "./git/list-pull-request-comments.meta.ts";
 
 import {
-  GET_TICKET_PHASE_TYPE, GET_TICKET_LABEL, GET_TICKET_CATEGORY, getTicketOutputSchema, getTicketInputFields,
+  GET_TICKET_PHASE_TYPE, GET_TICKET_LABEL, GET_TICKET_CATEGORY, GET_TICKET_DESCRIPTION,
+  getTicketOutputSchema, getTicketInputFields,
 } from "./tickets/get-ticket.meta.ts";
 import {
-  CREATE_TICKET_PHASE_TYPE, CREATE_TICKET_LABEL, CREATE_TICKET_CATEGORY, createTicketOutputSchema, createTicketInputFields,
+  CREATE_TICKET_PHASE_TYPE, CREATE_TICKET_LABEL, CREATE_TICKET_CATEGORY, CREATE_TICKET_DESCRIPTION,
+  createTicketOutputSchema, createTicketInputFields,
 } from "./tickets/create-ticket.meta.ts";
 import {
-  UPDATE_TICKET_PHASE_TYPE, UPDATE_TICKET_LABEL, UPDATE_TICKET_CATEGORY, updateTicketOutputSchema, updateTicketInputFields,
-} from "./tickets/update-ticket.meta.ts";
+  UPDATE_TICKET_FIELDS_PHASE_TYPE, UPDATE_TICKET_FIELDS_LABEL, UPDATE_TICKET_FIELDS_CATEGORY,
+  UPDATE_TICKET_FIELDS_DESCRIPTION,
+  updateTicketFieldsOutputSchema, updateTicketFieldsInputFields,
+} from "./tickets/update-ticket-fields.meta.ts";
 import {
-  UPDATE_STATUS_PHASE_TYPE, UPDATE_STATUS_LABEL, UPDATE_STATUS_CATEGORY, updateStatusOutputSchema, updateStatusInputFields,
-} from "./tickets/update-status.meta.ts";
+  TRANSITION_TICKET_PHASE_TYPE, TRANSITION_TICKET_LABEL, TRANSITION_TICKET_CATEGORY,
+  TRANSITION_TICKET_DESCRIPTION,
+  transitionTicketOutputSchema, transitionTicketInputFields,
+} from "./tickets/transition-ticket.meta.ts";
 import {
-  ADD_TICKET_COMMENT_PHASE_TYPE, ADD_TICKET_COMMENT_LABEL, ADD_TICKET_COMMENT_CATEGORY, addTicketCommentOutputSchema, addTicketCommentInputFields,
-} from "./tickets/add-ticket-comment.meta.ts";
+  COMMENT_ON_TICKET_PHASE_TYPE, COMMENT_ON_TICKET_LABEL, COMMENT_ON_TICKET_CATEGORY,
+  COMMENT_ON_TICKET_DESCRIPTION,
+  commentOnTicketOutputSchema, commentOnTicketInputFields,
+} from "./tickets/comment-on-ticket.meta.ts";
 
 import {
-  NOTIFY_PHASE_TYPE, NOTIFY_LABEL, NOTIFY_CATEGORY, notifyOutputSchema, notifyInputFields,
-} from "./notifications/notify.meta.ts";
+  SEND_MESSAGE_PHASE_TYPE, SEND_MESSAGE_LABEL, SEND_MESSAGE_CATEGORY, SEND_MESSAGE_DESCRIPTION,
+  sendMessageOutputSchema, sendMessageInputFields,
+} from "./notifications/send-message.meta.ts";
 
 export interface PhaseCatalogEntry {
   phaseType: string;
   label: string;
   category: string;
+  description: string;
   inputFields: InputFields;
   outputSchema: OutputSchema | null;
 }
 
 export const phaseCatalog: PhaseCatalogEntry[] = [
-  // AI
-  { phaseType: ANALYZE_PHASE_TYPE,   label: ANALYZE_LABEL,   category: ANALYZE_CATEGORY,   inputFields: analyzeInputFields,   outputSchema: analyzeOutputSchema },
-  { phaseType: PLAN_PHASE_TYPE,      label: PLAN_LABEL,      category: PLAN_CATEGORY,      inputFields: planInputFields,      outputSchema: planOutputSchema },
-  { phaseType: IMPLEMENT_PHASE_TYPE, label: IMPLEMENT_LABEL, category: IMPLEMENT_CATEGORY, inputFields: implementInputFields, outputSchema: implementOutputSchema },
+  // Coding Agent
+  { phaseType: ANALYZE_REPO_PHASE_TYPE,        label: ANALYZE_REPO_LABEL,        category: ANALYZE_REPO_CATEGORY,        description: ANALYZE_REPO_DESCRIPTION,        inputFields: analyzeRepoInputFields,        outputSchema: analyzeRepoOutputSchema },
+  { phaseType: PLAN_IMPLEMENTATION_PHASE_TYPE, label: PLAN_IMPLEMENTATION_LABEL, category: PLAN_IMPLEMENTATION_CATEGORY, description: PLAN_IMPLEMENTATION_DESCRIPTION, inputFields: planImplementationInputFields, outputSchema: planImplementationOutputSchema },
+  { phaseType: IMPLEMENT_CHANGES_PHASE_TYPE,   label: IMPLEMENT_CHANGES_LABEL,   category: IMPLEMENT_CHANGES_CATEGORY,   description: IMPLEMENT_CHANGES_DESCRIPTION,   inputFields: implementChangesInputFields,   outputSchema: implementChangesOutputSchema },
 
-  // Repos
-  { phaseType: SCAN_REPOS_PHASE_TYPE,       label: SCAN_REPOS_LABEL,       category: SCAN_REPOS_CATEGORY,       inputFields: scanReposInputFields,       outputSchema: scanReposOutputSchema },
-  { phaseType: CHECKOUT_REPO_PHASE_TYPE,    label: CHECKOUT_REPO_LABEL,    category: CHECKOUT_REPO_CATEGORY,    inputFields: checkoutRepoInputFields,    outputSchema: checkoutRepoOutputSchema },
-  { phaseType: COMMIT_PUSH_PHASE_TYPE,      label: COMMIT_PUSH_LABEL,      category: COMMIT_PUSH_CATEGORY,      inputFields: commitPushInputFields,      outputSchema: commitPushOutputSchema },
-  { phaseType: CLEANUP_REPOS_PHASE_TYPE,    label: CLEANUP_REPOS_LABEL,    category: CLEANUP_REPOS_CATEGORY,    inputFields: cleanupReposInputFields,    outputSchema: cleanupReposOutputSchema },
-  { phaseType: CREATE_WORKSPACE_PHASE_TYPE, label: CREATE_WORKSPACE_LABEL, category: CREATE_WORKSPACE_CATEGORY, inputFields: createWorkspaceInputFields, outputSchema: createWorkspaceOutputSchema },
+  // Workspace
+  { phaseType: LIST_WORKSPACE_FILES_PHASE_TYPE, label: LIST_WORKSPACE_FILES_LABEL, category: LIST_WORKSPACE_FILES_CATEGORY, description: LIST_WORKSPACE_FILES_DESCRIPTION, inputFields: listWorkspaceFilesInputFields, outputSchema: listWorkspaceFilesOutputSchema },
+  { phaseType: START_FEATURE_BRANCH_PHASE_TYPE, label: START_FEATURE_BRANCH_LABEL, category: START_FEATURE_BRANCH_CATEGORY, description: START_FEATURE_BRANCH_DESCRIPTION, inputFields: startFeatureBranchInputFields, outputSchema: startFeatureBranchOutputSchema },
+  { phaseType: COMMIT_AND_PUSH_PHASE_TYPE,      label: COMMIT_AND_PUSH_LABEL,      category: COMMIT_AND_PUSH_CATEGORY,      description: COMMIT_AND_PUSH_DESCRIPTION,      inputFields: commitAndPushInputFields,      outputSchema: commitAndPushOutputSchema },
+  { phaseType: CLEANUP_WORKSPACE_PHASE_TYPE,    label: CLEANUP_WORKSPACE_LABEL,    category: CLEANUP_WORKSPACE_CATEGORY,    description: CLEANUP_WORKSPACE_DESCRIPTION,    inputFields: cleanupWorkspaceInputFields,    outputSchema: cleanupWorkspaceOutputSchema },
+  { phaseType: CREATE_WORKSPACE_PHASE_TYPE,     label: CREATE_WORKSPACE_LABEL,     category: CREATE_WORKSPACE_CATEGORY,     description: CREATE_WORKSPACE_DESCRIPTION,     inputFields: createWorkspaceInputFields,     outputSchema: createWorkspaceOutputSchema },
 
-  // Git (no outputSchema yet)
-  { phaseType: GET_REPO_PHASE_TYPE,          label: GET_REPO_LABEL,          category: GET_REPO_CATEGORY,          inputFields: getRepoInputFields,          outputSchema: null },
-  { phaseType: CLONE_REPOS_PHASE_TYPE,       label: CLONE_REPOS_LABEL,       category: CLONE_REPOS_CATEGORY,       inputFields: cloneReposInputFields,       outputSchema: null },
-  { phaseType: CREATE_PR_PHASE_TYPE,         label: CREATE_PR_LABEL,         category: CREATE_PR_CATEGORY,         inputFields: createPrInputFields,         outputSchema: null },
-  { phaseType: LIST_PRS_PHASE_TYPE,          label: LIST_PRS_LABEL,          category: LIST_PRS_CATEGORY,          inputFields: listPrsInputFields,          outputSchema: null },
-  { phaseType: ADD_PR_COMMENT_PHASE_TYPE,    label: ADD_PR_COMMENT_LABEL,    category: ADD_PR_COMMENT_CATEGORY,    inputFields: addPrCommentInputFields,    outputSchema: null },
-  { phaseType: FETCH_PR_COMMENTS_PHASE_TYPE, label: FETCH_PR_COMMENTS_LABEL, category: FETCH_PR_COMMENTS_CATEGORY, inputFields: fetchPrCommentsInputFields, outputSchema: null },
+  // Code Host (no outputSchema yet)
+  { phaseType: GET_REPOSITORY_PHASE_TYPE,             label: GET_REPOSITORY_LABEL,             category: GET_REPOSITORY_CATEGORY,             description: GET_REPOSITORY_DESCRIPTION,             inputFields: getRepositoryInputFields,             outputSchema: null },
+  { phaseType: CLONE_REPOS_PHASE_TYPE,                label: CLONE_REPOS_LABEL,                category: CLONE_REPOS_CATEGORY,                description: CLONE_REPOS_DESCRIPTION,                inputFields: cloneReposInputFields,                outputSchema: null },
+  { phaseType: OPEN_PULL_REQUEST_PHASE_TYPE,          label: OPEN_PULL_REQUEST_LABEL,          category: OPEN_PULL_REQUEST_CATEGORY,          description: OPEN_PULL_REQUEST_DESCRIPTION,          inputFields: openPullRequestInputFields,          outputSchema: null },
+  { phaseType: LIST_PULL_REQUESTS_PHASE_TYPE,         label: LIST_PULL_REQUESTS_LABEL,         category: LIST_PULL_REQUESTS_CATEGORY,         description: LIST_PULL_REQUESTS_DESCRIPTION,         inputFields: listPullRequestsInputFields,         outputSchema: null },
+  { phaseType: COMMENT_ON_PULL_REQUEST_PHASE_TYPE,    label: COMMENT_ON_PULL_REQUEST_LABEL,    category: COMMENT_ON_PULL_REQUEST_CATEGORY,    description: COMMENT_ON_PULL_REQUEST_DESCRIPTION,    inputFields: commentOnPullRequestInputFields,    outputSchema: null },
+  { phaseType: LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE, label: LIST_PULL_REQUEST_COMMENTS_LABEL, category: LIST_PULL_REQUEST_COMMENTS_CATEGORY, description: LIST_PULL_REQUEST_COMMENTS_DESCRIPTION, inputFields: listPullRequestCommentsInputFields, outputSchema: null },
 
-  // Tickets
-  { phaseType: GET_TICKET_PHASE_TYPE,         label: GET_TICKET_LABEL,         category: GET_TICKET_CATEGORY,         inputFields: getTicketInputFields,         outputSchema: getTicketOutputSchema },
-  { phaseType: CREATE_TICKET_PHASE_TYPE,      label: CREATE_TICKET_LABEL,      category: CREATE_TICKET_CATEGORY,      inputFields: createTicketInputFields,      outputSchema: createTicketOutputSchema },
-  { phaseType: UPDATE_TICKET_PHASE_TYPE,      label: UPDATE_TICKET_LABEL,      category: UPDATE_TICKET_CATEGORY,      inputFields: updateTicketInputFields,      outputSchema: updateTicketOutputSchema },
-  { phaseType: UPDATE_STATUS_PHASE_TYPE,      label: UPDATE_STATUS_LABEL,      category: UPDATE_STATUS_CATEGORY,      inputFields: updateStatusInputFields,      outputSchema: updateStatusOutputSchema },
-  { phaseType: ADD_TICKET_COMMENT_PHASE_TYPE, label: ADD_TICKET_COMMENT_LABEL, category: ADD_TICKET_COMMENT_CATEGORY, inputFields: addTicketCommentInputFields, outputSchema: addTicketCommentOutputSchema },
+  // Issue Tracker
+  { phaseType: GET_TICKET_PHASE_TYPE,           label: GET_TICKET_LABEL,           category: GET_TICKET_CATEGORY,           description: GET_TICKET_DESCRIPTION,           inputFields: getTicketInputFields,           outputSchema: getTicketOutputSchema },
+  { phaseType: CREATE_TICKET_PHASE_TYPE,        label: CREATE_TICKET_LABEL,        category: CREATE_TICKET_CATEGORY,        description: CREATE_TICKET_DESCRIPTION,        inputFields: createTicketInputFields,        outputSchema: createTicketOutputSchema },
+  { phaseType: UPDATE_TICKET_FIELDS_PHASE_TYPE, label: UPDATE_TICKET_FIELDS_LABEL, category: UPDATE_TICKET_FIELDS_CATEGORY, description: UPDATE_TICKET_FIELDS_DESCRIPTION, inputFields: updateTicketFieldsInputFields, outputSchema: updateTicketFieldsOutputSchema },
+  { phaseType: TRANSITION_TICKET_PHASE_TYPE,    label: TRANSITION_TICKET_LABEL,    category: TRANSITION_TICKET_CATEGORY,    description: TRANSITION_TICKET_DESCRIPTION,    inputFields: transitionTicketInputFields,    outputSchema: transitionTicketOutputSchema },
+  { phaseType: COMMENT_ON_TICKET_PHASE_TYPE,    label: COMMENT_ON_TICKET_LABEL,    category: COMMENT_ON_TICKET_CATEGORY,    description: COMMENT_ON_TICKET_DESCRIPTION,    inputFields: commentOnTicketInputFields,    outputSchema: commentOnTicketOutputSchema },
 
-  // Notifications
-  { phaseType: NOTIFY_PHASE_TYPE, label: NOTIFY_LABEL, category: NOTIFY_CATEGORY, inputFields: notifyInputFields, outputSchema: notifyOutputSchema },
+  // Messaging
+  { phaseType: SEND_MESSAGE_PHASE_TYPE, label: SEND_MESSAGE_LABEL, category: SEND_MESSAGE_CATEGORY, description: SEND_MESSAGE_DESCRIPTION, inputFields: sendMessageInputFields, outputSchema: sendMessageOutputSchema },
 ];

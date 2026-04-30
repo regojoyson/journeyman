@@ -5,7 +5,7 @@ export type PhaseRunResult =
   | { kind: "failure"; failure: PhaseFailure };
 
 export interface IPhaseHandler {
-  /** Stable phase type id, e.g. "analyze". */
+  /** Stable phase type id, e.g. "analyze-repo". */
   readonly phaseType: string;
   /** JSON Schema describing this phase's required `config` shape. */
   readonly configSchema?: unknown;

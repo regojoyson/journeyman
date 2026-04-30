@@ -9,12 +9,42 @@ import type { FlowGraph, FlowScope } from "@journeyman/core";
 import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
 import { phaseCatalog } from "@journeyman/phases/catalog";
 import { makeRequireAuth } from "@journeyman/identity";
+import { listVisibleNames } from "@journeyman/secrets";
+import type { FlowSaveWarning } from "@journeyman/core";
+
+/**
+ * Compute non-blocking warnings about inaccessible secret references in a flow definition.
+ * Save proceeds regardless; warnings are attached to the response.
+ */
+async function computeSaveWarnings(
+  c: Composition,
+  ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>,
+  definition: FlowGraph,
+): Promise<FlowSaveWarning[]> {
+  const needed = new Set<string>();
+  for (const node of definition.nodes) {
+    for (const name of node.requiredSecrets ?? []) needed.add(name);
+  }
+  if (needed.size === 0 || !c.pool) return [];
+  const visible = new Set(await listVisibleNames(c.pool, ctx));
+  const inaccessible = [...needed].filter(n => !visible.has(n)).sort();
+  if (inaccessible.length === 0) return [];
+  return [
+    {
+      code: "inaccessible_secrets",
+      message:
+        "Flow references secrets you cannot currently access. Runs will fail until they are created.",
+      names: inaccessible,
+    },
+  ];
+}
 
 export interface FlowValidationReport {
   ok: boolean;
-  errors: string[];      // hard failures (graph structure, ref reachability)
-  missing: string[];     // required inputs without a typed value or binding
-  warnings: string[];    // refs to undeclared fields — non-blocking
+  errors: string[];                         // hard failures (graph structure, ref reachability)
+  missing: string[];                        // required inputs without a typed value or binding
+  warnings: string[];                       // refs to undeclared fields — non-blocking
+  secretWarnings: FlowSaveWarning[];        // inaccessible secret references — non-blocking
 }
 
 /** Pure function — does not mutate any reply. Returns the full report. */
@@ -69,7 +99,7 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
     }
   }
 
-  return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings };
+  return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };
 }
 
 /** Save-path adapter: writes 400 to reply if invalid. */
@@ -108,12 +138,15 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
 
   // Non-destructive validation — caller passes a definition, we return the full report.
   app.post("/flows/validate", { preHandler: requireAuth() }, async (req, reply) => {
+    const ctx = req.runContext!;
     const body = req.body as { definition?: FlowGraph };
     if (!body?.definition || typeof body.definition !== "object") {
       reply.code(400);
       return { error: "bad_request", message: "definition is required" };
     }
-    return computeValidationReport(body.definition);
+    const report = computeValidationReport(body.definition);
+    const secretWarnings = await computeSaveWarnings(c, ctx, body.definition);
+    return { ...report, secretWarnings };
   });
 
   app.post("/flows", { preHandler: requireAuth() }, async (req, reply) => {
@@ -139,6 +172,8 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
     if (!_v.ok) return;
 
+    const warnings = await computeSaveWarnings(c, ctx, body.definition as FlowGraph);
+
     const { flow, version } = await c.flows.create({
       scope: body.scope as FlowScope,
       name: body.name,
@@ -149,7 +184,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
       createdByUserId: caller.userId,
     });
     reply.code(201);
-    return { flow, version };
+    return warnings.length ? { flow, version, warnings } : { flow, version };
   });
 
   app.get("/flows", { preHandler: requireAuth() }, async (req) => {
@@ -189,15 +224,17 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
       await c.flows.updateMeta(id, { name: body.name, description: body.description });
     }
     let newVersion = null;
+    let warnings: FlowSaveWarning[] = [];
     if (body.definition) {
       const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
       if (!_v.ok) return;
+      warnings = await computeSaveWarnings(c, ctx, body.definition as FlowGraph);
       newVersion = await c.flowVersions.appendVersion({
         flowId: id, definition: body.definition as FlowGraph, createdByUserId: caller.userId,
       });
     }
     const updated = await c.flows.getById(id);
-    return { flow: updated, version: newVersion };
+    return warnings.length ? { flow: updated, version: newVersion, warnings } : { flow: updated, version: newVersion };
   });
 
   app.delete("/flows/:id", { preHandler: requireAuth() }, async (req, reply) => {
