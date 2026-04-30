@@ -95,39 +95,58 @@ Union with `listGlobalSecretNames()` (already exists in [global.ts:18](../../pac
 
 The HTTP route is a thin wrapper around this. Save-time validation calls the helper directly.
 
-## 6. Save-time validation
+## 6. Save-time validation (non-blocking warnings)
 
-### 6.1 Flow validation rule
+### 6.1 Principle: never block the save
+
+The save **always succeeds** when the body is well-formed. Inaccessible-secret references return as **warnings** in the response, not as errors. Rationale: a user mid-way through building a large flow may legitimately reference a secret they haven't created yet, or one an admin has yet to provision. Blocking the save would force them to abandon work, go create the secret, and rebuild. Run-time fail-fast (`MissingSecretsError`) is the real safety net.
+
+### 6.2 Flow validation rule
 
 When `PATCH /api/flows/:id` (or create) is called with a `definition` containing nodes with `requiredSecrets`:
 
 1. Compute the union of all `requiredSecrets` across all nodes (the flow's "needed set").
 2. Call `listVisibleNames(pool, ctx)` for the saving caller.
-3. For each needed name not in the visible set → reject the save.
+3. Compute `inaccessible = needed - visible`.
+4. **Save the flow regardless.** Attach `warnings` to the response if `inaccessible` is non-empty.
 
-### 6.2 Error shape
+### 6.3 Response shape
+
+Successful save (no warnings):
+
+```json
+{ "id": "...", "name": "...", /* ...flow fields... */ }
+```
+
+Successful save with warnings:
 
 ```json
 {
-  "error": "InaccessibleSecrets",
-  "message": "Flow references secrets you cannot access",
-  "details": {
-    "inaccessible": ["SECRET_FROM_OTHER_ORG", "ANOTHER_USERS_KEY"]
-  }
+  "id": "...",
+  "name": "...",
+  /* ...flow fields... */,
+  "warnings": [
+    {
+      "code": "inaccessible_secrets",
+      "message": "Flow references secrets you cannot currently access. Runs will fail until they are created.",
+      "names": ["SECRET_FROM_OTHER_ORG", "PENDING_KEY"]
+    }
+  ]
 }
 ```
 
-HTTP status: `400 Bad Request`. SPA renders inline next to the offending step(s).
+HTTP status: `200` (PATCH) / `201` (create) — same as a clean save. The presence of a `warnings` array is the signal.
 
-### 6.3 Where the check lives
+### 6.4 Where the check lives
 
-In the flow PATCH/POST handler, after Zod parses the body but before the DB write. Reuses the existing `RunContext` derivation in `composition.ts`. No new auth wiring.
+In the flow PATCH/POST handler, after Zod parses the body but before the response is returned. Reuses the existing `RunContext` derivation in `composition.ts`. No new auth wiring.
 
-### 6.4 Edge cases
+### 6.5 Edge cases
 
-- **Empty `requiredSecrets`** on every step → no check needed, save proceeds.
-- **Caller is not a member of an org** → `requiredSecrets.length === 0` required; otherwise 400 with the same error (no visible names → all needed names inaccessible).
-- **Save validation passes, then secret is deleted** → flow keeps the reference; run-time `MissingSecretsError` catches it. We do not eagerly invalidate flows when secrets are deleted.
+- **Empty `requiredSecrets`** on every step → no check needed, no warnings.
+- **Caller is not a member of an org** → save proceeds; all referenced names become inaccessible warnings (since visible set is just global).
+- **Save validation passes (no warnings), then secret is deleted** → flow keeps the reference; run-time `MissingSecretsError` catches it. We do not eagerly invalidate flows when secrets are deleted.
+- **User dismisses warnings, runs anyway** → run fails fast with `missing_secrets` reason. Existing behavior, no change.
 
 ## 7. Flow editor UI
 
@@ -143,9 +162,16 @@ In the existing properties panel for a phase node, add a new collapsible section
 - Removing a chip removes it from `node.requiredSecrets`.
 - If the user has no visible names at all, show: "No secrets available. Add one in [My Secrets](/me/secrets) or ask an admin."
 
-### 7.3 No free-text input
+### 7.3 Free-text allowed (combobox)
 
-The user cannot type an arbitrary name. They must pick from the visible list. This eliminates the "I typed it wrong / I referenced something I can't see" failure mode at the source. If they need a new secret, they create it in `/me/secrets` (or admin in `/admin/secrets`), then come back and pick it.
+The dropdown is a **combobox**: pick from the visible list, *or* type a name that doesn't exist yet. Both paths add to `node.requiredSecrets`. This lets a user reference a secret they haven't created yet and finish building the flow.
+
+**Visual state per chip:**
+
+- **Visible (resolves now)** — neutral chip.
+- **Inaccessible (typed or stale)** — chip rendered with a warning style (e.g. amber border + ⚠ icon) and a tooltip: "Not accessible to you. Create it in My Secrets or ask an admin."
+
+The warning state is computed from the same visible-names list used to populate the dropdown. No extra API call.
 
 ### 7.4 Refresh
 
@@ -174,8 +200,8 @@ If/when the CLI worker grows a `--user` flag, revisit.
 
 | Situation | Behavior |
 |---|---|
-| Save flow with secret name not visible to caller | `400 InaccessibleSecrets`, list of bad names |
-| Save flow with empty `requiredSecrets` everywhere | Saves fine |
+| Save flow with secret name not visible to caller | Save succeeds; response includes `warnings: [{ code: "inaccessible_secrets", names: [...] }]` |
+| Save flow with empty `requiredSecrets` everywhere | Saves fine, no warnings |
 | Caller is in wrong org for `:orgId` | `403` (existing same-org check) |
 | Run a flow whose secret was deleted post-save | `MissingSecretsError` at run start (existing path) |
 | Editor opens with no DB pool configured | Visible-names endpoint returns global names only; user/org chips unavailable |
