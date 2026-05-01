@@ -3,31 +3,54 @@
 **Date:** 2026-05-01
 **Status:** Approved
 
+---
+
 ## Problem
 
 Several `FlowNode` fields must be set redundantly on every phase node in a flow:
 
-- `executorConfig.provider` — e.g., every coding-cli phase repeats `{ provider: "claude" }`
+- `executorConfig.provider` — every coding-cli phase repeats `{ provider: "claude" }`
 - `retry` — every phase repeats the same backoff policy
 - `secretBindings` — every phase repeats the same slot-to-scope bindings
+- `inputs` — common wiring (`dirPath`, `targetDir`, `workspaceDir`) is re-declared on every phase that needs it
 
-A flow with 8 coding-cli phases requires 8 identical `executorConfig` objects, 8 identical `retry` blocks, and 8 identical binding maps. Changing the provider means editing every node.
+A flow with 8 coding-cli phases requires 8 identical `executorConfig` blocks, 8 retry policies, 8 binding maps, and 8 copies of the same `dirPath` wire. Changing the provider or the workspace dir ref means editing every node.
+
+---
 
 ## Goal
 
-Add a `defaults` block to `FlowGraph` that acts as a workflow-level fallback for per-node config. Individual phase nodes can override any field; unset fields inherit from the workflow default.
+Add a `defaults` block to `FlowGraph` that acts as a workflow-level fallback for per-node config. Individual phase nodes can override any field; unset fields inherit from the workflow default. The editor surfaces clearly — per field — whether a value is inherited or locally overriding.
+
+---
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
-| Which fields | `retry`, `executorConfig`, `secretBindings` |
-| Merge behaviour | Field-level merge; `null` on a node field suppresses the workflow default for that field |
-| Location in data model | New `FlowGraph.defaults` top-level field (not on start node) |
-| Scope of executorConfig | Flat — one provider default applies to all phases that match the name |
-| Editor entry point | Topbar "Flow Config" button → dedicated panel |
+| Which fields | `retry`, `executorConfig`, `secretBindings`, `inputs` |
+| Merge behaviour | Field-level (key-by-key) merge; `null` on a **node** field suppresses the workflow default for that field |
+| Location in data model | New `FlowGraph.defaults` top-level field — not on the start node |
+| Scope of `executorConfig` | Flat — one provider default applies to all phases |
+| Editor entry point | Topbar "Flow Config" button → dedicated `FlowConfigPanel` |
+| Per-field override display | Every config field in every phase tab shows one of four states: inherited / override / local / unset |
+
+---
 
 ## Data Model
+
+### Extended `FlowInputValue`
+
+A new `suppress` kind is added so a phase can explicitly opt out of one inherited input key without nulling the whole `inputs` map:
+
+```ts
+// packages/core/src/types/flow.types.ts
+
+export type FlowInputValue =
+  | { kind: "literal"; value: unknown }
+  | { kind: "ref"; ref: string }
+  | { kind: "suppress" };   // new — cancels a specific inherited input key
+```
 
 ### New type: `FlowDefaults`
 
@@ -35,26 +58,17 @@ Add a `defaults` block to `FlowGraph` that acts as a workflow-level fallback for
 // packages/core/src/types/flow.types.ts
 
 export interface FlowDefaults {
-  /**
-   * Default retry policy for all phase nodes.
-   * Merged field-by-field into each node's `retry`.
-   * null = no workflow default (suppress inheritance).
-   */
-  retry?: RetryPolicy | null;
+  /** Default retry policy inherited by all phase nodes. */
+  retry?: RetryPolicy;
 
-  /**
-   * Default executor config for all phase nodes.
-   * Merged field-by-field into each node's `executorConfig`.
-   * null = no workflow default.
-   */
-  executorConfig?: { provider?: string } | null;
+  /** Default executor config inherited by all phase nodes. */
+  executorConfig?: { provider?: string };
 
-  /**
-   * Default secret bindings.
-   * Merged slot-by-slot (key-by-key) into each node's `secretBindings`.
-   * null = no workflow default.
-   */
-  secretBindings?: Record<string, SecretBinding> | null;
+  /** Default secret bindings inherited slot-by-slot by all phase nodes. */
+  secretBindings?: Record<string, SecretBinding>;
+
+  /** Default input wiring inherited key-by-key by all phase nodes. */
+  inputs?: Record<string, FlowInputValue>;
 }
 ```
 
@@ -70,48 +84,93 @@ export interface FlowGraph {
 }
 ```
 
-`FLOW_SCHEMA_VERSION` is **not** bumped — `defaults` is optional and additive; existing flows without it are fully valid.
+`FLOW_SCHEMA_VERSION` is **not** bumped. `defaults` is optional and additive; existing flows without it are fully valid.
 
 ### Updated `FlowNode` fields
 
-The three fields that participate in inheritance need `| null` to express the suppress-sentinel:
+The four fields that participate in inheritance need `| null` to allow the suppress sentinel:
 
 ```ts
-// packages/core/src/types/flow.types.ts — existing FlowNode interface, updated fields only
-retry?: RetryPolicy | null;                           // was: RetryPolicy
-executorConfig?: { provider?: string } | null;        // was: { provider?: string }
-secretBindings?: Record<string, SecretBinding> | null; // was: Record<string, SecretBinding>
+// packages/core/src/types/flow.types.ts — FlowNode interface, updated fields only
+retry?: RetryPolicy | null;                             // was: RetryPolicy
+executorConfig?: { provider?: string } | null;          // was: { provider?: string }
+secretBindings?: Record<string, SecretBinding> | null;  // was: Record<string, SecretBinding>
+inputs?: Record<string, FlowInputValue> | null;         // was: Record<string, FlowInputValue>
 ```
 
-Existing flows serialised without `null` on these fields remain valid — `undefined` continues to mean "not set."
+Existing flows serialised without `null` remain valid — `undefined` means "not set, inherit if a default exists."
+
+---
 
 ## Merge Rules
 
-Applied in the orchestrator before phase execution. Rules per field:
+All merging happens in the orchestrator before a phase runs. Phase handlers always receive a fully-resolved node with no knowledge of defaults.
 
-### `retry`
-- Node `retry` is `undefined` → inherit workflow default as-is
-- Node `retry` is an object → field-level merge: each defined key on the node wins; undefined keys fall back to the workflow default
-- Node `retry` is `null` → no retry policy applied (workflow default suppressed)
-- No workflow default → node `retry` used as-is (existing behaviour)
+### Merge semantics per value
 
-### `executorConfig`
-- Same pattern as `retry`, field-by-field merge on `{ provider? }`
+For every field that participates in inheritance, the resolution order is:
 
-### `secretBindings`
-- Workflow default slots are the base map
-- Phase-level slots override by key (slot name)
-- Phase `secretBindings: null` → clear all inherited bindings for this node
-- Phase `secretBindings: {}` → inherits all workflow default slots (empty object does not suppress)
+```
+node value (explicit) → workflow default → system default (undefined / existing behaviour)
+```
+
+| Node value | Workflow default | Resolved value |
+|---|---|---|
+| `undefined` | `undefined` | `undefined` (existing behaviour) |
+| `undefined` | set | workflow default |
+| set | `undefined` | node value |
+| set | set | field-level merge: node fields win, missing fields fall back to default |
+| `null` | anything | `undefined` (suppressed — no value applied) |
+
+### `retry` — field-level merge within `RetryPolicy`
+
+```
+resolved.retry = merge(node.retry, defaults.retry)
+```
+
+- Node `null` → resolved retry is `undefined` (suppressed)
+- Node `undefined` + default set → resolved retry = default (whole object)
+- Both set → `{ ...default, ...node }` — each node key wins; unset keys fall back to default
+
+Example: default `{ maxAttempts: 3, backoff: "exponential" }`, node `{ maxAttempts: 1 }` →
+resolved `{ maxAttempts: 1, backoff: "exponential" }`.
+
+### `executorConfig` — field-level merge on `{ provider? }`
+
+Same pattern as `retry`. Node `{ provider: "gemini" }` overrides just the provider; all other keys fall back to default.
+
+### `secretBindings` — slot-by-slot merge
+
+```
+resolved.secretBindings = { ...defaults.secretBindings, ...node.secretBindings }
+```
+
+- Node `null` → all inherited bindings suppressed for this node
+- Node `{}` → inherits all default slots (empty object does not suppress)
+- Node with slots → named slots override default; unnamed slots inherited
+
+### `inputs` — key-by-key merge
+
+```
+resolved.inputs = { ...defaults.inputs, ...node.inputs }
+```
+
+Then filter: any key whose resolved value is `{ kind: "suppress" }` is removed from the map.
+
+- Node `null` → all inherited input wiring suppressed for this node
+- Node `{ dirPath: { kind: "suppress" } }` → removes `dirPath` from the inherited map; all other inherited keys remain
+- Node sets a key explicitly → that key's value wins over the default
+
+---
 
 ## Orchestrator Changes
 
-### New utility: `applyFlowDefaults`
+### New utility: `apply-flow-defaults.ts`
 
 ```ts
 // packages/orchestrator/src/flow-json/apply-flow-defaults.ts
 
-import type { FlowNode, FlowDefaults, RetryPolicy, SecretBinding } from "@journeyman/core";
+import type { FlowNode, FlowDefaults, RetryPolicy, SecretBinding, FlowInputValue } from "@journeyman/core";
 
 export function applyFlowDefaults(node: FlowNode, defaults: FlowDefaults | undefined): FlowNode {
   if (!defaults) return node;
@@ -119,7 +178,8 @@ export function applyFlowDefaults(node: FlowNode, defaults: FlowDefaults | undef
     ...node,
     retry:          mergeRetry(node.retry, defaults.retry),
     executorConfig: mergeExecutorConfig(node.executorConfig, defaults.executorConfig),
-    secretBindings: mergeSecretBindings(node.secretBindings, defaults.secretBindings),
+    secretBindings: mergeMap(node.secretBindings, defaults.secretBindings),
+    inputs:         mergeInputs(node.inputs, defaults.inputs),
   };
 }
 
@@ -127,84 +187,201 @@ function mergeRetry(
   node: RetryPolicy | null | undefined,
   def: RetryPolicy | null | undefined,
 ): RetryPolicy | undefined {
-  if (node === null) return undefined;           // explicit suppress
-  if (!def) return node ?? undefined;            // no workflow default
-  if (!node) return def;                         // fully inherit
-  return { ...def, ...node };                    // field-level merge: node wins
-}
-
-function mergeExecutorConfig(
-  node: { provider?: string } | null | undefined,
-  def: { provider?: string } | null | undefined,
-): { provider?: string } | undefined {
   if (node === null) return undefined;
-  if (!def) return node ?? undefined;
+  if (!def)  return node ?? undefined;
   if (!node) return def;
   return { ...def, ...node };
 }
 
-function mergeSecretBindings(
-  node: Record<string, SecretBinding> | null | undefined,
-  def: Record<string, SecretBinding> | null | undefined,
-): Record<string, SecretBinding> | undefined {
+function mergeExecutorConfig(
+  node: { provider?: string } | null | undefined,
+  def:  { provider?: string } | null | undefined,
+): { provider?: string } | undefined {
   if (node === null) return undefined;
-  if (!def) return node ?? undefined;
+  if (!def)  return node ?? undefined;
   if (!node) return def;
-  return { ...def, ...node };                    // slot-by-slot: node slots win
+  return { ...def, ...node };
+}
+
+function mergeMap<V>(
+  node: Record<string, V> | null | undefined,
+  def:  Record<string, V> | null | undefined,
+): Record<string, V> | undefined {
+  if (node === null) return undefined;
+  if (!def)  return node ?? undefined;
+  if (!node) return def;
+  return { ...def, ...node };
+}
+
+function mergeInputs(
+  node: Record<string, FlowInputValue> | null | undefined,
+  def:  Record<string, FlowInputValue> | null | undefined,
+): Record<string, FlowInputValue> | undefined {
+  if (node === null) return undefined;
+  if (!def)  return node ?? undefined;
+  if (!node) return def;
+  const merged = { ...def, ...node };
+  // remove any key explicitly suppressed by the node
+  for (const [k, v] of Object.entries(merged)) {
+    if (v.kind === "suppress") delete merged[k];
+  }
+  return merged;
 }
 ```
 
-### Integration point
+### Integration point in `conductor-converter.ts`
 
-`applyFlowDefaults` is called in `conductor-converter.ts` when building the resolved node for each `phase` node, passing `graph.defaults`. Phase handlers always receive an already-resolved node — they have no knowledge of the defaults system.
+`applyFlowDefaults(node, graph.defaults)` is called once per `phase` node during graph-to-conductor conversion, before the node is handed to the worker. No other layer is aware of the defaults system.
+
+---
 
 ## Editor Changes
 
-### Topbar — "Flow Config" button
+### 1. Topbar — "Flow Config" button
 
-A new icon button is added to the topbar (alongside existing save/run controls). Clicking it opens a `FlowConfigPanel` — a slide-over or right panel (same shell as the properties panel) showing all workflow-level settings:
+A new icon button (gear/sliders icon) is added to the topbar alongside the existing save/run controls. Clicking it toggles the `FlowConfigPanel`.
 
-- Existing settings currently on the start node (`runInputs`, `maxCycleVisits`, `flowRetry`) remain on the start node panel for now — they are not migrated in this change.
-- The Flow Config panel shows only the new `defaults` block: provider, retry defaults, and secret binding defaults.
+Existing start-node settings (`runInputs`, `maxCycleVisits`, `flowRetry`) remain on the start node for now and are not migrated in this change.
 
-### `FlowConfigPanel` component
+### 2. `FlowConfigPanel` — new component tree
 
 ```
 packages/flow-editor/src/flow-config/
-├── FlowConfigPanel.tsx      — top-level panel shell
-├── DefaultsRetrySection.tsx — retry defaults (reuses RetryTab internals)
-├── DefaultsExecutorSection.tsx — provider default (reuses ExecutorBlock)
-└── DefaultsSecretsSection.tsx  — secret binding defaults (reuses binding row components)
+├── FlowConfigPanel.tsx           — panel shell (title, close button, sections)
+├── DefaultsExecutorSection.tsx   — provider default (reuses ExecutorBlock)
+├── DefaultsRetrySection.tsx      — retry defaults (reuses RetryTab field components)
+├── DefaultsSecretsSection.tsx    — secret binding defaults (reuses binding row components)
+└── DefaultsInputsSection.tsx     — input wiring defaults (reuses ValuePicker rows)
 ```
 
-Each section is independently collapsible. All three are "not set" by default (no defaults block on new flows).
+Each section is independently collapsible. All four sections start in "not set" state on new flows.
 
-### Phase node panels — inherited value display
+`FlowConfigPanel` receives `flow: FlowGraph` and `onChange: (next: FlowGraph) => void`. It writes changes to `flow.defaults` directly.
 
-When a phase node's field is `undefined` (not locally set) and a workflow default exists for it, the relevant tab displays the inherited value with a subtle "Inherited from flow" label below the field. The field is visually dimmed.
+### 3. Per-field inheritance states in phase panels
 
-- Clicking the field activates it and writes the current inherited value explicitly onto the node (override mode).
-- A "Reset to flow default" affordance (small × or reset icon) removes the explicit value and restores inheritance.
-- If the node field is `null` (suppressed), the field shows "Disabled (flow default suppressed)" with a "Re-enable" affordance.
+Every config field in every phase tab displays one of four states. This applies to: the **Retry** tab, the **Config** tab (provider via `ExecutorBlock`), the **Required Secrets** tab, and the **IO** tab.
 
-Affected tabs: **Retry**, **Config** (for provider via `ExecutorBlock`), **Required Secrets**.
+#### The four states
+
+| State | When | Visual treatment |
+|---|---|---|
+| **Inherited** | Node does not set this field; workflow default exists | Value shown dimmed with a `FROM FLOW` chip. Read-only until activated. |
+| **Override** | Node explicitly sets this field; workflow default also exists | Value shown normally with an `OVERRIDE` chip and a reset-to-default button (↺) |
+| **Local** | Node sets this field; no workflow default exists | Value shown normally, no chip |
+| **Unset** | Neither node nor workflow default sets this field | Empty placeholder, no chip (existing behaviour) |
+
+#### Interaction model
+
+- **Activating an inherited field**: clicking an inherited (dimmed) field writes the current inherited value explicitly onto the node, switching it to Override state. The user then edits from there.
+- **Resetting an override**: clicking the ↺ button removes the explicit node value, reverting to Inherited state.
+- **Suppressing an inherited field** (advanced): a "Don't inherit" toggle on an inherited field writes `null` (for top-level fields like `retry`) or `{ kind: "suppress" }` (for individual `inputs` keys). The field then shows a **Suppressed** sub-state with a "Re-enable" affordance.
+
+#### Field granularity
+
+Inheritance state is computed per field, not per tab:
+
+- `retry`: each of `enabled`, `maxAttempts`, `backoff`, `backoffSeconds`, `backoffMultiplier`, `timeoutSeconds`, `onFailure` shows its own state chip
+- `executorConfig`: `provider` shows its own chip
+- `secretBindings`: each slot row shows its own chip
+- `inputs`: each input key row shows its own chip
+
+#### Hook: `useFieldInheritance`
+
+A new hook drives the chip logic across all tabs:
+
+```ts
+// packages/flow-editor/src/hooks/use-field-inheritance.ts
+
+export type FieldState = "inherited" | "override" | "local" | "unset";
+
+export function useFieldInheritance(
+  nodeValue: unknown,        // value on the node (undefined if not set)
+  defaultValue: unknown,     // value from flow defaults (undefined if not set)
+): {
+  state: FieldState;
+  resolvedValue: unknown;    // the effective value (node or default)
+  onActivate: () => void;    // write resolved value onto node
+  onReset: () => void;       // remove node override
+}
+```
+
+`useFieldInheritance` is called per field inside `RetryTab`, `ExecutorBlock`, `RequiredSecretsTab`, and `IoTab`. The parent panel passes down `flowDefaults` alongside the node, so each field can compute its state.
+
+#### Visual chip component
+
+```tsx
+// packages/flow-editor/src/properties-panel/InheritanceChip.tsx
+
+type ChipKind = "inherited" | "override" | "suppressed";
+
+export function InheritanceChip({ kind, onReset }: { kind: ChipKind; onReset?: () => void }) { ... }
+```
+
+Chips are small, inline, and low-contrast so they don't compete with field values. `OVERRIDE` chip includes the ↺ reset button. `INHERITED` chip is display-only.
+
+---
+
+## Run Execution
+
+### How defaults are applied
+
+`applyFlowDefaults` is called in `conductor-converter.ts` during graph compilation, before tasks are dispatched. The resolved `FlowNode` that reaches the worker always has fully merged fields — no worker-side awareness of defaults is needed.
+
+### Traceability
+
+When `applyFlowDefaults` modifies a field, the resolver records the source. This is stored alongside the step record for inspection:
+
+```ts
+// added to StepRecord in packages/core/src/types/pipeline.types.ts
+inputSources?: Record<string, "node" | "flow-default">;
+```
+
+`inputSources` is a map of field name to where the value came from. Populated by `applyFlowDefaults` — any key that was inherited from the workflow default is tagged `"flow-default"`. Node-set values are tagged `"node"`.
+
+### Run viewer display
+
+The run viewer's step detail panel shows `inputSources` alongside input values:
+
+- Fields tagged `"flow-default"` are rendered with a subtle "from flow defaults" annotation
+- Fields tagged `"node"` are rendered normally
+
+This makes it easy to diagnose why a phase ran with a particular provider, retry policy, or workspace path without having to open the flow editor.
+
+---
 
 ## Schema Validation
 
-`packages/api-server/src/schemas/update-flow.ts` adds a `flowDefaultsSchema` Zod shape:
+`packages/api-server/src/schemas/update-flow.ts` adds a `flowDefaultsSchema`:
 
 ```ts
+const flowInputValueSchema = z.union([
+  z.object({ kind: z.literal("literal"), value: z.unknown() }),
+  z.object({ kind: z.literal("ref"),     ref: z.string() }),
+  z.object({ kind: z.literal("suppress") }),
+]);
+
 const flowDefaultsSchema = z.object({
-  retry: retryPolicySchema.nullable().optional(),
-  executorConfig: z.object({ provider: z.string().optional() }).nullable().optional(),
-  secretBindings: z.record(secretBindingSchema).nullable().optional(),
+  retry:          retryPolicySchema.optional(),
+  executorConfig: z.object({ provider: z.string().optional() }).optional(),
+  secretBindings: z.record(secretBindingSchema).optional(),
+  inputs:         z.record(flowInputValueSchema).optional(),
 }).optional();
+
+// FlowNode fields that carry | null (suppress sentinel) need nullable() in the
+// existing FlowGraph node schema:
+//   retry:          retryPolicySchema.nullable().optional()
+//   executorConfig: executorConfigSchema.nullable().optional()
+//   secretBindings: z.record(secretBindingSchema).nullable().optional()
+//   inputs:         z.record(flowInputValueSchema).nullable().optional()
 ```
 
 Added to the existing `FlowGraph` Zod schema as `defaults: flowDefaultsSchema`.
 
+---
+
 ## What Is Not In Scope
 
-- Migrating existing start-node settings (`runInputs`, `maxCycleVisits`, `flowRetry`) to the new panel — that is a separate cleanup task.
-- Default `inputs` wiring (data-flow) — kept per-phase; better addressed by canvas auto-wiring.
-- Per-executor-kind scoping of `executorConfig.provider` — flat defaults are sufficient for the common case.
+- Migrating existing start-node settings (`runInputs`, `maxCycleVisits`, `flowRetry`) into the Flow Config panel — separate cleanup.
+- Per-executor-kind scoping of `executorConfig.provider` — flat defaults cover the common case.
+- Default `config` (free-form phase config fields) — these are too phase-specific to have meaningful workflow-level defaults; handled per-phase as today.
