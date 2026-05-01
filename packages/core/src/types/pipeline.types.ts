@@ -28,6 +28,8 @@ export type StepRecord = {
   error?: { message: string; code?: string; stack?: string };
   blockedReason?: string;
   waitFor?: "ticket-comment" | "pr-comment" | "manual";
+  /** Per-field source: "node" = explicit on the phase node; "flow-default" = inherited from FlowGraph.defaults. */
+  inputSources?: Record<string, "node" | "flow-default">;
 };
 
 export type ArtifactHandle = {

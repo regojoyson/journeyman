@@ -1,12 +1,13 @@
 import type { FlowInputValue } from "@journeyman/core";
 
 export function resolveInputs(
-  inputs: Record<string, FlowInputValue> | undefined,
+  inputs: Record<string, FlowInputValue> | null | undefined,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(inputs ?? {})) {
     if (v.kind === "literal") out[k] = v.value;
-    else out[k] = "${" + sanitizeRef(v.ref) + "}";
+    else if (v.kind === "ref") out[k] = "${" + sanitizeRef(v.ref) + "}";
+    // suppress kind is filtered out before reaching here (applyFlowDefaults removes them)
   }
   return out;
 }

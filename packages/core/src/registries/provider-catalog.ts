@@ -51,3 +51,40 @@ export function implementedProvidersForKind(kind: ExecutorKind): ProviderEntry[]
 export function defaultProviderForKind(kind: ExecutorKind): ProviderEntry | undefined {
   return providersForKind(kind).find(p => p.isDefault);
 }
+
+/**
+ * Static map from phaseType string to its ExecutorKind.
+ * Used by the orchestrator to look up the correct per-kind default
+ * from FlowDefaults.executorConfig without access to the editor's PhaseRegistry.
+ * Must be updated when new phase types are added.
+ */
+export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
+  // coding-cli
+  "analyze-repo":         "coding-cli",
+  "cleanup-workspace":    "coding-cli",
+  "clone-repos":          "coding-cli",
+  "commit-and-push":      "coding-cli",
+  "create-workspace":     "coding-cli",
+  "implement-changes":    "coding-cli",
+  "list-workspace-files": "coding-cli",
+  "plan-implementation":  "coding-cli",
+  "start-feature-branch": "coding-cli",
+  // git-provider
+  "get-repository":             "git-provider",
+  "list-pull-request-comments": "git-provider",
+  "list-pull-requests":         "git-provider",
+  "open-pull-request":          "git-provider",
+  // ticket-provider
+  "comment-on-ticket":   "ticket-provider",
+  "create-ticket":       "ticket-provider",
+  "get-ticket":          "ticket-provider",
+  "transition-ticket":   "ticket-provider",
+  "update-ticket-fields":"ticket-provider",
+  // notification
+  "send-message": "notification",
+};
+
+/** Returns the ExecutorKind for a given phaseType, or undefined if unknown. */
+export function kindForPhaseType(phaseType: string): ExecutorKind | undefined {
+  return PHASE_KIND_MAP[phaseType];
+}

@@ -1,4 +1,5 @@
 import type { SecretScope } from "./secrets.types.ts";
+import type { ExecutorKind } from "../registries/provider-catalog.ts";
 
 /**
  * Flow JSON schema version. Bumped when flow JSON shape changes
@@ -25,7 +26,8 @@ export type FlowNodeType =
 
 export type FlowInputValue =
   | { kind: "literal"; value: unknown }
-  | { kind: "ref"; ref: string };
+  | { kind: "ref"; ref: string }
+  | { kind: "suppress" };
 
 export interface RunInputDef {
   name: string;
@@ -44,17 +46,17 @@ export interface FlowNode {
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
   /** Wires from upstream nodes / run inputs. Resolved by converter to Conductor refs. */
-  inputs?: Record<string, FlowInputValue>;
+  inputs?: Record<string, FlowInputValue> | null;
   /**
    * Common configuration shared by all phases of the same executor kind
    * (e.g. coding-cli phases all carry `{ provider: "claude" | "gemini" | "codex" }`).
    * Kept separate from `config` so phase-specific and kind-shared fields never collide.
    */
-  executorConfig?: { provider?: string };
+  executorConfig?: { provider?: string } | null;
   /** Per-phase retry policy. */
-  retry?: RetryPolicy;
+  retry?: RetryPolicy | null;
   /** Per-slot binding map. Key is the slot name from the phase definition. */
-  secretBindings?: Record<string, SecretBinding>;
+  secretBindings?: Record<string, SecretBinding> | null;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
   /** Only meaningful on `end` nodes — surfaced as the run's outcome label. */
@@ -82,6 +84,7 @@ export interface FlowGraph {
   edges: FlowEdge[];
   /** Cycle visit-count guard (per spec §4). 0 = no cycles allowed in Phase 1. */
   maxCycleVisits?: number;
+  defaults?: FlowDefaults;
 }
 
 export interface FlowVersion {
@@ -140,6 +143,20 @@ export interface RetryPolicy {
 export interface FlowRetryPolicy {
   maxAttempts?: number;
   backoffSeconds?: number;
+}
+
+export interface FlowDefaults {
+  /** Default retry policy. Merged field-by-field into each node's `retry`. */
+  retry?: RetryPolicy;
+  /**
+   * Default executor provider per ExecutorKind.
+   * Each phase resolves its default via kindForPhaseType(phaseType).
+   */
+  executorConfig?: Partial<Record<ExecutorKind, { provider?: string }>>;
+  /** Default secret bindings. Merged slot-by-slot into each node's `secretBindings`. */
+  secretBindings?: Record<string, SecretBinding>;
+  /** Default input wiring. Merged key-by-key into each node's `inputs`. */
+  inputs?: Record<string, FlowInputValue>;
 }
 
 export type McpTransport = "stdio" | "http" | "sse";

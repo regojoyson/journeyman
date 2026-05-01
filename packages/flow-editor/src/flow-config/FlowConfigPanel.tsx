@@ -1,0 +1,47 @@
+import type { FlowDefaults, FlowGraph } from "@journeyman/core";
+import { X } from "lucide-react";
+import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
+import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
+import { DefaultsSecretsSection } from "./DefaultsSecretsSection.tsx";
+import { DefaultsInputsSection } from "./DefaultsInputsSection.tsx";
+import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+
+export interface FlowConfigPanelProps {
+  flow: FlowGraph;
+  onChange: (next: FlowGraph) => void;
+  onClose: () => void;
+  readOnly?: boolean;
+}
+
+export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfigPanelProps) {
+  const defaults = flow.defaults ?? {};
+  const catalog = usePhaseCatalog();
+  const updateDefaults = (next: FlowDefaults) =>
+    onChange({ ...flow, defaults: Object.keys(next).length ? next : undefined });
+
+  return (
+    <aside className="je-editor__props" style={{ borderLeft: "1px solid #2a2a3a" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div className="je-props__title" style={{ margin: 0 }}>Flow Defaults</div>
+        <button type="button" onClick={onClose}
+          style={{ background: "none", border: "none", color: "#888", cursor: "pointer", padding: 4 }}>
+          <X size={14} aria-hidden />
+        </button>
+      </div>
+      <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
+        Values set here are inherited by all phase nodes. Each node can override individual fields.
+      </div>
+
+      <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
+      <DefaultsRetrySection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
+      <DefaultsSecretsSection  defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
+      <DefaultsInputsSection
+        defaults={defaults}
+        onChange={updateDefaults}
+        flow={flow}
+        catalog={catalog}
+        readOnly={readOnly}
+      />
+    </aside>
+  );
+}

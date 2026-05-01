@@ -1,9 +1,11 @@
 // packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx
 import { useEffect, useState, useMemo } from "react";
-import type { FlowGraph, FlowNode, SecretBinding, SecretScope } from "@journeyman/core";
+import type { FlowDefaults, FlowGraph, FlowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import type { SecretSlotDef } from "../phase-definition.ts";
+import { useFieldInheritance } from "../hooks/use-field-inheritance.ts";
+import { InheritanceChip } from "./InheritanceChip.tsx";
 
 export interface RequiredSecretsTabProps {
   flow: FlowGraph;
@@ -11,6 +13,7 @@ export interface RequiredSecretsTabProps {
   orgId: string;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
+  flowDefaults?: FlowDefaults;
 }
 
 const SCOPE_LABEL: Record<SecretScope, string> = {
@@ -60,7 +63,7 @@ function flowScope(flow: FlowGraph): "user" | "org" | "global" | null {
   return fs ?? null;
 }
 
-export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: RequiredSecretsTabProps) {
+export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly, flowDefaults }: RequiredSecretsTabProps) {
   const registry = usePhaseRegistry();
   const phaseDef = node.phaseType ? registry.get(node.phaseType) : undefined;
   const slots: SecretSlotDef[] = phaseDef?.slots ?? [];
@@ -127,12 +130,16 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
       </div>
 
       {slots.map(slot => {
-        const binding = getBinding(node, slot.name);
+        const rawNodeBinding = node.secretBindings?.[slot.name];
+        const defaultBinding = flowDefaults?.secretBindings?.[slot.name];
+        const effectiveBinding = rawNodeBinding ?? defaultBinding ?? { mode: "auto" as const };
         return (
           <SlotRow
             key={slot.name}
             slot={slot}
-            binding={binding}
+            binding={effectiveBinding}
+            rawNodeBinding={rawNodeBinding}
+            defaultBinding={defaultBinding}
             visible={visible}
             grouped={grouped}
             loaded={loaded}
@@ -149,6 +156,8 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
 interface SlotRowProps {
   slot: SecretSlotDef;
   binding: SecretBinding;
+  rawNodeBinding?: SecretBinding;
+  defaultBinding?: SecretBinding;
   visible: VisibleSecret[];
   grouped: Record<SecretScope, string[]>;
   loaded: boolean;
@@ -157,7 +166,8 @@ interface SlotRowProps {
   onChange: (next: SecretBinding) => void;
 }
 
-function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly, onChange }: SlotRowProps) {
+function SlotRow({ slot, binding, rawNodeBinding, defaultBinding, visible, grouped, loaded, flowScope, readOnly, onChange }: SlotRowProps) {
+  const { state } = useFieldInheritance(rawNodeBinding, defaultBinding);
   const autoTier = useMemo(() => autoResolveTier(slot.name, visible), [slot.name, visible]);
   const exists = pinnedExists(binding, visible);
 
@@ -186,6 +196,13 @@ function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly,
       <div style={{ fontSize: 10, color: "#888", marginTop: 2, marginBottom: 6 }}>
         {slot.description}
       </div>
+
+      {state === "inherited" && <div style={{ marginBottom: 6 }}><InheritanceChip kind="inherited" /></div>}
+      {state === "override"  && (
+        <div style={{ marginBottom: 6 }}>
+          <InheritanceChip kind="override" onReset={() => onChange(defaultBinding ?? { mode: "auto" })} />
+        </div>
+      )}
 
       <select
         value={bindingKey(binding)}

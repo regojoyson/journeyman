@@ -4,6 +4,7 @@ import { Canvas } from "./canvas/Canvas.tsx";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
 import { PropertiesPanel } from "./properties-panel/PropertiesPanel.tsx";
+import { FlowConfigPanel } from "./flow-config/FlowConfigPanel.tsx";
 import { Topbar } from "./topbar/Topbar.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
@@ -60,6 +61,8 @@ export function FlowEditor(props: FlowEditorProps) {
     try { localStorage.setItem(PALETTE_WIDTH_KEY, String(paletteWidth)); } catch { /* ignore */ }
   }, [paletteWidth]);
 
+  const [flowConfigOpen, setFlowConfigOpen] = useState(false);
+
   const onUpdateNode = (next: FlowNode) => {
     s.update(f => ({ ...f, nodes: f.nodes.map(n => n.id === next.id ? next : n) }));
   };
@@ -79,6 +82,7 @@ export function FlowEditor(props: FlowEditorProps) {
           runEnabled={!props.readOnly && !!props.onRun && validity.ok}
           runDisabledReason={validity.ok ? undefined : validity.errors[0]}
           validationErrors={validity.errors}
+          onFlowConfig={() => setFlowConfigOpen(o => !o)}
         />
         {heal.restored.length > 0 && !healDismissed && (
           <div className="je-editor__heal-banner">
@@ -98,20 +102,29 @@ export function FlowEditor(props: FlowEditorProps) {
           <Canvas
             flow={heal.healed}
             selectedNodeId={s.selectedNodeId}
-            onSelect={s.setSelectedNodeId}
+            onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
             onChange={props.onChange}
             readOnly={props.readOnly}
             phaseRunStates={props.phaseRunStates}
           />
           <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
-          <PropertiesPanel
-            flow={heal.healed}
-            node={s.selectedNode}
-            mcpCatalog={props.mcpCatalog ?? []}
-            orgId={props.orgId}
-            onChange={onUpdateNode}
-            readOnly={props.readOnly}
-          />
+          {flowConfigOpen ? (
+            <FlowConfigPanel
+              flow={heal.healed}
+              onChange={props.onChange}
+              onClose={() => setFlowConfigOpen(false)}
+              readOnly={props.readOnly}
+            />
+          ) : (
+            <PropertiesPanel
+              flow={heal.healed}
+              node={s.selectedNode}
+              mcpCatalog={props.mcpCatalog ?? []}
+              orgId={props.orgId}
+              onChange={onUpdateNode}
+              readOnly={props.readOnly}
+            />
+          )}
         </div>
       </div>
     </PhaseRegistryProvider>

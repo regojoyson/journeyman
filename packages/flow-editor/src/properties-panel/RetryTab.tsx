@@ -1,10 +1,14 @@
-import { useId, useState } from "react";
-import type { BackoffStrategy, FlowNode, RetryPolicy } from "@journeyman/core";
+import { useState } from "react";
+import type { BackoffStrategy, FlowDefaults, FlowNode, RetryPolicy } from "@journeyman/core";
+import { useFieldInheritance, type FieldState } from "../hooks/use-field-inheritance.ts";
+import { InheritanceChip } from "./InheritanceChip.tsx";
+import { FieldInfo, FieldLabel } from "./field-info.tsx";
 
 export interface RetryTabProps {
   node: FlowNode;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
+  flowDefaults?: FlowDefaults;
 }
 
 const BACKOFFS: BackoffStrategy[] = ["fixed", "linear", "exponential"];
@@ -15,58 +19,29 @@ const BACKOFF_LABELS: Record<BackoffStrategy, string> = {
   exponential: "Delay multiplies by the backoff multiplier each attempt (recommended).",
 };
 
-function FieldInfo({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  const tipId = useId();
-  return (
-    <span className="je-icon-btn-wrap" style={{ position: "relative", display: "inline-flex" }}>
-      <button
-        type="button"
-        className="je-field-info-btn"
-        aria-label="More information"
-        aria-describedby={open ? tipId : undefined}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={e => e.key === "Escape" && setOpen(false)}
-      >
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <circle cx="6" cy="6" r="5.5" stroke="currentColor"/>
-          <path d="M6 5.5v3M6 3.5v.5" stroke="currentColor" strokeLinecap="round"/>
-        </svg>
-      </button>
-      {open && (
-        <span
-          id={tipId}
-          role="tooltip"
-          className="je-tooltip je-tooltip--bottom"
-          style={{ whiteSpace: "normal", minWidth: 180, maxWidth: 240, right: 0, left: "auto", transform: "none" }}
-        >
-          <span className="je-tooltip__hint">{text}</span>
-        </span>
-      )}
-    </span>
-  );
-}
-
-function FieldLabel({ label, info }: { label: string; info: string }) {
-  return (
-    <div className="je-props__field-label-row">
-      <label style={{ marginBottom: 0 }}>{label}</label>
-      <FieldInfo text={info} />
-    </div>
-  );
-}
-
 function setRetry(node: FlowNode, retry: RetryPolicy): FlowNode {
   return { ...node, retry };
 }
 
-export function RetryTab({ node, onChange, readOnly }: RetryTabProps) {
+function chipFor(state: FieldState, onReset: () => void) {
+  if (state === "inherited") return <InheritanceChip kind="inherited" />;
+  if (state === "override")  return <InheritanceChip kind="override" onReset={onReset} />;
+  return null;
+}
+
+export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabProps) {
   const r = node.retry ?? {};
   const set = (next: RetryPolicy) => onChange(setRetry(node, next));
   const backoff = r.backoff ?? "exponential";
+
+  const def = flowDefaults?.retry;
+  const enabledState    = useFieldInheritance(node.retry?.enabled,          def?.enabled);
+  const maxState        = useFieldInheritance(node.retry?.maxAttempts,       def?.maxAttempts);
+  const backoffState    = useFieldInheritance(node.retry?.backoff,           def?.backoff);
+  const backoffSecState = useFieldInheritance(node.retry?.backoffSeconds,    def?.backoffSeconds);
+  const multiplierState = useFieldInheritance(node.retry?.backoffMultiplier, def?.backoffMultiplier);
+  const timeoutState    = useFieldInheritance(node.retry?.timeoutSeconds,    def?.timeoutSeconds);
+  const onFailState     = useFieldInheritance(node.retry?.onFailure,         def?.onFailure);
 
   return (
     <div>
@@ -75,7 +50,7 @@ export function RetryTab({ node, onChange, readOnly }: RetryTabProps) {
           <label className="je-switch" style={{ margin: 0 }}>
             <input
               type="checkbox"
-              checked={!!r.enabled}
+              checked={!!(enabledState.resolvedValue ?? r.enabled)}
               disabled={readOnly}
               onChange={e => set({ ...r, enabled: e.target.checked })}
             />
@@ -84,30 +59,37 @@ export function RetryTab({ node, onChange, readOnly }: RetryTabProps) {
             </span>
             <span className="je-switch__label">Retry enabled</span>
           </label>
+          {chipFor(enabledState.state, () => set({ ...r, enabled: undefined }))}
           <FieldInfo text="When enabled, the phase re-runs automatically on failure before the flow gives up." />
         </div>
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="Max attempts"
-          info="Total number of times this phase can run, including the first attempt. A value of 3 means one initial run plus two retries."
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="Max attempts"
+            info="Total number of times this phase can run, including the first attempt. A value of 3 means one initial run plus two retries."
+          />
+          {chipFor(maxState.state, () => set({ ...r, maxAttempts: undefined }))}
+        </div>
         <input
           type="number" min={1} max={10}
-          value={r.maxAttempts ?? 3}
+          value={(maxState.resolvedValue as number | undefined) ?? r.maxAttempts ?? 3}
           disabled={readOnly || !r.enabled}
           onChange={e => set({ ...r, maxAttempts: Number(e.target.value) || 1 })}
         />
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="Backoff strategy"
-          info={BACKOFF_LABELS[backoff]}
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="Backoff strategy"
+            info={BACKOFF_LABELS[backoff]}
+          />
+          {chipFor(backoffState.state, () => set({ ...r, backoff: undefined }))}
+        </div>
         <select
-          value={backoff}
+          value={(backoffState.resolvedValue as BackoffStrategy | undefined) ?? backoff}
           disabled={readOnly || !r.enabled}
           onChange={e => set({ ...r, backoff: e.target.value as BackoffStrategy })}
         >
@@ -116,51 +98,63 @@ export function RetryTab({ node, onChange, readOnly }: RetryTabProps) {
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="Backoff base (seconds)"
-          info="How long to wait before the first retry. For exponential backoff this is the starting delay — subsequent waits grow by the multiplier."
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="Backoff base (seconds)"
+            info="How long to wait before the first retry. For exponential backoff this is the starting delay — subsequent waits grow by the multiplier."
+          />
+          {chipFor(backoffSecState.state, () => set({ ...r, backoffSeconds: undefined }))}
+        </div>
         <input
           type="number" min={0}
-          value={r.backoffSeconds ?? 5}
+          value={(backoffSecState.resolvedValue as number | undefined) ?? r.backoffSeconds ?? 5}
           disabled={readOnly || !r.enabled}
           onChange={e => set({ ...r, backoffSeconds: Number(e.target.value) || 0 })}
         />
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="Backoff multiplier"
-          info="Exponential only — each wait is multiplied by this value. E.g. base 5 s with multiplier 2 gives 5 s → 10 s → 20 s."
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="Backoff multiplier"
+            info="Exponential only — each wait is multiplied by this value. E.g. base 5 s with multiplier 2 gives 5 s → 10 s → 20 s."
+          />
+          {chipFor(multiplierState.state, () => set({ ...r, backoffMultiplier: undefined }))}
+        </div>
         <input
           type="number" min={1} step={0.1}
-          value={r.backoffMultiplier ?? 2}
+          value={(multiplierState.resolvedValue as number | undefined) ?? r.backoffMultiplier ?? 2}
           disabled={readOnly || !r.enabled || backoff !== "exponential"}
           onChange={e => set({ ...r, backoffMultiplier: Number(e.target.value) || 1 })}
         />
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="Per-attempt timeout (seconds)"
-          info="Maximum time a single attempt may run before it is forcibly stopped and counted as a failure. Applies to every attempt, including retries."
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="Per-attempt timeout (seconds)"
+            info="Maximum time a single attempt may run before it is forcibly stopped and counted as a failure. Applies to every attempt, including retries."
+          />
+          {chipFor(timeoutState.state, () => set({ ...r, timeoutSeconds: undefined }))}
+        </div>
         <input
           type="number" min={0}
-          value={r.timeoutSeconds ?? 600}
+          value={(timeoutState.resolvedValue as number | undefined) ?? r.timeoutSeconds ?? 600}
           disabled={readOnly}
           onChange={e => set({ ...r, timeoutSeconds: Number(e.target.value) || 0 })}
         />
       </div>
 
       <div className="je-props__field">
-        <FieldLabel
-          label="On permanent failure"
-          info='"Error edge" routes to a recovery path drawn on the canvas. "Fail flow" stops the entire run immediately once all attempts are exhausted.'
-        />
+        <div className="je-props__field-label-row">
+          <FieldLabel
+            label="On permanent failure"
+            info='"Error edge" routes to a recovery path drawn on the canvas. "Fail flow" stops the entire run immediately once all attempts are exhausted.'
+          />
+          {chipFor(onFailState.state, () => set({ ...r, onFailure: undefined }))}
+        </div>
         <select
-          value={r.onFailure ?? "error-edge"}
+          value={(onFailState.resolvedValue as RetryPolicy["onFailure"] | undefined) ?? r.onFailure ?? "error-edge"}
           disabled={readOnly}
           onChange={e => set({ ...r, onFailure: e.target.value as RetryPolicy["onFailure"] })}
         >

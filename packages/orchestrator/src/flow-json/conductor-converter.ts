@@ -5,6 +5,7 @@ import type {
   SubWorkflowTask, TerminateTask, SimpleTask,
 } from "./conductor-types.ts";
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
+import { applyFlowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 
 /**
@@ -164,20 +165,22 @@ class ConvertCtx {
 
   emitPhase(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     if (!node.phaseType) throw new FlowValidationError(`Phase node '${node.id}' missing phaseType`);
-    const r = node.retry ?? {};
+    const { resolved: resolvedNode, sources: defaultSources } = applyFlowDefaults(node, this.flow.defaults);
+    const r = resolvedNode.retry ?? {};
     const enabled = r.enabled === true;
 
     const task: SimpleTask = {
       type: "SIMPLE",
-      name: node.phaseType,
-      taskReferenceName: node.id,
+      name: resolvedNode.phaseType!,
+      taskReferenceName: resolvedNode.id,
       inputParameters: (() => {
-        const bindings = node.secretBindings ?? {};
+        const bindings = resolvedNode.secretBindings ?? {};
         return {
-          ...(node.config ?? {}),
-          ...resolveInputs(node.inputs),
-          retry: node.retry ?? {},
+          ...(resolvedNode.config ?? {}),
+          ...resolveInputs(resolvedNode.inputs),
+          retry: resolvedNode.retry ?? {},
           secretBindings: bindings,
+          _flowDefaultSources: defaultSources,
         };
       })(),
       retryCount: enabled ? (r.maxAttempts ?? 3) : 0,
@@ -187,7 +190,7 @@ class ConvertCtx {
       timeoutSeconds: r.timeoutSeconds ?? 600,
       responseTimeoutSeconds: r.timeoutSeconds ?? 600,
     };
-    return { tasks: [task], nextNodeId: this.successor(node.id) };
+    return { tasks: [task], nextNodeId: this.successor(resolvedNode.id) };
   }
 
   emitSwitch(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {

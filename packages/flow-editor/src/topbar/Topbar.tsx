@@ -9,6 +9,7 @@ import {
   Play,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { toYaml } from "./yaml-serialize.ts";
@@ -36,6 +37,7 @@ export interface TopbarProps {
   runEnabled?: boolean;
   runDisabledReason?: string;
   validationErrors?: string[];
+  onFlowConfig?: () => void;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -92,6 +94,14 @@ export function Topbar(p: TopbarProps) {
             hint="View the flow as JSON / YAML"
             icon={<FileCode2 size={16} aria-hidden="true" focusable="false" />}
             onClick={() => setExportOpen(true)}
+          />
+        )}
+        {p.onFlowConfig && (
+          <IconButton
+            label="Flow Config"
+            hint="Edit workflow-level defaults (provider, retry, secrets, inputs)"
+            icon={<SlidersHorizontal size={16} aria-hidden="true" focusable="false" />}
+            onClick={p.onFlowConfig}
           />
         )}
         {p.onValidate && (

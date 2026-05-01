@@ -64,6 +64,8 @@ export {
   providersForKind,
   implementedProvidersForKind,
   defaultProviderForKind,
+  PHASE_KIND_MAP,
+  kindForPhaseType,
 } from "./registries/provider-catalog.ts";
 export type { ProviderEntry } from "./registries/provider-catalog.ts";
 // Aliased to avoid colliding with flow-editor's own ExecutorKind (which includes "control").
@@ -77,6 +79,7 @@ export type {
   McpServerConfig, McpTransport, FlowInputValue, RunInputDef,
   FlowSaveWarning,
   SecretBinding,
+  FlowDefaults,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {

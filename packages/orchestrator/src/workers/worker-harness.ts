@@ -86,13 +86,18 @@ export class WorkerHarness {
 
     const runId = task.workflowInstanceId;
     const nodeId = task.taskDefName;
-    const userId = ((task.inputData ?? {}) as { startedByUserId?: string | null }).startedByUserId ?? null;
+    const rawInput = (task.inputData ?? {}) as Record<string, unknown>;
+    const inputSources = (rawInput as { _flowDefaultSources?: Record<string, "node" | "flow-default"> })._flowDefaultSources;
+    const phaseInput: Record<string, unknown> = { ...rawInput };
+    delete phaseInput["_flowDefaultSources"];
+
+    const userId = (phaseInput as { startedByUserId?: string | null }).startedByUserId ?? null;
     const ws = await this.deps.workspace.create({ runId, nodeId, userId });
     const abort = new AbortController();
 
-    const flowId = ((task.inputData ?? {}) as { flowId?: string | null }).flowId ?? null;
+    const flowId = (phaseInput as { flowId?: string | null }).flowId ?? null;
     const declaredBindings =
-      ((task.inputData ?? {}) as { secretBindings?: Record<string, SecretBinding> }).secretBindings ?? {};
+      (phaseInput as { secretBindings?: Record<string, SecretBinding> }).secretBindings ?? {};
 
     let resolvedEnv: Record<string, string>;
     try {
@@ -123,12 +128,12 @@ export class WorkerHarness {
     }
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",
-      payload: { attempt: task.retryCount + 1 },
+      payload: { attempt: task.retryCount + 1, inputSources },
     });
 
     try {
-      const runInputs = ((task.inputData as { __workflowInput?: Record<string, unknown> } | undefined)?.__workflowInput) ?? {};
-      const result = await handler.run(task.inputData, {
+      const runInputs = ((phaseInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
+      const result = await handler.run(phaseInput, {
         runId, nodeId, attempt: task.retryCount + 1,
         workspaceDir: ws.path, signal: abort.signal,
         env: resolvedEnv,

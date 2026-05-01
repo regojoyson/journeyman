@@ -113,10 +113,10 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           visibility={visibility}
           requiredEmpty={requiredEmpty}
         >
-          {effectiveActive === "config"          && <ConfigTab          flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} />}
+          {effectiveActive === "config"          && <ConfigTab          flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} flowDefaults={flow.defaults} />}
           {effectiveActive === "mcp"             && <McpToolsTab        node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
-          {effectiveActive === "requiredSecrets" && <RequiredSecretsTab flow={flow} node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
-          {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "requiredSecrets" && <RequiredSecretsTab flow={flow} node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
+          {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
           {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
       ) : node.type === "loop" || node.type === "timer" ? (

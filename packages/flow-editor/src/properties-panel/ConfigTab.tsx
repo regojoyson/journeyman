@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState } from "react";
-import type { FlowGraph, FlowNode } from "@journeyman/core";
+import type { FlowDefaults, FlowGraph, FlowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -10,6 +10,7 @@ import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { InheritanceChip } from "./InheritanceChip.tsx";
 
 export interface ConfigTabProps {
   flow: FlowGraph;
@@ -17,9 +18,10 @@ export interface ConfigTabProps {
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
   mcpCatalog?: McpCatalog;
+  flowDefaults?: FlowDefaults;
 }
 
-export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: ConfigTabProps) {
+export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefaults }: ConfigTabProps) {
   const registry = usePhaseRegistry();
   const definition = registry.get(node.phaseType);
   const config = (node.config ?? {}) as Record<string, unknown>;
@@ -141,6 +143,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: Config
           value={executorConfig}
           onChange={next => onChange({ ...node, executorConfig: next })}
           readOnly={readOnly}
+          flowDefaults={flowDefaults}
         />
       )}
 
@@ -173,6 +176,12 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: Config
               {bindOnlyFields.map(([key, meta]) => {
                 const isBound = boundKeys.has(key);
                 const isRequired = !!meta.required;
+                const defaultInput = flowDefaults?.inputs?.[key];
+                const nodeInput = inputsMap[key];
+                const hasDefault = defaultInput !== undefined && defaultInput.kind !== "suppress";
+                const inheritState = nodeInput
+                  ? (hasDefault ? "override" : "local")
+                  : (hasDefault ? "inherited" : "unset");
                 return (
                   <div key={key} className="je-props__field">
                     <div className="je-props__field-label-row">
@@ -180,12 +189,25 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog }: Config
                         {meta.label ?? key}
                         {isRequired && <span className="je-props__required-mark">*</span>}
                       </label>
+                      {inheritState === "inherited" && <InheritanceChip kind="inherited" />}
+                      {inheritState === "override"  && (
+                        <InheritanceChip kind="override" onReset={() => handleUnbind(key)} />
+                      )}
                       {renderFieldBindControl(key)}
                     </div>
                     {isBound ? renderBoundPill(key) : (
-                      <div className="je-props__bind-only-empty">
-                        {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
-                      </div>
+                      inheritState === "inherited" && defaultInput ? (
+                        <div className="je-props__bound-pill" style={{ opacity: 0.6 }}>
+                          <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
+                          <code className="je-props__bound-pill-ref">
+                            {defaultInput.kind === "ref" ? defaultInput.ref : String((defaultInput as { value?: unknown }).value ?? "")}
+                          </code>
+                        </div>
+                      ) : (
+                        <div className="je-props__bind-only-empty">
+                          {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
+                        </div>
+                      )
                     )}
                   </div>
                 );

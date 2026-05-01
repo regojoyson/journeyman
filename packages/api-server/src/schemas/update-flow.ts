@@ -5,6 +5,16 @@ import { z } from "zod";
 const flowInputValueSchema = z.union([
   z.object({ kind: z.literal("literal"), value: z.unknown() }),
   z.object({ kind: z.literal("ref"), ref: z.string() }),
+  z.object({ kind: z.literal("suppress") }),
+]);
+
+const secretBindingSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("auto") }),
+  z.object({
+    mode: z.literal("pinned"),
+    scope: z.enum(["user", "org", "global"]),
+    name: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+  }),
 ]);
 
 const retryPolicySchema = z.object({
@@ -17,28 +27,27 @@ const retryPolicySchema = z.object({
   onFailure: z.enum(["error-edge", "fail-flow"]).optional(),
 });
 
+const executorKindSchema = z.enum(["coding-cli", "git-provider", "ticket-provider", "notification"]);
+
+const flowDefaultsSchema = z.object({
+  retry:          retryPolicySchema.optional(),
+  executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
+  secretBindings: z.record(secretBindingSchema).optional(),
+  inputs:         z.record(flowInputValueSchema).optional(),
+}).optional();
+
 const flowNodeSchema = z.object({
   id: z.string(),
   type: z.string(),
   displayName: z.string().optional(),
   phaseType: z.string().optional(),
   config: z.record(z.unknown()).optional(),
-  inputs: z.record(flowInputValueSchema).optional(),
-  executorConfig: z.object({ provider: z.string().optional() }).passthrough().optional(),
-  secretBindings: z.record(
-    z.string(),
-    z.discriminatedUnion("mode", [
-      z.object({ mode: z.literal("auto") }),
-      z.object({
-        mode: z.literal("pinned"),
-        scope: z.enum(["user", "org", "global"]),
-        name: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
-      }),
-    ]),
-  ).optional(),
+  inputs: z.record(flowInputValueSchema).nullable().optional(),
+  executorConfig: z.object({ provider: z.string().optional() }).passthrough().nullable().optional(),
+  secretBindings: z.record(secretBindingSchema).nullable().optional(),
   position: z.object({ x: z.number(), y: z.number() }).optional(),
   outcome: z.string().optional(),
-  retry: retryPolicySchema.optional(),
+  retry: retryPolicySchema.nullable().optional(),
 }).passthrough();
 
 const flowEdgeSchema = z.object({
@@ -56,6 +65,7 @@ export const flowGraphSchema = z.object({
   nodes: z.array(flowNodeSchema),
   edges: z.array(flowEdgeSchema),
   maxCycleVisits: z.number().int().nonnegative().optional(),
+  defaults: flowDefaultsSchema,
 }).passthrough();
 
 export const updateFlowBody = z.object({
