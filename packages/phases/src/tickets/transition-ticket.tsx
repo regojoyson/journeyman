@@ -29,8 +29,13 @@ export const transitionTicketPhase: PhaseDefinition<TransitionTicketConfig> = {
     ticketKey: { label: "Ticket key", widget: "text", help: "Supports #{ticket} placeholder" },
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => c.status || "(no status)",
   executor: { kind: "ticket-provider", method: "updateStatus" },
   outputSchema: transitionTicketOutputSchema,

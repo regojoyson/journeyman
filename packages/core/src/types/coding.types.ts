@@ -19,6 +19,8 @@ export interface CodingCLIProviderConfig {
   defaultModel?: string;
   /** Per-phase model overrides. Takes precedence over defaultModel. */
   models?: Partial<Record<CodingCLIPhase, string>>;
+  /** Optional API key. When unset, the SDK uses its ambient credentials (env). */
+  apiKey?: string;
 }
 
 export type AnalyzeOptions = SessionOptions & {

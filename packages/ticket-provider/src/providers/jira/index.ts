@@ -14,6 +14,12 @@ import { getTicket } from "./operations/get-ticket.ts";
 import { listTickets } from "./operations/list-tickets.ts";
 import { getTicketSchema } from "./operations/get-ticket-schema.ts";
 
+export interface JiraProviderOptions {
+  apiToken?: string;
+  email?: string;
+  host?: string;
+}
+
 export class JiraProvider implements ITicketProvider {
   static meta: IProviderMeta = {
     id: "jira",
@@ -21,6 +27,8 @@ export class JiraProvider implements ITicketProvider {
     description: "Atlassian Jira Cloud ticket provider",
     category: "ticket",
   };
+
+  constructor(_opts: JiraProviderOptions = {}) {}
 
   createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
     return createTicket(opts);

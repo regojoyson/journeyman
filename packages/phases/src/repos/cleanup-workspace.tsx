@@ -32,7 +32,7 @@ export const cleanupWorkspacePhase: PhaseDefinition<CleanupWorkspaceConfig> = {
       ],
     },
   },
-  tabs: { io: "shown", credentials: "hidden", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
   summary: c => c.mode,
   executor: { kind: "coding-cli", method: "cleanupRepos" },
   outputSchema: cleanupWorkspaceOutputSchema,

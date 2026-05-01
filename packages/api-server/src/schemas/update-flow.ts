@@ -7,6 +7,16 @@ const flowInputValueSchema = z.union([
   z.object({ kind: z.literal("ref"), ref: z.string() }),
 ]);
 
+const retryPolicySchema = z.object({
+  enabled: z.boolean().optional(),
+  maxAttempts: z.number().int().min(1).max(10).optional(),
+  backoff: z.enum(["fixed", "linear", "exponential"]).optional(),
+  backoffSeconds: z.number().min(0).optional(),
+  backoffMultiplier: z.number().min(1).optional(),
+  timeoutSeconds: z.number().min(0).optional(),
+  onFailure: z.enum(["error-edge", "fail-flow"]).optional(),
+});
+
 const flowNodeSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -15,10 +25,20 @@ const flowNodeSchema = z.object({
   config: z.record(z.unknown()).optional(),
   inputs: z.record(flowInputValueSchema).optional(),
   executorConfig: z.object({ provider: z.string().optional() }).passthrough().optional(),
-  requiredSecrets: z.array(z.string()).optional(),
+  secretBindings: z.record(
+    z.string(),
+    z.discriminatedUnion("mode", [
+      z.object({ mode: z.literal("auto") }),
+      z.object({
+        mode: z.literal("pinned"),
+        scope: z.enum(["user", "org", "global"]),
+        name: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+      }),
+    ]),
+  ).optional(),
   position: z.object({ x: z.number(), y: z.number() }).optional(),
   outcome: z.string().optional(),
-  retry: z.record(z.unknown()).optional(),
+  retry: retryPolicySchema.optional(),
 }).passthrough();
 
 const flowEdgeSchema = z.object({

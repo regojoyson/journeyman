@@ -1,11 +1,11 @@
 import { createLogger } from "@journeyman/core";
-import type { ITicketProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver } from "@journeyman/core";
+import type { ITicketProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory } from "@journeyman/core";
 
 const log = createLogger("worker:update-ticket");
 
 export class UpdateTicketFieldsPhaseHandler implements IPhaseHandler {
   readonly phaseType = "update-ticket-fields";
-  constructor(private deps: { ticket: ProviderResolver<ITicketProvider> }) {}
+  constructor(private deps: { ticket: ProviderFactory<ITicketProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
@@ -18,9 +18,7 @@ export class UpdateTicketFieldsPhaseHandler implements IPhaseHandler {
     const status = typeof input.status === "string" ? input.status : undefined;
     const assignee = typeof input.assignee === "string" ? input.assignee : undefined;
     const labels = Array.isArray(input.labels) && input.labels.every((l) => typeof l === "string") ? (input.labels as string[]) : undefined;
-    const ticket = this.deps.ticket.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const ticket = this.deps.ticket(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Update ticket ${id}`);
     const result = await ticket.updateTicket({ id, title, description, status, assignee, labels, sessionId: ctx.runId });
     if (result?.error) {

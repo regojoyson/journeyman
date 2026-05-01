@@ -33,8 +33,14 @@ export const planImplementationPhase: PhaseDefinition<PlanImplementationConfig> 
     ticketContent:     { label: "Ticket content",     widget: "textarea", help: "Markdown body of the ticket" },
     analyzeReportPath: { label: "Analyze report path", widget: "text", help: "Optional path to a prior analyze output" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  optionalSecrets: ["ANTHROPIC_API_KEY"],
+  tabs: { io: "shown", mcp: "shown", retry: "shown" },
+  slots: [
+    {
+      name: "ANTHROPIC_API_KEY",
+      description: "Anthropic API key. Optional — falls back to the SDK's ambient credentials when unset.",
+      optional: true,
+    },
+  ],
   summary: (c, ctx) => summaryValue(c, ctx, "dirPath") || "(no repo)",
   executor: { kind: "coding-cli", method: "plan" },
   outputSchema: planImplementationOutputSchema,

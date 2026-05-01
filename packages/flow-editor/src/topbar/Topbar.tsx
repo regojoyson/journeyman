@@ -262,27 +262,45 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
 function SecretWarningsSection({ warnings }: { warnings: FlowSaveWarning[] }) {
   return (
     <div className="je-validate-section je-validate-section--warn">
-      <div className="je-validate-section__title">Inaccessible secrets ({warnings.length})</div>
-      {warnings.map((w, i) => (
-        <div key={i} style={{ marginBottom: 8 }}>
-          <div style={{ marginBottom: 4 }}>{w.message}</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {w.names.map(n => (
-              <code
-                key={n}
-                style={{
-                  padding: "1px 6px",
-                  border: "1px solid #c08a3e",
-                  color: "#f0c97a",
-                  borderRadius: 3,
-                  fontSize: 11,
-                  fontFamily: "ui-monospace, monospace",
-                }}
-              >{n}</code>
-            ))}
+      <div className="je-validate-section__title">Secret warnings ({warnings.length})</div>
+      {warnings.map((w, i) => {
+        if (w.code === "inaccessible_secrets") {
+          return (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {w.names.map(n => (
+                  <code
+                    key={n}
+                    style={{
+                      padding: "1px 6px",
+                      border: "1px solid #c08a3e",
+                      color: "#f0c97a",
+                      borderRadius: 3,
+                      fontSize: 11,
+                      fontFamily: "ui-monospace, monospace",
+                    }}
+                  >{n}</code>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        // code === "cross_scope_pin"
+        return (
+          <div key={i} style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 4 }}>{w.message}</div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+              {w.entries.map((e, j) => (
+                <li key={j}>
+                  <code>{e.slot}</code> on node <code>{e.nodeId}</code> pinned to{" "}
+                  <b>{e.pinnedScope}</b> in a <b>{e.flowScope}</b>-scope flow
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

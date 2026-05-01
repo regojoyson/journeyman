@@ -17,3 +17,14 @@ export interface ProviderResolver<T> {
   /** All keys this resolver knows about (for diagnostics / startup checks). */
   keys(): string[];
 }
+
+/**
+ * Per-call factory: produces a provider instance from a routing key + the
+ * resolved env (slot-keyed credential bag) for that run. Used by phase
+ * handlers to construct providers fresh per invocation, so user/org-scope
+ * secrets resolved per-run can flow through.
+ */
+export type ProviderFactory<T> = (
+  key: string | undefined,
+  env: Record<string, string>,
+) => T;

@@ -245,9 +245,10 @@ function CanvasInner(p: CanvasProps) {
               const provider = defaultProviderFor(def.executor.kind);
               return provider ? { provider } : undefined;
             })(),
-            requiredSecrets: def.defaultRequiredSecrets?.length
-              ? [...def.defaultRequiredSecrets]
-              : undefined,
+            secretBindings: (def.slots ?? []).reduce<Record<string, { mode: "auto" }>>(
+              (acc, slot) => { acc[slot.name] = { mode: "auto" }; return acc; },
+              {},
+            ),
           }
         : base;
     } else if (controlType) {

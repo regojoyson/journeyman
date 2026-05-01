@@ -36,8 +36,13 @@ export const createTicketPhase: PhaseDefinition<CreateTicketConfig> = {
     description: { label: "Description", widget: "textarea" },
     // labels rendered as comma-separated string for round 1; the schema enforces array shape via the form's array handling below.
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => c.title || c.project,
   executor: { kind: "ticket-provider", method: "createTicket" },
   outputSchema: createTicketOutputSchema,

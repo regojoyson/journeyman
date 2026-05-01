@@ -26,8 +26,13 @@ export const cloneReposPhase: PhaseDefinition<CloneReposConfig> = {
   configFields: {
     repos:     { label: "Repos", widget: "textarea", help: "One owner/repo (or URL) per line" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => {
     const lines = c.repos.split("\n").filter(s => s.trim());
     return lines.length ? `${lines.length} repo${lines.length === 1 ? "" : "s"}` : "(no repos)";

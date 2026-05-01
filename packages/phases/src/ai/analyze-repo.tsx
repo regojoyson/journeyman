@@ -30,8 +30,14 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
     dirPath:       { label: "Repo path",       widget: "text",     help: "Local path or workspace ref" },
     ticketContent: { label: "Ticket content",  widget: "textarea", help: "Markdown body of the ticket" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "shown", retry: "shown" },
-  optionalSecrets: ["ANTHROPIC_API_KEY"],
+  tabs: { io: "shown", mcp: "shown", retry: "shown" },
+  slots: [
+    {
+      name: "ANTHROPIC_API_KEY",
+      description: "Anthropic API key. Optional — falls back to the SDK's ambient credentials when unset.",
+      optional: true,
+    },
+  ],
   summary: (c, ctx) => summaryValue(c, ctx, "dirPath") || "(no repo)",
   executor: { kind: "coding-cli", method: "analyze" },
   outputSchema: analyzeRepoOutputSchema,

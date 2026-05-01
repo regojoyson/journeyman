@@ -72,17 +72,11 @@ export class GitHubProjectsProvider implements ITicketProvider {
 
   private getClient(): GitHubClient {
     if (!this.client) {
-      const token =
-        this.opts.token
-        ?? (this.opts.tokenEnv ? process.env[this.opts.tokenEnv] : undefined)
-        ?? process.env.GITHUB_ACCESS_TOKEN;
-      if (!token) {
-        throw new Error(
-          "GitHubProjectsProvider: PAT required. Pass opts.token, set opts.tokenEnv to a populated env var, or set GITHUB_ACCESS_TOKEN.",
-        );
+      if (!this.opts.token) {
+        throw new Error("GitHubProjectsProvider: opts.token is required.");
       }
       this.client = createGitHubClient({
-        token,
+        token: this.opts.token,
         userAgent: "journeyman-ticket-provider/0.1.0",
       });
     }

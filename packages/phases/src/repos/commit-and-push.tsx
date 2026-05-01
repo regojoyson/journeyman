@@ -32,8 +32,13 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
     message:  { label: "Commit message", widget: "textarea" },
     branch:   { label: "Branch", widget: "text", help: "Defaults to current branch" },
   },
-  tabs: { io: "shown", credentials: "hidden", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT used by `git push` / `git fetch` against origin.",
+    },
+  ],
   summary: c => c.message ? `"${c.message.slice(0, 40)}"` : c.repoPath,
   executor: { kind: "coding-cli", method: "commitPushRepos" },
   outputSchema: commitAndPushOutputSchema,

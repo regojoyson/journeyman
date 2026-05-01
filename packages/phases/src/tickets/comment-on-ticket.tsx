@@ -32,8 +32,13 @@ export const commentOnTicketPhase: PhaseDefinition<CommentOnTicketConfig> = {
     template:  { label: "Template id", widget: "text", help: "e.g. analysis-summary, completion-summary" },
     body:      { label: "Inline body (optional)", widget: "textarea", help: "Used when no template is set" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => c.template || c.ticketKey || "(no target)",
   executor: { kind: "ticket-provider", method: "addComment" },
   outputSchema: commentOnTicketOutputSchema,

@@ -23,7 +23,7 @@ export interface PhaseContext {
   attempt: number;
   workspaceDir: string;
   signal: AbortSignal;
-  /** Resolved env vars for this phase (from ICredentialStore). */
+  /** Resolved env vars for this phase, keyed by slot name (from resolveBindings). */
   env: Record<string, string>;
   /** Frozen copy of workflow.input — values declared on the start node's runInputs. */
   runInputs: Record<string, unknown>;

@@ -32,8 +32,13 @@ export const sendMessagePhase: PhaseDefinition<SendMessageConfig> = {
     message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{ticket}" },
     blocks:  { label: "Rich blocks (optional)", widget: "code", help: "Provider-specific rich formatting JSON" },
   },
-  tabs: { io: "hidden", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["SLACK_BOT_TOKEN"],
+  tabs: { io: "hidden", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "SLACK_BOT_TOKEN",
+      description: "Slack bot token (xoxb-...) used to post messages.",
+    },
+  ],
   summary: c => c.channel || "(no channel)",
   executor: { kind: "notification", method: "send" },
   outputSchema: sendMessageOutputSchema,

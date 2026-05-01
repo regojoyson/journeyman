@@ -1,11 +1,11 @@
 import { createLogger } from "@journeyman/core";
-import type { ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver } from "@journeyman/core";
+import type { ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory } from "@journeyman/core";
 
 const log = createLogger("worker:cleanup-repos");
 
 export class CleanupWorkspacePhaseHandler implements IPhaseHandler {
   readonly phaseType = "cleanup-workspace";
-  constructor(private deps: { coding: ProviderResolver<ICodingCLI> }) {}
+  constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const reposRaw = input.repos;
@@ -15,9 +15,7 @@ export class CleanupWorkspacePhaseHandler implements IPhaseHandler {
     if (!repos) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "cleanup-repos requires `repos`", retryable: false } };
     }
-    const coding = this.deps.coding.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Cleaning up repos`);
     const result = await coding.cleanupRepos({ repos, sessionId: ctx.runId, signal: ctx.signal });
     if (result?.error) {

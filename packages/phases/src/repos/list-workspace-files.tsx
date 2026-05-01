@@ -26,7 +26,7 @@ export const listWorkspaceFilesPhase: PhaseDefinition<ListWorkspaceFilesConfig> 
   configFields: {
     pattern:      { label: "Glob pattern",  widget: "text", help: "e.g. */api-*" },
   },
-  tabs: { io: "shown", credentials: "hidden", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
   summary: c => c.pattern,
   executor: { kind: "coding-cli", method: "scanRepos" },
   outputSchema: listWorkspaceFilesOutputSchema,

@@ -9,34 +9,70 @@ import type { FlowGraph, FlowScope } from "@journeyman/core";
 import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
 import { phaseCatalog } from "@journeyman/phases/catalog";
 import { makeRequireAuth } from "@journeyman/identity";
-import { listVisibleNames } from "@journeyman/secrets";
-import type { FlowSaveWarning } from "@journeyman/core";
+import { listVisibleSecrets } from "@journeyman/secrets";
+import type { FlowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
 
 /**
- * Compute non-blocking warnings about inaccessible secret references in a flow definition.
+ * Compute non-blocking warnings about secret references in a flow definition.
  * Save proceeds regardless; warnings are attached to the response.
+ *
+ * Two warning shapes:
+ *   - inaccessible_secrets: caller can't reach the referenced secret
+ *   - cross_scope_pin: a slot is pinned to a narrower scope than the flow itself
  */
 async function computeSaveWarnings(
   c: Composition,
   ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>,
+  flowScope: FlowScope,
   definition: FlowGraph,
 ): Promise<FlowSaveWarning[]> {
-  const needed = new Set<string>();
+  if (!c.pool) return [];
+  const visible = await listVisibleSecrets(c.pool, ctx);
+  const visibleByScopeName = new Set(visible.map(v => `${v.scope}:${v.name}`));
+  const visibleNames = new Set(visible.map(v => v.name));
+
+  const inaccessible = new Set<string>();
+  const crossScope: Array<{ nodeId: string; slot: string; pinnedScope: SecretScope; flowScope: FlowScope }> = [];
+
   for (const node of definition.nodes) {
-    for (const name of node.requiredSecrets ?? []) needed.add(name);
+    const bindings = (node.secretBindings ?? {}) as Record<string, SecretBinding>;
+    for (const [slotName, binding] of Object.entries(bindings)) {
+      if (binding.mode === "auto") {
+        if (!visibleNames.has(slotName)) inaccessible.add(slotName);
+        continue;
+      }
+      // mode "pinned"
+      if (!visibleByScopeName.has(`${binding.scope}:${binding.name}`)) {
+        inaccessible.add(binding.name);
+      }
+      if (isNarrowerScope(binding.scope, flowScope)) {
+        crossScope.push({ nodeId: node.id, slot: slotName, pinnedScope: binding.scope, flowScope });
+      }
+    }
   }
-  if (needed.size === 0 || !c.pool) return [];
-  const visible = new Set(await listVisibleNames(c.pool, ctx));
-  const inaccessible = [...needed].filter(n => !visible.has(n)).sort();
-  if (inaccessible.length === 0) return [];
-  return [
-    {
+
+  const warnings: FlowSaveWarning[] = [];
+  if (inaccessible.size > 0) {
+    warnings.push({
       code: "inaccessible_secrets",
-      message:
-        "Flow references secrets you cannot currently access. Runs will fail until they are created.",
-      names: inaccessible,
-    },
-  ];
+      message: "Flow references secrets you cannot currently access. Runs will fail until they are created.",
+      names: [...inaccessible].sort(),
+    });
+  }
+  if (crossScope.length > 0) {
+    warnings.push({
+      code: "cross_scope_pin",
+      message: "Some slots are pinned to a narrower scope than the flow itself. Other runners won't see them.",
+      entries: crossScope,
+    });
+  }
+  return warnings;
+}
+
+function isNarrowerScope(pinned: SecretScope, flow: FlowScope): boolean {
+  if (flow === "user") return false;
+  if (flow === "org") return pinned === "user";
+  /* global */ return pinned === "user" || pinned === "org";
 }
 
 export interface FlowValidationReport {
@@ -145,7 +181,10 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
       return { error: "bad_request", message: "definition is required" };
     }
     const report = computeValidationReport(body.definition);
-    const secretWarnings = await computeSaveWarnings(c, ctx, body.definition);
+    // Validate works against the user's caller scope — fall back to "user" since
+    // no flow record exists yet at validate time.
+    const callerScope: FlowScope = "user";
+    const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
     return { ...report, secretWarnings };
   });
 
@@ -172,7 +211,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
     if (!_v.ok) return;
 
-    const warnings = await computeSaveWarnings(c, ctx, body.definition as FlowGraph);
+    const warnings = await computeSaveWarnings(c, ctx, body.scope as FlowScope, body.definition as FlowGraph);
 
     const { flow, version } = await c.flows.create({
       scope: body.scope as FlowScope,
@@ -228,7 +267,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     if (body.definition) {
       const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
       if (!_v.ok) return;
-      warnings = await computeSaveWarnings(c, ctx, body.definition as FlowGraph);
+      warnings = await computeSaveWarnings(c, ctx, flow.scope, body.definition as FlowGraph);
       newVersion = await c.flowVersions.appendVersion({
         flowId: id, definition: body.definition as FlowGraph, createdByUserId: caller.userId,
       });

@@ -30,7 +30,7 @@ export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
     name:    { label: "Workspace name", widget: "text" },
     baseDir: { label: "Base directory", widget: "text" },
   },
-  tabs: { io: "shown", credentials: "hidden", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
   summary: c => c.name || c.baseDir,
   executor: { kind: "coding-cli", method: "createWorkspace" },
   outputSchema: createWorkspaceOutputSchema,

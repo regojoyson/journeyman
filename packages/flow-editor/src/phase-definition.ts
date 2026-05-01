@@ -20,6 +20,17 @@ export interface FieldMeta {
   options?: { value: string; label: string }[];
 }
 
+export interface SecretSlotDef {
+  /** Slot identifier — what the phase reads at runtime as ctx.env[name].
+   *  Convention: SCREAMING_SNAKE_CASE. Validated against ^[A-Z][A-Z0-9_]*$. */
+  name: string;
+  /** Short, human-friendly explanation. Shown next to the slot in the editor. */
+  description: string;
+  /** Optional slots: Auto-mode failing to resolve does NOT fail the run.
+   *  Phase handler must tolerate ctx.env[name] being undefined. */
+  optional?: boolean;
+}
+
 export interface PhaseRunState {
   status: "idle" | "running" | "succeeded" | "failed";
   message?: string;
@@ -88,27 +99,14 @@ export interface PhaseDefinition<TConfig = unknown> {
   // common-tab visibility
   tabs: {
     io: TabVisibility;
-    credentials: TabVisibility;
     requiredSecrets?: TabVisibility;
     mcp: TabVisibility;
     retry: TabVisibility;
   };
 
-  /**
-   * Names of env-vars this phase typically needs at run time. Used for two purposes:
-   *   - When a node is dropped onto the canvas, this list is copied into
-   *     `node.requiredSecrets` so the user starts pre-filled.
-   *   - The Required Secrets tab shows these as a "typically needs" hint
-   *     even if the user later removes them from the node.
-   */
-  defaultRequiredSecrets?: string[];
-
-  /**
-   * Names of env-vars this phase can optionally use (e.g. to override an
-   * ambient default). NOT auto-added on drop — only surfaced as a hint
-   * in the Required Secrets tab so the user knows they can pass them.
-   */
-  optionalSecrets?: string[];
+  /** Credential slots this phase needs at run time. Each slot becomes a
+   *  row in the editor's "Required secrets" tab and a key in ctx.env. */
+  slots?: SecretSlotDef[];
 
   // canvas display
   summary?: (config: TConfig, ctx?: PhaseSummaryCtx) => string;

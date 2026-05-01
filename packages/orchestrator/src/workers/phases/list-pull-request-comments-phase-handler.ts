@@ -1,11 +1,11 @@
 import { createLogger } from "@journeyman/core";
-import type { IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver } from "@journeyman/core";
+import type { IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory } from "@journeyman/core";
 
 const log = createLogger("worker:fetch-pr-comments");
 
 export class ListPullRequestCommentsPhaseHandler implements IPhaseHandler {
   readonly phaseType = "list-pull-request-comments";
-  constructor(private deps: { git: ProviderResolver<IGitProvider> }) {}
+  constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const prUrl = typeof input.prUrl === "string" ? input.prUrl : undefined;
@@ -13,9 +13,7 @@ export class ListPullRequestCommentsPhaseHandler implements IPhaseHandler {
     if (!prUrl) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "fetch-pr-comments requires `prUrl`", retryable: false } };
     }
-    const git = this.deps.git.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Fetch PR comments ${prUrl}`);
     const result = await git.listPRComments({ prUrl, sinceIso, sessionId: ctx.runId });
     if (result?.error) {

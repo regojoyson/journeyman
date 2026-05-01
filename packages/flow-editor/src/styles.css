@@ -190,6 +190,13 @@
   user-select: none;
 }
 .je-props__field label.je-props__check-row input[disabled] { cursor: not-allowed; opacity: 0.5; }
+.je-props__check-row-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.je-field-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 2px; cursor: pointer;
+  color: #888; line-height: 0;
+}
+.je-field-info-btn:hover { color: #aaa; }
 .je-empty { color: #888; font-size: 12px; text-align: center; padding: 20px 12px; }
 
 /* Run inputs editor — card list (replaces the unstyled table). */

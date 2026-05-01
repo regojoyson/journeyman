@@ -91,8 +91,13 @@ export const updateTicketFieldsPhase: PhaseDefinition<UpdateTicketFieldsConfig> 
     fields: z.record(z.string(), z.string()),
   }),
   ConfigForm: UpdateTicketFieldsConfigForm,
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "updateTicket" },
   outputSchema: updateTicketFieldsOutputSchema,

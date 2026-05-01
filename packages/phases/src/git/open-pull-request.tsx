@@ -40,8 +40,13 @@ export const openPullRequestPhase: PhaseDefinition<OpenPullRequestConfig> = {
     head:  { label: "Head branch", widget: "text" },
     base:  { label: "Base branch", widget: "text" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => c.head && c.base ? `${c.base} ← ${c.head}` : (c.title || ""),
   executor: { kind: "git-provider", method: "createPR" },
 };

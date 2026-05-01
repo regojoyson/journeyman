@@ -1,4 +1,4 @@
-import type { FlowEdge, FlowGraph, FlowNode, IFlowJsonConverter } from "@journeyman/core";
+import type { FlowEdge, FlowGraph, FlowNode, IFlowJsonConverter, SecretBinding } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
@@ -6,6 +6,24 @@ import type {
 } from "./conductor-types.ts";
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { dominators } from "./reachability.ts";
+
+/**
+ * Read-side migration: legacy nodes used `requiredSecrets: string[]` to declare
+ * env-var names. Convert to all-`auto` bindings on read so we don't need a DB
+ * migration. Newer flows already carry `secretBindings`.
+ */
+function migrateLegacyBindings(node: FlowNode): FlowNode {
+  if (node.secretBindings) return node;
+  const legacy = (node as unknown as { requiredSecrets?: string[] }).requiredSecrets;
+  if (!legacy || legacy.length === 0) return node;
+  const secretBindings: Record<string, SecretBinding> = {};
+  for (const name of legacy) secretBindings[name] = { mode: "auto" };
+  return { ...node, secretBindings };
+}
+
+function normalizeFlow(flow: FlowGraph): FlowGraph {
+  return { ...flow, nodes: flow.nodes.map(migrateLegacyBindings) };
+}
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -20,14 +38,14 @@ export class FlowValidationError extends Error {
 
 export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkflowDef> {
   static validateGraph(graph: FlowGraph): void {
-    new ConvertCtx(graph).validate();
+    new ConvertCtx(normalizeFlow(graph)).validate();
   }
 
   toEngineJson(def: FlowGraph, opts: {
     workflowName: string;
     workflowVersion: number;
   }): ConductorWorkflowDef {
-    const ctx = new ConvertCtx(def);
+    const ctx = new ConvertCtx(normalizeFlow(def));
     ctx.validate();
 
     const start = ctx.startNode();
@@ -154,17 +172,12 @@ class ConvertCtx {
       name: node.phaseType,
       taskReferenceName: node.id,
       inputParameters: (() => {
-        const creds: Record<string, string> = {
-          ...((node.config as { credentials?: Record<string, string> } | undefined)?.credentials ?? {}),
-        };
-        for (const name of node.requiredSecrets ?? []) {
-          creds[name] = `env:${name}`;
-        }
+        const bindings = node.secretBindings ?? {};
         return {
           ...(node.config ?? {}),
           ...resolveInputs(node.inputs),
           retry: node.retry ?? {},
-          credentials: creds,
+          secretBindings: bindings,
         };
       })(),
       retryCount: enabled ? (r.maxAttempts ?? 3) : 0,

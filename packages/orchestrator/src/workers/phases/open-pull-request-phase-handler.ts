@@ -1,11 +1,11 @@
 import { createLogger } from "@journeyman/core";
-import type { IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver } from "@journeyman/core";
+import type { IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory } from "@journeyman/core";
 
 const log = createLogger("worker:create-pr");
 
 export class OpenPullRequestPhaseHandler implements IPhaseHandler {
   readonly phaseType = "open-pull-request";
-  constructor(private deps: { git: ProviderResolver<IGitProvider> }) {}
+  constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const owner = typeof input.owner === "string" ? input.owner : undefined;
@@ -17,9 +17,7 @@ export class OpenPullRequestPhaseHandler implements IPhaseHandler {
     if (!owner || !repo || !title || !sourceBranch || !targetBranch) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "create-pr requires owner, repo, title, sourceBranch, targetBranch", retryable: false } };
     }
-    const git = this.deps.git.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Creating PR ${owner}/${repo} ${sourceBranch} → ${targetBranch}`);
     const result = await git.createPR({ owner, repo, title, body, sourceBranch, targetBranch, sessionId: ctx.runId });
     if (result?.error) {

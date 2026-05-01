@@ -1,3 +1,5 @@
+import type { SecretScope } from "./secrets.types.ts";
+
 /**
  * Flow JSON schema version. Bumped when flow JSON shape changes
  * incompatibly. ConductorJsonConverter migrates older versions on read.
@@ -51,11 +53,8 @@ export interface FlowNode {
   executorConfig?: { provider?: string };
   /** Per-phase retry policy. */
   retry?: RetryPolicy;
-  /**
-   * Names of env-vars that must be resolved before this node executes.
-   * The converter maps each name to an `env:<NAME>` ref in `inputParameters.credentials`.
-   */
-  requiredSecrets?: string[];
+  /** Per-slot binding map. Key is the slot name from the phase definition. */
+  secretBindings?: Record<string, SecretBinding>;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
   /** Only meaningful on `end` nodes — surfaced as the run's outcome label. */
@@ -135,8 +134,6 @@ export interface RetryPolicy {
   backoffSeconds?: number;
   backoffMultiplier?: number;
   timeoutSeconds?: number;
-  retryOn?: string[];
-  stopOn?: string[];
   onFailure?: "error-edge" | "fail-flow";
 }
 
@@ -158,6 +155,11 @@ export interface McpServerConfig {
   env?: Record<string, string>;
 }
 
+/** How a single slot resolves at runtime. */
+export type SecretBinding =
+  | { mode: "auto" }
+  | { mode: "pinned"; scope: SecretScope; name: string };
+
 /**
  * Non-blocking warning returned alongside a successful flow save.
  * The save itself always succeeds when the body is well-formed.
@@ -167,4 +169,14 @@ export type FlowSaveWarning =
       code: "inaccessible_secrets";
       message: string;
       names: string[];
+    }
+  | {
+      code: "cross_scope_pin";
+      message: string;
+      entries: Array<{
+        nodeId: string;
+        slot: string;
+        pinnedScope: SecretScope;
+        flowScope: FlowScope;
+      }>;
     };

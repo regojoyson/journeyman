@@ -1,7 +1,7 @@
 import { createLogger } from "@journeyman/core";
 import type {
   ITicketProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult,
-  ProviderResolver,
+  ProviderFactory,
 } from "@journeyman/core";
 
 const log = createLogger("worker:update-status");
@@ -18,7 +18,7 @@ const log = createLogger("worker:update-status");
 export class TransitionTicketPhaseHandler implements IPhaseHandler {
   readonly phaseType = "transition-ticket";
 
-  constructor(private deps: { ticket: ProviderResolver<ITicketProvider> }) {}
+  constructor(private deps: { ticket: ProviderFactory<ITicketProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
@@ -34,9 +34,7 @@ export class TransitionTicketPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    const ticket = this.deps.ticket.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const ticket = this.deps.ticket(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Updating ticket ${id} → ${status}`);
     const result = await ticket.updateStatus({ id, status, sessionId: ctx.runId });
     if (result?.error) {

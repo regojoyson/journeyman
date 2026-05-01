@@ -10,7 +10,7 @@
 
 import { Pool } from "pg";
 import type {
-  IAuthProvider, IConditionEvaluator, ICredentialStore, IEventBus,
+  IAuthProvider, IConditionEvaluator, IEventBus,
   IFlowGrantsStore, IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
   IPhaseRegistry, IRunGrantsStore, IRunStore, IWorkspaceProvider,
 } from "@journeyman/core";
@@ -33,14 +33,11 @@ import {
   MemoryRunStore,
   MemoryNodeExecutionStore,
   MemoryEventBus,
-  EnvCredentialStore,
   DirectoryWorkspaceProvider,
   InMemoryPhaseRegistry,
   JsonLogicEvaluator,
   createPool,
 } from "@journeyman/orchestrator";
-import { SecretsCredentialStore } from "@journeyman/secrets";
-import { findMembership, getOrg, getUser } from "@journeyman/identity";
 
 export interface Composition {
   flowGrants: IFlowGrantsStore;
@@ -53,7 +50,6 @@ export interface Composition {
   orchestrator: IOrchestratorEngine;
   registry: IPhaseRegistry;
   workspace: IWorkspaceProvider;
-  credentials: ICredentialStore;
   auth: IAuthProvider;
   conditions: IConditionEvaluator;
   /** The pg Pool (null when using the memory backend). */
@@ -112,34 +108,6 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   const registry = new InMemoryPhaseRegistry();
   const workspace = new DirectoryWorkspaceProvider();
-  let credentials: ICredentialStore;
-  if (pool) {
-    const dbPool = pool;
-    credentials = new SecretsCredentialStore({
-      pool: dbPool,
-      async getRunContext(input) {
-        if (!input.userId) return null;
-        const u = await getUser(dbPool, input.userId);
-        if (!u) return null;
-        const memQ = await dbPool.query(
-          "SELECT id, org_id, role FROM jm_memberships WHERE user_id = $1 ORDER BY created_at LIMIT 1",
-          [input.userId],
-        );
-        const m = memQ.rows[0]; if (!m) return null;
-        const o = await getOrg(dbPool, m.org_id); if (!o) return null;
-        return {
-          user: { id: u.id, username: u.username },
-          org: { id: o.id, slug: o.slug },
-          membershipId: m.id,
-          role: m.role,
-          isPlatformAdmin: u.isPlatformAdmin,
-          tokenKind: "access-jwt",
-        };
-      },
-    });
-  } else {
-    credentials = new EnvCredentialStore();
-  }
   // Inline anonymous auth provider
   const auth: IAuthProvider = {
     async authenticate(_req: FastifyRequest) {
@@ -150,7 +118,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   return {
     flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events,
-    orchestrator, registry, workspace, credentials, auth, conditions,
+    orchestrator, registry, workspace, auth, conditions,
     pool,
     shutdown: async () => { if (pool) await pool.end(); },
   };

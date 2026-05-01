@@ -1,6 +1,6 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver,
+  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
 
 const log = createLogger("worker:checkout-repo");
@@ -20,7 +20,7 @@ const log = createLogger("worker:checkout-repo");
 export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
   readonly phaseType = "start-feature-branch";
 
-  constructor(private deps: { coding: ProviderResolver<ICodingCLI> }) {}
+  constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const url = typeof input.url === "string" ? input.url : undefined;
@@ -51,9 +51,7 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
         ? { id: (ticketRaw as { id: string }).id, title: (ticketRaw as { title: string }).title }
         : undefined;
 
-    const coding = this.deps.coding.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Checking out ${workspaceDir ?? url}`);
     const result = await coding.checkoutRepo({
       repos, branch, ticket,

@@ -29,8 +29,13 @@ export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> 
     url:       { label: "Repo URL",   widget: "text" },
     branch:    { label: "Branch",     widget: "text", help: "Defaults to repo default branch" },
   },
-  tabs: { io: "shown", credentials: "hidden", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT used by `git push` / `git fetch` against origin.",
+    },
+  ],
   summary: c => c.branch ? `${c.url}@${c.branch}` : c.url,
   executor: { kind: "coding-cli", method: "checkoutRepo" },
   outputSchema: startFeatureBranchOutputSchema,

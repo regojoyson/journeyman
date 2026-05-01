@@ -1,6 +1,6 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver,
+  IGitProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
 
 const log = createLogger("worker:clone-repos");
@@ -21,7 +21,7 @@ const log = createLogger("worker:clone-repos");
 export class CloneReposPhaseHandler implements IPhaseHandler {
   readonly phaseType = "clone-repos";
 
-  constructor(private deps: { git: ProviderResolver<IGitProvider> }) {}
+  constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const reposRaw = input.repos;
@@ -43,9 +43,7 @@ export class CloneReposPhaseHandler implements IPhaseHandler {
       };
     }
 
-    const git = this.deps.git.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Cloning repo(s) into ${targetDir}`);
     const result = await git.cloneRepos({ repos, targetDir, branch, signal: ctx.signal });
     if (result?.error) {

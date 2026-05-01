@@ -1,6 +1,6 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver,
+  ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
 
 const log = createLogger("worker:create-workspace");
@@ -19,7 +19,7 @@ const log = createLogger("worker:create-workspace");
 export class CreateWorkspacePhaseHandler implements IPhaseHandler {
   readonly phaseType = "create-workspace";
 
-  constructor(private deps: { coding: ProviderResolver<ICodingCLI> }) {}
+  constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     // Accept both editor-vocabulary (name/baseDir) and provider-vocabulary (ticketId/parentDir).
@@ -37,9 +37,7 @@ export class CreateWorkspacePhaseHandler implements IPhaseHandler {
         },
       };
     }
-    const coding = this.deps.coding.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Creating workspace ${ticketId} under ${parentDir}`);
     const result = await coding.createWorkspace({
       ticketId, parentDir,

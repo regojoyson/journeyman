@@ -1,6 +1,7 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  ICredentialStore, IEventBus, IPhaseRegistry, IWorkspaceProvider,
+  IEventBus, IPhaseRegistry, IWorkspaceProvider,
+  SecretBinding,
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
@@ -11,10 +12,19 @@ export interface WorkerHarnessDeps {
   client: ConductorClient;
   registry: IPhaseRegistry;
   workspace: IWorkspaceProvider;
-  credentials: ICredentialStore;
   events: IEventBus;
   workerId: string;
   pollIntervalMs?: number;
+
+  /**
+   * Slot-aware resolver injected by the composition root. Walks the phase's
+   * declared slots and the task's bindings, returns slot-keyed env values.
+   */
+  bindingResolver: (input: {
+    ctx: { userId: string | null; flowId: string | null };
+    slots: Array<{ name: string; optional?: boolean }>;
+    bindings: Record<string, SecretBinding>;
+  }) => Promise<Record<string, string>>;
 }
 
 export class WorkerHarness {
@@ -81,13 +91,21 @@ export class WorkerHarness {
     const abort = new AbortController();
 
     const flowId = ((task.inputData ?? {}) as { flowId?: string | null }).flowId ?? null;
-    const declaredCreds = ((task.inputData ?? {}) as { credentials?: Record<string, string> }).credentials ?? {};
+    const declaredBindings =
+      ((task.inputData ?? {}) as { secretBindings?: Record<string, SecretBinding> }).secretBindings ?? {};
+
     let resolvedEnv: Record<string, string>;
     try {
-      resolvedEnv = await this.deps.credentials.resolve(declaredCreds, { userId, flowId });
+      const phaseDef = this.deps.registry.get(phaseType);
+      const slots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
+
+      resolvedEnv = await this.deps.bindingResolver({
+        ctx: { userId, flowId },
+        slots,
+        bindings: declaredBindings,
+      });
     } catch (err: any) {
-      const isCredErr =
-        err?.name === "CredentialNotFoundError" || err?.name === "MissingSecretsError";
+      const isCredErr = err?.name === "MissingSecretsError";
       if (isCredErr) {
         const missing: string[] = err.missing ?? (err.ref ? [String(err.ref)] : []);
         await this.deps.events.append({
@@ -113,7 +131,7 @@ export class WorkerHarness {
       const result = await handler.run(task.inputData, {
         runId, nodeId, attempt: task.retryCount + 1,
         workspaceDir: ws.path, signal: abort.signal,
-        env: { ...(process.env as Record<string, string>), ...resolvedEnv },
+        env: resolvedEnv,
         runInputs,
         log: (line, meta) => {
           this.deps.events.append({
@@ -132,18 +150,11 @@ export class WorkerHarness {
           status: "COMPLETED", outputData: result.output,
         });
       } else {
-        const retry = ((task.inputData ?? {}) as { retry?: { retryOn?: string[]; stopOn?: string[] } }).retry ?? {};
-        const cls = result.failure.errorClass ?? "Error";
-        const matchesAny = (patterns?: string[]) =>
-          Array.isArray(patterns) && patterns.some(p => {
-            try { return new RegExp(p).test(cls); } catch { return false; }
-          });
-        const stop = matchesAny(retry.stopOn);
-        const retryable = !stop && (result.failure.retryable ?? matchesAny(retry.retryOn));
+        const retryable = result.failure.retryable ?? false;
 
         await this.deps.events.append({
           runId, nodeId, eventType: "phase.failed",
-          payload: { error: result.failure, classified: { retryable, stop } },
+          payload: { error: result.failure, classified: { retryable } },
         });
         await this.deps.client.completeTask({
           workflowInstanceId: runId, taskId: task.taskId,

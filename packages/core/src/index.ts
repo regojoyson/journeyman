@@ -54,14 +54,10 @@ export type {
 export type {
   IWorkspace, IWorkspaceProvider,
 } from "./interfaces/workspace-provider.interface.ts";
-export type {
-  ICredentialStore, CredentialRef,
-} from "./interfaces/credential-store.interface.ts";
-export { CredentialNotFoundError } from "./interfaces/credential-store.interface.ts";
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
 export type { IFlowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";
-export type { ProviderResolver } from "./interfaces/provider-resolver.interface.ts";
+export type { ProviderResolver, ProviderFactory } from "./interfaces/provider-resolver.interface.ts";
 
 export {
   PROVIDER_CATALOG,
@@ -80,6 +76,7 @@ export type {
   RetryPolicy, FlowRetryPolicy, BackoffStrategy,
   McpServerConfig, McpTransport, FlowInputValue, RunInputDef,
   FlowSaveWarning,
+  SecretBinding,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {

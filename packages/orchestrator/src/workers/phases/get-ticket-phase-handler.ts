@@ -1,7 +1,7 @@
 import { createLogger } from "@journeyman/core";
 import type {
   ITicketProvider, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult,
-  ProviderResolver,
+  ProviderFactory,
 } from "@journeyman/core";
 
 const log = createLogger("worker:get-ticket");
@@ -18,7 +18,7 @@ const log = createLogger("worker:get-ticket");
 export class GetTicketPhaseHandler implements IPhaseHandler {
   readonly phaseType = "get-ticket";
 
-  constructor(private deps: { ticket: ProviderResolver<ITicketProvider> }) {}
+  constructor(private deps: { ticket: ProviderFactory<ITicketProvider> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
@@ -33,8 +33,9 @@ export class GetTicketPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    const ticket = this.deps.ticket.resolve(
+    const ticket = this.deps.ticket(
       typeof input.provider === "string" ? input.provider : undefined,
+      ctx.env,
     );
     ctx.log(`Fetching ticket ${id}`);
     const result = await ticket.getTicket({ id, sessionId: ctx.runId });

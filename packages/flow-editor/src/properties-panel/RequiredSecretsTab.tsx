@@ -1,17 +1,17 @@
 // packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx
 import { useEffect, useState, useMemo } from "react";
-import type { FlowNode, SecretScope } from "@journeyman/core";
+import type { FlowGraph, FlowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import type { SecretSlotDef } from "../phase-definition.ts";
 
 export interface RequiredSecretsTabProps {
+  flow: FlowGraph;
   node: FlowNode;
   orgId: string;
   onChange: (next: FlowNode) => void;
   readOnly?: boolean;
 }
-
-const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 
 const SCOPE_LABEL: Record<SecretScope, string> = {
   user: "Your secrets",
@@ -20,34 +20,54 @@ const SCOPE_LABEL: Record<SecretScope, string> = {
 };
 const SCOPE_ORDER: SecretScope[] = ["user", "org", "global"];
 
-function getRequired(node: FlowNode): string[] {
-  return node.requiredSecrets ?? [];
+function getBinding(node: FlowNode, slotName: string): SecretBinding {
+  return node.secretBindings?.[slotName] ?? { mode: "auto" };
 }
-function setRequired(node: FlowNode, next: string[]): FlowNode {
-  return { ...node, requiredSecrets: next };
+function setBinding(node: FlowNode, slotName: string, binding: SecretBinding): FlowNode {
+  return {
+    ...node,
+    secretBindings: { ...(node.secretBindings ?? {}), [slotName]: binding },
+  };
 }
-function bestScopeFor(name: string, visible: VisibleSecret[]): SecretScope | null {
-  // user > org > global precedence
-  let best: SecretScope | null = null;
-  for (const v of visible) {
-    if (v.name !== name) continue;
-    if (v.scope === "user") return "user";
-    if (v.scope === "org") best = "org";
-    else if (v.scope === "global" && best === null) best = "global";
+
+function bindingKey(b: SecretBinding): string {
+  return b.mode === "auto" ? "auto" : `pinned:${b.scope}:${b.name}`;
+}
+function parseBindingKey(key: string): SecretBinding | null {
+  if (key === "auto") return { mode: "auto" };
+  const m = /^pinned:(user|org|global):(.+)$/.exec(key);
+  if (!m) return null;
+  return { mode: "pinned", scope: m[1] as SecretScope, name: m[2] };
+}
+
+function autoResolveTier(
+  slotName: string,
+  visible: VisibleSecret[],
+): SecretScope | null {
+  for (const scope of SCOPE_ORDER) {
+    if (visible.some(v => v.scope === scope && v.name === slotName)) return scope;
   }
-  return best;
+  return null;
 }
 
-export function RequiredSecretsTab({ node, orgId, onChange, readOnly }: RequiredSecretsTabProps) {
-  const required = getRequired(node);
-  const [visible, setVisible] = useState<VisibleSecret[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [draft, setDraft] = useState("");
+function pinnedExists(b: SecretBinding, visible: VisibleSecret[]): boolean {
+  if (b.mode !== "pinned") return true;
+  return visible.some(v => v.scope === b.scope && v.name === b.name);
+}
 
+function flowScope(flow: FlowGraph): "user" | "org" | "global" | null {
+  const fs = (flow as unknown as { scope?: "user" | "org" | "global" }).scope;
+  return fs ?? null;
+}
+
+export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: RequiredSecretsTabProps) {
   const registry = usePhaseRegistry();
   const phaseDef = node.phaseType ? registry.get(node.phaseType) : undefined;
-  const suggested = phaseDef?.defaultRequiredSecrets ?? [];
-  const optional = phaseDef?.optionalSecrets ?? [];
+  const slots: SecretSlotDef[] = phaseDef?.slots ?? [];
+
+  const [visible, setVisible] = useState<VisibleSecret[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,165 +82,187 @@ export function RequiredSecretsTab({ node, orgId, onChange, readOnly }: Required
     for (const v of visible) {
       if (!out[v.scope].includes(v.name)) out[v.scope].push(v.name);
     }
+    for (const s of SCOPE_ORDER) out[s].sort();
     return out;
   }, [visible]);
 
-  function add(name: string) {
-    const trimmed = name.trim().toUpperCase();
-    if (!trimmed) return;
-    if (!NAME_RE.test(trimmed)) return;
-    if (required.includes(trimmed)) return;
-    onChange(setRequired(node, [...required, trimmed]));
-    setDraft("");
-  }
-  function remove(name: string) {
-    onChange(setRequired(node, required.filter(n => n !== name)));
+  const fScope = flowScope(flow);
+
+  if (slots.length === 0) {
+    return (
+      <div className="je-props__field">
+        <div style={{ color: "#888", fontSize: 11, fontStyle: "italic" }}>
+          This phase doesn't need any secrets.
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <div className="je-props__field">
-        <label>Required secrets</label>
-        <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>
-          Names of env-vars this step needs at run time. Resolved as <code>user &gt; org &gt; global</code>.
-        </div>
-
-        {(suggested.length > 0 || optional.length > 0) && (
+      <div className="je-props__field" style={{ marginBottom: 12 }}>
+        <button
+          onClick={() => setHelpOpen(o => !o)}
+          style={{
+            background: "transparent", border: "1px solid #2a3148", color: "#7da7ff",
+            padding: "4px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer",
+          }}
+        >{helpOpen ? "▾" : "▸"} How secrets are resolved</button>
+        {helpOpen && (
           <div style={{
-            fontSize: 11, color: "#aaa", marginBottom: 8,
-            padding: "6px 8px", background: "#1f2433", border: "1px solid #2a3148",
-            borderRadius: 4,
+            marginTop: 6, padding: "8px 10px", background: "#161a26",
+            border: "1px solid #2a3148", borderRadius: 4, fontSize: 11, color: "#bbb",
+            lineHeight: 1.5,
           }}>
-            {suggested.length > 0 && (
-              <div>
-                <span style={{ color: "#7da7ff" }}>Typically needs:</span>{" "}
-                {suggested.map((n, i) => (
-                  <span key={n}>
-                    <code style={{ fontFamily: "ui-monospace, monospace" }}>{n}</code>
-                    {i < suggested.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-              </div>
-            )}
-            {optional.length > 0 && (
-              <div style={{ marginTop: suggested.length > 0 ? 4 : 0 }}>
-                <span style={{ color: "#9aaab9" }}>Optionally:</span>{" "}
-                {optional.map((n, i) => (
-                  <span key={n}>
-                    <code style={{ fontFamily: "ui-monospace, monospace" }}>{n}</code>
-                    {i < optional.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-              </div>
-            )}
+            Each row below is something this step needs at run time.<br />
+            <b style={{ color: "#7da7ff" }}>Auto</b> — system finds a secret with the
+            exact same name. Looks in <i>your secrets first</i>, then <i>organization</i>,
+            then <i>global</i>. First match wins.<br />
+            <b style={{ color: "#7da7ff" }}>Pin</b> — pick one specific secret from any
+            tier. That exact one is used; no fallback.<br />
+            Names are exact and case-sensitive. <code>GITHUB_TOKEN</code> won't match
+            <code>MY_GITHUB_TOKEN</code>.
           </div>
         )}
-
-        {/* Selected chips */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-          {required.length === 0 && (
-            <div style={{ color: "#666", fontSize: 11, fontStyle: "italic" }}>(none)</div>
-          )}
-          {required.map(name => {
-            const scope = bestScopeFor(name, visible);
-            const accessible = scope !== null;
-            return (
-              <span
-                key={name}
-                title={
-                  accessible
-                    ? `Resolves from ${SCOPE_LABEL[scope!]}`
-                    : "Not accessible to you. Create it in My Secrets or ask an admin."
-                }
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "2px 6px",
-                  borderRadius: 3,
-                  fontSize: 11,
-                  fontFamily: "ui-monospace, monospace",
-                  border: accessible ? "1px solid #444" : "1px solid #c08a3e",
-                  background: accessible ? "#2a2a3e" : "#3a2e1a",
-                  color: accessible ? "#ddd" : "#f0c97a",
-                }}
-              >
-                {accessible ? "" : "⚠ "}{name}
-                {accessible && (
-                  <span style={{ fontSize: 9, color: "#888", textTransform: "uppercase" }}>
-                    {scope}
-                  </span>
-                )}
-                {!readOnly && (
-                  <button
-                    onClick={() => remove(name)}
-                    style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", padding: 0, marginLeft: 2 }}
-                    title="Remove"
-                  >×</button>
-                )}
-              </span>
-            );
-          })}
-        </div>
-
-        {!readOnly && (
-          <>
-            {/* Grouped picker by scope */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
-              {SCOPE_ORDER.map(scope => {
-                const names = grouped[scope].filter(n => !required.includes(n));
-                if (names.length === 0) return null;
-                return (
-                  <div key={scope}>
-                    <div style={{
-                      fontSize: 10, textTransform: "uppercase", color: "#888",
-                      letterSpacing: 0.5, marginBottom: 3,
-                    }}>{SCOPE_LABEL[scope]}</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {names.map(n => (
-                        <button
-                          key={n}
-                          onClick={() => add(n)}
-                          style={{
-                            background: "#1f1f2c", border: "1px solid #444",
-                            color: "#bbb", padding: "2px 6px", borderRadius: 3,
-                            fontSize: 11, fontFamily: "ui-monospace, monospace",
-                            cursor: "pointer",
-                          }}
-                          title={`Add from ${SCOPE_LABEL[scope]}`}
-                        >+ {n}</button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              {loaded && grouped.user.length === 0 && grouped.org.length === 0 && grouped.global.length === 0 && (
-                <div style={{ fontSize: 10, color: "#888" }}>
-                  No secrets are currently accessible to you. Add one in <a href="/me/secrets">My Secrets</a> or ask an admin.
-                </div>
-              )}
-            </div>
-
-            {/* Free-text custom name */}
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <input
-                type="text"
-                value={draft}
-                placeholder="Or type a custom name (e.g. GITHUB_TOKEN)"
-                onChange={e => setDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { add(draft); e.preventDefault(); } }}
-                style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}
-              />
-              <button
-                onClick={() => add(draft)}
-                style={{ background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}
-              >
-                + Add
-              </button>
-            </div>
-          </>
-        )}
       </div>
+
+      {slots.map(slot => {
+        const binding = getBinding(node, slot.name);
+        return (
+          <SlotRow
+            key={slot.name}
+            slot={slot}
+            binding={binding}
+            visible={visible}
+            grouped={grouped}
+            loaded={loaded}
+            flowScope={fScope}
+            readOnly={readOnly}
+            onChange={(next) => onChange(setBinding(node, slot.name, next))}
+          />
+        );
+      })}
     </div>
   );
+}
+
+interface SlotRowProps {
+  slot: SecretSlotDef;
+  binding: SecretBinding;
+  visible: VisibleSecret[];
+  grouped: Record<SecretScope, string[]>;
+  loaded: boolean;
+  flowScope: "user" | "org" | "global" | null;
+  readOnly?: boolean;
+  onChange: (next: SecretBinding) => void;
+}
+
+function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly, onChange }: SlotRowProps) {
+  const autoTier = useMemo(() => autoResolveTier(slot.name, visible), [slot.name, visible]);
+  const exists = pinnedExists(binding, visible);
+
+  const onSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = parseBindingKey(e.target.value);
+    if (next) onChange(next);
+  };
+
+  const crossScope =
+    binding.mode === "pinned" &&
+    flowScope !== null &&
+    isNarrower(binding.scope, flowScope);
+
+  return (
+    <div className="je-props__field" style={{
+      borderTop: "1px solid #2a2a3a", paddingTop: 10, marginTop: 10,
+    }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#ddd" }}>
+          {slot.name}
+        </code>
+        {slot.optional && (
+          <span style={{ fontSize: 10, color: "#888" }}>(optional)</span>
+        )}
+      </label>
+      <div style={{ fontSize: 10, color: "#888", marginTop: 2, marginBottom: 6 }}>
+        {slot.description}
+      </div>
+
+      <select
+        value={bindingKey(binding)}
+        onChange={onSelect}
+        disabled={readOnly}
+        style={{
+          width: "100%", fontFamily: "ui-monospace, monospace", fontSize: 11,
+          background: "#1f1f2c", border: "1px solid #444", color: "#ddd",
+          padding: "4px 6px", borderRadius: 4,
+        }}
+      >
+        <option value="auto">Auto (Your secrets &gt; Organization &gt; Global)</option>
+        {SCOPE_ORDER.map(scope => {
+          const names = grouped[scope];
+          if (names.length === 0) return null;
+          return (
+            <optgroup key={scope} label={SCOPE_LABEL[scope]}>
+              {names.map(n => (
+                <option key={`${scope}:${n}`} value={`pinned:${scope}:${n}`}>{n}</option>
+              ))}
+            </optgroup>
+          );
+        })}
+      </select>
+
+      <Preview
+        slot={slot}
+        binding={binding}
+        autoTier={autoTier}
+        exists={exists}
+        loaded={loaded}
+      />
+
+      {crossScope && (
+        <div style={{
+          marginTop: 6, fontSize: 11, color: "#f0c97a",
+          padding: "4px 8px", background: "#3a2e1a",
+          border: "1px solid #c08a3e", borderRadius: 4,
+        }}>
+          ⚠ This is a {flowScope}-scope flow but you pinned a {(binding as { scope: SecretScope }).scope}-scope secret.
+          Other runners won't see it.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isNarrower(pinned: SecretScope, flow: "user" | "org" | "global"): boolean {
+  if (flow === "user") return false;
+  if (flow === "org") return pinned === "user";
+  /* global */ return pinned === "user" || pinned === "org";
+}
+
+interface PreviewProps {
+  slot: SecretSlotDef;
+  binding: SecretBinding;
+  autoTier: SecretScope | null;
+  exists: boolean;
+  loaded: boolean;
+}
+
+function Preview({ slot, binding, autoTier, exists, loaded }: PreviewProps) {
+  if (!loaded) return null;
+  const style = (color: string) => ({
+    marginTop: 4, fontSize: 11, color,
+  });
+  if (binding.mode === "auto") {
+    if (autoTier) {
+      return <div style={style("#7fc480")}>✓ Will use: {slot.name} from {SCOPE_LABEL[autoTier]}</div>;
+    }
+    if (slot.optional) {
+      return <div style={style("#9aaab9")}>ℹ Optional. None found — phase will use its own default.</div>;
+    }
+    return <div style={style("#f0c97a")}>⚠ No secret named {slot.name} in any tier. Run will fail.</div>;
+  }
+  if (!exists) {
+    return <div style={style("#f0c97a")}>⚠ Pinned secret {binding.name} ({SCOPE_LABEL[binding.scope]}) is not accessible. Runs will fail.</div>;
+  }
+  return <div style={style("#9aaab9")}>ℹ Pinned to {binding.name} ({SCOPE_LABEL[binding.scope]}). No fallback.</div>;
 }

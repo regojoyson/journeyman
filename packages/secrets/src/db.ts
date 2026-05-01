@@ -147,3 +147,40 @@ export async function fetchForResolve(
     value: open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag }),
   }));
 }
+
+/** Fetch and decrypt one user-scope secret by exact (orgId, userId, name). */
+export async function fetchPinnedUserSecret(
+  pool: Pool,
+  orgId: string,
+  userId: string,
+  name: string,
+): Promise<string | null> {
+  validateName(name);
+  const r = await pool.query(
+    `SELECT ciphertext, iv, auth_tag
+       FROM jm_secrets
+      WHERE org_id = $1 AND user_id = $2 AND name = $3`,
+    [orgId, userId, name],
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+}
+
+/** Fetch and decrypt one org-scope secret by exact (orgId, name). */
+export async function fetchPinnedOrgSecret(
+  pool: Pool,
+  orgId: string,
+  name: string,
+): Promise<string | null> {
+  validateName(name);
+  const r = await pool.query(
+    `SELECT ciphertext, iv, auth_tag
+       FROM jm_secrets
+      WHERE org_id = $1 AND user_id IS NULL AND name = $2`,
+    [orgId, name],
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+}

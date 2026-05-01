@@ -28,8 +28,13 @@ export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
   configFields: {
     ticketKey: { label: "Ticket key", widget: "text", help: "e.g. PROJ-123 (supports #{ticket} placeholder)" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "getTicket" },
   outputSchema: getTicketOutputSchema,

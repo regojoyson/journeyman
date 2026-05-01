@@ -31,8 +31,13 @@ export const listPullRequestCommentsPhase: PhaseDefinition<ListPullRequestCommen
     repo:     { label: "Repository", widget: "text" },
     prNumber: { label: "PR number", widget: "number", help: "Leave blank to resolve from upstream step" },
   },
-  tabs: { io: "shown", credentials: "required", mcp: "hidden", retry: "shown" },
-  defaultRequiredSecrets: ["GITHUB_ACCESS_TOKEN"],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  slots: [
+    {
+      name: "GITHUB_ACCESS_TOKEN",
+      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
+    },
+  ],
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo}#${c.prNumber || "?"}` : "",
   executor: { kind: "git-provider", method: "fetchPRComments" },
 };

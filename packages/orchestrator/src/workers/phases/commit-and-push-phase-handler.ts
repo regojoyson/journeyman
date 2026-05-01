@@ -1,11 +1,11 @@
 import { createLogger } from "@journeyman/core";
-import type { ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderResolver } from "@journeyman/core";
+import type { ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory } from "@journeyman/core";
 
 const log = createLogger("worker:commit-push");
 
 export class CommitAndPushPhaseHandler implements IPhaseHandler {
   readonly phaseType = "commit-and-push";
-  constructor(private deps: { coding: ProviderResolver<ICodingCLI> }) {}
+  constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const reposRaw = input.repos;
@@ -17,9 +17,7 @@ export class CommitAndPushPhaseHandler implements IPhaseHandler {
     }
     const ticket = typeof input.ticket === "string" ? input.ticket : undefined;
     const pattern = typeof input.pattern === "string" ? input.pattern : undefined;
-    const coding = this.deps.coding.resolve(
-      typeof input.provider === "string" ? input.provider : undefined,
-    );
+    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Commit + push ${typeof repos === "string" ? repos : repos.length + " repos"}`);
     const result = await coding.commitPushRepos({ repos, ticket, pattern, sessionId: ctx.runId, signal: ctx.signal });
     if (result?.error) {
