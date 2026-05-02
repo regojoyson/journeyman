@@ -11,7 +11,7 @@ import {
 } from "./get-ticket.meta.ts";
 
 interface GetTicketConfig {
-  ticketKey: string;
+  issueRef: string;
 }
 
 export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
@@ -21,12 +21,12 @@ export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
   description: GET_TICKET_DESCRIPTION,
   color: "#a29bfe",
   icon: "📥",
-  defaultConfig: { ticketKey: "" },
+  defaultConfig: { issueRef: "" },
   configSchema: z.object({
-    ticketKey: z.string().min(1),
+    issueRef: z.string().min(1),
   }),
   configFields: {
-    ticketKey: { label: "Ticket key", widget: "text", help: "e.g. PROJ-123 (supports #{ticket} placeholder)" },
+    issueRef: { label: "Issue ref", widget: "text", help: "e.g. jira:PROJ-123 (supports #{ticket} placeholder)" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
   slots: [
@@ -35,7 +35,7 @@ export const getTicketPhase: PhaseDefinition<GetTicketConfig> = {
       description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
     },
   ],
-  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "getTicket" },
   outputSchema: getTicketOutputSchema,
 };

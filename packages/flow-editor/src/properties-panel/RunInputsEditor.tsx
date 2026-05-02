@@ -33,7 +33,7 @@ export function RunInputsEditor({ value, onChange }: Props) {
                 <input
                   id={`run-input-name-${i}`}
                   className="je-run-inputs__input"
-                  placeholder="e.g. ticketId"
+                  placeholder="e.g. jira:PROJ-123"
                   value={r.name}
                   onChange={e => update(i, { name: e.target.value })}
                 />

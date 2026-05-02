@@ -82,7 +82,7 @@ function buildPrompt(opts: UpdateTicketOptions): string {
 export async function updateTicket(opts: UpdateTicketOptions): Promise<UpdateTicketResult> {
   log.info(
     {
-      ticketId: opts.id,
+      issueRef: opts.id,
       fields: Object.keys(opts).filter((k) => k !== "id" && (opts as any)[k] !== undefined),
     },
     "updateTicket start",
@@ -103,14 +103,14 @@ export async function updateTicket(opts: UpdateTicketOptions): Promise<UpdateTic
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as UpdateTicketResult;
-        log.info({ ticketId: opts.id }, "updateTicket done");
+        log.info({ issueRef: opts.id }, "updateTicket done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ ticketId: opts.id, error }, "updateTicket failed");
+      log.error({ issueRef: opts.id, error }, "updateTicket failed");
       throw new Error(error);
     }
   }
-  log.error({ ticketId: opts.id }, "updateTicket: no result received");
+  log.error({ issueRef: opts.id }, "updateTicket: no result received");
   return { error: "No result received" };
 }

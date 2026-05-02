@@ -73,7 +73,7 @@ function buildPrompt(opts: GetTicketOptions): string {
 }
 
 export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult> {
-  log.info({ ticketId: opts.id }, "getTicket start");
+  log.info({ issueRef: opts.id }, "getTicket start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -90,14 +90,14 @@ export async function getTicket(opts: GetTicketOptions): Promise<GetTicketResult
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as GetTicketResult;
-        log.info({ ticketId: opts.id, found: !!result.ticket }, "getTicket done");
+        log.info({ issueRef: opts.id, found: !!result.ticket }, "getTicket done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ ticketId: opts.id, error }, "getTicket failed");
+      log.error({ issueRef: opts.id, error }, "getTicket failed");
       throw new Error(error);
     }
   }
-  log.error({ ticketId: opts.id }, "getTicket: no result received");
+  log.error({ issueRef: opts.id }, "getTicket: no result received");
   return { error: "No result received" };
 }

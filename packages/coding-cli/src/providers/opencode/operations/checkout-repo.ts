@@ -100,7 +100,7 @@ export async function checkoutRepo(
   const entries = normalizeEntries(opts);
   const sessionId = opts.sessionId ?? crypto.randomUUID();
   const EMPTY: CheckoutRepoResult = { repos: [], newBranch: "", sessionId };
-  log.info({ sessionId, repoCount: entries.length, ticketId: opts.ticket?.id }, "checkoutRepo start");
+  log.info({ sessionId, repoCount: entries.length, issueRef: opts.ticket?.id }, "checkoutRepo start");
 
   if (entries.length === 0) {
     log.warn({ sessionId }, "checkoutRepo called with no repos");

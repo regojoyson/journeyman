@@ -189,7 +189,12 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                         {meta.label ?? key}
                         {isRequired && <span className="je-props__required-mark">*</span>}
                       </label>
-                      {inheritState === "inherited" && <InheritanceChip kind="inherited" />}
+                      {inheritState === "inherited" && (
+                        <InheritanceChip
+                          kind="inherited"
+                          inheritedValue={defaultInput?.kind === "ref" ? defaultInput.ref : (defaultInput as { value?: unknown } | undefined)?.value}
+                        />
+                      )}
                       {inheritState === "override"  && (
                         <InheritanceChip kind="override" onReset={() => handleUnbind(key)} />
                       )}

@@ -4,23 +4,38 @@ import { api } from "./client.ts";
 export async function listRuns(filter: {
   status?: Run["status"];
   flowId?: string;
+  provider?: string;
+  issueRef?: string;
   limit?: number;
   scope?: RunListScope;
 } = {}): Promise<Run[]> {
   const qs = new URLSearchParams();
-  if (filter.status) qs.set("status", filter.status);
-  if (filter.flowId) qs.set("flow_id", filter.flowId);
-  if (filter.limit) qs.set("limit", String(filter.limit));
-  if (filter.scope) qs.set("scope", filter.scope);
+  if (filter.status)   qs.set("status",    filter.status);
+  if (filter.flowId)   qs.set("flow_id",   filter.flowId);
+  if (filter.provider) qs.set("provider",  filter.provider);
+  if (filter.issueRef) qs.set("issue_ref", filter.issueRef);
+  if (filter.limit)    qs.set("limit",     String(filter.limit));
+  if (filter.scope)    qs.set("scope",     filter.scope);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await api<{ runs: Run[] }>(`/runs${suffix}`);
   return res.runs;
 }
 
+export type WebhookEventSummary = {
+  id: string;
+  provider: string;
+  eventType: string | null;
+  issueRef: string | null;
+  deliveryId: string | null;
+  receivedAt: string;
+  rawPayload: unknown;
+};
+
 export interface RunDetail {
   run: Run;
   executions: NodeExecution[];
   events: RunEvent[];
+  webhookEvent: WebhookEventSummary | null;
 }
 
 export async function getRun(runId: string): Promise<RunDetail> {

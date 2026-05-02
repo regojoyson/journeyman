@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { createLogger } from "@journeyman/core";
+import { createLogger, parseIssueRef } from "@journeyman/core";
 import type { GetTicketSchemaOptions, GetTicketSchemaResult } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { buildMcpConfig } from "../utils/mcp-config.ts";
@@ -29,7 +29,8 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 function buildPrompt(opts: GetTicketSchemaOptions): string {
-  const parts = [`Fetch the Jira issue with key: ${opts.ticketId}`];
+  const rawId = parseIssueRef(opts.issueRef).rawId;
+  const parts = [`Fetch the Jira issue with key: ${rawId}`];
   if (opts.projectId) {
     parts.push(`The project key is: ${opts.projectId}`);
   } else {
@@ -47,7 +48,7 @@ function buildPrompt(opts: GetTicketSchemaOptions): string {
 }
 
 export async function getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> {
-  log.info({ ticketId: opts.ticketId, projectId: opts.projectId }, "getTicketSchema start");
+  log.info({ issueRef: opts.issueRef, projectId: opts.projectId }, "getTicketSchema start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -64,14 +65,14 @@ export async function getTicketSchema(opts: GetTicketSchemaOptions): Promise<Get
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as GetTicketSchemaResult;
-        log.info({ ticketId: opts.ticketId, fieldCount: result.fields?.length ?? 0 }, "getTicketSchema done");
+        log.info({ issueRef: opts.issueRef, fieldCount: result.fields?.length ?? 0 }, "getTicketSchema done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ ticketId: opts.ticketId, error }, "getTicketSchema failed");
+      log.error({ issueRef: opts.issueRef, error }, "getTicketSchema failed");
       return { fields: [], error };
     }
   }
-  log.error({ ticketId: opts.ticketId }, "getTicketSchema: no result received");
+  log.error({ issueRef: opts.issueRef }, "getTicketSchema: no result received");
   return { fields: [], error: "No result received" };
 }

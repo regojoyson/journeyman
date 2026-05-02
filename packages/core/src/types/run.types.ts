@@ -27,6 +27,7 @@ export interface Run {
   outputs: Record<string, unknown> | null;
   /** Flow-wide retry attempt number (1 on first run; incremented when flowRetry fires). */
   attemptNumber: number;
+  webhookEventId: string | null;
   /** Hydrated by the API layer for the calling actor. */
   effectiveRole?: import("./run-grants.types.ts").RunGrantRole;
 }

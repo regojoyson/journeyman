@@ -1,5 +1,5 @@
 // packages/flow-editor/src/FlowEditor.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "./canvas/Canvas.tsx";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
@@ -32,11 +32,38 @@ function autoHeal(flow: FlowGraph): { healed: FlowGraph; restored: string[] } {
 }
 
 export function FlowEditor(props: FlowEditorProps) {
+  // Render-loop detector — counts FlowEditor renders within a 1s window.
+  const renderTimesRef = useRef<number[]>([]);
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  renderTimesRef.current.push(now);
+  while (renderTimesRef.current.length && now - renderTimesRef.current[0] > 1000) {
+    renderTimesRef.current.shift();
+  }
+  if (renderTimesRef.current.length > 25) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[flow-editor] FlowEditor rendered ${renderTimesRef.current.length}× in <1s — likely render loop.`,
+      { flowNodes: props.flow.nodes.length, flowEdges: props.flow.edges.length },
+    );
+    renderTimesRef.current = [];
+  }
+
   const heal = useMemo(() => autoHeal(props.flow), [props.flow]);
   const [healDismissed, setHealDismissed] = useState(false);
   // If we healed, push the corrected flow back up so save persists it.
+  // Guard with a ref so we don't re-fire onChange repeatedly if the parent
+  // echoes back a flow that still appears to need healing (which would loop).
+  const lastHealedSigRef = useRef<string | null>(null);
   useEffect(() => {
-    if (heal.restored.length) props.onChange(heal.healed);
+    if (!heal.restored.length) return;
+    const sig = `${heal.healed.nodes.length}:${heal.healed.edges.length}:${heal.restored.join(",")}`;
+    if (lastHealedSigRef.current === sig) {
+      // eslint-disable-next-line no-console
+      console.warn("[flow-editor] autoHeal would re-fire with identical signature — skipping to break loop.", { sig });
+      return;
+    }
+    lastHealedSigRef.current = sig;
+    props.onChange(heal.healed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heal.restored.join(",")]);
 

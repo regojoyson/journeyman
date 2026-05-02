@@ -3,6 +3,7 @@ import type { FlowGraph } from "@journeyman/core";
 export interface ValidationResult { ok: boolean; errors: string[]; }
 
 export function isValidPhase4Graph(flow: FlowGraph): ValidationResult {
+  const _t0 = performance.now();
   const errors: string[] = [];
   const starts = flow.nodes.filter(n => n.type === "start");
   if (starts.length !== 1) errors.push("Flow must have exactly one start node");
@@ -48,5 +49,13 @@ export function isValidPhase4Graph(flow: FlowGraph): ValidationResult {
     }
   }
 
+  const _ms = performance.now() - _t0;
+  if (_ms > 50) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[flow-editor] isValidPhase4Graph slow: ${_ms.toFixed(1)}ms`,
+      { nodes: flow.nodes.length, edges: flow.edges.length, errors: errors.length },
+    );
+  }
   return { ok: errors.length === 0, errors };
 }

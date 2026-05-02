@@ -12,6 +12,6 @@ export const transitionTicketOutputSchema: OutputSchema = {
 };
 
 export const transitionTicketInputFields: InputFields = {
-  ticketKey: { type: "string", label: "Ticket key", required: true },
+  issueRef: { type: "string", label: "Issue ref", required: true },
   status:    { type: "string", label: "Status", required: true },
 };

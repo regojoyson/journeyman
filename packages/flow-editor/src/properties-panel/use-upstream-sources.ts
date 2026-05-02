@@ -25,6 +25,7 @@ export function useUpstreamSources(
   catalog: Record<string, PhaseCatalogEntry>,
 ): UpstreamSource[] {
   return useMemo(() => {
+    const _t0 = performance.now();
     const startNode = graph.nodes.find(n => n.type === "start");
     const runInputs = ((startNode?.config as { runInputs?: { name: string; description?: string }[] } | undefined)?.runInputs ?? []);
 
@@ -94,6 +95,14 @@ export function useUpstreamSources(
         label: n.displayName ?? n.phaseType,
         groups,
       });
+    }
+    const _ms = performance.now() - _t0;
+    if (_ms > 50) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[flow-editor] useUpstreamSources slow: ${_ms.toFixed(1)}ms`,
+        { nodes: graph.nodes.length, edges: graph.edges.length, nodeId },
+      );
     }
     return sources;
   }, [graph, nodeId, catalog]);

@@ -3,6 +3,8 @@ import type { Run } from "@journeyman/core";
 export interface RunFilter {
   status?: Run["status"];
   flowId?: string;
+  provider?: string;
+  issueRef?: string;
 }
 
 export interface RunsListProps {

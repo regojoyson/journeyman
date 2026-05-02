@@ -58,7 +58,7 @@ export async function createTicket(opts: CreateTicketOptions): Promise<CreateTic
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as CreateTicketResult;
-        log.info({ ticketId: result.ticket?.id }, "createTicket done");
+        log.info({ issueRef: result.ticket?.id }, "createTicket done");
         return result;
       }
       const error = (msg as any).errors?.[0] ?? msg.subtype;

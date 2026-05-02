@@ -130,7 +130,25 @@ function CanvasInner(p: CanvasProps) {
   const lastSigRef = useRef<string>(structuralSig(p.flow));
   const lastSelectedRef = useRef<string | null>(p.selectedNodeId);
 
+  // Render-loop detector: if this resync effect fires too many times in quick
+  // succession, log a warning so we can see runaway state propagation in the
+  // browser console instead of just a frozen tab.
+  const resyncTimesRef = useRef<number[]>([]);
+
   useEffect(() => {
+    const now = performance.now();
+    const times = resyncTimesRef.current;
+    times.push(now);
+    while (times.length && now - times[0] > 1000) times.shift();
+    if (times.length > 15) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[flow-editor] Canvas resync effect fired ${times.length}× in <1s — likely render loop.`,
+        { flowNodes: p.flow.nodes.length, flowEdges: p.flow.edges.length, selectedNodeId: p.selectedNodeId },
+      );
+      resyncTimesRef.current = [];
+    }
+
     const sig = structuralSig(p.flow);
     if (sig === propagatedSigRef.current) {
       // Echoed back our own change — accept it without resyncing internal RF state.
@@ -283,8 +301,23 @@ function CanvasInner(p: CanvasProps) {
     if (!newNode) return;
 
     const flow = flowRef.current;
+    const t0 = performance.now();
     newNode = autoBindNewNode(newNode, flow.nodes, catalog);
+    const tBind = performance.now();
+    // eslint-disable-next-line no-console
+    console.log("[flow-editor] add node", {
+      id: newNode.id,
+      type: newNode.type,
+      phaseType: newNode.phaseType,
+      nodesBefore: flow.nodes.length,
+      edgesBefore: flow.edges.length,
+      autoBindMs: +(tBind - t0).toFixed(2),
+    });
     applyExternalChange({ ...flow, nodes: [...flow.nodes, newNode] });
+    // eslint-disable-next-line no-console
+    console.log("[flow-editor] add node — applyExternalChange done", {
+      totalMs: +(performance.now() - t0).toFixed(2),
+    });
   }, [applyExternalChange, registry, catalog]);
 
   const handleDragOver = useCallback((ev: React.DragEvent) => {

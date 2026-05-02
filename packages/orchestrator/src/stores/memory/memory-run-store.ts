@@ -26,6 +26,7 @@ export class MemoryRunStore implements IRunStore {
       inputs: args.inputs,
       outputs: null,
       attemptNumber: 1,
+      webhookEventId: args.webhookEventId ?? null,
     };
     this.rows.set(run.id, run);
     return run;
@@ -72,6 +73,8 @@ export class MemoryRunStore implements IRunStore {
     limit?: number;
     actor?: ActorContext;
     scope?: RunListScope;
+    provider?: string;
+    issueRef?: string;
   } = {}): Promise<Run[]> {
     let out = [...this.rows.values()];
     if (opts.flowId) out = out.filter(r => r.flowId === opts.flowId);

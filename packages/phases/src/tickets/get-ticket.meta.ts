@@ -16,5 +16,5 @@ export const getTicketOutputSchema: OutputSchema = {
 };
 
 export const getTicketInputFields: InputFields = {
-  ticketKey: { type: "string", label: "Ticket key", required: true },
+  issueRef: { type: "string", label: "Issue ref", required: true },
 };

@@ -5,6 +5,7 @@ export type ChipKind = "inherited" | "override" | "suppressed";
 interface InheritanceChipProps {
   kind: ChipKind;
   onReset?: () => void;
+  inheritedValue?: unknown;
 }
 
 const CHIP_STYLES: Record<ChipKind, React.CSSProperties> = {
@@ -13,21 +14,33 @@ const CHIP_STYLES: Record<ChipKind, React.CSSProperties> = {
   suppressed: { background: "#2a1a1a", border: "1px solid #4a2020", color: "#e17055" },
 };
 
-const CHIP_LABELS: Record<ChipKind, string> = {
-  inherited:  "FROM FLOW",
-  override:   "OVERRIDE",
-  suppressed: "SUPPRESSED",
-};
+function formatValue(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "boolean") return value ? "on" : "off";
+  return String(value);
+}
 
-export function InheritanceChip({ kind, onReset }: InheritanceChipProps) {
+export function InheritanceChip({ kind, onReset, inheritedValue }: InheritanceChipProps) {
+  const valueStr = kind === "inherited" && inheritedValue !== undefined ? formatValue(inheritedValue) : "";
+  const tooltip =
+    kind === "inherited"
+      ? "Value comes from flow defaults. Edit to customize for this phase."
+      : kind === "override"
+      ? "This phase uses its own value. Click ↺ to go back to flow default."
+      : undefined;
+
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      fontSize: 9, fontWeight: 600, letterSpacing: "0.04em",
-      padding: "1px 5px", borderRadius: 3,
-      ...CHIP_STYLES[kind],
-    }}>
-      {CHIP_LABELS[kind]}
+    <span
+      title={tooltip}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        fontSize: 9, fontWeight: 600, letterSpacing: "0.04em",
+        padding: "1px 5px", borderRadius: 3,
+        cursor: tooltip ? "help" : undefined,
+        ...CHIP_STYLES[kind],
+      }}
+    >
+      {kind === "inherited" && valueStr ? `FROM FLOW: ${valueStr}` : kind === "inherited" ? "FROM FLOW" : kind === "suppressed" ? "SUPPRESSED" : "OVERRIDE"}
       {kind === "override" && onReset && (
         <button
           type="button"

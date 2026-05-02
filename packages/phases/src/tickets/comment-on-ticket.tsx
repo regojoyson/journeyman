@@ -9,7 +9,7 @@ import {
 } from "./comment-on-ticket.meta.ts";
 
 interface CommentOnTicketConfig {
-  ticketKey: string;
+  issueRef: string;
   template: string;
   body?: string;
 }
@@ -21,14 +21,14 @@ export const commentOnTicketPhase: PhaseDefinition<CommentOnTicketConfig> = {
   description: COMMENT_ON_TICKET_DESCRIPTION,
   color: "#a29bfe",
   icon: "💭",
-  defaultConfig: { ticketKey: "", template: "", body: "" },
+  defaultConfig: { issueRef: "", template: "", body: "" },
   configSchema: z.object({
-    ticketKey: z.string().min(1),
+    issueRef: z.string().min(1),
     template: z.string(),
     body: z.string().optional(),
   }),
   configFields: {
-    ticketKey: { label: "Ticket key", widget: "text", help: "Supports #{ticket} placeholder" },
+    issueRef: { label: "Issue ref", widget: "text", help: "Supports #{ticket} placeholder" },
     template:  { label: "Template id", widget: "text", help: "e.g. analysis-summary, completion-summary" },
     body:      { label: "Inline body (optional)", widget: "textarea", help: "Used when no template is set" },
   },
@@ -39,7 +39,7 @@ export const commentOnTicketPhase: PhaseDefinition<CommentOnTicketConfig> = {
       description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
     },
   ],
-  summary: c => c.template || c.ticketKey || "(no target)",
+  summary: c => c.template || c.issueRef || "(no target)",
   executor: { kind: "ticket-provider", method: "addComment" },
   outputSchema: commentOnTicketOutputSchema,
 };

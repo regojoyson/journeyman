@@ -93,7 +93,7 @@ export type ListTicketsResult = SessionResult & {
 };
 
 export type GetTicketSchemaOptions = SessionOptions & {
-  ticketId: string;
+  issueRef: string;
   projectId?: string;
 };
 

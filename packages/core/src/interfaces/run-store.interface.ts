@@ -12,6 +12,7 @@ export interface CreateRunArgs {
   startedByUserId: string | null;
   startedByOrgId: string | null;
   inputs: Record<string, unknown>;
+  webhookEventId?: string | null;
 }
 
 export interface IRunStore {
@@ -31,6 +32,8 @@ export interface IRunStore {
     limit?: number;
     actor?: ActorContext;
     scope?: RunListScope;
+    provider?: string;
+    issueRef?: string;
   }): Promise<Run[]>;
 }
 

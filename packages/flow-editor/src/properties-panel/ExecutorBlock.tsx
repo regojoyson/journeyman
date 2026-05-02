@@ -27,7 +27,7 @@ export function ExecutorBlock({ kind, value, onChange, readOnly, flowDefaults }:
     <div className="je-props__field">
       <div className="je-props__field-label-row">
         <label>Provider</label>
-        {state === "inherited" && <InheritanceChip kind="inherited" />}
+        {state === "inherited" && <InheritanceChip kind="inherited" inheritedValue={defaultProvider} />}
         {state === "override"  && (
           <InheritanceChip
             kind="override"

@@ -22,6 +22,7 @@ function rowToRun(row: any): Run {
     inputs: row.inputs ?? {},
     outputs: row.outputs,
     attemptNumber: row.attempt_number ?? 1,
+    webhookEventId: row.webhook_event_id ?? null,
   };
 }
 
@@ -70,8 +71,8 @@ export class PostgresRunStore implements IRunStore {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_runs
          (flow_id, flow_version_id, flow_name_snapshot, flow_scope_snapshot, definition_snapshot,
-          status, trigger_source, started_by_user_id, inputs)
-       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb)
+          status, trigger_source, started_by_user_id, inputs, webhook_event_id)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9)
        RETURNING *`,
       [
         args.flowId, args.flowVersionId,
@@ -79,6 +80,7 @@ export class PostgresRunStore implements IRunStore {
         JSON.stringify(args.definitionSnapshot),
         args.triggerSource, args.startedByUserId,
         JSON.stringify(args.inputs),
+        args.webhookEventId ?? null,
       ],
     );
     return rowToRun(rows[0]);
@@ -133,14 +135,22 @@ export class PostgresRunStore implements IRunStore {
     limit?: number;
     actor?: ActorContext;
     scope?: RunListScope;
+    provider?: string;
+    issueRef?: string;
   } = {}): Promise<import("@journeyman/core").Run[]> {
     const conds: string[] = [];
     const params: any[] = [];
     let i = 1;
     const nextIdx = () => i++;
 
-    if (opts.flowId) { conds.push(`r.flow_id = $${nextIdx()}`); params.push(opts.flowId); }
-    if (opts.status) { conds.push(`r.status = $${nextIdx()}`); params.push(opts.status); }
+    if (opts.flowId)   { conds.push(`r.flow_id = $${nextIdx()}`);    params.push(opts.flowId); }
+    if (opts.status)   { conds.push(`r.status = $${nextIdx()}`);     params.push(opts.status); }
+    if (opts.provider) { conds.push(`w.provider = $${nextIdx()}`);   params.push(opts.provider); }
+    if (opts.issueRef) { conds.push(`w.issue_ref = $${nextIdx()}`);  params.push(opts.issueRef); }
+
+    const webhookJoin = (opts.provider || opts.issueRef)
+      ? "LEFT JOIN jm_webhook_events w ON r.webhook_event_id = w.id"
+      : "";
 
     let joinClause = "";
     if (opts.actor && !(opts.actor.isPlatformAdmin && opts.scope === "all")) {
@@ -160,6 +170,7 @@ export class PostgresRunStore implements IRunStore {
 
     const sql = `
     SELECT DISTINCT r.* FROM jm_runs r
+    ${webhookJoin}
     ${joinClause}
     ${whereSql}
     ORDER BY r.started_at DESC NULLS LAST

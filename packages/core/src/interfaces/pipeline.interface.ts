@@ -11,8 +11,8 @@ import type { INotificationProvider } from "./notification.interface.ts";
 export interface PipelineContext {
   sessionId: string;
   productId: string;
-  ticketKey: string;
-  ticketShortKey: string;
+  issueRef: string;
+  issueRefShort: string;
   flowName: string;
   workspaceDir: string;
   signal: AbortSignal;
@@ -41,8 +41,8 @@ export interface IStateStore {
   save(run: PipelineRun): Promise<void>;
   /** Delete the stored run record. Returns true if a record was removed. */
   delete(sessionId: string): Promise<boolean>;
-  findByTicket(productId: string, ticketKey: string): Promise<PipelineRun[]>;
-  findActiveForTicket(productId: string, ticketKey: string): Promise<PipelineRun | null>;
+  findByIssueRef(productId: string, issueRef: string): Promise<PipelineRun[]>;
+  findActiveForIssueRef(productId: string, issueRef: string): Promise<PipelineRun | null>;
   find(query: { productId?: string; status?: PipelineRun["status"]; limit?: number }): Promise<PipelineRun[]>;
 }
 

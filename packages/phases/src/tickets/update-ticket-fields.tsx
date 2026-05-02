@@ -11,7 +11,7 @@ import {
 } from "./update-ticket-fields.meta.ts";
 
 interface UpdateTicketFieldsConfig {
-  ticketKey: string;
+  issueRef: string;
   fields: Record<string, string>;
 }
 
@@ -31,12 +31,12 @@ function UpdateTicketFieldsConfigForm({ config, onChange, readOnly }: PhaseFormP
   return (
     <div>
       <div className="je-props__field">
-        <label>Ticket key</label>
+        <label>Issue ref</label>
         <input
           type="text"
-          value={config.ticketKey}
+          value={config.issueRef}
           disabled={readOnly}
-          onChange={e => onChange({ ...config, ticketKey: e.target.value })}
+          onChange={e => onChange({ ...config, issueRef: e.target.value })}
         />
       </div>
       <div className="je-props__field">
@@ -85,9 +85,9 @@ export const updateTicketFieldsPhase: PhaseDefinition<UpdateTicketFieldsConfig> 
   description: UPDATE_TICKET_FIELDS_DESCRIPTION,
   color: "#a29bfe",
   icon: "✏️",
-  defaultConfig: { ticketKey: "", fields: {} },
+  defaultConfig: { issueRef: "", fields: {} },
   configSchema: z.object({
-    ticketKey: z.string().min(1),
+    issueRef: z.string().min(1),
     fields: z.record(z.string(), z.string()),
   }),
   ConfigForm: UpdateTicketFieldsConfigForm,
@@ -98,7 +98,7 @@ export const updateTicketFieldsPhase: PhaseDefinition<UpdateTicketFieldsConfig> 
       description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
     },
   ],
-  summary: (c, ctx) => summaryValue(c, ctx, "ticketKey") || "(no ticket)",
+  summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no ticket)",
   executor: { kind: "ticket-provider", method: "updateTicket" },
   outputSchema: updateTicketFieldsOutputSchema,
 };

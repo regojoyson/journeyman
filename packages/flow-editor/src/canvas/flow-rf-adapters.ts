@@ -25,8 +25,23 @@ export function toReactFlowEdges(flow: FlowGraph): Edge[] {
   });
 }
 
+let _structuralSigCalls = 0;
+let _structuralSigWindowStart = 0;
 export function structuralSig(flow: FlowGraph): string {
-  return JSON.stringify({
+  const _t0 = performance.now();
+  if (_t0 - _structuralSigWindowStart > 1000) {
+    if (_structuralSigCalls > 30) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[flow-editor] structuralSig called ${_structuralSigCalls}× in <1s`,
+        { nodes: flow.nodes.length, edges: flow.edges.length },
+      );
+    }
+    _structuralSigWindowStart = _t0;
+    _structuralSigCalls = 0;
+  }
+  _structuralSigCalls++;
+  const result = JSON.stringify({
     nodes: flow.nodes.map(n => ({
       id: n.id, type: n.type, name: n.displayName, phase: n.phaseType,
       cfg: n.config ?? null, retry: n.retry ?? null, outcome: n.outcome ?? null,
@@ -36,6 +51,15 @@ export function structuralSig(flow: FlowGraph): string {
       label: e.branchLabel, cond: e.condition ?? null,
     })),
   });
+  const _ms = performance.now() - _t0;
+  if (_ms > 25) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[flow-editor] structuralSig slow: ${_ms.toFixed(1)}ms`,
+      { nodes: flow.nodes.length, edges: flow.edges.length },
+    );
+  }
+  return result;
 }
 
 /** Build a fresh FlowGraph from current internal RF state + previous flow's metadata. */
@@ -44,8 +68,10 @@ export function buildFlowFromInternal(
   rfNodes: Node[],
   rfEdges: Edge[],
 ): FlowGraph {
+  const prevNodeById = new Map(prevFlow.nodes.map(n => [n.id, n]));
+  const prevEdgeById = new Map(prevFlow.edges.map(e => [e.id, e]));
   const nextNodes: FlowNode[] = rfNodes.map(rfn => {
-    const prev = prevFlow.nodes.find(n => n.id === rfn.id);
+    const prev = prevNodeById.get(rfn.id);
     if (prev) return { ...prev, position: rfn.position };
     return {
       id: rfn.id,
@@ -56,7 +82,7 @@ export function buildFlowFromInternal(
     };
   });
   const nextEdges: FlowEdge[] = rfEdges.map(rfe => {
-    const prev = prevFlow.edges.find(e => e.id === rfe.id);
+    const prev = prevEdgeById.get(rfe.id);
     if (prev) return prev;
     return {
       id: rfe.id, source: rfe.source, target: rfe.target,

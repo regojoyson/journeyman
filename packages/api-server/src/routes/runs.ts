@@ -26,7 +26,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
   const requireRunRole = makeRequireRunRole(c);
 
   app.get("/runs", { preHandler: requireAuth() }, async (req, reply) => {
-    const q = req.query as { flow_id?: string; status?: string; limit?: string; scope?: string };
+    const q = req.query as { flow_id?: string; status?: string; limit?: string; scope?: string; provider?: string; issue_ref?: string };
     const scope = q.scope as RunListScope | undefined;
     const actor = actorFrom(req);
 
@@ -41,6 +41,8 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       limit: q.limit ? Number(q.limit) : undefined,
       actor,
       scope,
+      provider: q.provider,
+      issueRef: q.issue_ref,
     });
 
     const roleMap = await c.runGrants.matchForActor(actor, runs.map(r => r.id));
@@ -58,7 +60,19 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       const executions = await c.nodeExecutions.listByRun(id);
       const events = await c.events.list(id, { limit: 500 });
       const effectiveRunRole = (req as any).effectiveRunRole as RunGrantRole | undefined;
-      return { run: { ...run, effectiveRole: effectiveRunRole ?? null }, executions, events };
+      const webhookEvent = run.webhookEventId
+        ? await c.webhookEvents.getById(run.webhookEventId)
+        : null;
+      const webhookEventSummary = webhookEvent ? {
+        id: webhookEvent.id,
+        provider: webhookEvent.provider,
+        eventType: webhookEvent.eventType,
+        issueRef: webhookEvent.issueRef,
+        deliveryId: webhookEvent.deliveryId,
+        receivedAt: webhookEvent.receivedAt.toISOString(),
+        rawPayload: webhookEvent.rawPayload,
+      } : null;
+      return { run: { ...run, effectiveRole: effectiveRunRole ?? null }, executions, events, webhookEvent: webhookEventSummary };
     },
   );
 

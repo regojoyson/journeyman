@@ -12,5 +12,5 @@ export const createWorkspaceOutputSchema: OutputSchema = {
 };
 
 export const createWorkspaceInputFields: InputFields = {
-  ticketId: { type: "string", label: "Ticket ID" },
+  issueRef: { type: "string", label: "Issue ref" },
 };

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { BackoffStrategy, FlowDefaults, FlowNode, RetryPolicy } from "@journeyman/core";
 import { useFieldInheritance, type FieldState } from "../hooks/use-field-inheritance.ts";
 import { InheritanceChip } from "./InheritanceChip.tsx";
@@ -10,6 +9,15 @@ export interface RetryTabProps {
   readOnly?: boolean;
   flowDefaults?: FlowDefaults;
 }
+
+const RETRY_SYSTEM_DEFAULTS = {
+  maxAttempts: 3,
+  backoff: "exponential" as BackoffStrategy,
+  backoffSeconds: 5,
+  backoffMultiplier: 2,
+  timeoutSeconds: 600,
+  onFailure: "error-edge" as RetryPolicy["onFailure"],
+};
 
 const BACKOFFS: BackoffStrategy[] = ["fixed", "linear", "exponential"];
 
@@ -23,8 +31,8 @@ function setRetry(node: FlowNode, retry: RetryPolicy): FlowNode {
   return { ...node, retry };
 }
 
-function chipFor(state: FieldState, onReset: () => void) {
-  if (state === "inherited") return <InheritanceChip kind="inherited" />;
+function chipFor(state: FieldState, onReset: () => void, resolvedValue?: unknown) {
+  if (state === "inherited") return <InheritanceChip kind="inherited" inheritedValue={resolvedValue} />;
   if (state === "override")  return <InheritanceChip kind="override" onReset={onReset} />;
   return null;
 }
@@ -32,10 +40,16 @@ function chipFor(state: FieldState, onReset: () => void) {
 export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabProps) {
   const r = node.retry ?? {};
   const set = (next: RetryPolicy) => onChange(setRetry(node, next));
-  const backoff = r.backoff ?? "exponential";
 
-  const def = flowDefaults?.retry;
+  const rawDef = flowDefaults?.retry;
+  // When the flow has retry defaults configured, fill missing fields with system
+  // defaults so phases can show FROM FLOW chips for every field.
+  const def = rawDef ? { ...RETRY_SYSTEM_DEFAULTS, ...rawDef } : rawDef;
+
   const enabledState    = useFieldInheritance(node.retry?.enabled,          def?.enabled);
+
+  const effectiveEnabled = !!(enabledState.resolvedValue ?? r.enabled);
+  const backoff = r.backoff ?? "exponential";
   const maxState        = useFieldInheritance(node.retry?.maxAttempts,       def?.maxAttempts);
   const backoffState    = useFieldInheritance(node.retry?.backoff,           def?.backoff);
   const backoffSecState = useFieldInheritance(node.retry?.backoffSeconds,    def?.backoffSeconds);
@@ -59,7 +73,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             </span>
             <span className="je-switch__label">Retry enabled</span>
           </label>
-          {chipFor(enabledState.state, () => set({ ...r, enabled: undefined }))}
+          {chipFor(enabledState.state, () => set({ ...r, enabled: undefined }), enabledState.resolvedValue)}
           <FieldInfo text="When enabled, the phase re-runs automatically on failure before the flow gives up." />
         </div>
       </div>
@@ -70,12 +84,12 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="Max attempts"
             info="Total number of times this phase can run, including the first attempt. A value of 3 means one initial run plus two retries."
           />
-          {chipFor(maxState.state, () => set({ ...r, maxAttempts: undefined }))}
+          {chipFor(maxState.state, () => set({ ...r, maxAttempts: undefined }), maxState.resolvedValue)}
         </div>
         <input
           type="number" min={1} max={10}
           value={(maxState.resolvedValue as number | undefined) ?? r.maxAttempts ?? 3}
-          disabled={readOnly || !r.enabled}
+          disabled={readOnly || !effectiveEnabled}
           onChange={e => set({ ...r, maxAttempts: Number(e.target.value) || 1 })}
         />
       </div>
@@ -86,11 +100,11 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="Backoff strategy"
             info={BACKOFF_LABELS[backoff]}
           />
-          {chipFor(backoffState.state, () => set({ ...r, backoff: undefined }))}
+          {chipFor(backoffState.state, () => set({ ...r, backoff: undefined }), backoffState.resolvedValue)}
         </div>
         <select
           value={(backoffState.resolvedValue as BackoffStrategy | undefined) ?? backoff}
-          disabled={readOnly || !r.enabled}
+          disabled={readOnly || !effectiveEnabled}
           onChange={e => set({ ...r, backoff: e.target.value as BackoffStrategy })}
         >
           {BACKOFFS.map(b => <option key={b} value={b}>{b}</option>)}
@@ -103,12 +117,12 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="Backoff base (seconds)"
             info="How long to wait before the first retry. For exponential backoff this is the starting delay — subsequent waits grow by the multiplier."
           />
-          {chipFor(backoffSecState.state, () => set({ ...r, backoffSeconds: undefined }))}
+          {chipFor(backoffSecState.state, () => set({ ...r, backoffSeconds: undefined }), backoffSecState.resolvedValue)}
         </div>
         <input
           type="number" min={0}
           value={(backoffSecState.resolvedValue as number | undefined) ?? r.backoffSeconds ?? 5}
-          disabled={readOnly || !r.enabled}
+          disabled={readOnly || !effectiveEnabled}
           onChange={e => set({ ...r, backoffSeconds: Number(e.target.value) || 0 })}
         />
       </div>
@@ -119,12 +133,12 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="Backoff multiplier"
             info="Exponential only — each wait is multiplied by this value. E.g. base 5 s with multiplier 2 gives 5 s → 10 s → 20 s."
           />
-          {chipFor(multiplierState.state, () => set({ ...r, backoffMultiplier: undefined }))}
+          {chipFor(multiplierState.state, () => set({ ...r, backoffMultiplier: undefined }), multiplierState.resolvedValue)}
         </div>
         <input
           type="number" min={1} step={0.1}
           value={(multiplierState.resolvedValue as number | undefined) ?? r.backoffMultiplier ?? 2}
-          disabled={readOnly || !r.enabled || backoff !== "exponential"}
+          disabled={readOnly || !effectiveEnabled || backoff !== "exponential"}
           onChange={e => set({ ...r, backoffMultiplier: Number(e.target.value) || 1 })}
         />
       </div>
@@ -135,7 +149,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="Per-attempt timeout (seconds)"
             info="Maximum time a single attempt may run before it is forcibly stopped and counted as a failure. Applies to every attempt, including retries."
           />
-          {chipFor(timeoutState.state, () => set({ ...r, timeoutSeconds: undefined }))}
+          {chipFor(timeoutState.state, () => set({ ...r, timeoutSeconds: undefined }), timeoutState.resolvedValue)}
         </div>
         <input
           type="number" min={0}
@@ -151,7 +165,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             label="On permanent failure"
             info='"Error edge" routes to a recovery path drawn on the canvas. "Fail flow" stops the entire run immediately once all attempts are exhausted.'
           />
-          {chipFor(onFailState.state, () => set({ ...r, onFailure: undefined }))}
+          {chipFor(onFailState.state, () => set({ ...r, onFailure: undefined }), onFailState.resolvedValue)}
         </div>
         <select
           value={(onFailState.resolvedValue as RetryPolicy["onFailure"] | undefined) ?? r.onFailure ?? "error-edge"}

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RunsList, type RunFilter } from "@journeyman/runs-list";
-import type { Flow, Run, RunInputDef, RunListScope } from "@journeyman/core";
+import type { Flow, Run, RunInputDef, RunListScope, IssueRefProvider } from "@journeyman/core";
+import { buildIssueRef } from "@journeyman/core";
 import { listRuns, rerunRun } from "../api/runs.ts";
 import { getCurrentFlowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
@@ -24,7 +25,9 @@ interface NewRunDialogProps {
 function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
   const { isPlatformAdmin } = useAuth();
   const [flowId, setFlowId] = useState("");
-  const [ticketId, setTicketId] = useState("");
+  const [provider, setProvider] = useState<IssueRefProvider>("jira");
+  const [rawId, setRawId] = useState("");
+  const issueRef = rawId.trim() ? buildIssueRef(provider, rawId.trim()) : "";
   const [dynValues, setDynValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +47,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
   const submitM = useMutation({
     mutationFn: () => {
       const inputs: Record<string, unknown> = {};
-      if (ticketId.trim()) inputs.ticketId = ticketId.trim();
+      if (issueRef.trim()) inputs.issueRef = issueRef.trim();
       for (const def of inputDefs) {
         const raw = dynValues[def.name] ?? "";
         if (def.type === "number") inputs[def.name] = Number(raw);
@@ -120,16 +123,38 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
           })()}
         </label>
 
-        {/* Ticket ID */}
+        {/* Issue Ref */}
         <label style={{ display: "block", marginBottom: 14 }}>
-          <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>Ticket ID</span>
-          <input
-            type="text"
-            value={ticketId}
-            onChange={e => setTicketId(e.target.value)}
-            placeholder="e.g. ABC-123"
-            style={{ width: "100%", background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
-          />
+          <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>Issue Ref</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select
+              value={provider}
+              onChange={e => setProvider(e.target.value as IssueRefProvider)}
+              style={{ background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+            >
+              <option value="jira">Jira</option>
+              <option value="github">GitHub</option>
+              <option value="monday">Monday</option>
+              <option value="linear">Linear</option>
+            </select>
+            <input
+              type="text"
+              value={rawId}
+              onChange={e => setRawId(e.target.value)}
+              placeholder={
+                provider === "jira"   ? "PROJ-123" :
+                provider === "github" ? "owner/repo#42" :
+                provider === "monday" ? "12345678" :
+                "ENG-99"
+              }
+              style={{ flex: 1, background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+            />
+          </div>
+          {issueRef && (
+            <span style={{ fontSize: 11, color: "#6c5ce7", display: "block", marginTop: 4 }}>
+              → {issueRef}
+            </span>
+          )}
         </label>
 
         {/* Dynamic inputs from flow definition */}
@@ -197,7 +222,7 @@ export function RunsListPage() {
 
   const q = useQuery({
     queryKey: ["runs", filter, scope],
-    queryFn: () => listRuns({ status: filter.status, flowId: filter.flowId, scope }),
+    queryFn: () => listRuns({ status: filter.status, flowId: filter.flowId, provider: filter.provider, issueRef: filter.issueRef, scope }),
     refetchInterval: 4000,
   });
 

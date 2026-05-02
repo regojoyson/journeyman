@@ -10,7 +10,7 @@ const log = createLogger("worker:get-ticket");
  * Wraps ITicketProvider.getTicket.
  *
  * Inputs (any of):
- *   - ticketKey  — issue key (e.g. "PROJ-123")
+ *   - issueRef   — canonical issue ref (e.g. "jira:PROJ-123")
  *   - id         — provider id (string)
  *
  * Returns the ticket fields flattened into output (id, title, description, status, labels[]).
@@ -22,13 +22,13 @@ export class GetTicketPhaseHandler implements IPhaseHandler {
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
-      : typeof input.ticketKey === "string" ? input.ticketKey : undefined;
+      : typeof input.issueRef === "string" ? input.issueRef : undefined;
     if (!id) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "get-ticket requires `ticketKey` or `id`",
+          message: "get-ticket requires `issueRef` or `id`",
           retryable: false,
         },
       };

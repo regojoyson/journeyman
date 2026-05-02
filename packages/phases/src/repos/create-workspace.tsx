@@ -9,7 +9,7 @@ import {
 } from "./create-workspace.meta.ts";
 
 interface CreateWorkspaceConfig {
-  ticketId: string;
+  issueRef: string;
 }
 
 export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
@@ -19,15 +19,15 @@ export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
   description: CREATE_WORKSPACE_DESCRIPTION,
   color: "#fdcb6e",
   icon: "📁",
-  defaultConfig: { ticketId: "" },
+  defaultConfig: { issueRef: "" },
   configSchema: z.object({
-    ticketId: z.string().min(1),
+    issueRef: z.string().min(1),
   }),
   configFields: {
-    ticketId: { label: "Ticket ID", widget: "text" },
+    issueRef: { label: "Issue ref", widget: "text" },
   },
   tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
-  summary: c => c.ticketId,
+  summary: c => c.issueRef,
   executor: { kind: "coding-cli", method: "createWorkspace" },
   outputSchema: createWorkspaceOutputSchema,
 };

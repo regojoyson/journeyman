@@ -118,7 +118,7 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
   const entries = normalizeEntries(opts);
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
   log.info(
-    { sessionId, repoCount: entries.length, ticketId: opts.ticket?.id },
+    { sessionId, repoCount: entries.length, issueRef: opts.ticket?.id },
     "checkoutRepo start",
   );
   if (entries.length === 0) {

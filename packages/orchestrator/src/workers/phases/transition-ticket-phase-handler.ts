@@ -10,7 +10,7 @@ const log = createLogger("worker:update-status");
  * Wraps ITicketProvider.updateStatus.
  *
  * Inputs:
- *   - ticketKey | id — issue identifier (string, required)
+ *   - issueRef | id — issue identifier (string, required)
  *   - status         — new status (string, required)
  *
  * Returns the updated ticket fields.
@@ -22,14 +22,14 @@ export class TransitionTicketPhaseHandler implements IPhaseHandler {
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
-      : typeof input.ticketKey === "string" ? input.ticketKey : undefined;
+      : typeof input.issueRef === "string" ? input.issueRef : undefined;
     const status = typeof input.status === "string" ? input.status : undefined;
     if (!id || !status) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "update-status requires `ticketKey`/`id` and `status`",
+          message: "update-status requires `issueRef`/`id` and `status`",
           retryable: false,
         },
       };

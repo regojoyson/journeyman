@@ -12,7 +12,7 @@ export const commentOnTicketOutputSchema: OutputSchema = {
 };
 
 export const commentOnTicketInputFields: InputFields = {
-  ticketKey: { type: "string", label: "Ticket key", required: true },
+  issueRef: { type: "string", label: "Issue ref", required: true },
   template:  { type: "string", label: "Template" },
   body:      { type: "string", label: "Body" },
 };

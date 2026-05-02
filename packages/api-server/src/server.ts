@@ -8,6 +8,7 @@ import { registerFlowRoutes } from "./routes/flows.ts";
 import { registerPhasesRoutes } from "./routes/phases.ts";
 import { registerFlowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerRunRoutes } from "./routes/runs.ts";
+import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 
@@ -33,5 +34,6 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   registerPhasesRoutes(app);
   registerFlowGrantsRoutes(app, c);
   registerRunRoutes(app, c);
+  registerWebhookRoutes(app, c);
   return app;
 }

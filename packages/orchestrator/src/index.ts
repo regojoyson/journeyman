@@ -66,3 +66,5 @@ export { PostgresFlowGrantsStore } from "./stores/postgres/postgres-flow-grants-
 export { MemoryFlowGrantsStore } from "./stores/memory/memory-flow-grants-store.ts";
 export { MemoryRunGrantsStore } from "./stores/memory/memory-run-grants-store.ts";
 export { PostgresRunGrantsStore } from "./stores/postgres/postgres-run-grants-store.ts";
+export { PostgresWebhookEventStore } from "./stores/postgres/postgres-webhook-event-store.ts";
+export { MemoryWebhookEventStore } from "./stores/memory/memory-webhook-event-store.ts";

@@ -12,7 +12,7 @@ import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IFlowGrantsStore, IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IPhaseRegistry, IRunGrantsStore, IRunStore, IWorkspaceProvider,
+  IPhaseRegistry, IRunGrantsStore, IRunStore, IWebhookEventStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -26,6 +26,7 @@ import {
   PostgresRunStore,
   PostgresNodeExecutionStore,
   PostgresEventBus,
+  PostgresWebhookEventStore,
   MemoryFlowGrantsStore,
   MemoryRunGrantsStore,
   MemoryFlowStore,
@@ -33,6 +34,7 @@ import {
   MemoryRunStore,
   MemoryNodeExecutionStore,
   MemoryEventBus,
+  MemoryWebhookEventStore,
   DirectoryWorkspaceProvider,
   InMemoryPhaseRegistry,
   JsonLogicEvaluator,
@@ -47,6 +49,7 @@ export interface Composition {
   runs: IRunStore;
   nodeExecutions: INodeExecutionStore;
   events: IEventBus;
+  webhookEvents: IWebhookEventStore;
   orchestrator: IOrchestratorEngine;
   registry: IPhaseRegistry;
   workspace: IWorkspaceProvider;
@@ -75,6 +78,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   let runs: IRunStore;
   let nodeExecutions: INodeExecutionStore;
   let events: IEventBus;
+  let webhookEvents: IWebhookEventStore;
   let pool: Pool | null = null;
 
   if (useMemory) {
@@ -86,6 +90,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     runs = new MemoryRunStore();
     nodeExecutions = new MemoryNodeExecutionStore();
     events = new MemoryEventBus();
+    webhookEvents = new MemoryWebhookEventStore();
   } else {
     pool = createPool({ connectionString: cfg.databaseUrl });
     const v = new PostgresFlowVersionStore(pool);
@@ -96,6 +101,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     runs = new PostgresRunStore(pool);
     nodeExecutions = new PostgresNodeExecutionStore(pool);
     events = new PostgresEventBus(pool);
+    webhookEvents = new PostgresWebhookEventStore(pool);
   }
 
   const conductorClient = new ConductorClient({ baseUrl: cfg.conductorBaseUrl });
@@ -117,7 +123,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const conditions = new JsonLogicEvaluator();
 
   return {
-    flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events,
+    flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events, webhookEvents,
     orchestrator, registry, workspace, auth, conditions,
     pool,
     shutdown: async () => { if (pool) await pool.end(); },

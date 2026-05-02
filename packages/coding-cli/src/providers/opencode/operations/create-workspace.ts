@@ -12,18 +12,18 @@ function buildTimestamp(now: Date = new Date()): string {
 
 export async function createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, ticketId: opts.ticketId, baseDir: opts.baseDir }, "createWorkspace start");
+  log.info({ sessionId, issueRef: opts.issueRef, baseDir: opts.baseDir }, "createWorkspace start");
 
-  if (!opts.ticketId) {
-    log.error({ sessionId }, "createWorkspace missing ticketId");
-    return { folderName: "", repoDir: "", error: "ticketId is required", sessionId };
+  if (!opts.issueRef) {
+    log.error({ sessionId }, "createWorkspace missing issueRef");
+    return { folderName: "", repoDir: "", error: "issueRef is required", sessionId };
   }
   if (!opts.baseDir) {
     log.error({ sessionId }, "createWorkspace missing baseDir");
     return { folderName: "", repoDir: "", error: "baseDir is required", sessionId };
   }
 
-  const folderName = `${opts.ticketId}-${buildTimestamp()}`;
+  const folderName = `${opts.issueRef}-${buildTimestamp()}`;
   const repoDir = resolve(opts.baseDir, folderName);
 
   try {

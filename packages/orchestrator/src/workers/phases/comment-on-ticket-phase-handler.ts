@@ -9,10 +9,10 @@ export class CommentOnTicketPhaseHandler implements IPhaseHandler {
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
-      : typeof input.ticketKey === "string" ? input.ticketKey : undefined;
+      : typeof input.issueRef === "string" ? input.issueRef : undefined;
     const body = typeof input.body === "string" ? input.body : undefined;
     if (!id || !body) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "add-ticket-comment requires `id`/`ticketKey` and `body`", retryable: false } };
+      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "add-ticket-comment requires `id`/`issueRef` and `body`", retryable: false } };
     }
     const ticket = this.deps.ticket(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Add comment to ticket ${id}`);

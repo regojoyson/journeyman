@@ -9,7 +9,7 @@ const log = createLogger("worker:create-workspace");
  * Wraps ICodingCLI.createWorkspace.
  *
  * Required input keys:
- *   - ticketId — used as the workspace folder name prefix (string)
+ *   - issueRef — used as the workspace folder name prefix (string)
  *
  * baseDir is read from constructor deps (injected by cli-worker from JOURNEYMAN_BASE_DIR env).
  *
@@ -23,21 +23,21 @@ export class CreateWorkspacePhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI>; baseDir: string }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const ticketId = typeof input.ticketId === "string" ? input.ticketId : undefined;
-    if (!ticketId) {
+    const issueRef = typeof input.issueRef === "string" ? input.issueRef : undefined;
+    if (!issueRef) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "create-workspace requires `ticketId`",
+          message: "create-workspace requires `issueRef`",
           retryable: false,
         },
       };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Creating workspace ${ticketId} under ${this.deps.baseDir}`);
+    ctx.log(`Creating workspace ${issueRef} under ${this.deps.baseDir}`);
     const result = await coding.createWorkspace({
-      ticketId,
+      issueRef,
       baseDir: this.deps.baseDir,
       sessionId: ctx.runId,
       signal: ctx.signal,

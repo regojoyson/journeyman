@@ -9,9 +9,9 @@ export class UpdateTicketFieldsPhaseHandler implements IPhaseHandler {
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const id = typeof input.id === "string" ? input.id
-      : typeof input.ticketKey === "string" ? input.ticketKey : undefined;
+      : typeof input.issueRef === "string" ? input.issueRef : undefined;
     if (!id) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "update-ticket requires `id`/`ticketKey`", retryable: false } };
+      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "update-ticket requires `id`/`issueRef`", retryable: false } };
     }
     const title = typeof input.title === "string" ? input.title : undefined;
     const description = typeof input.description === "string" ? input.description : undefined;

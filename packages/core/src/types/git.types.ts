@@ -92,7 +92,7 @@ export type CleanupReposResult = SessionResult & {
 };
 
 export type CreateWorkspaceOptions = SessionOptions & {
-  ticketId: string;
+  issueRef: string;
   baseDir: string;
   signal?: AbortSignal;
   model?: string;

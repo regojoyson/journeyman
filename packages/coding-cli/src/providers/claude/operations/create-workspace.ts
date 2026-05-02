@@ -18,7 +18,7 @@ function buildTimestamp(now: Date = new Date()): string {
 
 /**
  * Creates a fresh directory for a ticket/flow under `baseDir`, named
- * `<ticketId>-<ISO-timestamp>` (e.g. "PROJ-123-2026-04-18T14-30-22Z").
+ * `<issueRef>-<ISO-timestamp>` (e.g. "jira:PROJ-123-2026-04-18T14-30-22Z").
  *
  * The parent directory is created recursively if missing. If the target
  * directory already exists (unlikely — collisions require two calls in the
@@ -30,7 +30,7 @@ function buildTimestamp(now: Date = new Date()): string {
  * @example
  * ```ts
  * const result = await createWorkspace({
- *   ticketId: "PROJ-123",
+ *   issueRef: "PROJ-123",
  *   baseDir: "/tmp/journeyman-workspace",
  * });
  * // result.repoDir === "/tmp/journeyman-workspace/PROJ-123-2026-04-18T14-30-22Z"
@@ -40,18 +40,18 @@ export async function createWorkspace(
   opts: CreateWorkspaceOptions
 ): Promise<CreateWorkspaceResult> {
   const { sessionId } = resolveSession(opts.sessionId);
-  log.info({ sessionId, ticketId: opts.ticketId, baseDir: opts.baseDir }, "createWorkspace start");
+  log.info({ sessionId, issueRef: opts.issueRef, baseDir: opts.baseDir }, "createWorkspace start");
 
-  if (!opts.ticketId) {
-    log.error({ sessionId }, "createWorkspace missing ticketId");
-    return { folderName: "", repoDir: "", error: "ticketId is required", sessionId };
+  if (!opts.issueRef) {
+    log.error({ sessionId }, "createWorkspace missing issueRef");
+    return { folderName: "", repoDir: "", error: "issueRef is required", sessionId };
   }
   if (!opts.baseDir) {
     log.error({ sessionId }, "createWorkspace missing baseDir");
     return { folderName: "", repoDir: "", error: "baseDir is required", sessionId };
   }
 
-  const folderName = `${opts.ticketId}-${buildTimestamp()}`;
+  const folderName = `${opts.issueRef}-${buildTimestamp()}`;
   const repoDir = resolve(opts.baseDir, folderName);
 
   try {
@@ -68,7 +68,7 @@ export async function createWorkspace(
 // Run directly: npx tsx create-workspace.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await createWorkspace({
-    ticketId: "PROJ-123",
+    issueRef: "PROJ-123",
     baseDir: "/tmp/journeyman-workspace",
   });
 

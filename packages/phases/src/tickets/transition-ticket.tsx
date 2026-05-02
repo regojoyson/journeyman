@@ -9,7 +9,7 @@ import {
 } from "./transition-ticket.meta.ts";
 
 interface TransitionTicketConfig {
-  ticketKey: string;
+  issueRef: string;
   status: string;
 }
 
@@ -20,13 +20,13 @@ export const transitionTicketPhase: PhaseDefinition<TransitionTicketConfig> = {
   description: TRANSITION_TICKET_DESCRIPTION,
   color: "#a29bfe",
   icon: "🚦",
-  defaultConfig: { ticketKey: "", status: "" },
+  defaultConfig: { issueRef: "", status: "" },
   configSchema: z.object({
-    ticketKey: z.string().min(1),
+    issueRef: z.string().min(1),
     status: z.string().min(1),
   }),
   configFields: {
-    ticketKey: { label: "Ticket key", widget: "text", help: "Supports #{ticket} placeholder" },
+    issueRef: { label: "Issue ref", widget: "text", help: "Supports #{ticket} placeholder" },
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },

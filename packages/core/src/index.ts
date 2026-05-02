@@ -100,3 +100,12 @@ export type {
   OutputSchema, OutputFieldSchema, OutputFieldType,
 } from "./types/phase-handler.types.ts";
 export * from "./types/secrets.types.ts";
+export { buildIssueRef, parseIssueRef } from "./utils/issue-ref.ts";
+export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";
+export type {
+  WebhookEvent,
+  WebhookEventStatus,
+  WebhookProvider,
+  CreateWebhookEventArgs,
+} from "./types/webhook.types.ts";
+export type { IWebhookEventStore } from "./interfaces/webhook-event-store.interface.ts";

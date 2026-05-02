@@ -12,6 +12,6 @@ export const updateTicketFieldsOutputSchema: OutputSchema = {
 };
 
 export const updateTicketFieldsInputFields: InputFields = {
-  ticketKey: { type: "string", label: "Ticket key", required: true },
+  issueRef: { type: "string", label: "Issue ref", required: true },
   fields:    { type: "json",   label: "Fields" },
 };

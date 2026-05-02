@@ -10,6 +10,27 @@ const BACKOFF_LABELS: Record<BackoffStrategy, string> = {
   exponential: "Delay multiplies by the backoff multiplier each attempt (recommended).",
 };
 
+const RETRY_SYSTEM_DEFAULTS = {
+  maxAttempts: 3,
+  backoff: "exponential" as BackoffStrategy,
+  backoffSeconds: 5,
+  backoffMultiplier: 2,
+  timeoutSeconds: 600,
+  onFailure: "error-edge" as RetryPolicy["onFailure"],
+};
+
+function fillMissingFields(r: RetryPolicy): RetryPolicy {
+  return {
+    maxAttempts:      r.maxAttempts      ?? RETRY_SYSTEM_DEFAULTS.maxAttempts,
+    backoff:          r.backoff          ?? RETRY_SYSTEM_DEFAULTS.backoff,
+    backoffSeconds:   r.backoffSeconds   ?? RETRY_SYSTEM_DEFAULTS.backoffSeconds,
+    backoffMultiplier: r.backoffMultiplier ?? RETRY_SYSTEM_DEFAULTS.backoffMultiplier,
+    timeoutSeconds:   r.timeoutSeconds   ?? RETRY_SYSTEM_DEFAULTS.timeoutSeconds,
+    onFailure:        r.onFailure        ?? RETRY_SYSTEM_DEFAULTS.onFailure,
+    ...r,
+  };
+}
+
 interface Props {
   defaults: FlowDefaults;
   onChange: (next: FlowDefaults) => void;
@@ -20,6 +41,7 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
   const [open, setOpen] = useState(true);
   const r = defaults.retry ?? {};
   const set = (next: RetryPolicy) => onChange({ ...defaults, retry: next });
+
   const backoff = r.backoff ?? "exponential";
 
   return (
@@ -37,7 +59,7 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
             <div className="je-props__field-label-row">
               <label className="je-switch" style={{ margin: 0 }}>
                 <input type="checkbox" checked={!!r.enabled} disabled={readOnly}
-                  onChange={e => set({ ...r, enabled: e.target.checked })} />
+                  onChange={e => set(e.target.checked ? fillMissingFields({ ...r, enabled: true }) : { ...r, enabled: false })} />
                 <span className="je-switch__track" aria-hidden><span className="je-switch__thumb" /></span>
                 <span className="je-switch__label">Enabled</span>
               </label>

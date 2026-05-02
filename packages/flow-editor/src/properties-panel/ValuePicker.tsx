@@ -31,7 +31,7 @@ export function ValuePicker({ sources, onPick, onInsert, onClose }: Props) {
   return (
     <div className="value-picker">
       <div className="value-picker-help">
-        Click a field to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${ticketKey}"}</code>).
+        Click a field to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${issueRef}"}</code>).
       </div>
       <div className="value-picker-cols">
         <ul className="vp-sources">
