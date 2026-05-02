@@ -32,7 +32,6 @@ const executorKindSchema = z.enum(["coding-cli", "git-provider", "ticket-provide
 const flowDefaultsSchema = z.object({
   retry:          retryPolicySchema.optional(),
   executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
-  secretBindings: z.record(secretBindingSchema).optional(),
   inputs:         z.record(flowInputValueSchema).optional(),
 }).optional();
 

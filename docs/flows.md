@@ -2,7 +2,7 @@
 
 ## Overview
 
-A **flow** is a reusable YAML blueprint that automates ticket → PR workflows. One flow = one YAML file at `config/flows/<name>.yaml`. Flows are products-agnostic; multiple products can use the same flow file, allowing status names and provider settings to vary per-product.
+A **flow** is a reusable blueprint that automates ticket → PR workflows. Flows are products-agnostic — multiple products can reference the same flow, with status names and provider settings varying per-product. Flows are created and managed in the flow editor UI and stored in the database.
 
 Each flow defines:
 - **Providers** — which ticket/git/coding/notification implementations to use (by id)
@@ -256,28 +256,13 @@ steps:
     onFailure: "fail"  # Also critical
 ```
 
-**5. Save as:** `config/flows/minimal-example.yaml`
+**5. Save the flow** in the flow editor UI.
 
-**6. Register in pipeline config:**
-```yaml
-# pipeline.yaml
-defaultFlow: "minimal-example"
-products:
-  my-product:
-    flow: "minimal-example"
-    repos:
-      - providerId: "github"
-        owner: "my-org"
-        repo: "my-repo"
-        url: "https://github.com/my-org/my-repo"
-        defaultBranch: "main"
-```
+**6. Assign to a product** by selecting the flow in the product's settings in the UI.
 
-**7. Boot and validate:**
-```bash
-npm run pipeline -- validate-config
-# Errors? FlowValidator walks reads/writes and reports missing artifacts or unknown phases
-```
+**7. Run and validate:**
+
+Trigger a run via the UI or API. If steps fail, the run log will report missing artifacts or unknown phases.
 
 ---
 
@@ -449,22 +434,7 @@ cleanup (final)
 
 ### Across Products
 
-Multiple products can point to the same flow file:
-
-```yaml
-# pipeline.yaml
-defaultFlow: "standard"
-
-products:
-  edgereg:
-    flow: "standard"            # Points to config/flows/standard.yaml
-    workspace: "/tmp/edgereg"
-    repos:
-      - providerId: "github"
-        owner: "edgereg-org"
-        repo: "edgereg-api"
-        url: "https://github.com/edgereg-org/edgereg-api"
-        defaultBranch: "main"
+Multiple products can reference the same flow. In the UI, set each product's flow to the same flow ID.
 
   another-product:
     flow: "standard"            # Same flow!
@@ -614,7 +584,6 @@ that no earlier step produces. Available: [ticket, ticketMd, cloned].
 Flows are YAML with optional environment variable substitution:
 
 ```yaml
-# config/flows/my-flow.yaml
 name: my-flow
 
 # Env var substitution (phase-handled)
@@ -682,7 +651,7 @@ The `awaitTicketStatus` phase is a lighter-weight alternative for a one-shot "pa
 
 Misconfiguration of `onRework` (e.g. a typo in a sub-phase name, or a sub-phase that reads an artifact no prior step produced) is only caught at run time, not by the static flow validator — sub-phases are invoked lazily from `PhaseRegistry` and are not surfaced as their own steps.
 
-### Ready-to-use flow (`config/flows/human-loop.yaml`)
+### Ready-to-use flow (human-loop)
 
 ```yaml
 name: human-loop
@@ -787,8 +756,5 @@ Products opt in by setting `flow: human-loop` and mapping the semantic status na
 
 ## References
 
-- **Flow schema:** `packages/pipeline/src/config/flow-schema.ts`
-- **Flow validator:** `packages/pipeline/src/config/flow-validator.ts`
 - **Core types:** `packages/core/src/types/pipeline.types.ts`
-- **Phase registry:** `packages/pipeline/src/registry/phase-registry.ts`
-- **Base phase:** `packages/pipeline/src/phases/base-phase.ts`
+- **Phase registry:** `packages/phases/src/catalog.ts`

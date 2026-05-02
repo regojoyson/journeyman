@@ -62,9 +62,9 @@ const OUTPUT_SCHEMA = {
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: true, grep: true, write: true };
 
 function buildPrompt(opts: AnalyzeOptions): string {
-  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from dirPath)";
+  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from repoDir)";
   const focus = opts.focus?.trim();
-  const docsDir = `${opts.dirPath.replace(/\/+$/, "")}/docs/analyze`;
+  const docsDir = `${opts.repoDir.replace(/\/+$/, "")}/docs/analyze`;
   const reviewBlock = opts.reviewComments
     ? `\n\n## Reviewer feedback (incorporate into the revised analysis)\n\n${opts.reviewComments}\n`
     : "";
@@ -84,11 +84,11 @@ function buildPrompt(opts: AnalyzeOptions): string {
     ticket,
     "",
     "=== CODEBASE ===",
-    `Root path: ${opts.dirPath}`,
+    `Root path: ${opts.repoDir}`,
     focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the ticket.",
     "",
     "=== INVESTIGATION STEPS (use Bash / Read / Grep / Glob) ===",
-    `  1. ls ${opts.dirPath} and inspect top-level structure`,
+    `  1. ls ${opts.repoDir} and inspect top-level structure`,
     "  2. Read README / package.json / pyproject / go.mod etc. to understand the project",
     "  3. grep for keywords from the ticket (feature names, symbols, identifiers) to locate affected modules",
     "  4. Read the most relevant files (entrypoints, modules matching the ticket scope)",
@@ -134,7 +134,7 @@ export async function analyze(
   opts: AnalyzeOptions,
 ): Promise<AnalyzeResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "analyze start");
+  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "analyze start");
 
   const session = await client.session.create({ title: "analyze" });
   if (!session.data) throw new Error("opencode session.create returned no data");

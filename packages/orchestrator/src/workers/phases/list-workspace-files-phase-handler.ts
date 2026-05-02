@@ -8,13 +8,13 @@ export class ListWorkspaceFilesPhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const parentDir = typeof input.parentDir === "string" ? input.parentDir : undefined;
-    if (!parentDir) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "scan-repos requires `parentDir`", retryable: false } };
+    const workspaceDir = typeof input.workspaceDir === "string" ? input.workspaceDir : undefined;
+    if (!workspaceDir) {
+      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "list-workspace-files requires `workspaceDir`", retryable: false } };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Scanning ${parentDir}`);
-    const result = await coding.scanRepos({ parentDir, sessionId: ctx.runId, signal: ctx.signal });
+    ctx.log(`Scanning ${workspaceDir}`);
+    const result = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.runId, signal: ctx.signal });
     if (result?.error) {
       log.error({ result }, "scan-repos failed");
       return { kind: "failure", failure: { errorClass: "ScanReposFailed", message: String(result.error), retryable: true } };

@@ -14,6 +14,6 @@ export const analyzeRepoOutputSchema: OutputSchema = {
 };
 
 export const analyzeRepoInputFields: InputFields = {
-  dirPath:       { type: "string", label: "Repo path", required: true },
+  repoDir:       { type: "string", label: "Repo directory", required: true },
   ticketContent: { type: "string", label: "Ticket content", required: true },
 };

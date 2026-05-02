@@ -10,7 +10,7 @@ import {
 } from "./analyze-repo.meta.ts";
 
 interface AnalyzeRepoConfig {
-  dirPath: string;
+  repoDir: string;
   ticketContent: string;
 }
 
@@ -21,13 +21,13 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   description: ANALYZE_REPO_DESCRIPTION,
   color: "#00b894",
   icon: "🤖",
-  defaultConfig: { dirPath: "", ticketContent: "" },
+  defaultConfig: { repoDir: "", ticketContent: "" },
   configSchema: z.object({
-    dirPath: z.string().min(1, "dirPath is required"),
+    repoDir: z.string().min(1, "repoDir is required"),
     ticketContent: z.string().min(1, "ticketContent is required"),
   }),
   configFields: {
-    dirPath:       { label: "Repo path",       widget: "text",     help: "Local path or workspace ref" },
+    repoDir:       { label: "Repo directory",  widget: "text",     help: "Local path or workspace ref" },
     ticketContent: { label: "Ticket content",  widget: "textarea", help: "Markdown body of the ticket" },
   },
   tabs: { io: "shown", mcp: "shown", retry: "shown" },
@@ -38,7 +38,7 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
       optional: true,
     },
   ],
-  summary: (c, ctx) => summaryValue(c, ctx, "dirPath") || "(no repo)",
+  summary: (c, ctx) => summaryValue(c, ctx, "repoDir") || "(no repo)",
   executor: { kind: "coding-cli", method: "analyze" },
   outputSchema: analyzeRepoOutputSchema,
 };

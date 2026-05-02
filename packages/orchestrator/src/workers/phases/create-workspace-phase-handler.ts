@@ -9,8 +9,9 @@ const log = createLogger("worker:create-workspace");
  * Wraps ICodingCLI.createWorkspace.
  *
  * Required input keys:
- *   - ticketId  — used as the workspace folder name (string)
- *   - parentDir — directory under which the workspace is created (string)
+ *   - ticketId — used as the workspace folder name prefix (string)
+ *
+ * baseDir is read from constructor deps (injected by cli-worker from JOURNEYMAN_BASE_DIR env).
  *
  * Returns:
  *   - workspaceDir — absolute path to the created workspace
@@ -19,29 +20,27 @@ const log = createLogger("worker:create-workspace");
 export class CreateWorkspacePhaseHandler implements IPhaseHandler {
   readonly phaseType = "create-workspace";
 
-  constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
+  constructor(private deps: { coding: ProviderFactory<ICodingCLI>; baseDir: string }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    // Accept both editor-vocabulary (name/baseDir) and provider-vocabulary (ticketId/parentDir).
-    const ticketId = typeof input.ticketId === "string" ? input.ticketId
-      : typeof input.name === "string" ? input.name : undefined;
-    const parentDir = typeof input.parentDir === "string" ? input.parentDir
-      : typeof input.baseDir === "string" ? input.baseDir : undefined;
-    if (!ticketId || !parentDir) {
+    const ticketId = typeof input.ticketId === "string" ? input.ticketId : undefined;
+    if (!ticketId) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "create-workspace requires `ticketId`/`name` and `parentDir`/`baseDir`",
+          message: "create-workspace requires `ticketId`",
           retryable: false,
         },
       };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Creating workspace ${ticketId} under ${parentDir}`);
+    ctx.log(`Creating workspace ${ticketId} under ${this.deps.baseDir}`);
     const result = await coding.createWorkspace({
-      ticketId, parentDir,
-      sessionId: ctx.runId, signal: ctx.signal,
+      ticketId,
+      baseDir: this.deps.baseDir,
+      sessionId: ctx.runId,
+      signal: ctx.signal,
     });
     if (result?.error) {
       log.error({ result }, "create-workspace failed");
@@ -50,6 +49,6 @@ export class CreateWorkspacePhaseHandler implements IPhaseHandler {
         failure: { errorClass: "CreateWorkspaceFailed", message: String(result.error), retryable: true },
       };
     }
-    return { kind: "success", output: { workspaceDir: result.dirPath, folderName: result.folderName } };
+    return { kind: "success", output: { workspaceDir: result.repoDir, folderName: result.folderName } };
   }
 }

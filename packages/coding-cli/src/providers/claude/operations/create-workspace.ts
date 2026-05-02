@@ -17,51 +17,51 @@ function buildTimestamp(now: Date = new Date()): string {
 }
 
 /**
- * Creates a fresh directory for a ticket/flow under `parentDir`, named
+ * Creates a fresh directory for a ticket/flow under `baseDir`, named
  * `<ticketId>-<ISO-timestamp>` (e.g. "PROJ-123-2026-04-18T14-30-22Z").
  *
  * The parent directory is created recursively if missing. If the target
  * directory already exists (unlikely — collisions require two calls in the
  * same second for the same ticket), it is silently reused.
  *
- * Returns per-call success with folderName + absolute dirPath. On failure
+ * Returns per-call success with folderName + absolute repoDir. On failure
  * the error field is populated — never throws.
  *
  * @example
  * ```ts
  * const result = await createWorkspace({
  *   ticketId: "PROJ-123",
- *   parentDir: "/tmp/journeyman-workspace",
+ *   baseDir: "/tmp/journeyman-workspace",
  * });
- * // result.dirPath === "/tmp/journeyman-workspace/PROJ-123-2026-04-18T14-30-22Z"
+ * // result.repoDir === "/tmp/journeyman-workspace/PROJ-123-2026-04-18T14-30-22Z"
  * ```
  */
 export async function createWorkspace(
   opts: CreateWorkspaceOptions
 ): Promise<CreateWorkspaceResult> {
   const { sessionId } = resolveSession(opts.sessionId);
-  log.info({ sessionId, ticketId: opts.ticketId, parentDir: opts.parentDir }, "createWorkspace start");
+  log.info({ sessionId, ticketId: opts.ticketId, baseDir: opts.baseDir }, "createWorkspace start");
 
   if (!opts.ticketId) {
     log.error({ sessionId }, "createWorkspace missing ticketId");
-    return { folderName: "", dirPath: "", error: "ticketId is required", sessionId };
+    return { folderName: "", repoDir: "", error: "ticketId is required", sessionId };
   }
-  if (!opts.parentDir) {
-    log.error({ sessionId }, "createWorkspace missing parentDir");
-    return { folderName: "", dirPath: "", error: "parentDir is required", sessionId };
+  if (!opts.baseDir) {
+    log.error({ sessionId }, "createWorkspace missing baseDir");
+    return { folderName: "", repoDir: "", error: "baseDir is required", sessionId };
   }
 
   const folderName = `${opts.ticketId}-${buildTimestamp()}`;
-  const dirPath = resolve(opts.parentDir, folderName);
+  const repoDir = resolve(opts.baseDir, folderName);
 
   try {
-    await mkdir(dirPath, { recursive: true });
-    log.info({ sessionId, dirPath }, "createWorkspace done");
-    return { folderName, dirPath, sessionId };
+    await mkdir(repoDir, { recursive: true });
+    log.info({ sessionId, repoDir }, "createWorkspace done");
+    return { folderName, repoDir, sessionId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ sessionId, dirPath, err: message }, "createWorkspace failed");
-    return { folderName, dirPath, error: message, sessionId };
+    log.error({ sessionId, repoDir, err: message }, "createWorkspace failed");
+    return { folderName, repoDir, error: message, sessionId };
   }
 }
 
@@ -69,7 +69,7 @@ export async function createWorkspace(
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await createWorkspace({
     ticketId: "PROJ-123",
-    parentDir: "/tmp/journeyman-workspace",
+    baseDir: "/tmp/journeyman-workspace",
   });
 
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");

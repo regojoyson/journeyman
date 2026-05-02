@@ -10,7 +10,7 @@ const log = createLogger("worker:analyze");
  * directly, bypassing the legacy PipelineContext.
  *
  * Required input keys (all strings):
- *   - dirPath        — absolute path to the repo to analyze
+ *   - repoDir        — absolute path to the repo to analyze
  *   - ticketContent  — markdown body of the ticket
  *
  * Returns:
@@ -22,22 +22,22 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const dirPath = input.dirPath;
+    const repoDir = input.repoDir;
     const ticketContent = input.ticketContent;
-    if (typeof dirPath !== "string" || typeof ticketContent !== "string") {
+    if (typeof repoDir !== "string" || typeof ticketContent !== "string") {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "analyze requires string `dirPath` and `ticketContent`",
+          message: "analyze requires string `repoDir` and `ticketContent`",
           retryable: false,
         },
       };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Analyzing ${dirPath}`);
+    ctx.log(`Analyzing ${repoDir}`);
     const result = await coding.analyze({
-      dirPath,
+      repoDir,
       ticketContent,
       sessionId: ctx.runId,
       signal: ctx.signal,

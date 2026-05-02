@@ -3,12 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Flow, FlowGraph } from "@journeyman/core";
-import { getFlow, getCurrentFlowVersion, runFlow, updateFlowDefinition, validateFlowDefinition } from "../api/flows.ts";
+import { getFlow, getCurrentFlowVersion, updateFlowDefinition, validateFlowDefinition } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
-import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
 import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
@@ -28,7 +27,6 @@ export function FlowEditorPage() {
   const qc = useQueryClient();
   const [graph, setGraph] = useState<FlowGraph | null>(null);
   const [, setDirty] = useState(false);
-  const [toast, setToast] = useState<{ runId: string; engineWorkflowId: string } | null>(null);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
 
@@ -63,11 +61,6 @@ export function FlowEditorPage() {
       const msg = err instanceof Error ? err.message : "Could not save the flow.";
       setSaveToast({ kind: "error", message: msg });
     },
-  });
-
-  const runM = useMutation({
-    mutationFn: () => runFlow(id!, {}),
-    onSuccess: (res) => setToast(res),
   });
 
   if (!id) { navigate("/flows"); return null; }
@@ -111,19 +104,10 @@ export function FlowEditorPage() {
           mcpCatalog={defaultMcpCatalog}
           onChange={(next) => { setGraph(next); setDirty(true); }}
           onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
-          onRun={async () => { await runM.mutateAsync(); }}
           onValidate={async (next) => await validateFlowDefinition(next)}
-          busy={saveM.isPending || runM.isPending}
+          busy={saveM.isPending}
         />
       </div>
-      {toast && (
-        <RunSubmittedToast
-          runId={toast.runId}
-          engineWorkflowId={toast.engineWorkflowId}
-          onViewLive={() => navigate(`/runs/${toast.runId}`)}
-          onDismiss={() => setToast(null)}
-        />
-      )}
       {saveToast && (
         <StatusToast
           kind={saveToast.kind}

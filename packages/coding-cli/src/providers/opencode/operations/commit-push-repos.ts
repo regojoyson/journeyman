@@ -18,7 +18,7 @@ const OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           folderName: { type: "string" },
-          dirPath: { type: "string" },
+          repoDir: { type: "string" },
           branch: { type: "string" },
           commitSha: { type: "string" },
           commitMessage: { type: "string" },
@@ -29,7 +29,7 @@ const OUTPUT_SCHEMA = {
           remoteUrl: { type: "string" },
           error: { type: "string" },
         },
-        required: ["folderName", "dirPath", "branch", "commitSha", "commitMessage", "title", "description", "filesChanged", "pushed"],
+        required: ["folderName", "repoDir", "branch", "commitSha", "commitMessage", "title", "description", "filesChanged", "pushed"],
       },
     },
     error: { type: "string" },
@@ -39,13 +39,13 @@ const OUTPUT_SCHEMA = {
 
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
 
-type NormalizedEntry = { dirPath: string; ticket?: string; message?: string };
+type NormalizedEntry = { repoDir: string; ticket?: string; message?: string };
 
 function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) => {
-    if (typeof r === "string") return { dirPath: r, ticket: opts.ticket };
-    return { dirPath: r.dirPath, ticket: r.ticket ?? opts.ticket, message: r.message };
+    if (typeof r === "string") return { repoDir: r, ticket: opts.ticket };
+    return { repoDir: r.repoDir, ticket: r.ticket ?? opts.ticket, message: r.message };
   });
 }
 
@@ -66,34 +66,34 @@ function buildPrompt(entries: NormalizedEntry[], pattern: string, prSummaryStyle
     `PR description style: ${prSummaryStyle}`,
     "",
     "Per repo, execute in order:",
-    "1. `git -C <dirPath> status --porcelain`. If output is empty, record a",
+    "1. `git -C <repoDir> status --porcelain`. If output is empty, record a",
     "   full result object with all required fields populated, using empty",
     "   strings/arrays for fields that would be derived from the missing changes:",
-    '   { folderName: <basename(dirPath)>, dirPath: <dirPath>, branch: "",',
+    '   { folderName: <basename(repoDir)>, repoDir: <repoDir>, branch: "",',
     '     commitSha: "", commitMessage: "", title: "", description: "",',
     '     filesChanged: [], pushed: false, error: "no changes" }',
     "   Then skip remaining steps for this repo.",
-    "2. `git -C <dirPath> rev-parse --abbrev-ref HEAD` → branch.",
+    "2. `git -C <repoDir> rev-parse --abbrev-ref HEAD` → branch.",
     "   If branch is 'HEAD' (detached HEAD state), stop processing this repo and",
     "   record the result with branch: 'HEAD', empty commit fields, pushed: false,",
     "   error: 'detached HEAD — refusing to commit'.",
-    '   Also verify `git -C <dirPath> remote get-url origin`. If it fails, stop',
+    '   Also verify `git -C <repoDir> remote get-url origin`. If it fails, stop',
     "   and record pushed: false with error: 'no origin remote configured'.",
-    "   Verify committer identity: `git -C <dirPath> config user.email` and",
-    "   `git -C <dirPath> config user.name`. If either is empty, stop and record",
+    "   Verify committer identity: `git -C <repoDir> config user.email` and",
+    "   `git -C <repoDir> config user.name`. If either is empty, stop and record",
     "   pushed: false with error: 'git user.name/user.email not configured'.",
     "3. Collect changed files: git diff --name-only, git diff --cached --name-only, ls-files --others --exclude-standard. Union unique sorted.",
     "4. Gather change context for the summary: git diff HEAD covers modified/deleted tracked files. For untracked files, cat them. If entry.message is not set, produce a concise imperative summary (<= 72 chars, no trailing period).",
     "5. Build commitMessage from pattern substituting {ticket} and {summary}. If entry.message is set, use it verbatim.",
     "6. Build PR-ready fields: title (<ticket>: <summary> or just <summary>), description (markdown summary of changes).",
     "   If prSummaryStyle is 'brief', write one short paragraph. If 'detailed', write one-line intro then bulleted file-by-file changes.",
-    "7. `git -C <dirPath> add -A`",
-    "8. `git -C <dirPath> commit -m \"<commitMessage>\"`. On hook failure: record pushed: false with error. Never retry with --no-verify.",
-    "9. `git -C <dirPath> rev-parse HEAD` → commitSha.",
+    "7. `git -C <repoDir> add -A`",
+    "8. `git -C <repoDir> commit -m \"<commitMessage>\"`. On hook failure: record pushed: false with error. Never retry with --no-verify.",
+    "9. `git -C <repoDir> rev-parse HEAD` → commitSha.",
     "10. Push: try `git push origin <branch>`. If no upstream, retry with `git push -u origin <branch>`. If non-fast-forward: record pushed: false with error 'remote has diverging commits — pull/rebase required'. If auth error: record pushed: false with error 'push denied: <stderr>'. On success: pushed: true.",
-    "11. `git -C <dirPath> remote get-url origin` → remoteUrl.",
+    "11. `git -C <repoDir> remote get-url origin` → remoteUrl.",
     "",
-    "folderName is the basename of dirPath.",
+    "folderName is the basename of repoDir.",
     "",
     "Return JSON matching the output schema: a repos array with one entry per input repo, and an optional top-level error only if the whole operation failed before any repo was processed.",
   ].join("\n");

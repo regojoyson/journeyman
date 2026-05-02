@@ -8,15 +8,19 @@ export class CleanupWorkspacePhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const reposRaw = input.repos;
-    let repos: string | string[] | undefined;
-    if (typeof reposRaw === "string") repos = reposRaw;
-    else if (Array.isArray(reposRaw) && reposRaw.every((r) => typeof r === "string")) repos = reposRaw as string[];
-    if (!repos) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "cleanup-repos requires `repos`", retryable: false } };
+    const workspaceDir = typeof input.workspaceDir === "string" ? input.workspaceDir : undefined;
+    if (!workspaceDir) {
+      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "cleanup-workspace requires `workspaceDir`", retryable: false } };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Cleaning up repos`);
+    ctx.log(`Scanning workspace ${workspaceDir} before cleanup`);
+    const scanResult = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.runId, signal: ctx.signal });
+    if (scanResult?.error) {
+      log.error({ scanResult }, "cleanup-workspace scan failed");
+      return { kind: "failure", failure: { errorClass: "CleanupWorkspaceScanFailed", message: String(scanResult.error), retryable: true } };
+    }
+    const repos = scanResult.repos.map(r => r.repoDir);
+    ctx.log(`Cleaning up ${repos.length} repo(s) in ${workspaceDir}`);
     const result = await coding.cleanupRepos({ repos, sessionId: ctx.runId, signal: ctx.signal });
     if (result?.error) {
       log.error({ result }, "cleanup-repos failed");

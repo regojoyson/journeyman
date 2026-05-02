@@ -12,6 +12,7 @@ export interface RunsListProps {
   onFilterChange: (next: RunFilter) => void;
   onSelectRun: (runId: string) => void;
   onRerun?: (run: Run) => void;
+  onNewRun?: () => void;
   flowNameByVersionId?: Record<string, string>;
   scope?: "mine" | "org" | "all";
   onScopeChange?: (scope: "mine" | "org" | "all") => void;

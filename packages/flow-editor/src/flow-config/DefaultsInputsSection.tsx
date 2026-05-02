@@ -103,7 +103,7 @@ export function DefaultsInputsSection({ defaults, onChange, flow, catalog, readO
       {open && (
         <div style={{ paddingLeft: 8 }}>
           <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
-            Common inputs (e.g. <code>dirPath</code>, <code>targetDir</code>) wired here apply to all
+            Common inputs (e.g. <code>repoDir</code>, <code>workspaceDir</code>) wired here apply to all
             phases that don't set them explicitly.
           </div>
 
@@ -128,20 +128,21 @@ export function DefaultsInputsSection({ defaults, onChange, flow, catalog, readO
               <div key={k} style={{ position: "relative", marginBottom: 4 }}>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
 
-                  <div style={{ flex: 1, display: "flex", background: "#1f1f2c", border: "1px solid #444", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", background: "#1f1f2c", border: "1px solid #444", borderRadius: 4, overflow: "hidden" }}>
                     <input
                       type="text"
                       value={k}
                       disabled={readOnly}
                       placeholder="inputName"
-                      style={{ flex: 1, background: "transparent", border: "none", color: "#ddd", padding: "3px 6px", fontSize: 11, fontFamily: "ui-monospace, monospace", outline: "none" }}
+                      style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", color: "#ddd", padding: "3px 6px", fontSize: 11, fontFamily: "ui-monospace, monospace", outline: "none" }}
                       onChange={e => renameKey(k, e.target.value)}
                       onBlur={() => handleNameBlur(k)}
                     />
                     {!readOnly && (
                       <button
                         type="button"
-                        style={{ background: "#252535", border: "none", borderLeft: "1px solid #444", color: "#888", padding: "0 6px", cursor: "pointer", fontSize: 10 }}
+                        title="Pick known input name"
+                        style={{ flexShrink: 0, background: "#3a3a52", border: "none", borderLeft: "1px solid #555", color: "#ddd", padding: "0 10px", cursor: "pointer", fontSize: 12, lineHeight: 1 }}
                         onClick={() => setDropdownOpenForKey(isDropOpen ? null : k)}
                       >▾</button>
                     )}

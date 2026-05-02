@@ -1,5 +1,5 @@
 import { kindForPhaseType } from "@journeyman/core";
-import type { FlowNode, FlowDefaults, RetryPolicy, SecretBinding, FlowInputValue } from "@journeyman/core";
+import type { FlowNode, FlowDefaults, RetryPolicy, FlowInputValue } from "@journeyman/core";
 
 export type FieldSources = Record<string, "node" | "flow-default">;
 
@@ -21,11 +21,10 @@ export function applyFlowDefaults(
 
   const retry          = mergeRetry(node.retry, defaults.retry, sources);
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);
-  const secretBindings = mergeMap(node.secretBindings, defaults.secretBindings, "secretBindings", sources);
   const inputs         = mergeInputs(node.inputs, defaults.inputs, sources);
 
   return {
-    resolved: { ...node, retry, executorConfig, secretBindings, inputs },
+    resolved: { ...node, retry, executorConfig, inputs },
     sources,
   };
 }
@@ -57,22 +56,6 @@ function mergeExecutorConfig(
     return def;
   }
   sources["executorConfig"] = "node";
-  return { ...def, ...node };
-}
-
-function mergeMap<V>(
-  node: Record<string, V> | null | undefined,
-  def: Record<string, V> | undefined,
-  key: string,
-  sources: FieldSources,
-): Record<string, V> | undefined {
-  if (node === null) return undefined;
-  if (!def) return node ?? undefined;
-  if (!node) {
-    sources[key] = "flow-default";
-    return def;
-  }
-  sources[key] = "node";
   return { ...def, ...node };
 }
 

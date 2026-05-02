@@ -23,7 +23,7 @@ const OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           folderName: { type: "string" },
-          dirPath: { type: "string" },
+          repoDir: { type: "string" },
           branch: { type: "string" },
           commitSha: { type: "string" },
           commitMessage: { type: "string" },
@@ -36,7 +36,7 @@ const OUTPUT_SCHEMA = {
         },
         required: [
           "folderName",
-          "dirPath",
+          "repoDir",
           "branch",
           "commitSha",
           "commitMessage",
@@ -53,7 +53,7 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 type NormalizedEntry = {
-  dirPath: string;
+  repoDir: string;
   ticket?: string;
   message?: string;
 };
@@ -62,10 +62,10 @@ function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) => {
     if (typeof r === "string") {
-      return { dirPath: r, ticket: opts.ticket };
+      return { repoDir: r, ticket: opts.ticket };
     }
     return {
-      dirPath: r.dirPath,
+      repoDir: r.repoDir,
       ticket: r.ticket ?? opts.ticket,
       message: r.message,
     };
@@ -94,30 +94,30 @@ function buildPrompt(
     `PR description style: ${prSummaryStyle}`,
     "",
     "Per repo, execute in order:",
-    "1. `git -C <dirPath> status --porcelain`. If output is empty, record a",
+    "1. `git -C <repoDir> status --porcelain`. If output is empty, record a",
     "   full result object with all required fields populated, using empty",
     "   strings/arrays for fields that would be derived from the missing changes:",
-    '   { folderName: <basename(dirPath)>, dirPath: <dirPath>, branch: "",',
+    '   { folderName: <basename(repoDir)>, repoDir: <repoDir>, branch: "",',
     '     commitSha: "", commitMessage: "", title: "", description: "",',
     '     filesChanged: [], pushed: false, error: "no changes" }',
     "   Then skip remaining steps for this repo.",
-    "2. `git -C <dirPath> rev-parse --abbrev-ref HEAD` → branch.",
+    "2. `git -C <repoDir> rev-parse --abbrev-ref HEAD` → branch.",
     "   If branch is 'HEAD' (detached HEAD state), stop processing this repo and",
     "   record the result with branch: 'HEAD', empty commit fields, pushed: false,",
     "   error: 'detached HEAD — refusing to commit'.",
-    '   Also verify `git -C <dirPath> remote get-url origin`. If it fails, stop',
+    '   Also verify `git -C <repoDir> remote get-url origin`. If it fails, stop',
     "   and record pushed: false with error: 'no origin remote configured' (still",
     "   populate branch and filesChanged as best as possible, but skip commit/push).",
-    "   Verify committer identity: `git -C <dirPath> config user.email` and",
-    "   `git -C <dirPath> config user.name`. If either is empty, stop and record",
+    "   Verify committer identity: `git -C <repoDir> config user.email` and",
+    "   `git -C <repoDir> config user.name`. If either is empty, stop and record",
     "   pushed: false with error: 'git user.name/user.email not configured'.",
     "3. Collect changed files:",
-    "   `git -C <dirPath> diff --name-only`",
-    "   `git -C <dirPath> diff --cached --name-only`",
-    "   `git -C <dirPath> ls-files --others --exclude-standard`",
+    "   `git -C <repoDir> diff --name-only`",
+    "   `git -C <repoDir> diff --cached --name-only`",
+    "   `git -C <repoDir> ls-files --others --exclude-standard`",
     "   Union them into filesChanged (unique, sorted).",
     "4. Gather change context for the summary:",
-    "   - `git -C <dirPath> diff HEAD` covers modified and deleted tracked files.",
+    "   - `git -C <repoDir> diff HEAD` covers modified and deleted tracked files.",
     "   - Untracked files are already captured in filesChanged (step 3). For each",
     "     new file, also `cat` it (or head a reasonable amount) so the summary",
     "     reflects added files, not just edits.",
@@ -140,8 +140,8 @@ function buildPrompt(
     "     If 'detailed', write a one-line intro then a bulleted list of notable",
     "     file-by-file changes (what changed, not the full diff). No trailing",
     "     boilerplate. No generated-by footer.",
-    "7. `git -C <dirPath> add -A`",
-    '8. `git -C <dirPath> commit -m "<commitMessage>"`. If commit fails:',
+    "7. `git -C <repoDir> add -A`",
+    '8. `git -C <repoDir> commit -m "<commitMessage>"`. If commit fails:',
     "    - If stderr mentions pre-commit/commit-msg hook failure, record pushed:",
     "      false with error: 'pre-commit hook failed: <stderr>' and skip push.",
     "    - If stderr mentions 'Please tell me who you are' / missing identity,",
@@ -152,13 +152,13 @@ function buildPrompt(
     "    - For any other commit failure, record pushed: false with the stderr as",
     "      error and skip push.",
     "    Do NOT retry with --no-verify under any circumstance.",
-    "9. `git -C <dirPath> rev-parse HEAD` → commitSha.",
+    "9. `git -C <repoDir> rev-parse HEAD` → commitSha.",
     "10. Push the branch, handling the case where it has no upstream yet:",
-    "    - First try `git -C <dirPath> push origin <branch>`.",
+    "    - First try `git -C <repoDir> push origin <branch>`.",
     "    - If it fails because the branch has no upstream / does not exist on",
     "      remote (stderr mentions 'has no upstream branch', 'set-upstream',",
     "      'src refspec ... does not match any', or similar), retry with",
-    "      `git -C <dirPath> push -u origin <branch>` to create and track it.",
+    "      `git -C <repoDir> push -u origin <branch>` to create and track it.",
     "    - If push is rejected as non-fast-forward (stderr mentions",
     "      'non-fast-forward', 'fetch first', or '[rejected]'), do NOT force-push",
     "      and do NOT auto-rebase. Record pushed: false with error:",
@@ -168,9 +168,9 @@ function buildPrompt(
     "      or 403), record pushed: false with error: 'push denied: <stderr>'.",
     "    - On success pushed: true. On any other failure, pushed: false and set",
     "      error to the stderr message verbatim.",
-    "11. `git -C <dirPath> remote get-url origin` → remoteUrl (ignore errors here).",
+    "11. `git -C <repoDir> remote get-url origin` → remoteUrl (ignore errors here).",
     "",
-    "folderName is the basename of dirPath.",
+    "folderName is the basename of repoDir.",
     "",
     "Return JSON matching the output schema: a repos array with one entry per",
     "input repo, and an optional top-level error only if the whole operation failed",
@@ -246,10 +246,10 @@ export async function commitPushRepos(
 }
 
 // Run: npx tsx packages/coding-cli/src/providers/claude/operations/commit-push-repos.ts
-// Uncomment and edit `dirPath` to point at a local repo with uncommitted changes.
+// Uncomment and edit `repoDir` to point at a local repo with uncommitted changes.
 //
 // const result = await commitPushRepos({
-//   repos: [{ dirPath: "/absolute/path/to/repo" }],
+//   repos: [{ repoDir: "/absolute/path/to/repo" }],
 //   ticket: "EV-123",
 // });
 // console.log(JSON.stringify(result, null, 2));

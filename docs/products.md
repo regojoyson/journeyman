@@ -49,27 +49,14 @@ workspaces/edgereg/
 
 ## Adding a New Product — End-to-End Walkthrough
 
-### Step 1: Add Product Configuration to `pipeline.yaml`
+### Step 1: Add the Product in the UI
 
-Define your product in the main configuration file:
+Create the product in the web UI. Configure:
 
-```yaml
-products:
-  edgereg:
-    flow: edgereg-default
-    workspace: ./workspaces/edgereg
-    repos:
-      - providerId: github
-        owner: cadmium-ai
-        repo: edgereg
-        url: https://github.com/cadmium-ai/edgereg.git
-        defaultBranch: main
-      - providerId: github
-        owner: cadmium-ai
-        repo: edgereg-cli
-        url: https://github.com/cadmium-ai/edgereg-cli.git
-        defaultBranch: main
-```
+- **Repos** — list of repositories to track (owner, repo name, URL, default branch)
+- **Flow** — which flow to run (select from registered flows in the UI)
+- **Provider config** — per-product tokens/overrides
+- **Ticket workflow** — semantic-to-literal status mapping
 
 **Required fields:**
 
@@ -89,54 +76,9 @@ products:
 - `concurrency` — max parallel runs (default from global config)
 - `ticketWorkflow` — semantic-to-literal status mapping for tickets
 
-### Step 2: Create or Reference a Flow File
+### Step 2: Create or Reference a Flow in the UI
 
-Flows are YAML files in `config/flows/` that define the pipeline steps. You can create a new flow or reuse an existing one.
-
-**Create a new flow** at `config/flows/edgereg-default.yaml`:
-
-```yaml
-# config/flows/edgereg-default.yaml
-name: edgereg-default
-description: Standard Journeyman pipeline for EdgeReg product
-steps:
-  - id: clone
-    action: cloneRepos
-    description: Clone all configured repositories
-    timeout: 5m
-
-  - id: scan
-    action: scanRepos
-    description: Scan repositories for issues, structure, size
-    timeout: 10m
-    dependencies: [clone]
-
-  - id: analyze
-    action: analyze
-    description: AI analysis of codebase
-    timeout: 30m
-    dependencies: [scan]
-
-  - id: plan
-    action: plan
-    description: Generate implementation plan
-    timeout: 30m
-    dependencies: [analyze]
-
-  - id: cleanup
-    action: cleanupRepos
-    description: Delete ephemeral work directory
-    timeout: 5m
-    dependencies: [plan]
-```
-
-Or **point to an existing flow** if multiple products share the same pipeline:
-
-```yaml
-products:
-  edgereg:
-    flow: shared-pipeline
-```
+Create a new flow in the flow editor UI, or reuse an existing flow if multiple products share the same pipeline. Assign the flow to the product in the product settings.
 
 ### Step 3: Set Environment Variables
 
@@ -207,50 +149,13 @@ The server will load the new product configuration and start listening for webho
 
 ## Minimal Configuration Example
 
-Here is a complete minimal setup with one product, one shared flow, and one repository:
+A minimal setup requires:
 
-```yaml
-# pipeline.yaml
-flows:
-  default: config/flows/default.yaml
-
-products:
-  demo:
-    flow: default
-    workspace: ./workspaces/demo
-    repos:
-      - providerId: github
-        owner: myorg
-        repo: myrepo
-        url: https://github.com/myorg/myrepo.git
-        defaultBranch: main
-
-workspaces:
-  cleanupOn: "completion"
-  retentionDays: 30
-```
-
-```yaml
-# config/flows/default.yaml
-name: default
-steps:
-  - id: clone
-    action: cloneRepos
-    timeout: 5m
-
-  - id: scan
-    action: scanRepos
-    timeout: 10m
-    dependencies: [clone]
-
-  - id: cleanup
-    action: cleanupRepos
-    timeout: 5m
-    dependencies: [scan]
-```
+1. A flow created in the UI with clone → scan → cleanup steps.
+2. A product in the UI pointing at a GitHub repo and referencing that flow.
+3. Environment variables in `.env`:
 
 ```bash
-# .env (or systemd environment file)
 GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 WEBHOOK_SECRET_DEMO=my-webhook-secret
 ```
@@ -355,13 +260,7 @@ await ticketProvider.updateIssue({
 
 To remove a product from the pipeline:
 
-1. **Remove the product block** from `pipeline.yaml`:
-   ```yaml
-   # Remove this entire section:
-   # products:
-   #   old-product:
-   #     ...
-   ```
+1. **Delete the product** from the database (via the UI or API).
 
 2. **Delete the workspace directory:**
    ```bash
@@ -407,10 +306,9 @@ Because session IDs reference the product workspace directory, renaming a produc
 
 3. **Let in-flight runs complete** — existing runs in the old product's workspace will finish normally.
 
-4. **After all runs complete**, delete the old product:
+4. **After all runs complete**, delete the old product from the UI and clean up its workspace:
    ```bash
-   # Remove from pipeline.yaml
-   # rm -rf workspaces/edgereg
+   rm -rf workspaces/edgereg
    ```
 
 5. **Validate and restart:**
@@ -421,17 +319,13 @@ Because session IDs reference the product workspace directory, renaming a produc
 
 ## Multiple Products, Shared Flow
 
-Two or more products can use the same flow with different repositories and configurations. This example shows `edgereg` and `cidms` sharing the `shared-pipeline` flow:
+Two or more products can use the same flow with different repositories and configurations. In the UI, assign the same flow to multiple products. This example shows `edgereg` and `cidms` sharing the `shared-pipeline` flow:
 
 ```yaml
-# pipeline.yaml
-flows:
-  shared-pipeline: config/flows/shared-pipeline.yaml
-
+# Product config stored in database — shown here for reference
 products:
   edgereg:
     flow: shared-pipeline
-    workspace: ./workspaces/edgereg
     repos:
       - providerId: github
         owner: cadmium-ai

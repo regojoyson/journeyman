@@ -13,7 +13,7 @@ export const implementChangesOutputSchema: OutputSchema = {
 };
 
 export const implementChangesInputFields: InputFields = {
-  dirPath:            { type: "string", label: "Repo path", required: true },
+  repoDir:            { type: "string", label: "Repo directory", required: true },
   planReportPath:     { type: "string", label: "Plan report path", required: true },
   ticketContent:      { type: "string", label: "Ticket content" },
   analyzeReportPath:  { type: "string", label: "Analyze report path" },

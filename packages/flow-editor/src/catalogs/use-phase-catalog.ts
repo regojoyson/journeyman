@@ -19,7 +19,7 @@ function resolveBaseUrl(): string {
 export function usePhaseCatalog(): Record<string, PhaseCatalogEntry> {
   const [m, setM] = useState<Record<string, PhaseCatalogEntry>>({});
   useEffect(() => {
-    const url = `${resolveBaseUrl()}/phases`;
+    const url = `${resolveBaseUrl()}/api/phases`;
     fetch(url, { credentials: "include" })
       .then(r => {
         if (!r.ok) throw new Error(`/phases returned ${r.status}`);

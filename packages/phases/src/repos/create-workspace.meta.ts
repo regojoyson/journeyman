@@ -12,6 +12,5 @@ export const createWorkspaceOutputSchema: OutputSchema = {
 };
 
 export const createWorkspaceInputFields: InputFields = {
-  name:    { type: "string", label: "Name" },
-  baseDir: { type: "string", label: "Base dir" },
+  ticketId: { type: "string", label: "Ticket ID" },
 };

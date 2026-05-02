@@ -85,6 +85,8 @@ export interface FlowGraph {
   /** Cycle visit-count guard (per spec §4). 0 = no cycles allowed in Phase 1. */
   maxCycleVisits?: number;
   defaults?: FlowDefaults;
+  /** Run-time inputs the caller must supply when starting this flow. */
+  inputDefs?: RunInputDef[];
 }
 
 export interface FlowVersion {
@@ -153,8 +155,6 @@ export interface FlowDefaults {
    * Each phase resolves its default via kindForPhaseType(phaseType).
    */
   executorConfig?: Partial<Record<ExecutorKind, { provider?: string }>>;
-  /** Default secret bindings. Merged slot-by-slot into each node's `secretBindings`. */
-  secretBindings?: Record<string, SecretBinding>;
   /** Default input wiring. Merged key-by-key into each node's `inputs`. */
   inputs?: Record<string, FlowInputValue>;
 }

@@ -17,13 +17,13 @@ const OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           folderName: { type: "string" },
-          dirPath: { type: "string" },
+          repoDir: { type: "string" },
           baseBranch: { type: "string" },
           newBranch: { type: "string" },
           success: { type: "boolean" },
           error: { type: "string" },
         },
-        required: ["folderName", "dirPath", "baseBranch", "newBranch", "success"],
+        required: ["folderName", "repoDir", "baseBranch", "newBranch", "success"],
       },
     },
     error: { type: "string" },
@@ -36,13 +36,13 @@ const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
 function normalizeEntries(opts: CheckoutRepoOptions): CheckoutEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) =>
-    typeof r === "string" ? { dirPath: r, branch: opts.branch ?? "main" } : r,
+    typeof r === "string" ? { repoDir: r, branch: opts.branch ?? "main" } : r,
   );
 }
 
 function buildPrompt(entries: CheckoutEntry[], ticket: CheckoutRepoOptions["ticket"]): string {
   const steps = entries
-    .map(({ dirPath, branch }) => `  - ${dirPath} → baseBranch: ${branch}`)
+    .map(({ repoDir, branch }) => `  - ${repoDir} → baseBranch: ${branch}`)
     .join("\n");
 
   const namingRule = ticket
@@ -73,20 +73,20 @@ function buildPrompt(entries: CheckoutEntry[], ticket: CheckoutRepoOptions["tick
     "  - The EXACT same branch name must be used for every repo.",
     "",
     "PER-REPO STEPS (run in order for each repo):",
-    "  1. git -C <dirPath> fetch origin",
-    "  2. git -C <dirPath> stash --include-untracked   (discard local changes)",
-    "  3. git -C <dirPath> checkout <baseBranch>",
-    "  4. git -C <dirPath> pull origin <baseBranch>",
-    "  5. git -C <dirPath> reset --hard origin/<baseBranch>",
-    "  6. git -C <dirPath> clean -fd",
-    "  7. git -C <dirPath> checkout -b <newBranch>",
+    "  1. git -C <repoDir> fetch origin",
+    "  2. git -C <repoDir> stash --include-untracked   (discard local changes)",
+    "  3. git -C <repoDir> checkout <baseBranch>",
+    "  4. git -C <repoDir> pull origin <baseBranch>",
+    "  5. git -C <repoDir> reset --hard origin/<baseBranch>",
+    "  6. git -C <repoDir> clean -fd",
+    "  7. git -C <repoDir> checkout -b <newBranch>",
     "",
     "Repos:",
     steps,
     "",
     "Return JSON with:",
     "  - newBranch (top-level): the generated branch name used for all repos",
-    "  - repos[]: { folderName, dirPath, baseBranch, newBranch, success, error? }",
+    "  - repos[]: { folderName, repoDir, baseBranch, newBranch, success, error? }",
     "  - error (top-level, optional): set only if everything failed before per-repo work started",
     "Capture per-repo errors in repos[].error and set success=false for that repo.",
   ].join("\n");

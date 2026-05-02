@@ -1,16 +1,16 @@
 # Provider Configuration Reference
 
-All providers are configured via the `providerConfig` block inside a product in `pipeline.yaml`. Each category (`coding`, `git`, `ticket`, `notification`) maps to one registered provider. The `providers` block in a flow YAML selects which provider ID to use; `providerConfig` supplies that provider's options.
+All providers are configured per-product in the database (managed through the UI). Each category (`coding`, `git`, `ticket`, `notification`) maps to one registered provider. The `providers` block in a flow selects which provider ID to use; the product's provider config supplies that provider's options.
 
 ```yaml
-# flow YAML — selects which provider
+# flow — selects which provider
 providers:
   coding: opencode
   git: github
   ticket: jira
   notification: slack
 
-# pipeline.yaml — product block — supplies provider options
+# Product provider config (managed in UI, stored in database)
 providerConfig:
   coding:
     mode: managed

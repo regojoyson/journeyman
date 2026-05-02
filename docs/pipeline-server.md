@@ -43,11 +43,7 @@ See [docs/setup.md](./setup.md) for a complete step-by-step walkthrough.
 **Short version:**
 
 ```bash
-# 1. Create config files
-mkdir -p config/flows
-# populate config/pipeline.yaml and config/flows/default.yaml (see docs/setup.md)
-
-# 2. Set environment variables — .env file or shell exports (both work)
+# 1. Set environment variables — .env file or shell exports (both work)
 cat > .env <<EOF
 JOURNEYMAN_API_TOKEN=<random-secret>     # bearer for management API
 GITHUB_ACCESS_TOKEN=ghp_...              # for repo clone, PRs, issues
@@ -61,7 +57,7 @@ npx journeyman serve
 npx journeyman-server
 ```
 
-Server listens on the port set in `pipeline.yaml` (default `3000`).
+Server listens on the port set by the `PORT` environment variable (default `4000`).
 
 ---
 
@@ -201,7 +197,7 @@ Set these collection variables before use:
 |---|---|---|
 | `baseUrl` | `http://localhost:3000` | Your server URL |
 | `bearerToken` | `change-me` | Value of `JOURNEYMAN_API_TOKEN` |
-| `productId` | `my-product` | A product key from `pipeline.yaml` |
+| `productId` | `my-product` | A product ID registered in the database |
 | `sessionId` | _(auto-set)_ | Auto-populated by the Trigger request test script |
 
 The **Trigger run (API)** request automatically saves the returned `sessionId` into the collection variable so subsequent requests work without manual copy-paste.

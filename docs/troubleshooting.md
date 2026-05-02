@@ -28,7 +28,7 @@ This document covers known failure modes, diagnostics, and remediation steps for
   - `"label-mismatch"` — the trigger label filter didn't match
   - `"status-mismatch"` — the ticket status is not in `ticketWorkflow.trigger.statusFilter`
   - `"no-ticket"` — GitHub Issue number/GitLab merge request could not be resolved to a ticket
-- Verify the filter config: `jq '.products.<id>.ticketWorkflow.trigger' config/pipeline.yaml`
+- Verify the trigger labels configured for the product in the UI.
 
 **Fix:**
 - Adjust `productConfig.ticketWorkflow.trigger` gating rules
@@ -44,7 +44,7 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 **Diagnostics:**
 - The error lists all registered phases in the registry
-- Check `config/flows/<flowName>.yaml` for typos in step definitions
+- Open the flow in the UI flow editor and check for typos in step definitions
 - Verify each `step.phase` matches a registered phase name (case-sensitive)
 
 **Fix:**
@@ -60,19 +60,12 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 **Diagnostics:**
 - The error tells you which flow, step, and status key are missing
-- Check `products.<id>.ticketWorkflow.statuses` in `pipeline.yaml`
-- Verify all status keys referenced in steps exist as keys in the statuses map
+- Check the ticket workflow status mappings configured for the product in the UI.
+- Verify all status keys referenced in steps exist in the statuses map.
 
 **Fix:**
-- Add the missing semantic status to `products.<id>.ticketWorkflow.statuses`:
-  ```yaml
-  products:
-    edgereg:
-      ticketWorkflow:
-        statuses:
-          code-revue: "In Review"  # Add this entry
-  ```
-- Restart the server
+- Add the missing semantic status to the product's ticket workflow in the UI.
+- Restart the worker.
 
 ---
 
@@ -81,8 +74,8 @@ This document covers known failure modes, diagnostics, and remediation steps for
 **Symptom:** Server fails to start with: `Product "my-app" has no repos configured`
 
 **Diagnostics:**
-- Check `products.<id>.repos` in `pipeline.yaml`
-- Confirm it is a non-empty array
+- Check the repos configured for the product in the UI.
+- Confirm at least one repo is configured.
 
 **Fix:**
 - Add at least one repository entry to the product:
@@ -145,7 +138,7 @@ This document covers known failure modes, diagnostics, and remediation steps for
 **Fix:**
 - Ensure both the server and GitHub have the exact same secret value
 - If rotating the secret:
-  1. Update the secret in your server config (env var or `pipeline.yaml`)
+  1. Update the secret in your `.env` or via the secrets vault in the UI.
   2. Restart the server
   3. Update the secret in GitHub's webhook settings
   4. Test with a fresh webhook delivery
@@ -158,13 +151,12 @@ This document covers known failure modes, diagnostics, and remediation steps for
 **Symptom:** Webhook delivery returns HTTP 404 with: `Unknown product: "my-app"`
 
 **Diagnostics:**
-- The webhook URL path should match a product ID in `pipeline.yaml`
+- The webhook URL path should match a product ID registered in the database.
 - Check the webhook URL: `POST http://server/webhooks/<productId>/<source>`
-- Verify `<productId>` matches a key in `products` section of config
 
 **Fix:**
 - Update the webhook URL in GitHub/GitLab to use the correct product ID
-- Confirm the product exists in `pipeline.yaml` and is named exactly as in the URL
+- Confirm the product exists in the database with the correct ID.
 - Test the webhook delivery again
 
 ---
@@ -232,7 +224,7 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 **Fix:**
 - Kill the other process: `kill -9 <pid>`
-- Or change the server port in the config: `server.port: 3001`
+- Or change the server port via the `PORT` env var in `.env`
 - Restart the server
 
 ---
@@ -252,12 +244,9 @@ This document covers known failure modes, diagnostics, and remediation steps for
   ```bash
   export GITHUB_WEBHOOK_SECRET="your-secret-here"
   ```
-- Or configure it in `pipeline.yaml`:
-  ```yaml
-  server:
-    webhooks:
-      github:
-        secretEnv: "GITHUB_WEBHOOK_SECRET"
+- Or set it in `.env`:
+  ```bash
+  GITHUB_WEBHOOK_SECRET=your-secret-here
   ```
 - Restart the server and update the webhook in GitHub's settings
 
@@ -330,9 +319,6 @@ jq '.artifacts | .. | select(type=="object" and .kind=="artifact")' workspaces/<
 # Find all stuck runs (status=running)
 jq 'select(.status=="running")' workspaces/*/state/*.json
 
-# Validate config without starting the server
-npm run validate
-
 # Check for temporary/partial writes
 ls -la workspaces/*/state/ | grep "\.tmp-"
 
@@ -342,8 +328,7 @@ jq '.metadata.sessionId' workspaces/<product>/state/*.json | sort | uniq
 # Inspect the last step of a run
 jq '.steps[-1]' workspaces/<product>/state/<sessionId>.json
 
-# Check webhook secret configuration
-jq '.server.webhooks, .products[].webhookSecrets' config/pipeline.yaml
+# Check webhook secrets via the secrets vault in the UI or in .env
 
 # Monitor server logs (if using systemd)
 journalctl -u journeyman-pipeline -f

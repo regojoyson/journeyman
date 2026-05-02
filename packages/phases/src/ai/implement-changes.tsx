@@ -9,7 +9,7 @@ import {
 } from "./implement-changes.meta.ts";
 
 interface ImplementChangesConfig {
-  dirPath: string;
+  repoDir: string;
   planReportPath: string;
   ticketContent?: string;
   analyzeReportPath?: string;
@@ -22,15 +22,15 @@ export const implementChangesPhase: PhaseDefinition<ImplementChangesConfig> = {
   description: IMPLEMENT_CHANGES_DESCRIPTION,
   color: "#6c5ce7",
   icon: "🛠",
-  defaultConfig: { dirPath: "", planReportPath: "", ticketContent: "", analyzeReportPath: "" },
+  defaultConfig: { repoDir: "", planReportPath: "", ticketContent: "", analyzeReportPath: "" },
   configSchema: z.object({
-    dirPath: z.string().min(1),
+    repoDir: z.string().min(1),
     planReportPath: z.string().min(1),
     ticketContent: z.string().optional(),
     analyzeReportPath: z.string().optional(),
   }),
   configFields: {
-    dirPath:           { label: "Repo path",            widget: "text" },
+    repoDir:           { label: "Repo directory",       widget: "text" },
     planReportPath:    { label: "Plan report path",     widget: "text", help: "Path to a prior plan output" },
     ticketContent:     { label: "Ticket content",       widget: "textarea", help: "Markdown body of the ticket" },
     analyzeReportPath: { label: "Analyze report path",  widget: "text", help: "Optional path to a prior analyze output" },

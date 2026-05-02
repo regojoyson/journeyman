@@ -9,7 +9,7 @@ import {
 } from "./commit-and-push.meta.ts";
 
 interface CommitAndPushConfig {
-  repoPath: string;
+  repos: string;
   message: string;
   branch?: string;
 }
@@ -21,16 +21,16 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
   description: COMMIT_AND_PUSH_DESCRIPTION,
   color: "#fdcb6e",
   icon: "⬆",
-  defaultConfig: { repoPath: "", message: "", branch: "" },
+  defaultConfig: { repos: "", message: "", branch: "" },
   configSchema: z.object({
-    repoPath: z.string().min(1),
+    repos: z.string().min(1),
     message: z.string().min(1),
     branch: z.string().optional(),
   }),
   configFields: {
-    repoPath: { label: "Repo path", widget: "text" },
-    message:  { label: "Commit message", widget: "textarea" },
-    branch:   { label: "Branch", widget: "text", help: "Defaults to current branch" },
+    repos:   { label: "Repos", widget: "text" },
+    message: { label: "Commit message", widget: "textarea" },
+    branch:  { label: "Branch", widget: "text", help: "Defaults to current branch" },
   },
   tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
   slots: [
@@ -39,7 +39,7 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
       description: "GitHub PAT used by `git push` / `git fetch` against origin.",
     },
   ],
-  summary: c => c.message ? `"${c.message.slice(0, 40)}"` : c.repoPath,
+  summary: c => c.message ? `"${c.message.slice(0, 40)}"` : c.repos,
   executor: { kind: "coding-cli", method: "commitPushRepos" },
   outputSchema: commitAndPushOutputSchema,
 };

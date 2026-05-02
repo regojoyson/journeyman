@@ -8,13 +8,11 @@ export const START_FEATURE_BRANCH_DESCRIPTION =
   "Sync already-cloned repos to origin (hard-reset to the base branch), then create one shared feature branch across all of them. The branch name is generated from the ticket.";
 
 export const startFeatureBranchOutputSchema: OutputSchema = {
-  dirPath: { type: "string", description: "Local directory the repo was cloned into" },
-  branch: { type: "string" },
-  commitSha: { type: "string" },
+  newBranch: { type: "string" },
+  repos:     { type: "string", description: "Array of { repoDir, branch, newBranch } per repo" },
 };
 
 export const startFeatureBranchInputFields: InputFields = {
-  url:          { type: "string", label: "URL", required: true },
-  branch:       { type: "string", label: "Branch" },
-  workspaceDir: { type: "string", label: "Workspace dir", required: true, bindOnly: true },
+  repos:  { type: "string", label: "Repos", required: true, bindOnly: true },
+  ticket: { type: "string", label: "Ticket", bindOnly: true },
 };

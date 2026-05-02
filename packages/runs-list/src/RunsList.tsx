@@ -32,6 +32,13 @@ export function RunsList(p: RunsListProps) {
           </div>
         )}
         <div style={{ flex: 1 }} />
+        {p.onNewRun && (
+          <button
+            type="button"
+            className="je-runslist__new-run"
+            onClick={p.onNewRun}
+          >+ New Run</button>
+        )}
         <RunFilters filter={p.filter} onChange={p.onFilterChange} />
       </div>
       {p.isLoading && <div style={{ color: "#888" }}>Loading…</div>}

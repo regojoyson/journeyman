@@ -9,7 +9,7 @@ const log = createLogger("worker:implement");
  * Phase 1 wrapper around ICodingCLI.implement.
  *
  * Required input keys:
- *   - dirPath            — absolute path to the repo
+ *   - repoDir            — absolute path to the repo
  * Optional input keys:
  *   - ticketContent      — markdown body of the ticket
  *   - analyzeReportPath  — explicit path to a prior analyze report
@@ -27,13 +27,13 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const dirPath = input.dirPath;
-    if (typeof dirPath !== "string") {
+    const repoDir = input.repoDir;
+    if (typeof repoDir !== "string") {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "implement requires string `dirPath`",
+          message: "implement requires string `repoDir`",
           retryable: false,
         },
       };
@@ -48,9 +48,9 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
       : undefined;
 
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Implementing ${dirPath}`);
+    ctx.log(`Implementing ${repoDir}`);
     const result = await coding.implement({
-      dirPath,
+      repoDir,
       ticketContent,
       analyzeReportPath,
       planReportPath,

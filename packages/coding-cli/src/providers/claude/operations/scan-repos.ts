@@ -17,12 +17,12 @@ const OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           folderName: { type: "string" },
-          dirPath: { type: "string" },
+          repoDir: { type: "string" },
           url: { type: "string" },
           branch: { type: "string" },
           isGitRepo: { type: "boolean" },
         },
-        required: ["folderName", "dirPath", "isGitRepo"],
+        required: ["folderName", "repoDir", "isGitRepo"],
       },
     },
     error: { type: "string" },
@@ -35,9 +35,9 @@ function buildPrompt(parentDir: string): string {
     `List all immediate subdirectories of: ${parentDir}`,
     "For each subdirectory:",
     "  1. Check if it is a git repo (look for a .git folder inside it)",
-    "  2. If it is, get its remote origin URL via: git -C <dirPath> remote get-url origin",
-    "  3. If it is, get its current branch via: git -C <dirPath> branch --show-current",
-    "Return JSON with a repos array containing folderName, dirPath, isGitRepo, and url and branch (only if it is a git repo).",
+    "  2. If it is, get its remote origin URL via: git -C <repoDir> remote get-url origin",
+    "  3. If it is, get its current branch via: git -C <repoDir> branch --show-current",
+    "Return JSON with a repos array containing folderName, repoDir, isGitRepo, and url and branch (only if it is a git repo).",
   ].join("\n");
 }
 

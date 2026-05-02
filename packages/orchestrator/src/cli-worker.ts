@@ -5,7 +5,8 @@
  */
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { ClaudeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider } from "@journeyman/git-provider";
@@ -60,7 +61,8 @@ const coding: ProviderFactory<ICodingCLI> = (key, env) => {
 registry.register(new AnalyzeRepoPhaseHandler({ coding }));
 registry.register(new PlanImplementationPhaseHandler({ coding }));
 registry.register(new ImplementChangesPhaseHandler({ coding }));
-registry.register(new CreateWorkspacePhaseHandler({ coding }));
+const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
+registry.register(new CreateWorkspacePhaseHandler({ coding, baseDir: workspaceBaseDir }));
 registry.register(new StartFeatureBranchPhaseHandler({ coding }));
 registry.register(new ListWorkspaceFilesPhaseHandler({ coding }));
 registry.register(new CommitAndPushPhaseHandler({ coding }));

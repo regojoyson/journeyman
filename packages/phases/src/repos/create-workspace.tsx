@@ -1,4 +1,3 @@
-// packages/phases/src/repos/create-workspace.tsx
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
@@ -10,8 +9,7 @@ import {
 } from "./create-workspace.meta.ts";
 
 interface CreateWorkspaceConfig {
-  name: string;
-  baseDir: string;
+  ticketId: string;
 }
 
 export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
@@ -21,17 +19,15 @@ export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
   description: CREATE_WORKSPACE_DESCRIPTION,
   color: "#fdcb6e",
   icon: "📁",
-  defaultConfig: { name: "", baseDir: "" },
+  defaultConfig: { ticketId: "" },
   configSchema: z.object({
-    name: z.string().min(1),
-    baseDir: z.string().min(1),
+    ticketId: z.string().min(1),
   }),
   configFields: {
-    name:    { label: "Workspace name", widget: "text" },
-    baseDir: { label: "Base directory", widget: "text" },
+    ticketId: { label: "Ticket ID", widget: "text" },
   },
   tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
-  summary: c => c.name || c.baseDir,
+  summary: c => c.ticketId,
   executor: { kind: "coding-cli", method: "createWorkspace" },
   outputSchema: createWorkspaceOutputSchema,
 };

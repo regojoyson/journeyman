@@ -5,19 +5,19 @@ import type { SessionOptions, SessionResult } from "./session.types.ts";
 // ---------------------------------------------------------------------------
 
 export type RepoEntry = { url: string; branch: string };
-export type CheckoutEntry = { dirPath: string; branch: string };
+export type CheckoutEntry = { repoDir: string; branch: string };
 
 export type CloneReposOptions = {
   repos: string | string[] | RepoEntry | RepoEntry[];
   branch?: string;
-  targetDir?: string;
+  workspaceDir?: string;
   signal?: AbortSignal;
 };
 
 export type CloneResult = {
   folderName: string;
-  dirPath: string;
-  url: string;       // always the ORIGINAL, non-tokenized URL
+  repoDir: string;
+  url: string;
   branch: string;
   error?: string;
 };
@@ -35,7 +35,7 @@ export type ScanReposOptions = SessionOptions & {
 
 export type RepoInfo = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   url?: string;
   branch?: string;
   isGitRepo: boolean;
@@ -56,7 +56,7 @@ export type CheckoutRepoOptions = SessionOptions & {
 
 export type CheckoutResult = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   baseBranch: string;
   newBranch: string;
   success: boolean;
@@ -70,7 +70,7 @@ export type CheckoutRepoResult = SessionResult & {
 };
 
 export type CleanupEntry = {
-  dirPath: string;
+  repoDir: string;
 };
 
 export type CleanupReposOptions = SessionOptions & {
@@ -81,7 +81,7 @@ export type CleanupReposOptions = SessionOptions & {
 
 export type CleanupRepoResult = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   success: boolean;
   error?: string;
 };
@@ -93,14 +93,14 @@ export type CleanupReposResult = SessionResult & {
 
 export type CreateWorkspaceOptions = SessionOptions & {
   ticketId: string;
-  parentDir: string;
+  baseDir: string;
   signal?: AbortSignal;
   model?: string;
 };
 
 export type CreateWorkspaceResult = SessionResult & {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   error?: string;
 };
 
@@ -162,7 +162,7 @@ export type ListPRResult = SessionResult & {
 // ---------------------------------------------------------------------------
 
 export type CommitPushEntry = {
-  dirPath: string;
+  repoDir: string;
   ticket?: string;   // per-repo override of top-level ticket
   message?: string;  // full commit message; if set, skips AI generation
 };
@@ -178,7 +178,7 @@ export type CommitPushReposOptions = SessionOptions & {
 
 export type CommitPushResult = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   branch: string;        // current branch (committed + pushed to)
   commitSha: string;     // new HEAD SHA
   commitMessage: string; // final message used for git commit

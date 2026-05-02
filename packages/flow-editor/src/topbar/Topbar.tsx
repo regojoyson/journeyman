@@ -119,6 +119,7 @@ export function Topbar(p: TopbarProps) {
           />
         )}
         <IconButton
+          className="primary"
           label={p.busy ? "Saving…" : "Save"}
           hint={p.busy ? "Saving the flow…" : "Save changes to this flow"}
           disabled={p.busy || !p.saveEnabled}
@@ -130,14 +131,16 @@ export function Topbar(p: TopbarProps) {
               : <Save size={16} aria-hidden="true" focusable="false" />
           }
         />
-        <IconButton
-          className="primary"
-          label="Run"
-          hint={p.runDisabledReason ?? "Execute this flow"}
-          disabled={p.busy || !p.runEnabled}
-          onClick={p.onRun}
-          icon={<Play size={16} fill="currentColor" aria-hidden="true" focusable="false" />}
-        />
+        {p.onRun && (
+          <IconButton
+            className="primary"
+            label="Run"
+            hint={p.runDisabledReason ?? "Execute this flow"}
+            disabled={p.busy || !p.runEnabled}
+            onClick={p.onRun}
+            icon={<Play size={16} fill="currentColor" aria-hidden="true" focusable="false" />}
+          />
+        )}
       </header>
       {p.validationErrors && p.validationErrors.length > 0 && (
         <div style={{

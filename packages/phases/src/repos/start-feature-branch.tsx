@@ -9,8 +9,7 @@ import {
 } from "./start-feature-branch.meta.ts";
 
 interface StartFeatureBranchConfig {
-  url: string;
-  branch?: string;
+  // no static config needed; repos and ticket come from bindings at runtime
 }
 
 export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> = {
@@ -20,15 +19,9 @@ export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> 
   description: START_FEATURE_BRANCH_DESCRIPTION,
   color: "#fdcb6e",
   icon: "⬇",
-  defaultConfig: { url: "", branch: "" },
-  configSchema: z.object({
-    url: z.string().min(1),
-    branch: z.string().optional(),
-  }),
-  configFields: {
-    url:       { label: "Repo URL",   widget: "text" },
-    branch:    { label: "Branch",     widget: "text", help: "Defaults to repo default branch" },
-  },
+  defaultConfig: {},
+  configSchema: z.object({}),
+  configFields: {},
   tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
   slots: [
     {
@@ -36,7 +29,7 @@ export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> 
       description: "GitHub PAT used by `git push` / `git fetch` against origin.",
     },
   ],
-  summary: c => c.branch ? `${c.url}@${c.branch}` : c.url,
+  summary: () => "sync + branch",
   executor: { kind: "coding-cli", method: "checkoutRepo" },
   outputSchema: startFeatureBranchOutputSchema,
 };

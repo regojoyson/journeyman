@@ -24,7 +24,7 @@ export interface CodingCLIProviderConfig {
 }
 
 export type AnalyzeOptions = SessionOptions & {
-  dirPath: string;
+  repoDir: string;
   ticketContent?: string;
   focus?: string;
   /** Optional — reviewer feedback (markdown) to incorporate into analysis. */
@@ -74,7 +74,7 @@ export type AnalyzeResult = SessionResult & {
 };
 
 export type PlanOptions = SessionOptions & {
-  dirPath: string;
+  repoDir: string;
   /** Optional — ticket / goal text. If omitted, the plan is derived purely from the analyze report. */
   ticketContent?: string;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest report in docs/analyze is used. */
@@ -127,7 +127,7 @@ export type PlanResult = SessionResult & {
 };
 
 export type ImplementOptions = SessionOptions & {
-  dirPath: string;
+  repoDir: string;
   /** Optional — ticket / goal text. */
   ticketContent?: string;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest file in docs/analyze is used. */

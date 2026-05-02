@@ -82,7 +82,7 @@ const DEFAULT_RULES = [
 ];
 
 function buildPrompt(opts: ImplementOptions): string {
-  const root = opts.dirPath.replace(/\/+$/, "");
+  const root = opts.repoDir.replace(/\/+$/, "");
   const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive from plan / analyze reports)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
@@ -160,7 +160,7 @@ export async function implement(
   opts: ImplementOptions,
 ): Promise<ImplementResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "implement start");
+  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "implement start");
 
   const session = await client.session.create({ title: "implement" });
   if (!session.data) throw new Error("opencode session.create returned no data");

@@ -6,7 +6,7 @@ Webhook-driven, per-product configurable. Ships with working adapters for **Clau
 
 ## What it does
 
-You label an issue. An agent clones the repo, analyses the ticket, drafts a plan, writes the code, runs the tests, opens a PR, and pings you when it's ready for review. The orchestration is entirely driven by YAML flow definitions — the same flow works across products by swapping adapters.
+You label an issue. An agent clones the repo, analyses the ticket, drafts a plan, writes the code, runs the tests, opens a PR, and pings you when it's ready for review. The orchestration is entirely driven by flow definitions built in the flow editor — the same flow works across products by swapping adapters.
 
 ## Repository layout
 
@@ -22,7 +22,6 @@ journeyman/
 │   ├── pipeline/                @journeyman/pipeline               — runner + phases + registries + CLI
 │   └── pipeline-server/         @journeyman/pipeline-server        — Fastify + webhooks + management API
 ├── docs/                       All documentation
-├── config/                      Your pipeline.yaml + flows/
 └── workspaces/                  Runtime state + logs + artifacts (one dir per product)
 ```
 
@@ -64,6 +63,22 @@ npx tsx packages/identity/src/cli/bootstrap.ts \
   --display-name 'Admin'
 ```
 
+## Configuration
+
+All runtime configuration is set via environment variables in `.env`. Copy `.env.example` to `.env` and fill in values.
+
+The key worker variable is `JOURNEYMAN_BASE_DIR` — the root directory under which each run creates its own workspace subdirectory (e.g. `<JOURNEYMAN_BASE_DIR>/PROJ-123-2026-05-01T14-00-00Z/`). Falls back to `<os.tmpdir()>/journeyman-workspaces` when not set.
+
+Flows and product/provider configuration are managed through the web UI and stored in the database.
+
+### Path glossary
+
+| Name | What it is | Example |
+|---|---|---|
+| `JOURNEYMAN_BASE_DIR` | Root under which all run workspaces are created. Set in `.env`. | `/workspaces` |
+| `workspaceDir` | Per-run directory created by the `create-workspace` phase. | `/workspaces/PROJ-123-2026-05-01T14-00-00Z` |
+| `repoDir` | Directory of a single cloned repository inside the workspace. | `/workspaces/PROJ-123-…/my-api` |
+
 ## Commands
 
 | Command | What it does |
@@ -86,7 +101,6 @@ npx tsx packages/identity/src/cli/bootstrap.ts \
 - [**Add a product**](docs/new-product.md) — add a new project to an existing instance
 
 ### Reference
-- [Configuration](docs/configuration.md) — `pipeline.yaml` field reference
 - [Flows](docs/flows.md) — flow YAML authoring guide
 - [Phases](docs/phases.md) — built-in phase catalog + writing custom phases
 - [Products](docs/products.md) — adding and managing products
@@ -149,7 +163,7 @@ One interface in `@journeyman/core`, many implementations in adapter packages. S
 
 ### Sample flow
 
-A real flow wired up end-to-end — six stages with two human review gates. This is [`config/flows/advanced-flow.yaml`](config/flows/advanced-flow.yaml), an end-to-end ticket → PR workflow with approval checkpoints.
+A real flow wired up end-to-end — six stages with two human review gates. This is an example of an end-to-end ticket → PR workflow with approval checkpoints, as seen in the flow editor.
 
 ![Flow — advanced-flow](docs/diagrams/advanced-flow.svg)
 

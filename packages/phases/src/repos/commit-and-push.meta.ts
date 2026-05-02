@@ -13,7 +13,7 @@ export const commitAndPushOutputSchema: OutputSchema = {
 };
 
 export const commitAndPushInputFields: InputFields = {
-  repoPath: { type: "string", label: "Repo path", required: true },
-  message:  { type: "string", label: "Message", required: true },
-  branch:   { type: "string", label: "Branch" },
+  repos:   { type: "string", label: "Repos", required: true, bindOnly: true },
+  message: { type: "string", label: "Message", required: true },
+  branch:  { type: "string", label: "Branch" },
 };

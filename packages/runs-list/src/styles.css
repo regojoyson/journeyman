@@ -18,6 +18,8 @@
 .je-runslist__pill.paused    { background: rgba(253,203,110,0.15); color: #fdcb6e; }
 .je-runslist__rerun { background: transparent; border: 1px solid #444; color: #ccc; padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
 .je-runslist__rerun:hover { background: #2a2a3e; }
+.je-runslist__new-run { background: #6c5ce7; border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.je-runslist__new-run:hover { background: #7d6df0; }
 
 /* Scope chip toggles in the header (Mine / Organization / All). */
 .je-chip {

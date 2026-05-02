@@ -2,7 +2,6 @@ import type { FlowDefaults, FlowGraph } from "@journeyman/core";
 import { X } from "lucide-react";
 import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
 import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
-import { DefaultsSecretsSection } from "./DefaultsSecretsSection.tsx";
 import { DefaultsInputsSection } from "./DefaultsInputsSection.tsx";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
@@ -34,7 +33,6 @@ export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfi
 
       <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsRetrySection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
-      <DefaultsSecretsSection  defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsInputsSection
         defaults={defaults}
         onChange={updateDefaults}

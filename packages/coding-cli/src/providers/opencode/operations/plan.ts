@@ -63,7 +63,7 @@ const OUTPUT_SCHEMA = {
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: true, grep: true, write: true };
 
 function buildPrompt(opts: PlanOptions): string {
-  const root = opts.dirPath.replace(/\/+$/, "");
+  const root = opts.repoDir.replace(/\/+$/, "");
   const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive goal from analyze report)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
@@ -127,7 +127,7 @@ export async function plan(
   opts: PlanOptions,
 ): Promise<PlanResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "plan start");
+  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "plan start");
 
   const session = await client.session.create({ title: "plan" });
   if (!session.data) throw new Error("opencode session.create returned no data");

@@ -93,7 +93,7 @@ const DEFAULT_RULES = [
 ];
 
 function buildPrompt(opts: ImplementOptions): string {
-  const root = opts.dirPath.replace(/\/+$/, "");
+  const root = opts.repoDir.replace(/\/+$/, "");
   const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive from plan / analyze reports)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
@@ -195,7 +195,7 @@ function buildPrompt(opts: ImplementOptions): string {
  */
 export async function implement(opts: ImplementOptions): Promise<ImplementResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
-  log.info({ sessionId, dirPath: opts.dirPath, focus: opts.focus }, "implement start");
+  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "implement start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -250,7 +250,7 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
 // Run: npx tsx implement.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await implement({
-    dirPath: "/Users/admin/data/workspace/claude-skils/journeyman",
+    repoDir: "/Users/admin/data/workspace/claude-skils/journeyman",
     ticketContent:
       "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them.",
   });

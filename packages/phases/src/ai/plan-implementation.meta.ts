@@ -13,7 +13,7 @@ export const planImplementationOutputSchema: OutputSchema = {
 };
 
 export const planImplementationInputFields: InputFields = {
-  dirPath:            { type: "string", label: "Repo path", required: true },
+  repoDir:            { type: "string", label: "Repo directory", required: true },
   ticketContent:      { type: "string", label: "Ticket content" },
   analyzeReportPath:  { type: "string", label: "Analyze report path" },
   focus:              { type: "string", label: "Focus / scope narrowing" },

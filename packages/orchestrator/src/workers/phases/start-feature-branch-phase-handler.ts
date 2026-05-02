@@ -8,14 +8,12 @@ const log = createLogger("worker:checkout-repo");
 /**
  * Wraps ICodingCLI.checkoutRepo.
  *
- * Inputs accepted (any of):
- *   - url           — repo URL (string)
- *   - workspaceDir  — directory the repo was cloned into (string, used as repo dirPath)
- *   - branch        — base branch to check out (string, optional)
- *   - ticket        — { id, title } (optional)
+ * Inputs accepted:
+ *   - repos  — array of { repoDir, branch } objects (from clone-repos output)
+ *   - ticket — { id, title } (optional, drives branch name)
  *
  * Returns:
- *   - dirPath, branch, commitSha, newBranch
+ *   - newBranch, repos[] with updated repoDir and branch info
  */
 export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
   readonly phaseType = "start-feature-branch";
@@ -23,23 +21,30 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const url = typeof input.url === "string" ? input.url : undefined;
-    const workspaceDir = typeof input.workspaceDir === "string" ? input.workspaceDir : undefined;
-    const branch = typeof input.branch === "string" ? input.branch : undefined;
-
-    // checkoutRepo accepts either URL strings or { dirPath, branch } entries.
-    // If workspaceDir is provided, treat it as the local repo path; otherwise use url.
-    const repos = workspaceDir
-      ? [{ dirPath: workspaceDir, branch: branch ?? "main" }]
-      : url ? [url] : null;
-    if (!repos) {
+    const reposRaw = input.repos;
+    if (!Array.isArray(reposRaw) || reposRaw.length === 0) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "checkout-repo requires `url` or `workspaceDir`",
+          message: "start-feature-branch requires `repos` (non-empty array of { repoDir, branch })",
           retryable: false,
         },
+      };
+    }
+
+    const repos = reposRaw
+      .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+      .map(r => ({
+        repoDir: typeof r.repoDir === "string" ? r.repoDir : "",
+        branch: typeof r.branch === "string" ? r.branch : "main",
+      }))
+      .filter(r => r.repoDir.length > 0);
+
+    if (repos.length === 0) {
+      return {
+        kind: "failure",
+        failure: { errorClass: "InvalidInput", message: "start-feature-branch: no valid repos with repoDir found", retryable: false },
       };
     }
 
@@ -52,10 +57,12 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
         : undefined;
 
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Checking out ${workspaceDir ?? url}`);
+    ctx.log(`Checking out ${repos.length} repo(s)`);
     const result = await coding.checkoutRepo({
-      repos, branch, ticket,
-      sessionId: ctx.runId, signal: ctx.signal,
+      repos,
+      ticket,
+      sessionId: ctx.runId,
+      signal: ctx.signal,
     });
     if (result?.error) {
       log.error({ result }, "checkout-repo failed");
@@ -64,13 +71,9 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
         failure: { errorClass: "CheckoutRepoFailed", message: String(result.error), retryable: true },
       };
     }
-    const first = result.repos[0];
     return {
       kind: "success",
       output: {
-        dirPath: first?.dirPath,
-        branch: first?.baseBranch,
-        commitSha: undefined,
         newBranch: result.newBranch,
         repos: result.repos,
       },
