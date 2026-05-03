@@ -54,9 +54,11 @@ export class WorkerHarness {
   async processOnce(phaseType: string): Promise<void> {
     const task = await this.deps.client.pollTask(phaseType, this.deps.workerId);
     if (!task) return;
+    log.info({ runId: task.workflowInstanceId, nodeId: task.taskDefName, phaseType, attempt: task.retryCount + 1 }, "task picked up");
 
     const handler = this.deps.registry.get(phaseType);
     if (!handler) {
+      log.error({ runId: task.workflowInstanceId, nodeId: task.taskDefName, phaseType }, "no handler registered for phase — failing task");
       await this.deps.client.completeTask({
         workflowInstanceId: task.workflowInstanceId,
         taskId: task.taskId,
@@ -68,6 +70,7 @@ export class WorkerHarness {
 
     const visit = this.visitCounter.recordVisit(task.workflowInstanceId, task.taskDefName);
     if (visit.exceeded) {
+      log.warn({ runId: task.workflowInstanceId, nodeId: task.taskDefName, count: visit.count }, "cycle limit exceeded");
       await this.deps.events.append({
         runId: task.workflowInstanceId,
         nodeId: task.taskDefName,
@@ -112,6 +115,7 @@ export class WorkerHarness {
       const isCredErr = err?.name === "MissingSecretsError";
       if (isCredErr) {
         const missing: string[] = err.missing ?? (err.ref ? [String(err.ref)] : []);
+        log.error({ runId, nodeId, missing }, "phase failed: missing secrets");
         await this.deps.events.append({
           runId, nodeId, eventType: "phase.failed",
           payload: { reason: "missing_secrets", missing, message: String(err?.message ?? "") },
@@ -145,6 +149,7 @@ export class WorkerHarness {
       });
 
       if (result.kind === "success") {
+        log.info({ runId, nodeId }, "phase completed");
         await this.deps.events.append({
           runId, nodeId, eventType: "phase.completed",
           payload: { output: result.output },
@@ -155,7 +160,7 @@ export class WorkerHarness {
         });
       } else {
         const retryable = result.failure.retryable ?? false;
-
+        log.error({ runId, nodeId, retryable, error: result.failure }, "phase failed");
         await this.deps.events.append({
           runId, nodeId, eventType: "phase.failed",
           payload: { error: result.failure, classified: { retryable } },
@@ -167,6 +172,7 @@ export class WorkerHarness {
         });
       }
     } catch (err: any) {
+      log.error({ runId, nodeId, err }, "phase threw unhandled error");
       await this.deps.events.append({
         runId, nodeId, eventType: "phase.failed",
         payload: { error: { errorClass: "UnhandledError", message: String(err?.message ?? err) } },

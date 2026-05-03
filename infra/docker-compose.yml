@@ -29,7 +29,7 @@ services:
     image: orkesio/orkes-conductor-community-standalone:latest
     ports:
       - "8080:8080"   # Conductor REST API
-      - "5000:5000"   # Conductor UI
+      - "5001:5000"   # Conductor UI (5000 is taken by macOS AirPlay Receiver)
     environment:
       - CONFIG_PROP=/app/config/conductor.properties
     volumes:
