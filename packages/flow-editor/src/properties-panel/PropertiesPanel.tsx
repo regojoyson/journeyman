@@ -95,7 +95,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   const requiredEmpty = {
     io: !((node as { inputs?: unknown[] }).inputs?.length || (node as { outputs?: unknown[] }).outputs?.length),
     requiredSecrets: !(node.secretBindings && Object.keys(node.secretBindings).length),
-    mcp: !((node as { mcpTools?: unknown[] }).mcpTools?.length),
+    mcp: !(((node.config as { mcpInstanceIds?: unknown[] } | undefined)?.mcpInstanceIds?.length ?? 0) > 0),
     retry: !node.retry,
   };
 
@@ -114,7 +114,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           requiredEmpty={requiredEmpty}
         >
           {effectiveActive === "config"          && <ConfigTab          flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} flowDefaults={flow.defaults} />}
-          {effectiveActive === "mcp"             && <McpToolsTab        node={node} catalog={mcpCatalog} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "mcp"             && <McpToolsTab        node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "requiredSecrets" && <RequiredSecretsTab flow={flow} node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
           {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}

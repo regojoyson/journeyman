@@ -17,6 +17,7 @@
     "@journeyman/coding-cli": "*",
     "@journeyman/core": "*",
     "@journeyman/git-provider": "*",
+    "@journeyman/mcp": "*",
     "@journeyman/notification-provider": "*",
     "@journeyman/secrets": "*",
     "@journeyman/ticket-provider": "*",

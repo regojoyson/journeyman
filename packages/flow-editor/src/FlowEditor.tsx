@@ -34,6 +34,18 @@ function autoHeal(flow: FlowGraph): { healed: FlowGraph; restored: string[] } {
   return restored.length ? { healed: { ...flow, nodes }, restored } : { healed: flow, restored };
 }
 
+function migrateLegacyMcpConfig(flow: FlowGraph): FlowGraph {
+  let touched = false;
+  const nodes = flow.nodes.map((n) => {
+    const cfg = (n.config ?? {}) as Record<string, unknown>;
+    if (!("mcp" in cfg) && !("allowedTools" in cfg)) return n;
+    touched = true;
+    const { mcp: _mcp, allowedTools: _at, ...rest } = cfg;
+    return { ...n, config: rest };
+  });
+  return touched ? { ...flow, nodes } : flow;
+}
+
 export function FlowEditor(props: FlowEditorProps) {
   // Mount log — fires once on first render.
   const mountedRef = useRef(false);
@@ -63,7 +75,8 @@ export function FlowEditor(props: FlowEditorProps) {
   }
 
   const heal = useMemo(() => {
-    const result = autoHeal(props.flow);
+    const migrated = migrateLegacyMcpConfig(props.flow);
+    const result = autoHeal(migrated);
     if (result.restored.length) {
       // eslint-disable-next-line no-console
       console.warn("[FlowEditor] autoHeal restored nodes", result.restored);

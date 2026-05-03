@@ -149,9 +149,10 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 | `resolveMcpInstances` resolver | Implemented |
 | `toMcpServerConfigs` / `mergeSystemPrompts` (subpath export) | Implemented |
 | `analyze`/`plan`/`implement` consume `mcps?: ResolvedMcpInstance[]` | Implemented |
-| `PhaseDefinition.supportsMcp` flag | Implemented |
-| Flow-editor MCP picker UI | Stub |
-| Worker pre-resolution of `mcpInstanceIds → ResolvedMcpInstance[]` | Stub |
+| `PhaseDefinition.supportsMcp` flag | Removed (unused; replaced by existing `tabs.mcp`) |
+| Flow-editor MCP picker UI | Implemented |
+| Worker pre-resolution of `mcpInstanceIds → ResolvedMcpInstance[]` | Implemented |
+| Legacy `config.mcp` / `config.allowedTools` migration | Implemented (load-time strip in flow editor) |
 
 ## Adding a New Provider
 

@@ -2,6 +2,7 @@ import { createLogger, PROVIDER_CATALOG, kindForPhaseType } from "@journeyman/co
 import type {
   IEventBus, IPhaseRegistry, IWorkspaceProvider,
   SecretBinding,
+  ResolvedMcpInstance,
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
@@ -25,6 +26,17 @@ export interface WorkerHarnessDeps {
     slots: Array<{ name: string; optional?: boolean }>;
     bindings: Record<string, SecretBinding>;
   }) => Promise<Record<string, string>>;
+
+  /**
+   * Resolves `mcpInstanceIds` (declared on a phase's node config) into
+   * fully-formed `ResolvedMcpInstance[]` ready to hand to coding-cli.
+   * Composition root supplies the implementation (curries the pg pool
+   * over `resolveMcpInstances` from `@journeyman/mcp`).
+   */
+  mcpResolver: (input: {
+    ctx: { userId: string; orgId: string };
+    instanceIds: string[];
+  }) => Promise<ResolvedMcpInstance[]>;
 }
 
 export class WorkerHarness {
@@ -146,6 +158,36 @@ export class WorkerHarness {
       }
       throw err;
     }
+
+    const mcpInstanceIds = Array.isArray((phaseInput as { mcpInstanceIds?: unknown }).mcpInstanceIds)
+      ? ((phaseInput as { mcpInstanceIds: unknown[] }).mcpInstanceIds.filter(
+          (x): x is string => typeof x === "string"
+        ))
+      : [];
+    let mcps: ResolvedMcpInstance[] = [];
+    if (mcpInstanceIds.length > 0 && userId && orgId) {
+      try {
+        mcps = await this.deps.mcpResolver({
+          ctx: { userId, orgId },
+          instanceIds: mcpInstanceIds,
+        });
+        log.info({ runId, nodeId, count: mcps.length }, "MCPs resolved");
+      } catch (err: any) {
+        log.error({ runId, nodeId, err: err?.message }, "MCP resolution failed");
+        await this.deps.events.append({
+          runId, nodeId, eventType: "phase.failed",
+          payload: { reason: "mcp_resolution_failed", message: String(err?.message ?? "") },
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: runId, taskId: task.taskId,
+          status: "FAILED_WITH_TERMINAL_ERROR",
+          reasonForIncompletion: `MCP resolution failed: ${err?.message ?? String(err)}`,
+        });
+        return;
+      }
+    }
+    (phaseInput as { mcps?: ResolvedMcpInstance[] }).mcps = mcps;
+
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",
       payload: { attempt: task.retryCount + 1, inputSources },

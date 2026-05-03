@@ -17,6 +17,7 @@ import type {
 } from "@journeyman/core";
 import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";
+import { resolveMcpInstances } from "@journeyman/mcp";
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
 import { InMemoryPhaseRegistry } from "./registry/in-memory-phase-registry.ts";
@@ -231,6 +232,10 @@ const harness = new WorkerHarness({
   workerId: process.env.WORKER_ID ?? `worker-${process.pid}`,
   pollIntervalMs: 500,
   bindingResolver: cliBindingResolver,
+  mcpResolver: ({ ctx, instanceIds }) => {
+    if (!pool) return Promise.resolve([]);
+    return resolveMcpInstances(pool, ctx, instanceIds);
+  },
 });
 
 log.info({ phases: registry.list().map(h => h.phaseType) }, "worker starting");
