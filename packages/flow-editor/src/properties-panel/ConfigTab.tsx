@@ -10,7 +10,6 @@ import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
-import { InheritanceChip } from "./InheritanceChip.tsx";
 
 export interface ConfigTabProps {
   flow: FlowGraph;
@@ -67,7 +66,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const configFieldKeys = new Set(definition?.configFields ? Object.keys(definition.configFields) : []);
   const bindOnlyFields = Object.entries(catalogEntry?.inputFields ?? {}).filter(
     ([key, meta]) => (meta as { bindOnly?: boolean }).bindOnly === true && !configFieldKeys.has(key),
-  ) as [string, { type: string; label?: string; required?: boolean; bindOnly?: boolean }][];
+  ) as [string, { label?: string; required?: boolean; bindOnly?: boolean }][];
 
   const renderFieldBindControl = (key: string) => {
     if (readOnly) return null;
@@ -176,12 +175,6 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
               {bindOnlyFields.map(([key, meta]) => {
                 const isBound = boundKeys.has(key);
                 const isRequired = !!meta.required;
-                const defaultInput = flowDefaults?.inputs?.[key];
-                const nodeInput = inputsMap[key];
-                const hasDefault = defaultInput !== undefined && defaultInput.kind !== "suppress";
-                const inheritState = nodeInput
-                  ? (hasDefault ? "override" : "local")
-                  : (hasDefault ? "inherited" : "unset");
                 return (
                   <div key={key} className="je-props__field">
                     <div className="je-props__field-label-row">
@@ -189,30 +182,12 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                         {meta.label ?? key}
                         {isRequired && <span className="je-props__required-mark">*</span>}
                       </label>
-                      {inheritState === "inherited" && (
-                        <InheritanceChip
-                          kind="inherited"
-                          inheritedValue={defaultInput?.kind === "ref" ? defaultInput.ref : (defaultInput as { value?: unknown } | undefined)?.value}
-                        />
-                      )}
-                      {inheritState === "override"  && (
-                        <InheritanceChip kind="override" onReset={() => handleUnbind(key)} />
-                      )}
                       {renderFieldBindControl(key)}
                     </div>
                     {isBound ? renderBoundPill(key) : (
-                      inheritState === "inherited" && defaultInput ? (
-                        <div className="je-props__bound-pill" style={{ opacity: 0.6 }}>
-                          <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
-                          <code className="je-props__bound-pill-ref">
-                            {defaultInput.kind === "ref" ? defaultInput.ref : String((defaultInput as { value?: unknown }).value ?? "")}
-                          </code>
-                        </div>
-                      ) : (
-                        <div className="je-props__bind-only-empty">
-                          {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
-                        </div>
-                      )
+                      <div className="je-props__bind-only-empty">
+                        {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
+                      </div>
                     )}
                   </div>
                 );
@@ -223,6 +198,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
             <div className="je-props__picker-popover">
               <ValuePicker
                 sources={sources}
+                expected={catalogEntry?.inputFields?.[pickerFor]?.shape}
                 onPick={ref => handlePick(pickerFor, ref)}
                 onInsert={ref => handleInsert(pickerFor, ref)}
                 onClose={() => setPickerFor(null)}

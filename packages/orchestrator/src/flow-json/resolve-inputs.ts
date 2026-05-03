@@ -7,7 +7,6 @@ export function resolveInputs(
   for (const [k, v] of Object.entries(inputs ?? {})) {
     if (v.kind === "literal") out[k] = v.value;
     else if (v.kind === "ref") out[k] = "${" + sanitizeRef(v.ref) + "}";
-    // suppress kind is filtered out before reaching here (applyFlowDefaults removes them)
   }
   return out;
 }

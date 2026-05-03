@@ -12,7 +12,7 @@ const log = createLogger("claude:commit-push-repos");
 
 export type { CommitPushEntry, CommitPushReposOptions, CommitPushReposResult };
 
-const DEFAULT_PATTERN = "{ticket} : {summary}";
+const DEFAULT_PATTERN = "{issue} : {summary}";
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -54,7 +54,7 @@ const OUTPUT_SCHEMA = {
 
 type NormalizedEntry = {
   repoDir: string;
-  ticket?: string;
+  issue?: string;
   message?: string;
 };
 
@@ -62,11 +62,11 @@ function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) => {
     if (typeof r === "string") {
-      return { repoDir: r, ticket: opts.ticket };
+      return { repoDir: r, issue: opts.issue };
     }
     return {
       repoDir: r.repoDir,
-      ticket: r.ticket ?? opts.ticket,
+      issue: r.issue ?? opts.issue,
       message: r.message,
     };
   });
@@ -86,9 +86,9 @@ function buildPrompt(
     `Entries:\n${entriesJson}`,
     "",
     `Commit message pattern: ${JSON.stringify(pattern)}`,
-    "Tokens: {ticket} (from entry.ticket), {summary} (you generate it from the diff).",
-    "If entry.ticket is absent and the pattern contains {ticket}, drop the ticket",
-    'portion cleanly (no leading/trailing " : " or "{ticket}" literal).',
+    "Tokens: {issue} (from entry.issue), {summary} (you generate it from the diff).",
+    "If entry.issue is absent and the pattern contains {issue}, drop the issue",
+    'portion cleanly (no leading/trailing " : " or "{issue}" literal).',
     "If entry.message is set, use it verbatim and skip {summary} generation.",
     "",
     `PR description style: ${prSummaryStyle}`,
@@ -125,14 +125,14 @@ function buildPrompt(
     "   (<= 72 chars, no trailing period) from the combined context.",
     "5. Build the final commitMessage:",
     "   - If entry.message is set, commitMessage = entry.message.",
-    "   - Otherwise substitute {ticket} and {summary} into the pattern.",
-    "     If entry.ticket is absent and the pattern contains {ticket}, remove",
-    "     the {ticket} token AND any immediately adjacent separator chars",
+    "   - Otherwise substitute {issue} and {summary} into the pattern.",
+    "     If entry.issue is absent and the pattern contains {issue}, remove",
+    "     the {issue} token AND any immediately adjacent separator chars",
     "     (e.g. ' : ', ': ', ' - ', '-') so no dangling punctuation remains.",
-    "     Examples: '{ticket} : {summary}' with no ticket → '<summary>'.",
-    "     'PROJ-{ticket}: {summary}' with no ticket → '<summary>' (prefix dropped).",
+    "     Examples: '{issue} : {summary}' with no issue → '<summary>'.",
+    "     'PROJ-{issue}: {summary}' with no issue → '<summary>' (prefix dropped).",
     "6. Build the PR-ready fields from the SAME diff:",
-    "   - title: `<ticket>: <summary>` (single space after colon) if entry.ticket",
+    "   - title: `<issue>: <summary>` (single space after colon) if entry.issue",
     "     is set, else just `<summary>`. Title is for PR/MR, not git log, so it",
     "     uses ': ' not ' : '.",
     "   - description: markdown summary of the actual code changes in the diff.",
@@ -188,7 +188,7 @@ export async function commitPushRepos(
   }
   const entries = normalizeEntries(opts);
   log.info(
-    { sessionId, repoCount: entries.length, ticket: opts.ticket },
+    { sessionId, repoCount: entries.length, issue: opts.issue },
     "commitPushRepos start",
   );
   if (entries.length === 0) {
@@ -250,6 +250,6 @@ export async function commitPushRepos(
 //
 // const result = await commitPushRepos({
 //   repos: [{ repoDir: "/absolute/path/to/repo" }],
-//   ticket: "EV-123",
+//   issue: "EV-123",
 // });
 // console.log(JSON.stringify(result, null, 2));

@@ -26,6 +26,6 @@ export class CleanupWorkspacePhaseHandler implements IPhaseHandler {
       log.error({ result }, "cleanup-repos failed");
       return { kind: "failure", failure: { errorClass: "CleanupReposFailed", message: String(result.error), retryable: true } };
     }
-    return { kind: "success", output: { repos: result.repos } };
+    return { kind: "success", output: { removed: true } };
   }
 }

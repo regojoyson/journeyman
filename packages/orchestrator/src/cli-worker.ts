@@ -12,7 +12,7 @@ import { ClaudeProvider } from "@journeyman/coding-cli";
 import { GitHubProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
-  ITicketProvider, ICodingCLI, IGitProvider, INotificationProvider,
+  IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
   ProviderFactory, SecretBinding,
 } from "@journeyman/core";
 import { ConsoleProvider } from "@journeyman/notification-provider";
@@ -27,8 +27,8 @@ import { ImplementChangesPhaseHandler } from "./workers/phases/implement-changes
 import { CreateWorkspacePhaseHandler } from "./workers/phases/create-workspace-phase-handler.ts";
 import { StartFeatureBranchPhaseHandler } from "./workers/phases/start-feature-branch-phase-handler.ts";
 import { CloneReposPhaseHandler } from "./workers/phases/clone-repos-phase-handler.ts";
-import { GetTicketPhaseHandler } from "./workers/phases/get-ticket-phase-handler.ts";
-import { TransitionTicketPhaseHandler } from "./workers/phases/transition-ticket-phase-handler.ts";
+import { GetIssuePhaseHandler } from "./workers/phases/get-issue-phase-handler.ts";
+import { TransitionIssuePhaseHandler } from "./workers/phases/transition-issue-phase-handler.ts";
 import { ListWorkspaceFilesPhaseHandler } from "./workers/phases/list-workspace-files-phase-handler.ts";
 import { CommitAndPushPhaseHandler } from "./workers/phases/commit-and-push-phase-handler.ts";
 import { CleanupWorkspacePhaseHandler } from "./workers/phases/cleanup-workspace-phase-handler.ts";
@@ -36,9 +36,9 @@ import { GetRepositoryPhaseHandler } from "./workers/phases/get-repository-phase
 import { OpenPullRequestPhaseHandler } from "./workers/phases/open-pull-request-phase-handler.ts";
 import { ListPullRequestsPhaseHandler } from "./workers/phases/list-pull-requests-phase-handler.ts";
 import { ListPullRequestCommentsPhaseHandler } from "./workers/phases/list-pull-request-comments-phase-handler.ts";
-import { CreateTicketPhaseHandler } from "./workers/phases/create-ticket-phase-handler.ts";
-import { UpdateTicketFieldsPhaseHandler } from "./workers/phases/update-ticket-fields-phase-handler.ts";
-import { CommentOnTicketPhaseHandler } from "./workers/phases/comment-on-ticket-phase-handler.ts";
+import { CreateIssuePhaseHandler } from "./workers/phases/create-issue-phase-handler.ts";
+import { UpdateIssueFieldsPhaseHandler } from "./workers/phases/update-issue-fields-phase-handler.ts";
+import { CommentOnIssuePhaseHandler } from "./workers/phases/comment-on-issue-phase-handler.ts";
 import { SendMessagePhaseHandler } from "./workers/phases/send-message-phase-handler.ts";
 
 const log = createLogger("worker:cli");
@@ -82,7 +82,7 @@ registry.register(new OpenPullRequestPhaseHandler({ git }));
 registry.register(new ListPullRequestsPhaseHandler({ git }));
 registry.register(new ListPullRequestCommentsPhaseHandler({ git }));
 
-const ticket: ProviderFactory<ITicketProvider> = (key, env) => {
+const issue: ProviderFactory<IIssueProvider> = (key, env) => {
   switch (key ?? "jira") {
     case "jira":
       return new JiraProvider({
@@ -95,14 +95,14 @@ const ticket: ProviderFactory<ITicketProvider> = (key, env) => {
     case "github-projects":
       return new GitHubProjectsProvider({ token: env.GITHUB_ACCESS_TOKEN });
     default:
-      throw new Error(`Unknown ticket provider: ${key}`);
+      throw new Error(`Unknown issue provider: ${key}`);
   }
 };
-registry.register(new GetTicketPhaseHandler({ ticket }));
-registry.register(new TransitionTicketPhaseHandler({ ticket }));
-registry.register(new CreateTicketPhaseHandler({ ticket }));
-registry.register(new UpdateTicketFieldsPhaseHandler({ ticket }));
-registry.register(new CommentOnTicketPhaseHandler({ ticket }));
+registry.register(new GetIssuePhaseHandler({ issue }));
+registry.register(new TransitionIssuePhaseHandler({ issue }));
+registry.register(new CreateIssuePhaseHandler({ issue }));
+registry.register(new UpdateIssueFieldsPhaseHandler({ issue }));
+registry.register(new CommentOnIssuePhaseHandler({ issue }));
 
 const notification: ProviderFactory<INotificationProvider> = (key, _env) => {
   switch (key ?? "console") {

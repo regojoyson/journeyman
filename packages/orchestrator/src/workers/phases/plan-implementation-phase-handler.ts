@@ -11,7 +11,7 @@ const log = createLogger("worker:plan");
  * Required input keys:
  *   - repoDir            — absolute path to the repo
  * Optional input keys:
- *   - ticketContent      — markdown body of the ticket
+ *   - issueContent      — markdown body of the issue
  *   - analyzeReportPath  — explicit path to a prior analyze report
  *   - focus              — narrowing of scope
  *   - reviewComments     — reviewer feedback to incorporate
@@ -36,7 +36,7 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    const ticketContent = typeof input.ticketContent === "string" ? input.ticketContent : undefined;
+    const issueContent = typeof input.issueContent === "string" ? input.issueContent : undefined;
     const analyzeReportPath = typeof input.analyzeReportPath === "string" ? input.analyzeReportPath : undefined;
     const focus = typeof input.focus === "string" ? input.focus : undefined;
     const reviewComments = typeof input.reviewComments === "string" ? input.reviewComments : undefined;
@@ -45,7 +45,7 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
     ctx.log(`Planning ${repoDir}`);
     const result = await coding.plan({
       repoDir,
-      ticketContent,
+      issueContent,
       analyzeReportPath,
       focus,
       reviewComments,
@@ -63,6 +63,14 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    return { kind: "success", output: { plan: result } };
+    return {
+      kind: "success",
+      output: {
+        steps: result.steps.map((s) => s.title),
+        affectedFiles: result.affectedFiles,
+        estimatedComplexity: result.estimatedComplexity,
+        planReportPath: result.reportPath,
+      },
+    };
   }
 }

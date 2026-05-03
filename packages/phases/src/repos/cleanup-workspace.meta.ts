@@ -1,5 +1,4 @@
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "../shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const CLEANUP_WORKSPACE_PHASE_TYPE = "cleanup-workspace";
 export const CLEANUP_WORKSPACE_LABEL = "Cleanup Workspace";
@@ -12,6 +11,6 @@ export const cleanupWorkspaceOutputSchema: OutputSchema = {
 };
 
 export const cleanupWorkspaceInputFields: InputFields = {
-  mode:         { type: "string", label: "Mode" },
-  workspaceDir: { type: "string", label: "Workspace dir", required: true, bindOnly: true },
+  mode:         { shape: { type: "string" }, label: "Mode" },
+  workspaceDir: { shape: { type: "string" }, label: "Workspace dir", required: true, bindOnly: true },
 };

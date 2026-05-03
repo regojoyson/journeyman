@@ -11,7 +11,7 @@ const log = createLogger("worker:analyze");
  *
  * Required input keys (all strings):
  *   - repoDir        — absolute path to the repo to analyze
- *   - ticketContent  — markdown body of the ticket
+ *   - issueContent  — markdown body of the issue
  *
  * Returns:
  *   - analysis       — the AnalyzeResult shape produced by ICodingCLI.analyze
@@ -23,13 +23,13 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const repoDir = input.repoDir;
-    const ticketContent = input.ticketContent;
-    if (typeof repoDir !== "string" || typeof ticketContent !== "string") {
+    const issueContent = input.issueContent;
+    if (typeof repoDir !== "string" || typeof issueContent !== "string") {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "analyze requires string `repoDir` and `ticketContent`",
+          message: "analyze requires string `repoDir` and `issueContent`",
           retryable: false,
         },
       };
@@ -38,7 +38,7 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
     ctx.log(`Analyzing ${repoDir}`);
     const result = await coding.analyze({
       repoDir,
-      ticketContent,
+      issueContent,
       sessionId: ctx.runId,
       signal: ctx.signal,
     });
@@ -53,6 +53,14 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    return { kind: "success", output: { analysis: result } };
+    return {
+      kind: "success",
+      output: {
+        summary: result.summary,
+        complexity: result.complexity,
+        affectedFiles: result.affectedAreas,
+        analyzeReportPath: result.reportPath,
+      },
+    };
   }
 }

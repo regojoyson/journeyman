@@ -10,7 +10,7 @@ const log = createLogger("worker:checkout-repo");
  *
  * Inputs accepted:
  *   - repos  — array of { repoDir, branch } objects (from clone-repos output)
- *   - ticket — { id, title } (optional, drives branch name)
+ *   - issue  — { id, title } (optional, drives branch name)
  *
  * Returns:
  *   - newBranch, repos[] with updated repoDir and branch info
@@ -48,19 +48,19 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
       };
     }
 
-    const ticketRaw = (input as Record<string, unknown>).ticket;
-    const ticket =
-      ticketRaw && typeof ticketRaw === "object"
-        && typeof (ticketRaw as { id?: unknown }).id === "string"
-        && typeof (ticketRaw as { title?: unknown }).title === "string"
-        ? { id: (ticketRaw as { id: string }).id, title: (ticketRaw as { title: string }).title }
+    const issueRaw = (input as Record<string, unknown>).issue;
+    const issue =
+      issueRaw && typeof issueRaw === "object"
+        && typeof (issueRaw as { id?: unknown }).id === "string"
+        && typeof (issueRaw as { title?: unknown }).title === "string"
+        ? { id: (issueRaw as { id: string }).id, title: (issueRaw as { title: string }).title }
         : undefined;
 
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Checking out ${repos.length} repo(s)`);
     const result = await coding.checkoutRepo({
       repos,
-      ticket,
+      issue,
       sessionId: ctx.runId,
       signal: ctx.signal,
     });

@@ -1,8 +1,11 @@
 import { useState } from "react";
+import type { Shape } from "@journeyman/core";
 import type { UpstreamSource, UpstreamField } from "./use-upstream-sources.ts";
+import { ShapeTree } from "./ShapeTree.tsx";
 
 interface Props {
   sources: UpstreamSource[];
+  expected?: Shape;
   /** Replace the field with a binding (sets node.inputs[key] = { kind: "ref", ref }). */
   onPick: (ref: string) => void;
   /** Insert ${ref} as text into the field's literal value (writes to node.config[key]). Optional — when omitted the insert button is hidden. */
@@ -10,10 +13,11 @@ interface Props {
   onClose: () => void;
 }
 
-function refFor(source: UpstreamSource, field: UpstreamField): string {
-  if (field.scope === "run-input") return `workflow.input.${field.name}`;
-  if (field.scope === "input")     return `${source.id}.input.${field.name}`;
-  /* output */                     return `${source.id}.output.${field.name}`;
+function refForPath(source: UpstreamSource, scope: UpstreamField["scope"], path: string[]): string {
+  const tail = path.join(".");
+  if (scope === "run-input") return `workflow.input.${tail}`;
+  if (scope === "input")     return `${source.id}.input.${tail}`;
+  /* output */               return `${source.id}.output.${tail}`;
 }
 
 function refForCustom(source: UpstreamSource, scope: UpstreamField["scope"], path: string): string {
@@ -22,7 +26,7 @@ function refForCustom(source: UpstreamSource, scope: UpstreamField["scope"], pat
   return `${source.id}.output.${path}`;
 }
 
-export function ValuePicker({ sources, onPick, onInsert, onClose }: Props) {
+export function ValuePicker({ sources, expected, onPick, onInsert, onClose }: Props) {
   const [activeSourceId, setActiveSourceId] = useState<string | null>(sources[0]?.id ?? null);
   const [customMode, setCustomMode] = useState<{ scope: UpstreamField["scope"] } | null>(null);
   const [custom, setCustom] = useState("");
@@ -31,7 +35,7 @@ export function ValuePicker({ sources, onPick, onInsert, onClose }: Props) {
   return (
     <div className="value-picker">
       <div className="value-picker-help">
-        Click a field to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${issueRef}"}</code>).
+        Click a tree node to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${issueRef}"}</code>).
       </div>
       <div className="value-picker-cols">
         <ul className="vp-sources">
@@ -53,25 +57,17 @@ export function ValuePicker({ sources, onPick, onInsert, onClose }: Props) {
             <div key={g.title} className="vp-group">
               <div className="vp-group-title">{g.title}</div>
               <ul className="vp-fields">
-                {g.fields.map(f => {
-                  const ref = refFor(cur, f);
-                  return (
-                    <li key={f.name} title={f.description}>
-                      <button type="button" className="vp-field-name" onClick={() => onPick(ref)}>
-                        {f.name}
-                        <span className="vp-field-scope">{f.scope === "input" ? "in" : f.scope === "output" ? "out" : ""}</span>
-                      </button>
-                      {onInsert && (
-                        <button
-                          type="button"
-                          className="vp-field-insert"
-                          title="insert ${...} into existing text"
-                          onClick={() => onInsert(ref)}
-                        >+</button>
-                      )}
-                    </li>
-                  );
-                })}
+                {g.fields.map(f => (
+                  <li key={f.name} title={f.description}>
+                    <ShapeTree
+                      shape={f.shape}
+                      path={[f.name]}
+                      expected={expected}
+                      onBind={p => onPick(refForPath(cur!, g.scope, p))}
+                      onInsert={onInsert ? p => onInsert(refForPath(cur!, g.scope, p)) : undefined}
+                    />
+                  </li>
+                ))}
                 {cur.kind !== "run-input" && (
                   <li
                     className="vp-custom"

@@ -3,7 +3,7 @@
 export type ExecutorKind =
   | "coding-cli"
   | "git-provider"
-  | "ticket-provider"
+  | "issue-provider"
   | "notification";
 
 export interface ProviderEntry {
@@ -28,12 +28,12 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   { kind: "git-provider", value: "github", label: "GitHub", implemented: true, isDefault: true },
   { kind: "git-provider", value: "gitlab", label: "GitLab", implemented: false },
 
-  // ticket-provider
-  { kind: "ticket-provider", value: "jira",            label: "Jira",            implemented: true, isDefault: true },
-  { kind: "ticket-provider", value: "github-issues",   label: "GitHub Issues",   implemented: true },
-  { kind: "ticket-provider", value: "github-projects", label: "GitHub Projects", implemented: true },
-  { kind: "ticket-provider", value: "linear",          label: "Linear",          implemented: false },
-  { kind: "ticket-provider", value: "monday",          label: "Monday",          implemented: false },
+  // issue-provider
+  { kind: "issue-provider", value: "jira",            label: "Jira",            implemented: true, isDefault: true },
+  { kind: "issue-provider", value: "github-issues",   label: "GitHub Issues",   implemented: true },
+  { kind: "issue-provider", value: "github-projects", label: "GitHub Projects", implemented: true },
+  { kind: "issue-provider", value: "linear",          label: "Linear",          implemented: false },
+  { kind: "issue-provider", value: "monday",          label: "Monday",          implemented: false },
 
   // notification
   { kind: "notification", value: "console", label: "Console", implemented: true, isDefault: true },
@@ -74,12 +74,12 @@ export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   "list-pull-request-comments": "git-provider",
   "list-pull-requests":         "git-provider",
   "open-pull-request":          "git-provider",
-  // ticket-provider
-  "comment-on-ticket":   "ticket-provider",
-  "create-ticket":       "ticket-provider",
-  "get-ticket":          "ticket-provider",
-  "transition-ticket":   "ticket-provider",
-  "update-ticket-fields":"ticket-provider",
+  // issue-provider
+  "comment-on-issue":   "issue-provider",
+  "create-issue":       "issue-provider",
+  "get-issue":          "issue-provider",
+  "transition-issue":   "issue-provider",
+  "update-issue-fields":"issue-provider",
   // notification
   "send-message": "notification",
 };

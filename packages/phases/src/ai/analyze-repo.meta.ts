@@ -1,19 +1,19 @@
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "../shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const ANALYZE_REPO_PHASE_TYPE = "analyze-repo";
 export const ANALYZE_REPO_LABEL = "Analyze Repo";
 export const ANALYZE_REPO_CATEGORY = "Coding Agent";
 export const ANALYZE_REPO_DESCRIPTION =
-  "Run a coding agent to analyze a repository against a ticket and report a summary, complexity, and likely-affected files.";
+  "Run a coding agent to analyze a repository against an issue and report a summary, complexity, and likely-affected files.";
 
 export const analyzeRepoOutputSchema: OutputSchema = {
-  summary:       { type: "string", description: "Plain-language change summary" },
-  complexity:    { type: "enum", values: ["low", "medium", "high"] },
-  affectedFiles: { type: "string[]", description: "Files likely to change" },
+  summary:           { type: "string", description: "Plain-language change summary" },
+  complexity:        { type: "string", description: "One of: low|medium|high" },
+  affectedFiles:     { type: "array", items: { type: "string" }, description: "Areas/files likely to change" },
+  analyzeReportPath: { type: "string", description: "Path to the markdown analyze report" },
 };
 
 export const analyzeRepoInputFields: InputFields = {
-  repoDir:       { type: "string", label: "Repo directory", required: true },
-  ticketContent: { type: "string", label: "Ticket content", required: true },
+  repoDir:      { shape: { type: "string" }, label: "Repo directory", required: true },
+  issueContent: { shape: { type: "string" }, label: "Issue content", required: true },
 };

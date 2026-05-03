@@ -9,7 +9,7 @@ import {
 } from "./start-feature-branch.meta.ts";
 
 interface StartFeatureBranchConfig {
-  // no static config needed; repos and ticket come from bindings at runtime
+  // no static config needed; repos and issue come from bindings at runtime
 }
 
 export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> = {

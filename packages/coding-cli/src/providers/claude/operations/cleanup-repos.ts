@@ -49,7 +49,7 @@ async function cleanupOne(entry: CleanupEntry): Promise<CleanupRepoResult> {
 
 /**
  * Deletes each target directory entirely (recursive, force). Use as the final
- * step of a flow/ticket so the next run starts from a fresh workspace.
+ * step of a flow/issue so the next run starts from a fresh workspace.
  *
  * Idempotent: missing paths are reported as success. Refuses to delete `/`,
  * `$HOME`, or `process.cwd()` — those entries return success=false with an
@@ -61,7 +61,7 @@ async function cleanupOne(entry: CleanupEntry): Promise<CleanupRepoResult> {
  * @example
  * ```ts
  * const result = await cleanupRepos({
- *   repos: ["/tmp/workspace/ticket-123/api", "/tmp/workspace/ticket-123/web"],
+ *   repos: ["/tmp/workspace/issue-123/api", "/tmp/workspace/issue-123/web"],
  * });
  * ```
  */

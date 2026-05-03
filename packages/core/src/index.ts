@@ -1,13 +1,13 @@
 // Interfaces
 export type { ICodingCLI } from "./interfaces/coding-cli.interface.ts";
 export type { IGitProvider } from "./interfaces/git-provider.interface.ts";
-export type { ITicketProvider } from "./interfaces/ticket.interface.ts";
+export type { IIssueProvider } from "./interfaces/issue.interface.ts";
 export type { INotificationProvider } from "./interfaces/notification.interface.ts";
 
 // Types
 export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
-export type * from "./types/ticket.types.ts";
+export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";
 export type * from "./types/pipeline.types.ts";
@@ -97,8 +97,13 @@ export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
 export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
   PhaseContext, PhaseFailure, PhaseInput, PhaseOutput,
-  OutputSchema, OutputFieldSchema, OutputFieldType,
+  OutputSchema,
 } from "./types/phase-handler.types.ts";
+export type { Shape, InputField, InputFields } from "./types/shape.types.ts";
+export {
+  IssueShape, RepoShape, PullRequestShape, WorkspaceShape,
+  NAMED_SHAPES, resolveShape, shapesEqual, shapeAtPath,
+} from "./types/shapes.ts";
 export * from "./types/secrets.types.ts";
 export { buildIssueRef, parseIssueRef } from "./utils/issue-ref.ts";
 export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";

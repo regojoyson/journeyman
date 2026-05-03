@@ -40,24 +40,24 @@ function normalizeEntries(opts: CheckoutRepoOptions): CheckoutEntry[] {
   );
 }
 
-function buildPrompt(entries: CheckoutEntry[], ticket: CheckoutRepoOptions["ticket"]): string {
+function buildPrompt(entries: CheckoutEntry[], issue: CheckoutRepoOptions["issue"]): string {
   const steps = entries
     .map(({ repoDir, branch }) => `  - ${repoDir} → baseBranch: ${branch}`)
     .join("\n");
 
-  const namingRule = ticket
+  const namingRule = issue
     ? [
-        "BRANCH NAMING (ticket provided):",
+        "BRANCH NAMING (issue provided):",
         `  Format: "{id-lowercased}/{2-4-word-slug}_{unix-seconds}"`,
-        `  Ticket id: ${ticket.id}`,
-        `  Ticket title: ${ticket.title}`,
+        `  Issue id: ${issue.id}`,
+        `  Issue title: ${issue.title}`,
         `  Slug: lowercase ASCII, hyphen-separated, 2-4 meaningful words from the title`,
         `         (strip stopwords like "the", "a", "an", "on", "for", "to", "of", "and").`,
         `  Example: id "EV-12345", title "Fix header alignment bug on checkout page"`,
         `           → "ev-12345/fix-header-alignment_1713542400"`,
       ].join("\n")
     : [
-        "BRANCH NAMING (no ticket):",
+        "BRANCH NAMING (no issue):",
         `  Format: "{animal-themed-slug}_{unix-seconds}"`,
         `  Slug: lowercase ASCII, hyphen-separated, 2-3 words containing one animal name`,
         `         (e.g. "curious-otter-sprint", "swift-falcon-work").`,
@@ -100,7 +100,7 @@ export async function checkoutRepo(
   const entries = normalizeEntries(opts);
   const sessionId = opts.sessionId ?? crypto.randomUUID();
   const EMPTY: CheckoutRepoResult = { repos: [], newBranch: "", sessionId };
-  log.info({ sessionId, repoCount: entries.length, issueRef: opts.ticket?.id }, "checkoutRepo start");
+  log.info({ sessionId, repoCount: entries.length, issueRef: opts.issue?.id }, "checkoutRepo start");
 
   if (entries.length === 0) {
     log.warn({ sessionId }, "checkoutRepo called with no repos");
@@ -113,7 +113,7 @@ export async function checkoutRepo(
 
   const result = await client.session.prompt({
     sessionID: sid,
-    parts: [{ type: "text", text: buildPrompt(entries, opts.ticket) }],
+    parts: [{ type: "text", text: buildPrompt(entries, opts.issue) }],
     model: config.model,
     tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },

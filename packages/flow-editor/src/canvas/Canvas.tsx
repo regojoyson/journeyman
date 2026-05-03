@@ -126,8 +126,16 @@ function CanvasInner(p: CanvasProps) {
   // is just echoing back our own change — that prevents the rerender feedback
   // loop that hits when an edge is deleted (parent updates → effect resyncs →
   // RF emits a selection change → effect runs again, etc.).
-  const propagatedSigRef = useRef<string>(structuralSig(p.flow));
-  const lastSigRef = useRef<string>(structuralSig(p.flow));
+  // Lazy-init refs: `useRef(x)` evaluates `x` every render but only keeps the
+  // first value, so calling structuralSig() in the argument was running JSON
+  // .stringify on the whole flow on every render — 200×/s during autoPan.
+  const propagatedSigRef = useRef<string | null>(null);
+  const lastSigRef = useRef<string | null>(null);
+  if (propagatedSigRef.current === null) {
+    const sig = structuralSig(p.flow);
+    propagatedSigRef.current = sig;
+    lastSigRef.current = sig;
+  }
   const lastSelectedRef = useRef<string | null>(p.selectedNodeId);
 
   // Render-loop detector: if this resync effect fires too many times in quick

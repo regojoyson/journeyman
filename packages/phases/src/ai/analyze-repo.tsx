@@ -11,7 +11,7 @@ import {
 
 interface AnalyzeRepoConfig {
   repoDir: string;
-  ticketContent: string;
+  issueContent: string;
 }
 
 export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
@@ -21,14 +21,14 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   description: ANALYZE_REPO_DESCRIPTION,
   color: "#00b894",
   icon: "🤖",
-  defaultConfig: { repoDir: "", ticketContent: "" },
+  defaultConfig: { repoDir: "", issueContent: "" },
   configSchema: z.object({
     repoDir: z.string().min(1, "repoDir is required"),
-    ticketContent: z.string().min(1, "ticketContent is required"),
+    issueContent: z.string().min(1, "issueContent is required"),
   }),
   configFields: {
     repoDir:       { label: "Repo directory",  widget: "text",     help: "Local path or workspace ref" },
-    ticketContent: { label: "Ticket content",  widget: "textarea", help: "Markdown body of the ticket" },
+    issueContent: { label: "Issue content",  widget: "textarea", help: "Markdown body of the issue" },
   },
   tabs: { io: "shown", mcp: "shown", retry: "shown" },
   slots: [

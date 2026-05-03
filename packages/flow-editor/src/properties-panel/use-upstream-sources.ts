@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { FlowGraph } from "@journeyman/core";
+import type { FlowGraph, Shape } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export interface UpstreamField {
@@ -7,6 +7,7 @@ export interface UpstreamField {
   description?: string;
   /** "input" → emit ${node.input.x} ; "output" → emit ${node.output.x} ; "run-input" → ${workflow.input.x} */
   scope: "input" | "output" | "run-input";
+  shape: Shape;
 }
 
 export interface UpstreamSource {
@@ -27,7 +28,7 @@ export function useUpstreamSources(
   return useMemo(() => {
     const _t0 = performance.now();
     const startNode = graph.nodes.find(n => n.type === "start");
-    const runInputs = ((startNode?.config as { runInputs?: { name: string; description?: string }[] } | undefined)?.runInputs ?? []);
+    const runInputs = ((startNode?.config as { runInputs?: { name: string; description?: string; shape?: Shape }[] } | undefined)?.runInputs ?? []);
 
     const allIds = new Set(graph.nodes.map(n => n.id));
     const start = startNode?.id;
@@ -60,7 +61,12 @@ export function useUpstreamSources(
         groups: [{
           title: "Run inputs",
           scope: "run-input",
-          fields: runInputs.map(r => ({ name: r.name, description: r.description, scope: "run-input" })),
+          fields: runInputs.map(r => ({
+            name: r.name,
+            description: r.description,
+            scope: "run-input" as const,
+            shape: r.shape ?? ({ type: "string" } as Shape),
+          })),
         }],
       });
     }
@@ -77,7 +83,12 @@ export function useUpstreamSources(
         groups.push({
           title: "Inputs",
           scope: "input",
-          fields: inputEntries.map(([name, meta]) => ({ name, description: meta.label, scope: "input" })),
+          fields: inputEntries.map(([name, meta]) => ({
+            name,
+            description: meta.label,
+            scope: "input",
+            shape: meta.shape,
+          })),
         });
       }
       const outputEntries = Object.entries(outputSchema);
@@ -85,7 +96,12 @@ export function useUpstreamSources(
         groups.push({
           title: "Outputs",
           scope: "output",
-          fields: outputEntries.map(([name, s]) => ({ name, description: (s as { description?: string }).description, scope: "output" })),
+          fields: outputEntries.map(([name, s]) => ({
+            name,
+            description: (s as { description?: string }).description,
+            scope: "output",
+            shape: s as Shape,
+          })),
         });
       }
 

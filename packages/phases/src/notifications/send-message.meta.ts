@@ -1,5 +1,4 @@
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "../shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const SEND_MESSAGE_PHASE_TYPE = "send-message";
 export const SEND_MESSAGE_LABEL = "Send Message";
@@ -13,7 +12,7 @@ export const sendMessageOutputSchema: OutputSchema = {
 };
 
 export const sendMessageInputFields: InputFields = {
-  channel: { type: "string", label: "Channel / target", required: true },
-  message: { type: "string", label: "Message", required: true },
-  blocks:  { type: "json",   label: "Rich blocks (optional)" },
+  channel: { shape: { type: "string" }, label: "Channel / target", required: true },
+  message: { shape: { type: "string" }, label: "Message", required: true },
+  blocks:  { shape: { type: "object", fields: {} }, label: "Rich blocks (optional)" },
 };

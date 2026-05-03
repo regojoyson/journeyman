@@ -9,7 +9,7 @@ export type TabVisibility = "shown" | "hidden" | "required";
 export type ExecutorKind =
   | "coding-cli"
   | "git-provider"
-  | "ticket-provider"
+  | "issue-provider"
   | "notification"
   | "control";
 
@@ -45,7 +45,7 @@ export interface PhaseSummaryCtx {
 
 /**
  * Render a binding ref as a short, human-friendly token for canvas display.
- * `flow.input.ticketUrl` → `${ticketUrl}`
+ * `flow.input.issueUrl` → `${issueUrl}`
  * `node-abc.output.summary` → `${node-abc.summary}`
  */
 export function formatRefShort(ref: string | undefined | null): string {

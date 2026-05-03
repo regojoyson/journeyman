@@ -5,7 +5,7 @@ import type {
 } from "../types/pipeline.types.ts";
 import type { ICodingCLI } from "./coding-cli.interface.ts";
 import type { IGitProvider } from "./git-provider.interface.ts";
-import type { ITicketProvider } from "./ticket.interface.ts";
+import type { IIssueProvider } from "./issue.interface.ts";
 import type { INotificationProvider } from "./notification.interface.ts";
 
 export interface PipelineContext {
@@ -18,7 +18,7 @@ export interface PipelineContext {
   signal: AbortSignal;
   productConfig: ProductConfig;
   providers: {
-    ticket: ITicketProvider;
+    issue: IIssueProvider;
     git: IGitProvider;
     coding: ICodingCLI;
     notification: INotificationProvider;

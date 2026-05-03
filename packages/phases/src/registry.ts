@@ -18,11 +18,11 @@ import { listPullRequestsPhase } from "./git/list-pull-requests.tsx";
 import { commentOnPullRequestPhase } from "./git/comment-on-pull-request.tsx";
 import { listPullRequestCommentsPhase } from "./git/list-pull-request-comments.tsx";
 
-import { getTicketPhase } from "./tickets/get-ticket.tsx";
-import { createTicketPhase } from "./tickets/create-ticket.tsx";
-import { updateTicketFieldsPhase } from "./tickets/update-ticket-fields.tsx";
-import { transitionTicketPhase } from "./tickets/transition-ticket.tsx";
-import { commentOnTicketPhase } from "./tickets/comment-on-ticket.tsx";
+import { getIssuePhase } from "./issues/get-issue.tsx";
+import { createIssuePhase } from "./issues/create-issue.tsx";
+import { updateIssueFieldsPhase } from "./issues/update-issue-fields.tsx";
+import { transitionIssuePhase } from "./issues/transition-issue.tsx";
+import { commentOnIssuePhase } from "./issues/comment-on-issue.tsx";
 
 import { sendMessagePhase } from "./notifications/send-message.tsx";
 
@@ -39,7 +39,7 @@ export const builtInPhases: PhaseDefinition<any>[] = [
   // Code Host
   getRepositoryPhase, cloneReposPhase, openPullRequestPhase, listPullRequestsPhase, commentOnPullRequestPhase, listPullRequestCommentsPhase,
   // Issue Tracker
-  getTicketPhase, createTicketPhase, updateTicketFieldsPhase, transitionTicketPhase, commentOnTicketPhase,
+  getIssuePhase, createIssuePhase, updateIssueFieldsPhase, transitionIssuePhase, commentOnIssuePhase,
   // Messaging
   sendMessagePhase,
 ];

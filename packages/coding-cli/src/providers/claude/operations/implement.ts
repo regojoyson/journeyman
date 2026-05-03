@@ -94,7 +94,7 @@ const DEFAULT_RULES = [
 
 function buildPrompt(opts: ImplementOptions): string {
   const root = opts.repoDir.replace(/\/+$/, "");
-  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive from plan / analyze reports)";
+  const issue = opts.issueContent?.trim() || "(no issue content provided — derive from plan / analyze reports)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
@@ -111,18 +111,18 @@ function buildPrompt(opts: ImplementOptions): string {
     : "";
 
   return [
-    "You are a senior staff engineer IMPLEMENTING a ticket autonomously.",
+    "You are a senior staff engineer IMPLEMENTING a issue autonomously.",
     "",
     "=== AUTONOMY RULES (non-negotiable) ===",
     "  1. This run is FULLY AUTONOMOUS. There is no human on the other end. Nobody will answer you.",
     "  2. NEVER ask clarifying questions — not in text, not via tools. Questions will not be read.",
-    "  3. When information is missing or ambiguous, DECIDE. Pick the most reasonable approach based on the ticket + analyze + plan + existing codebase conventions + industry standards, proceed with the edits, and record the decision in `followUps`.",
+    "  3. When information is missing or ambiguous, DECIDE. Pick the most reasonable approach based on the issue + analyze + plan + existing codebase conventions + industry standards, proceed with the edits, and record the decision in `followUps`.",
     "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision. Ship working code — do not leave TODO stubs where a real implementation is expected.",
     "  5. Do not stall, loop, or abandon the task. If a step is blocked, mark that step 'failed' with a clear note and move on to the next step.",
     "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON report.",
     `${reviewBlock}`,
     "=== TICKET / GOAL ===",
-    ticket,
+    issue,
     "",
     "=== CODEBASE ===",
     `Root path: ${root}`,
@@ -138,7 +138,7 @@ function buildPrompt(opts: ImplementOptions): string {
     explicitPlan
       ? `  - Plan report provided: ${explicitPlan}. Read it in full.`
       : `  - Check ${planDir}. If present, read the MOST RECENT markdown plan in full. The plan's Steps section drives this work.`,
-    "  - If the plan is missing, derive a minimal ordered step list from the ticket + analyze report yourself before coding.",
+    "  - If the plan is missing, derive a minimal ordered step list from the issue + analyze report yourself before coding.",
     "",
     "=== STEP 2: IMPLEMENT ===",
     "  - Work through the plan's steps in order. For each step:",
@@ -154,7 +154,7 @@ function buildPrompt(opts: ImplementOptions): string {
     "",
     "=== STEP 4: WRITE THE IMPLEMENTATION REPORT TO DISK ===",
     `  1. mkdir -p ${implDir}`,
-    "  2. Derive a slug from the ticket key / plan title (kebab-case, lowercase).",
+    "  2. Derive a slug from the issue key / plan title (kebab-case, lowercase).",
     `  3. Write markdown to: ${implDir}/<slug>-<YYYYMMDD-HHmm>.md`,
     "     Required sections:",
     "       # <Implementation Title>",
@@ -169,15 +169,15 @@ function buildPrompt(opts: ImplementOptions): string {
     "",
     "=== RETURN JSON ===",
     "  - success: true only if all plan steps are done AND testsPassed is true.",
-    "  - implementationTitle: short human title, e.g. 'Implementation: <ticket key> — <short phrase>'.",
+    "  - implementationTitle: short human title, e.g. 'Implementation: <issue key> — <short phrase>'.",
     "  - approachSummary: 3-6 sentences on what you did and why.",
     "  - filesChanged: every file touched with { path, kind, summary }.",
     "  - steps: per-step outcome.",
     "  - testsRun: exact commands. testsPassed: overall verification result.",
     "  - followUps: assumptions made, skipped items, known gaps.",
-    "  - reportTitle: SHORT ticket-comment heading.",
+    "  - reportTitle: SHORT issue-comment heading.",
     "  - reportPath: absolute path of the markdown report.",
-    "  - summary: ticket-comment-ready markdown (4-8 lines). Must include TL;DR, success flag, #files changed,",
+    "  - summary: issue-comment-ready markdown (4-8 lines). Must include TL;DR, success flag, #files changed,",
     "    typecheck/test result, top follow-up, and 'Full report: <reportPath>'.",
     "",
     "Return ONLY the JSON matching the schema. No prose outside of it.",
@@ -185,11 +185,11 @@ function buildPrompt(opts: ImplementOptions): string {
 }
 
 /**
- * Autonomously implements a ticket in a local codebase. Reads the latest
+ * Autonomously implements a issue in a local codebase. Reads the latest
  * analyze + plan reports from docs/analyze and docs/plan, applies the plan's
  * steps through Edit/Write, runs the project's typecheck/tests, writes an
  * implementation report to docs/implement, and returns a structured
- * ImplementResult with a ticket-comment-ready title/path/summary.
+ * ImplementResult with a issue-comment-ready title/path/summary.
  *
  * Does NOT commit, push, or create branches — strictly a working-tree edit.
  */
@@ -251,7 +251,7 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await implement({
     repoDir: "/Users/admin/data/workspace/claude-skils/journeyman",
-    ticketContent:
+    issueContent:
       "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them.",
   });
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");

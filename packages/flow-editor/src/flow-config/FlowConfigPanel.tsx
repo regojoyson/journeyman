@@ -2,8 +2,6 @@ import type { FlowDefaults, FlowGraph } from "@journeyman/core";
 import { X } from "lucide-react";
 import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
 import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
-import { DefaultsInputsSection } from "./DefaultsInputsSection.tsx";
-import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
 export interface FlowConfigPanelProps {
   flow: FlowGraph;
@@ -14,7 +12,6 @@ export interface FlowConfigPanelProps {
 
 export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfigPanelProps) {
   const defaults = flow.defaults ?? {};
-  const catalog = usePhaseCatalog();
   const updateDefaults = (next: FlowDefaults) =>
     onChange({ ...flow, defaults: Object.keys(next).length ? next : undefined });
 
@@ -33,13 +30,6 @@ export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfi
 
       <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsRetrySection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
-      <DefaultsInputsSection
-        defaults={defaults}
-        onChange={updateDefaults}
-        flow={flow}
-        catalog={catalog}
-        readOnly={readOnly}
-      />
     </aside>
   );
 }

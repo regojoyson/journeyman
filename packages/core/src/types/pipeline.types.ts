@@ -2,7 +2,7 @@ export type IProviderMeta = {
   id: string;
   name: string;
   description: string;
-  category: "coding-cli" | "git" | "ticket" | "notification";
+  category: "coding-cli" | "git" | "issue" | "notification";
 };
 
 export type PhaseResult =
@@ -10,7 +10,7 @@ export type PhaseResult =
   | {
       status: "blocked";
       reason: string;
-      waitFor?: "ticket-comment" | "pr-comment" | "manual";
+      waitFor?: "issue-comment" | "pr-comment" | "manual";
       artifacts?: Record<string, unknown>;   // NEW — merged into run before blocking
     }
   | { status: "failed"; error: { message: string; code?: string; stack?: string } };
@@ -27,7 +27,7 @@ export type StepRecord = {
   output?: unknown;
   error?: { message: string; code?: string; stack?: string };
   blockedReason?: string;
-  waitFor?: "ticket-comment" | "pr-comment" | "manual";
+  waitFor?: "issue-comment" | "pr-comment" | "manual";
   /** Per-field source: "node" = explicit on the phase node; "flow-default" = inherited from FlowGraph.defaults. */
   inputSources?: Record<string, "node" | "flow-default">;
 };
@@ -50,7 +50,7 @@ export type ProductRepo = {
   defaultBranch: string;
 };
 
-export type TicketWorkflow = {
+export type IssueWorkflow = {
   trigger?: {
     matchLabels?: string[];
     matchStatus?: string[];
@@ -63,12 +63,12 @@ export type ProductConfig = {
   workspace: string;
   repos: ProductRepo[];
   providerConfig?: {
-    ticket?: Record<string, unknown>;
+    issue?: Record<string, unknown>;
     git?: Record<string, unknown>;
     coding?: Record<string, unknown>;
     notification?: Record<string, unknown>;
   };
-  ticketWorkflow?: TicketWorkflow;
+  issueWorkflow?: IssueWorkflow;
   webhookSecrets?: Record<string, string>;
   concurrency?: number;
 };
@@ -85,7 +85,7 @@ export type FlowStepDefinition = {
 
 export type FlowDefinition = {
   name: string;
-  providers: { ticket: string; git: string; coding: string; notification: string };
+  providers: { issue: string; git: string; coding: string; notification: string };
   steps: FlowStepDefinition[];
 };
 
@@ -140,7 +140,7 @@ export type PipelineTrigger = {
   flowName?: string;
   rawPayload: unknown;
   receivedAt: string;
-  eventType?: "new-ticket" | "status-change" | "comment";   // NEW
+  eventType?: "new-issue" | "status-change" | "comment";   // NEW
   newStatus?: string;                                         // NEW — literal status value
 };
 

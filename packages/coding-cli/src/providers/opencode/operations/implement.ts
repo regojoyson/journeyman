@@ -83,7 +83,7 @@ const DEFAULT_RULES = [
 
 function buildPrompt(opts: ImplementOptions): string {
   const root = opts.repoDir.replace(/\/+$/, "");
-  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive from plan / analyze reports)";
+  const issue = opts.issueContent?.trim() || "(no issue content provided — derive from plan / analyze reports)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
@@ -98,7 +98,7 @@ function buildPrompt(opts: ImplementOptions): string {
     : "";
 
   return [
-    "You are a senior staff engineer IMPLEMENTING a ticket autonomously.",
+    "You are a senior staff engineer IMPLEMENTING a issue autonomously.",
     "",
     "=== AUTONOMY RULES (non-negotiable) ===",
     "  1. This run is FULLY AUTONOMOUS. There is no human on the other end. Nobody will answer you.",
@@ -109,7 +109,7 @@ function buildPrompt(opts: ImplementOptions): string {
     "  6. Never output prose asking for confirmation. The only output is the final JSON report.",
     `${reviewBlock}`,
     "=== TICKET / GOAL ===",
-    ticket,
+    issue,
     "",
     "=== CODEBASE ===",
     `Root path: ${root}`,
@@ -125,7 +125,7 @@ function buildPrompt(opts: ImplementOptions): string {
     explicitPlan
       ? `  - Plan report provided: ${explicitPlan}. Read it in full.`
       : `  - Check ${planDir}. If present, read the MOST RECENT markdown plan in full. The plan's Steps section drives this work.`,
-    "  - If the plan is missing, derive a minimal ordered step list from the ticket + analyze report yourself before coding.",
+    "  - If the plan is missing, derive a minimal ordered step list from the issue + analyze report yourself before coding.",
     "",
     "=== STEP 2: IMPLEMENT ===",
     "  - Work through the plan's steps in order. For each step:",
@@ -141,7 +141,7 @@ function buildPrompt(opts: ImplementOptions): string {
     "",
     "=== STEP 4: WRITE THE IMPLEMENTATION REPORT TO DISK ===",
     `  1. mkdir -p ${implDir}`,
-    "  2. Derive a slug from the ticket key / plan title (kebab-case, lowercase).",
+    "  2. Derive a slug from the issue key / plan title (kebab-case, lowercase).",
     `  3. Write markdown to: ${implDir}/<slug>-<YYYYMMDD-HHmm>.md`,
     "     Required sections: # Implementation Title, ## Approach Summary, ## Files Changed, ## Steps Executed, ## Tests Run, ## Follow-ups, ## Linked Analyze Report, ## Linked Plan Report.",
     "  4. Verify the file exists with `ls -l` before returning.",

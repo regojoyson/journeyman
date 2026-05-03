@@ -49,7 +49,7 @@ export type ScanReposResult = SessionResult & {
 export type CheckoutRepoOptions = SessionOptions & {
   repos: string | string[] | CheckoutEntry | CheckoutEntry[];
   branch?: string;
-  ticket?: { id: string; title: string };
+  issue?: { id: string; title: string };
   signal?: AbortSignal;
   model?: string;
 };
@@ -163,14 +163,14 @@ export type ListPRResult = SessionResult & {
 
 export type CommitPushEntry = {
   repoDir: string;
-  ticket?: string;   // per-repo override of top-level ticket
+  issue?: string;   // per-repo override of top-level issue
   message?: string;  // full commit message; if set, skips AI generation
 };
 
 export type CommitPushReposOptions = SessionOptions & {
   repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  ticket?: string;                            // default ticket applied to all entries
-  pattern?: string;                           // default: "{ticket} : {summary}"
+  issue?: string;                            // default issue applied to all entries
+  pattern?: string;                           // default: "{issue} : {summary}"
   prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
   signal?: AbortSignal;
   model?: string;

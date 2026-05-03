@@ -7,6 +7,7 @@ import type {
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { applyFlowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
+import { validateRefShapeAgainst, type CatalogShapeEntry } from "./validate-ref-shape.ts";
 
 /**
  * Read-side migration: legacy nodes used `requiredSecrets: string[]` to declare
@@ -38,8 +39,8 @@ export class FlowValidationError extends Error {
 }
 
 export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkflowDef> {
-  static validateGraph(graph: FlowGraph): void {
-    new ConvertCtx(normalizeFlow(graph)).validate();
+  static validateGraph(graph: FlowGraph, catalog?: Map<string, CatalogShapeEntry>): void {
+    new ConvertCtx(normalizeFlow(graph), catalog).validate();
   }
 
   toEngineJson(def: FlowGraph, opts: {
@@ -69,7 +70,7 @@ class ConvertCtx {
   readonly outgoing: Map<string, FlowEdge[]>;
   emitted = new Set<string>();
 
-  constructor(public flow: FlowGraph) {
+  constructor(public flow: FlowGraph, private catalog?: Map<string, CatalogShapeEntry>) {
     this.nodes = new Map(flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
     for (const e of flow.edges) {
@@ -111,6 +112,19 @@ class ConvertCtx {
           throw new FlowValidationError(
             `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
           );
+        }
+        // Shape compatibility (only when a catalog is supplied).
+        if (this.catalog && node.type === "phase" && node.phaseType) {
+          const entry = this.catalog.get(node.phaseType);
+          const expected = entry?.inputFields?.[field]?.shape;
+          if (expected) {
+            const result = validateRefShapeAgainst(this.flow, val.ref, expected, this.catalog);
+            if (!result.ok) {
+              throw new FlowValidationError(
+                `Node '${node.id}' input '${field}': ${result.error}`,
+              );
+            }
+          }
         }
       }
     }

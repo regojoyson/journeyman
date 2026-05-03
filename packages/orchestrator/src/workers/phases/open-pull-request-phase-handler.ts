@@ -11,19 +11,19 @@ export class OpenPullRequestPhaseHandler implements IPhaseHandler {
     const owner = typeof input.owner === "string" ? input.owner : undefined;
     const repo = typeof input.repo === "string" ? input.repo : undefined;
     const title = typeof input.title === "string" ? input.title : undefined;
-    const sourceBranch = typeof input.sourceBranch === "string" ? input.sourceBranch : undefined;
-    const targetBranch = typeof input.targetBranch === "string" ? input.targetBranch : undefined;
+    const head = typeof input.head === "string" ? input.head : undefined;
+    const base = typeof input.base === "string" ? input.base : undefined;
     const body = typeof input.body === "string" ? input.body : undefined;
-    if (!owner || !repo || !title || !sourceBranch || !targetBranch) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "create-pr requires owner, repo, title, sourceBranch, targetBranch", retryable: false } };
+    if (!owner || !repo || !title || !head || !base) {
+      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "open-pull-request requires owner, repo, title, head, base", retryable: false } };
     }
     const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Creating PR ${owner}/${repo} ${sourceBranch} → ${targetBranch}`);
-    const result = await git.createPR({ owner, repo, title, body, sourceBranch, targetBranch, sessionId: ctx.runId });
+    ctx.log(`Creating PR ${owner}/${repo} ${head} → ${base}`);
+    const result = await git.createPR({ owner, repo, title, body, sourceBranch: head, targetBranch: base, sessionId: ctx.runId });
     if (result?.error) {
       log.error({ result }, "create-pr failed");
       return { kind: "failure", failure: { errorClass: "CreatePrFailed", message: String(result.error), retryable: true } };
     }
-    return { kind: "success", output: { id: result.id, url: result.url, number: result.number } };
+    return { kind: "success", output: { pullRequest: { id: result.id, url: result.url, number: result.number } } };
   }
 }

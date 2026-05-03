@@ -7,7 +7,7 @@ import type { CommitPushEntry, CommitPushReposOptions, CommitPushReposResult } f
 
 const log = createLogger("opencode:commit-push-repos");
 
-const DEFAULT_PATTERN = "{ticket} : {summary}";
+const DEFAULT_PATTERN = "{issue} : {summary}";
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -39,13 +39,13 @@ const OUTPUT_SCHEMA = {
 
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
 
-type NormalizedEntry = { repoDir: string; ticket?: string; message?: string };
+type NormalizedEntry = { repoDir: string; issue?: string; message?: string };
 
 function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) => {
-    if (typeof r === "string") return { repoDir: r, ticket: opts.ticket };
-    return { repoDir: r.repoDir, ticket: r.ticket ?? opts.ticket, message: r.message };
+    if (typeof r === "string") return { repoDir: r, issue: opts.issue };
+    return { repoDir: r.repoDir, issue: r.issue ?? opts.issue, message: r.message };
   });
 }
 
@@ -58,9 +58,9 @@ function buildPrompt(entries: NormalizedEntry[], pattern: string, prSummaryStyle
     `Entries:\n${entriesJson}`,
     "",
     `Commit message pattern: ${JSON.stringify(pattern)}`,
-    "Tokens: {ticket} (from entry.ticket), {summary} (you generate it from the diff).",
-    "If entry.ticket is absent and the pattern contains {ticket}, drop the ticket",
-    'portion cleanly (no leading/trailing " : " or "{ticket}" literal).',
+    "Tokens: {issue} (from entry.issue), {summary} (you generate it from the diff).",
+    "If entry.issue is absent and the pattern contains {issue}, drop the issue",
+    'portion cleanly (no leading/trailing " : " or "{issue}" literal).',
     "If entry.message is set, use it verbatim and skip {summary} generation.",
     "",
     `PR description style: ${prSummaryStyle}`,
@@ -84,8 +84,8 @@ function buildPrompt(entries: NormalizedEntry[], pattern: string, prSummaryStyle
     "   pushed: false with error: 'git user.name/user.email not configured'.",
     "3. Collect changed files: git diff --name-only, git diff --cached --name-only, ls-files --others --exclude-standard. Union unique sorted.",
     "4. Gather change context for the summary: git diff HEAD covers modified/deleted tracked files. For untracked files, cat them. If entry.message is not set, produce a concise imperative summary (<= 72 chars, no trailing period).",
-    "5. Build commitMessage from pattern substituting {ticket} and {summary}. If entry.message is set, use it verbatim.",
-    "6. Build PR-ready fields: title (<ticket>: <summary> or just <summary>), description (markdown summary of changes).",
+    "5. Build commitMessage from pattern substituting {issue} and {summary}. If entry.message is set, use it verbatim.",
+    "6. Build PR-ready fields: title (<issue>: <summary> or just <summary>), description (markdown summary of changes).",
     "   If prSummaryStyle is 'brief', write one short paragraph. If 'detailed', write one-line intro then bulleted file-by-file changes.",
     "7. `git -C <repoDir> add -A`",
     "8. `git -C <repoDir> commit -m \"<commitMessage>\"`. On hook failure: record pushed: false with error. Never retry with --no-verify.",
@@ -113,7 +113,7 @@ export async function commitPushRepos(
   }
 
   const entries = normalizeEntries(opts);
-  log.info({ sessionId, repoCount: entries.length, ticket: opts.ticket }, "commitPushRepos start");
+  log.info({ sessionId, repoCount: entries.length, issue: opts.issue }, "commitPushRepos start");
 
   if (entries.length === 0) {
     log.warn({ sessionId }, "commitPushRepos called with no repos");

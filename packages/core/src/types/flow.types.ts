@@ -26,8 +26,7 @@ export type FlowNodeType =
 
 export type FlowInputValue =
   | { kind: "literal"; value: unknown }
-  | { kind: "ref"; ref: string }
-  | { kind: "suppress" };
+  | { kind: "ref"; ref: string };
 
 export interface RunInputDef {
   name: string;
@@ -155,8 +154,6 @@ export interface FlowDefaults {
    * Each phase resolves its default via kindForPhaseType(phaseType).
    */
   executorConfig?: Partial<Record<ExecutorKind, { provider?: string }>>;
-  /** Default input wiring. Merged key-by-key into each node's `inputs`. */
-  inputs?: Record<string, FlowInputValue>;
 }
 
 export type McpTransport = "stdio" | "http" | "sse";

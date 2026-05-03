@@ -5,7 +5,6 @@ import { z } from "zod";
 const flowInputValueSchema = z.union([
   z.object({ kind: z.literal("literal"), value: z.unknown() }),
   z.object({ kind: z.literal("ref"), ref: z.string() }),
-  z.object({ kind: z.literal("suppress") }),
 ]);
 
 const secretBindingSchema = z.discriminatedUnion("mode", [
@@ -27,12 +26,11 @@ const retryPolicySchema = z.object({
   onFailure: z.enum(["error-edge", "fail-flow"]).optional(),
 });
 
-const executorKindSchema = z.enum(["coding-cli", "git-provider", "ticket-provider", "notification"]);
+const executorKindSchema = z.enum(["coding-cli", "git-provider", "issue-provider", "notification"]);
 
 const flowDefaultsSchema = z.object({
   retry:          retryPolicySchema.optional(),
   executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
-  inputs:         z.record(flowInputValueSchema).optional(),
 }).optional();
 
 const flowNodeSchema = z.object({

@@ -43,8 +43,8 @@ export { ImplementChangesPhaseHandler } from "./workers/phases/implement-changes
 export { CreateWorkspacePhaseHandler } from "./workers/phases/create-workspace-phase-handler.ts";
 export { StartFeatureBranchPhaseHandler } from "./workers/phases/start-feature-branch-phase-handler.ts";
 export { CloneReposPhaseHandler } from "./workers/phases/clone-repos-phase-handler.ts";
-export { GetTicketPhaseHandler } from "./workers/phases/get-ticket-phase-handler.ts";
-export { TransitionTicketPhaseHandler } from "./workers/phases/transition-ticket-phase-handler.ts";
+export { GetIssuePhaseHandler } from "./workers/phases/get-issue-phase-handler.ts";
+export { TransitionIssuePhaseHandler } from "./workers/phases/transition-issue-phase-handler.ts";
 export { ListWorkspaceFilesPhaseHandler } from "./workers/phases/list-workspace-files-phase-handler.ts";
 export { CommitAndPushPhaseHandler } from "./workers/phases/commit-and-push-phase-handler.ts";
 export { CleanupWorkspacePhaseHandler } from "./workers/phases/cleanup-workspace-phase-handler.ts";
@@ -52,9 +52,9 @@ export { GetRepositoryPhaseHandler } from "./workers/phases/get-repository-phase
 export { OpenPullRequestPhaseHandler } from "./workers/phases/open-pull-request-phase-handler.ts";
 export { ListPullRequestsPhaseHandler } from "./workers/phases/list-pull-requests-phase-handler.ts";
 export { ListPullRequestCommentsPhaseHandler } from "./workers/phases/list-pull-request-comments-phase-handler.ts";
-export { CreateTicketPhaseHandler } from "./workers/phases/create-ticket-phase-handler.ts";
-export { UpdateTicketFieldsPhaseHandler } from "./workers/phases/update-ticket-fields-phase-handler.ts";
-export { CommentOnTicketPhaseHandler } from "./workers/phases/comment-on-ticket-phase-handler.ts";
+export { CreateIssuePhaseHandler } from "./workers/phases/create-issue-phase-handler.ts";
+export { UpdateIssueFieldsPhaseHandler } from "./workers/phases/update-issue-fields-phase-handler.ts";
+export { CommentOnIssuePhaseHandler } from "./workers/phases/comment-on-issue-phase-handler.ts";
 export { SendMessagePhaseHandler } from "./workers/phases/send-message-phase-handler.ts";
 export { createPool } from "./stores/postgres/pg-pool.ts";
 export { RunSyncer } from "./sync/run-syncer.ts";

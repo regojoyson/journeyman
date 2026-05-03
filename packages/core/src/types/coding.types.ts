@@ -25,7 +25,7 @@ export interface CodingCLIProviderConfig {
 
 export type AnalyzeOptions = SessionOptions & {
   repoDir: string;
-  ticketContent?: string;
+  issueContent?: string;
   focus?: string;
   /** Optional — reviewer feedback (markdown) to incorporate into analysis. */
   reviewComments?: string;
@@ -33,7 +33,7 @@ export type AnalyzeOptions = SessionOptions & {
   model?: string;
 };
 
-export type AnalyzeTicketType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
+export type AnalyzeIssueType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
 export type AnalyzeSeverity = "critical" | "high" | "medium" | "low" | "info";
 export type AnalyzeComplexity = "trivial" | "low" | "medium" | "high" | "very-high";
 export type AnalyzeFindingCategory =
@@ -57,8 +57,8 @@ export type AnalyzeFinding = {
 };
 
 export type AnalyzeResult = SessionResult & {
-  ticketSummary: string;
-  ticketType: AnalyzeTicketType;
+  issueSummary: string;
+  issueType: AnalyzeIssueType;
   codebaseSummary: string;
   affectedAreas: string[];
   findings: AnalyzeFinding[];
@@ -75,8 +75,8 @@ export type AnalyzeResult = SessionResult & {
 
 export type PlanOptions = SessionOptions & {
   repoDir: string;
-  /** Optional — ticket / goal text. If omitted, the plan is derived purely from the analyze report. */
-  ticketContent?: string;
+  /** Optional — issue / goal text. If omitted, the plan is derived purely from the analyze report. */
+  issueContent?: string;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest report in docs/analyze is used. */
   analyzeReportPath?: string;
   /** Optional narrowing of scope. */
@@ -128,8 +128,8 @@ export type PlanResult = SessionResult & {
 
 export type ImplementOptions = SessionOptions & {
   repoDir: string;
-  /** Optional — ticket / goal text. */
-  ticketContent?: string;
+  /** Optional — issue / goal text. */
+  issueContent?: string;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest file in docs/analyze is used. */
   analyzeReportPath?: string;
   /** Optional — explicit path to a prior plan report (markdown). If omitted, the latest file in docs/plan is used. */

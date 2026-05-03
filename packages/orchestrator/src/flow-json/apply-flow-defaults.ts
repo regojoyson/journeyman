@@ -1,5 +1,5 @@
 import { kindForPhaseType } from "@journeyman/core";
-import type { FlowNode, FlowDefaults, RetryPolicy, FlowInputValue } from "@journeyman/core";
+import type { FlowNode, FlowDefaults, RetryPolicy } from "@journeyman/core";
 
 export type FieldSources = Record<string, "node" | "flow-default">;
 
@@ -21,10 +21,9 @@ export function applyFlowDefaults(
 
   const retry          = mergeRetry(node.retry, defaults.retry, sources);
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);
-  const inputs         = mergeInputs(node.inputs, defaults.inputs, sources);
 
   return {
-    resolved: { ...node, retry, executorConfig, inputs },
+    resolved: { ...node, retry, executorConfig },
     sources,
   };
 }
@@ -59,20 +58,3 @@ function mergeExecutorConfig(
   return { ...def, ...node };
 }
 
-function mergeInputs(
-  node: Record<string, FlowInputValue> | null | undefined,
-  def: Record<string, FlowInputValue> | undefined,
-  sources: FieldSources,
-): Record<string, FlowInputValue> | undefined {
-  if (node === null) return undefined;
-  if (!def) return node ?? undefined;
-  const merged: Record<string, FlowInputValue> = { ...def, ...(node ?? {}) };
-  for (const [k, v] of Object.entries(merged)) {
-    if (v.kind === "suppress") {
-      delete merged[k];
-    } else {
-      sources[`inputs.${k}`] = node && k in node ? "node" : "flow-default";
-    }
-  }
-  return merged;
-}

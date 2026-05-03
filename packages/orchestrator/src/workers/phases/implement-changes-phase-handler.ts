@@ -11,7 +11,7 @@ const log = createLogger("worker:implement");
  * Required input keys:
  *   - repoDir            — absolute path to the repo
  * Optional input keys:
- *   - ticketContent      — markdown body of the ticket
+ *   - issueContent      — markdown body of the issue
  *   - analyzeReportPath  — explicit path to a prior analyze report
  *   - planReportPath     — explicit path to a prior plan report
  *   - extraRules         — string[] of additional rules
@@ -38,7 +38,7 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
         },
       };
     }
-    const ticketContent = typeof input.ticketContent === "string" ? input.ticketContent : undefined;
+    const issueContent = typeof input.issueContent === "string" ? input.issueContent : undefined;
     const analyzeReportPath = typeof input.analyzeReportPath === "string" ? input.analyzeReportPath : undefined;
     const planReportPath = typeof input.planReportPath === "string" ? input.planReportPath : undefined;
     const focus = typeof input.focus === "string" ? input.focus : undefined;
@@ -51,7 +51,7 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
     ctx.log(`Implementing ${repoDir}`);
     const result = await coding.implement({
       repoDir,
-      ticketContent,
+      issueContent,
       analyzeReportPath,
       planReportPath,
       extraRules,

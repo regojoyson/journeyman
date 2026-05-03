@@ -29,7 +29,7 @@ export const sendMessagePhase: PhaseDefinition<SendMessageConfig> = {
   }),
   configFields: {
     channel: { label: "Channel / target", widget: "text", help: "e.g. #deploys (Slack)" },
-    message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{ticket}" },
+    message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{issue}" },
     blocks:  { label: "Rich blocks (optional)", widget: "code", help: "Provider-specific rich formatting JSON" },
   },
   tabs: { io: "hidden", mcp: "hidden", retry: "shown" },

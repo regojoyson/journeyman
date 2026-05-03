@@ -1,5 +1,4 @@
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "../shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const CREATE_WORKSPACE_PHASE_TYPE = "create-workspace";
 export const CREATE_WORKSPACE_LABEL = "Create Workspace";
@@ -9,8 +8,9 @@ export const CREATE_WORKSPACE_DESCRIPTION =
 
 export const createWorkspaceOutputSchema: OutputSchema = {
   workspaceDir: { type: "string" },
+  folderName:   { type: "string" },
 };
 
 export const createWorkspaceInputFields: InputFields = {
-  issueRef: { type: "string", label: "Issue ref" },
+  issueRef: { shape: { type: "string" }, label: "Issue ref", required: true },
 };

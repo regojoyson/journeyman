@@ -1,21 +1,33 @@
 {
   "name": "analyze-only",
-  "description": "Phase 1 smoke: a single 'analyze' phase with hand-supplied inputs.",
+  "description": "Smoke flow: a single 'analyze-repo' phase fed by run inputs.",
   "definition": {
     "schemaVersion": 1,
     "nodes": [
-      { "id": "s",  "type": "start" },
       {
-        "id": "step_analyze",
-        "type": "phase",
-        "phaseType": "analyze",
-        "config": {}
+        "id": "start",
+        "type": "start",
+        "config": {
+          "runInputs": [
+            { "name": "repoDir",      "type": "string", "required": true },
+            { "name": "issueContent", "type": "string", "required": true }
+          ]
+        }
       },
-      { "id": "e",  "type": "end" }
+      {
+        "id": "n_analyze",
+        "type": "phase",
+        "phaseType": "analyze-repo",
+        "inputs": {
+          "repoDir":      { "kind": "ref", "ref": "workflow.input.repoDir" },
+          "issueContent": { "kind": "ref", "ref": "workflow.input.issueContent" }
+        }
+      },
+      { "id": "end", "type": "end" }
     ],
     "edges": [
-      { "id": "e1", "source": "s", "target": "step_analyze" },
-      { "id": "e2", "source": "step_analyze", "target": "e" }
+      { "id": "e1", "source": "start",     "target": "n_analyze" },
+      { "id": "e2", "source": "n_analyze", "target": "end" }
     ]
   }
 }

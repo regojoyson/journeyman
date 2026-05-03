@@ -11,7 +11,7 @@ import {
 interface ImplementChangesConfig {
   repoDir: string;
   planReportPath: string;
-  ticketContent?: string;
+  issueContent?: string;
   analyzeReportPath?: string;
 }
 
@@ -22,17 +22,17 @@ export const implementChangesPhase: PhaseDefinition<ImplementChangesConfig> = {
   description: IMPLEMENT_CHANGES_DESCRIPTION,
   color: "#6c5ce7",
   icon: "🛠",
-  defaultConfig: { repoDir: "", planReportPath: "", ticketContent: "", analyzeReportPath: "" },
+  defaultConfig: { repoDir: "", planReportPath: "", issueContent: "", analyzeReportPath: "" },
   configSchema: z.object({
     repoDir: z.string().min(1),
     planReportPath: z.string().min(1),
-    ticketContent: z.string().optional(),
+    issueContent: z.string().optional(),
     analyzeReportPath: z.string().optional(),
   }),
   configFields: {
     repoDir:           { label: "Repo directory",       widget: "text" },
     planReportPath:    { label: "Plan report path",     widget: "text", help: "Path to a prior plan output" },
-    ticketContent:     { label: "Ticket content",       widget: "textarea", help: "Markdown body of the ticket" },
+    issueContent:     { label: "Issue content",       widget: "textarea", help: "Markdown body of the issue" },
     analyzeReportPath: { label: "Analyze report path",  widget: "text", help: "Optional path to a prior analyze output" },
   },
   tabs: { io: "shown", mcp: "shown", retry: "shown" },

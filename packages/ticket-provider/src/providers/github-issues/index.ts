@@ -1,19 +1,19 @@
-import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
+import type { IIssueProvider, IProviderMeta } from "@journeyman/core";
 import type {
-  CreateTicketOptions, CreateTicketResult,
-  UpdateTicketOptions, UpdateTicketResult,
-  GetTicketOptions, GetTicketResult,
-  ListTicketsOptions, ListTicketsResult,
-  GetTicketSchemaOptions, GetTicketSchemaResult,
+  CreateIssueOptions, CreateIssueResult,
+  UpdateIssueOptions, UpdateIssueResult,
+  GetIssueOptions, GetIssueResult,
+  ListIssuesOptions, ListIssuesResult,
+  GetIssueSchemaOptions, GetIssueSchemaResult,
   AddCommentOptions, AddCommentResult,
   UpdateStatusOptions, UpdateStatusResult,
 } from "@journeyman/core";
 import { createGitHubClient, type GitHubClient } from "@journeyman/github-api";
-import { createTicket } from "./operations/create-ticket.ts";
-import { updateTicket } from "./operations/update-ticket.ts";
-import { getTicket } from "./operations/get-ticket.ts";
-import { listTickets } from "./operations/list-tickets.ts";
-import { getTicketSchema } from "./operations/get-ticket-schema.ts";
+import { createIssue } from "./operations/create-issue.ts";
+import { updateIssue } from "./operations/update-issue.ts";
+import { getIssue } from "./operations/get-issue.ts";
+import { listIssues } from "./operations/list-issues.ts";
+import { getIssueSchema } from "./operations/get-issue-schema.ts";
 import { addComment } from "./operations/add-comment.ts";
 import { updateStatus } from "./operations/update-status.ts";
 
@@ -36,32 +36,32 @@ export type GitHubIssuesProviderOptions = {
  * - `status` maps to GitHub's binary `open`/`closed` (lossy).
  * - `priority`, `issueType`, `customFields` have no GitHub equivalent — ignored.
  */
-export class GitHubIssuesProvider implements ITicketProvider {
+export class GitHubIssuesProvider implements IIssueProvider {
   static meta: IProviderMeta = {
     id: "github-issues",
     name: "GitHub Issues",
-    description: "GitHub Issues as ticket provider",
-    category: "ticket",
+    description: "GitHub Issues as issue provider",
+    category: "issue",
   };
 
   private client?: GitHubClient;
 
   constructor(private readonly opts: GitHubIssuesProviderOptions = {}) {}
 
-  async createTicket(opts: CreateTicketOptions): Promise<CreateTicketResult> {
-    return createTicket(this.getClient(), opts);
+  async createIssue(opts: CreateIssueOptions): Promise<CreateIssueResult> {
+    return createIssue(this.getClient(), opts);
   }
-  async updateTicket(opts: UpdateTicketOptions): Promise<UpdateTicketResult> {
-    return updateTicket(this.getClient(), opts);
+  async updateIssue(opts: UpdateIssueOptions): Promise<UpdateIssueResult> {
+    return updateIssue(this.getClient(), opts);
   }
-  async getTicket(opts: GetTicketOptions): Promise<GetTicketResult> {
-    return getTicket(this.getClient(), opts);
+  async getIssue(opts: GetIssueOptions): Promise<GetIssueResult> {
+    return getIssue(this.getClient(), opts);
   }
-  async listTickets(opts: ListTicketsOptions): Promise<ListTicketsResult> {
-    return listTickets(this.getClient(), opts);
+  async listIssues(opts: ListIssuesOptions): Promise<ListIssuesResult> {
+    return listIssues(this.getClient(), opts);
   }
-  async getTicketSchema(opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> {
-    return getTicketSchema(opts);
+  async getIssueSchema(opts: GetIssueSchemaOptions): Promise<GetIssueSchemaResult> {
+    return getIssueSchema(opts);
   }
   async addComment(opts: AddCommentOptions): Promise<AddCommentResult> {
     return addComment(this.getClient(), opts);
@@ -77,7 +77,7 @@ export class GitHubIssuesProvider implements ITicketProvider {
       }
       this.client = createGitHubClient({
         token: this.opts.token,
-        userAgent: "journeyman-ticket-provider/0.1.0",
+        userAgent: "journeyman-issue-provider/0.1.0",
       });
     }
     return this.client;

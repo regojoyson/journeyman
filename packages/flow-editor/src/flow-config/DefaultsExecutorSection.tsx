@@ -5,11 +5,11 @@ import { PROVIDER_CATALOG } from "@journeyman/core";
 const KIND_LABELS: Record<CoreExecutorKind, string> = {
   "coding-cli":      "Coding CLI",
   "git-provider":    "Git Provider",
-  "ticket-provider": "Ticket Provider",
+  "issue-provider": "Issue Provider",
   "notification":    "Notification",
 };
 
-const EXECUTOR_KINDS: CoreExecutorKind[] = ["coding-cli", "git-provider", "ticket-provider", "notification"];
+const EXECUTOR_KINDS: CoreExecutorKind[] = ["coding-cli", "git-provider", "issue-provider", "notification"];
 
 const CATALOG_BY_KIND = (() => {
   const groups: Record<string, Array<{ value: string; label: string; implemented: boolean }>> = {};

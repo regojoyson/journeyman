@@ -16,13 +16,13 @@ export interface ExecutorKindCommonConfig {
   provider?: ProviderOption[];
 }
 
-const EDITOR_KINDS = ["coding-cli", "git-provider", "ticket-provider", "notification"] as const;
+const EDITOR_KINDS = ["coding-cli", "git-provider", "issue-provider", "notification"] as const;
 
 function buildCommonConfig(): Record<ExecutorKind, ExecutorKindCommonConfig> {
   const out: Record<ExecutorKind, ExecutorKindCommonConfig> = {
     "coding-cli": {},
     "git-provider": {},
-    "ticket-provider": {},
+    "issue-provider": {},
     "notification": {},
     "control": {},
   };

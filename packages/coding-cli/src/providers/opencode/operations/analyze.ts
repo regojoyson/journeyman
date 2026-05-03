@@ -8,8 +8,8 @@ import type { AnalyzeOptions, AnalyzeResult } from "@journeyman/core";
 const log = createLogger("opencode:analyze");
 
 const EMPTY_RESULT: Omit<AnalyzeResult, "sessionId"> = {
-  ticketSummary: "",
-  ticketType: "other",
+  issueSummary: "",
+  issueType: "other",
   codebaseSummary: "",
   affectedAreas: [],
   findings: [],
@@ -26,8 +26,8 @@ const EMPTY_RESULT: Omit<AnalyzeResult, "sessionId"> = {
 const OUTPUT_SCHEMA = {
   type: "object",
   properties: {
-    ticketSummary: { type: "string" },
-    ticketType: { type: "string", enum: ["bug", "feature", "enhancement", "task", "refactor", "other"] },
+    issueSummary: { type: "string" },
+    issueType: { type: "string", enum: ["bug", "feature", "enhancement", "task", "refactor", "other"] },
     codebaseSummary: { type: "string" },
     affectedAreas: { type: "array", items: { type: "string" } },
     findings: {
@@ -56,13 +56,13 @@ const OUTPUT_SCHEMA = {
     summary: { type: "string" },
     error: { type: "string" },
   },
-  required: ["ticketSummary", "ticketType", "codebaseSummary", "affectedAreas", "findings", "assumptions", "risks", "recommendations", "complexity", "readinessScore", "reportTitle", "reportPath", "summary"],
+  required: ["issueSummary", "issueType", "codebaseSummary", "affectedAreas", "findings", "assumptions", "risks", "recommendations", "complexity", "readinessScore", "reportTitle", "reportPath", "summary"],
 } as const;
 
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: true, grep: true, write: true };
 
 function buildPrompt(opts: AnalyzeOptions): string {
-  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — infer intent from repoDir)";
+  const issue = opts.issueContent?.trim() || "(no issue content provided — infer intent from repoDir)";
   const focus = opts.focus?.trim();
   const docsDir = `${opts.repoDir.replace(/\/+$/, "")}/docs/analyze`;
   const reviewBlock = opts.reviewComments
@@ -70,37 +70,37 @@ function buildPrompt(opts: AnalyzeOptions): string {
     : "";
 
   return [
-    "You are a senior staff engineer performing a speckit-style analysis of a ticket against a codebase.",
+    "You are a senior staff engineer performing a speckit-style analysis of a issue against a codebase.",
     "",
     "=== AUTONOMY RULES (non-negotiable) ===",
     "  1. This run is FULLY AUTONOMOUS. There is no human on the other end. Nobody will answer you.",
     "  2. NEVER ask clarifying questions — not in text, not via tools. Questions will not be read.",
-    "  3. When information is missing or ambiguous, DECIDE. Pick the most reasonable interpretation based on the ticket + codebase + industry standards, proceed, and record the decision in `assumptions`.",
+    "  3. When information is missing or ambiguous, DECIDE. Pick the most reasonable interpretation based on the issue + codebase + industry standards, proceed, and record the decision in `assumptions`.",
     "  4. Prefer the BEST approach on the merits, not the 'safest' approach that defers the decision.",
     "  5. Do not stall, loop, or abandon the task. Always produce a complete report — even a partial analysis is better than no output.",
     "  6. Never output prose asking for confirmation, approval, or next steps. The only output is the final JSON report.",
     `${reviewBlock}`,
     "=== TICKET ===",
-    ticket,
+    issue,
     "",
     "=== CODEBASE ===",
     `Root path: ${opts.repoDir}`,
-    focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the ticket.",
+    focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the issue.",
     "",
     "=== INVESTIGATION STEPS (use Bash / Read / Grep / Glob) ===",
     `  1. ls ${opts.repoDir} and inspect top-level structure`,
     "  2. Read README / package.json / pyproject / go.mod etc. to understand the project",
-    "  3. grep for keywords from the ticket (feature names, symbols, identifiers) to locate affected modules",
-    "  4. Read the most relevant files (entrypoints, modules matching the ticket scope)",
-    "  5. Cross-reference the ticket requirements against what the code currently does",
+    "  3. grep for keywords from the issue (feature names, symbols, identifiers) to locate affected modules",
+    "  4. Read the most relevant files (entrypoints, modules matching the issue scope)",
+    "  5. Cross-reference the issue requirements against what the code currently does",
     "",
     "=== WRITE THE REPORT TO DISK ===",
     `  1. Ensure the docs directory exists: mkdir -p ${docsDir}`,
-    "  2. Derive a slug from the ticket key/title (kebab-case, lowercase, alnum+dashes).",
+    "  2. Derive a slug from the issue key/title (kebab-case, lowercase, alnum+dashes).",
     `  3. Write a markdown report to: ${docsDir}/<slug>-<YYYYMMDD-HHmm>.md`,
     "     Use a heredoc or the file tool. The markdown MUST contain sections:",
     "       # <Report Title>",
-    "       ## Ticket Summary, ## Ticket Type, ## Codebase Summary,",
+    "       ## Issue Summary, ## Issue Type, ## Codebase Summary,",
     "       ## Affected Areas, ## Findings (table: id | category | severity | title | location),",
     "       ## Assumptions, ## Risks, ## Recommendations,",
     "       ## Complexity, ## Readiness Score.",
@@ -108,21 +108,21 @@ function buildPrompt(opts: AnalyzeOptions): string {
     "",
     "=== REPORT REQUIREMENTS (speckit-style) ===",
     "Return a structured JSON report with these fields:",
-    "  - ticketSummary: 1-3 sentence plain-language summary of what the ticket asks for.",
-    "  - ticketType: bug | feature | enhancement | task | refactor | other.",
+    "  - issueSummary: 1-3 sentence plain-language summary of what the issue asks for.",
+    "  - issueType: bug | feature | enhancement | task | refactor | other.",
     "  - codebaseSummary: what the relevant parts of the codebase currently do.",
     "  - affectedAreas: list of file paths / modules / components that would be touched.",
     "  - findings: array — each { id (F-001 style), category, severity, title, description, location?, recommendation? }.",
     "    categories: ambiguity | inconsistency | underspecified | duplication | risk | terminology | coverage-gap | assumption.",
     "    severity: critical | high | medium | low | info.",
-    "  - assumptions: assumptions you had to make because the ticket was underspecified.",
+    "  - assumptions: assumptions you had to make because the issue was underspecified.",
     "  - risks: things that could go wrong during implementation.",
     "  - recommendations: concrete next steps, ordered by priority.",
     "  - complexity: trivial | low | medium | high | very-high.",
     "  - readinessScore: 0-100. 100 = crystal clear; 0 = unworkable without clarification.",
     "  - reportTitle: short human title for the report.",
     "  - reportPath: absolute path of the markdown file you just wrote.",
-    "  - summary: a concise ticket-comment-ready summary (markdown, 4-8 short lines or bullets).",
+    "  - summary: a concise issue-comment-ready summary (markdown, 4-8 short lines or bullets).",
     "",
     "Return ONLY the JSON matching the schema. No prose outside of it.",
   ].join("\n");
@@ -162,7 +162,7 @@ export async function analyze(
   const output = { ...(info.structured as AnalyzeResult), sessionId };
   log.info({
     sessionId,
-    ticketType: output.ticketType,
+    issueType: output.issueType,
     complexity: output.complexity,
     readinessScore: output.readinessScore,
     findingCount: output.findings.length,

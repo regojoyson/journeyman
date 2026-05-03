@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { OutputSchema } from "@journeyman/core";
+import type { OutputSchema, InputField } from "@journeyman/core";
 
-export interface PhaseInputFieldMeta { type: string; label?: string }
+export type PhaseInputFieldMeta = InputField;
 export interface PhaseCatalogEntry {
   phaseType: string;
   label: string;

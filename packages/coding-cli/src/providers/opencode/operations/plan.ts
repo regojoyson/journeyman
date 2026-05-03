@@ -64,7 +64,7 @@ const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: t
 
 function buildPrompt(opts: PlanOptions): string {
   const root = opts.repoDir.replace(/\/+$/, "");
-  const ticket = opts.ticketContent?.trim() || "(no ticket content provided — derive goal from analyze report)";
+  const issue = opts.issueContent?.trim() || "(no issue content provided — derive goal from analyze report)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
@@ -85,7 +85,7 @@ function buildPrompt(opts: PlanOptions): string {
     "  6. Never output prose asking for confirmation. The only output is the final JSON plan.",
     `${reviewBlock}`,
     "=== TICKET / GOAL ===",
-    ticket,
+    issue,
     "",
     "=== CODEBASE ===",
     `Root path: ${root}`,
@@ -97,7 +97,7 @@ function buildPrompt(opts: PlanOptions): string {
       : [
           `  - Check if ${analyzeDir} exists (ls -la).`,
           `  - If it exists, pick the MOST RECENT markdown report and read it in full.`,
-          `  - If the directory is missing or empty, proceed using only the ticket + codebase (note this in openQuestions).`,
+          `  - If the directory is missing or empty, proceed using only the issue + codebase (note this in openQuestions).`,
         ].join("\n"),
     "  - Extract: affected areas, findings, assumptions, risks, recommendations, readiness score.",
     "  - Your plan must directly address the findings and recommendations from the analyze report.",
@@ -109,7 +109,7 @@ function buildPrompt(opts: PlanOptions): string {
     "",
     "=== STEP 3: WRITE THE PLAN REPORT TO DISK ===",
     `  1. mkdir -p ${planDir}`,
-    "  2. Derive a slug from the ticket key/title (kebab-case, lowercase).",
+    "  2. Derive a slug from the issue key/title (kebab-case, lowercase).",
     `  3. Write markdown to: ${planDir}/<slug>-<YYYYMMDD-HHmm>.md`,
     "     Required sections: # Plan Title, ## Goal, ## Approach Summary, ## Affected Files, ## Steps, ## Test Strategy, ## Rollout Notes, ## Risks, ## Open Questions, ## Estimated Complexity, ## Linked Analyze Report.",
     "  4. Verify the file exists with `ls -l` before returning.",

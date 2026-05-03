@@ -1,5 +1,4 @@
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "../shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const COMMIT_AND_PUSH_PHASE_TYPE = "commit-and-push";
 export const COMMIT_AND_PUSH_LABEL = "Commit & Push";
@@ -9,11 +8,12 @@ export const COMMIT_AND_PUSH_DESCRIPTION =
 
 export const commitAndPushOutputSchema: OutputSchema = {
   commitSha: { type: "string" },
-  pushed: { type: "boolean" },
+  pushed:    { type: "boolean" },
+  repos:     { type: "array", items: { type: "ref", name: "Repo" } },
 };
 
 export const commitAndPushInputFields: InputFields = {
-  repos:   { type: "string", label: "Repos", required: true, bindOnly: true },
-  message: { type: "string", label: "Message", required: true },
-  branch:  { type: "string", label: "Branch" },
+  repos:   { shape: { type: "array", items: { type: "ref", name: "Repo" } }, label: "Repos", required: true, bindOnly: true },
+  issue:   { shape: { type: "string" }, label: "Issue (commit subject)" },
+  pattern: { shape: { type: "string" }, label: "Message pattern (e.g. {issue} : {summary})" },
 };

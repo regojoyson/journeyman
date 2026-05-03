@@ -31,12 +31,4 @@ export interface PhaseContext {
   log(line: string, meta?: Record<string, unknown>): void;
 }
 
-export type OutputFieldType = "string" | "number" | "boolean" | "string[]" | "json" | "enum";
-
-export interface OutputFieldSchema {
-  type: OutputFieldType;
-  description?: string;
-  values?: readonly string[];
-}
-
-export type OutputSchema = Record<string, OutputFieldSchema>;
+export type { OutputSchema } from "./shape.types.ts";

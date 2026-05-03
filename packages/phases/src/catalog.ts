@@ -2,8 +2,7 @@
 // only from sibling .meta.ts files (never from .tsx). Backend (api-server)
 // imports this via the "@journeyman/phases/catalog" subpath export to keep
 // React out of the server bundle.
-import type { OutputSchema } from "@journeyman/core";
-import type { InputFields } from "./shared-meta.ts";
+import type { OutputSchema, InputFields } from "@journeyman/core";
 
 import {
   ANALYZE_REPO_PHASE_TYPE, ANALYZE_REPO_LABEL, ANALYZE_REPO_CATEGORY, ANALYZE_REPO_DESCRIPTION,
@@ -49,56 +48,56 @@ import {
 import {
   GET_REPOSITORY_PHASE_TYPE, GET_REPOSITORY_LABEL, GET_REPOSITORY_CATEGORY,
   GET_REPOSITORY_DESCRIPTION,
-  getRepositoryInputFields,
+  getRepositoryInputFields, getRepositoryOutputSchema,
 } from "./git/get-repository.meta.ts";
 import {
   CLONE_REPOS_PHASE_TYPE, CLONE_REPOS_LABEL, CLONE_REPOS_CATEGORY, CLONE_REPOS_DESCRIPTION,
-  cloneReposInputFields,
+  cloneReposInputFields, cloneReposOutputSchema,
 } from "./git/clone-repos.meta.ts";
 import {
   OPEN_PULL_REQUEST_PHASE_TYPE, OPEN_PULL_REQUEST_LABEL, OPEN_PULL_REQUEST_CATEGORY,
   OPEN_PULL_REQUEST_DESCRIPTION,
-  openPullRequestInputFields,
+  openPullRequestInputFields, openPullRequestOutputSchema,
 } from "./git/open-pull-request.meta.ts";
 import {
   LIST_PULL_REQUESTS_PHASE_TYPE, LIST_PULL_REQUESTS_LABEL, LIST_PULL_REQUESTS_CATEGORY,
   LIST_PULL_REQUESTS_DESCRIPTION,
-  listPullRequestsInputFields,
+  listPullRequestsInputFields, listPullRequestsOutputSchema,
 } from "./git/list-pull-requests.meta.ts";
 import {
   COMMENT_ON_PULL_REQUEST_PHASE_TYPE, COMMENT_ON_PULL_REQUEST_LABEL, COMMENT_ON_PULL_REQUEST_CATEGORY,
   COMMENT_ON_PULL_REQUEST_DESCRIPTION,
-  commentOnPullRequestInputFields,
+  commentOnPullRequestInputFields, commentOnPullRequestOutputSchema,
 } from "./git/comment-on-pull-request.meta.ts";
 import {
   LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE, LIST_PULL_REQUEST_COMMENTS_LABEL, LIST_PULL_REQUEST_COMMENTS_CATEGORY,
   LIST_PULL_REQUEST_COMMENTS_DESCRIPTION,
-  listPullRequestCommentsInputFields,
+  listPullRequestCommentsInputFields, listPullRequestCommentsOutputSchema,
 } from "./git/list-pull-request-comments.meta.ts";
 
 import {
-  GET_TICKET_PHASE_TYPE, GET_TICKET_LABEL, GET_TICKET_CATEGORY, GET_TICKET_DESCRIPTION,
-  getTicketOutputSchema, getTicketInputFields,
-} from "./tickets/get-ticket.meta.ts";
+  GET_ISSUE_PHASE_TYPE, GET_ISSUE_LABEL, GET_ISSUE_CATEGORY, GET_ISSUE_DESCRIPTION,
+  getIssueOutputSchema, getIssueInputFields,
+} from "./issues/get-issue.meta.ts";
 import {
-  CREATE_TICKET_PHASE_TYPE, CREATE_TICKET_LABEL, CREATE_TICKET_CATEGORY, CREATE_TICKET_DESCRIPTION,
-  createTicketOutputSchema, createTicketInputFields,
-} from "./tickets/create-ticket.meta.ts";
+  CREATE_ISSUE_PHASE_TYPE, CREATE_ISSUE_LABEL, CREATE_ISSUE_CATEGORY, CREATE_ISSUE_DESCRIPTION,
+  createIssueOutputSchema, createIssueInputFields,
+} from "./issues/create-issue.meta.ts";
 import {
-  UPDATE_TICKET_FIELDS_PHASE_TYPE, UPDATE_TICKET_FIELDS_LABEL, UPDATE_TICKET_FIELDS_CATEGORY,
-  UPDATE_TICKET_FIELDS_DESCRIPTION,
-  updateTicketFieldsOutputSchema, updateTicketFieldsInputFields,
-} from "./tickets/update-ticket-fields.meta.ts";
+  UPDATE_ISSUE_FIELDS_PHASE_TYPE, UPDATE_ISSUE_FIELDS_LABEL, UPDATE_ISSUE_FIELDS_CATEGORY,
+  UPDATE_ISSUE_FIELDS_DESCRIPTION,
+  updateIssueFieldsOutputSchema, updateIssueFieldsInputFields,
+} from "./issues/update-issue-fields.meta.ts";
 import {
-  TRANSITION_TICKET_PHASE_TYPE, TRANSITION_TICKET_LABEL, TRANSITION_TICKET_CATEGORY,
-  TRANSITION_TICKET_DESCRIPTION,
-  transitionTicketOutputSchema, transitionTicketInputFields,
-} from "./tickets/transition-ticket.meta.ts";
+  TRANSITION_ISSUE_PHASE_TYPE, TRANSITION_ISSUE_LABEL, TRANSITION_ISSUE_CATEGORY,
+  TRANSITION_ISSUE_DESCRIPTION,
+  transitionIssueOutputSchema, transitionIssueInputFields,
+} from "./issues/transition-issue.meta.ts";
 import {
-  COMMENT_ON_TICKET_PHASE_TYPE, COMMENT_ON_TICKET_LABEL, COMMENT_ON_TICKET_CATEGORY,
-  COMMENT_ON_TICKET_DESCRIPTION,
-  commentOnTicketOutputSchema, commentOnTicketInputFields,
-} from "./tickets/comment-on-ticket.meta.ts";
+  COMMENT_ON_ISSUE_PHASE_TYPE, COMMENT_ON_ISSUE_LABEL, COMMENT_ON_ISSUE_CATEGORY,
+  COMMENT_ON_ISSUE_DESCRIPTION,
+  commentOnIssueOutputSchema, commentOnIssueInputFields,
+} from "./issues/comment-on-issue.meta.ts";
 
 import {
   SEND_MESSAGE_PHASE_TYPE, SEND_MESSAGE_LABEL, SEND_MESSAGE_CATEGORY, SEND_MESSAGE_DESCRIPTION,
@@ -127,20 +126,20 @@ export const phaseCatalog: PhaseCatalogEntry[] = [
   { phaseType: CLEANUP_WORKSPACE_PHASE_TYPE,    label: CLEANUP_WORKSPACE_LABEL,    category: CLEANUP_WORKSPACE_CATEGORY,    description: CLEANUP_WORKSPACE_DESCRIPTION,    inputFields: cleanupWorkspaceInputFields,    outputSchema: cleanupWorkspaceOutputSchema },
   { phaseType: CREATE_WORKSPACE_PHASE_TYPE,     label: CREATE_WORKSPACE_LABEL,     category: CREATE_WORKSPACE_CATEGORY,     description: CREATE_WORKSPACE_DESCRIPTION,     inputFields: createWorkspaceInputFields,     outputSchema: createWorkspaceOutputSchema },
 
-  // Code Host (no outputSchema yet)
-  { phaseType: GET_REPOSITORY_PHASE_TYPE,             label: GET_REPOSITORY_LABEL,             category: GET_REPOSITORY_CATEGORY,             description: GET_REPOSITORY_DESCRIPTION,             inputFields: getRepositoryInputFields,             outputSchema: null },
-  { phaseType: CLONE_REPOS_PHASE_TYPE,                label: CLONE_REPOS_LABEL,                category: CLONE_REPOS_CATEGORY,                description: CLONE_REPOS_DESCRIPTION,                inputFields: cloneReposInputFields,                outputSchema: null },
-  { phaseType: OPEN_PULL_REQUEST_PHASE_TYPE,          label: OPEN_PULL_REQUEST_LABEL,          category: OPEN_PULL_REQUEST_CATEGORY,          description: OPEN_PULL_REQUEST_DESCRIPTION,          inputFields: openPullRequestInputFields,          outputSchema: null },
-  { phaseType: LIST_PULL_REQUESTS_PHASE_TYPE,         label: LIST_PULL_REQUESTS_LABEL,         category: LIST_PULL_REQUESTS_CATEGORY,         description: LIST_PULL_REQUESTS_DESCRIPTION,         inputFields: listPullRequestsInputFields,         outputSchema: null },
-  { phaseType: COMMENT_ON_PULL_REQUEST_PHASE_TYPE,    label: COMMENT_ON_PULL_REQUEST_LABEL,    category: COMMENT_ON_PULL_REQUEST_CATEGORY,    description: COMMENT_ON_PULL_REQUEST_DESCRIPTION,    inputFields: commentOnPullRequestInputFields,    outputSchema: null },
-  { phaseType: LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE, label: LIST_PULL_REQUEST_COMMENTS_LABEL, category: LIST_PULL_REQUEST_COMMENTS_CATEGORY, description: LIST_PULL_REQUEST_COMMENTS_DESCRIPTION, inputFields: listPullRequestCommentsInputFields, outputSchema: null },
+  // Code Host
+  { phaseType: GET_REPOSITORY_PHASE_TYPE,             label: GET_REPOSITORY_LABEL,             category: GET_REPOSITORY_CATEGORY,             description: GET_REPOSITORY_DESCRIPTION,             inputFields: getRepositoryInputFields,             outputSchema: getRepositoryOutputSchema },
+  { phaseType: CLONE_REPOS_PHASE_TYPE,                label: CLONE_REPOS_LABEL,                category: CLONE_REPOS_CATEGORY,                description: CLONE_REPOS_DESCRIPTION,                inputFields: cloneReposInputFields,                outputSchema: cloneReposOutputSchema },
+  { phaseType: OPEN_PULL_REQUEST_PHASE_TYPE,          label: OPEN_PULL_REQUEST_LABEL,          category: OPEN_PULL_REQUEST_CATEGORY,          description: OPEN_PULL_REQUEST_DESCRIPTION,          inputFields: openPullRequestInputFields,          outputSchema: openPullRequestOutputSchema },
+  { phaseType: LIST_PULL_REQUESTS_PHASE_TYPE,         label: LIST_PULL_REQUESTS_LABEL,         category: LIST_PULL_REQUESTS_CATEGORY,         description: LIST_PULL_REQUESTS_DESCRIPTION,         inputFields: listPullRequestsInputFields,         outputSchema: listPullRequestsOutputSchema },
+  { phaseType: COMMENT_ON_PULL_REQUEST_PHASE_TYPE,    label: COMMENT_ON_PULL_REQUEST_LABEL,    category: COMMENT_ON_PULL_REQUEST_CATEGORY,    description: COMMENT_ON_PULL_REQUEST_DESCRIPTION,    inputFields: commentOnPullRequestInputFields,    outputSchema: commentOnPullRequestOutputSchema },
+  { phaseType: LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE, label: LIST_PULL_REQUEST_COMMENTS_LABEL, category: LIST_PULL_REQUEST_COMMENTS_CATEGORY, description: LIST_PULL_REQUEST_COMMENTS_DESCRIPTION, inputFields: listPullRequestCommentsInputFields, outputSchema: listPullRequestCommentsOutputSchema },
 
   // Issue Tracker
-  { phaseType: GET_TICKET_PHASE_TYPE,           label: GET_TICKET_LABEL,           category: GET_TICKET_CATEGORY,           description: GET_TICKET_DESCRIPTION,           inputFields: getTicketInputFields,           outputSchema: getTicketOutputSchema },
-  { phaseType: CREATE_TICKET_PHASE_TYPE,        label: CREATE_TICKET_LABEL,        category: CREATE_TICKET_CATEGORY,        description: CREATE_TICKET_DESCRIPTION,        inputFields: createTicketInputFields,        outputSchema: createTicketOutputSchema },
-  { phaseType: UPDATE_TICKET_FIELDS_PHASE_TYPE, label: UPDATE_TICKET_FIELDS_LABEL, category: UPDATE_TICKET_FIELDS_CATEGORY, description: UPDATE_TICKET_FIELDS_DESCRIPTION, inputFields: updateTicketFieldsInputFields, outputSchema: updateTicketFieldsOutputSchema },
-  { phaseType: TRANSITION_TICKET_PHASE_TYPE,    label: TRANSITION_TICKET_LABEL,    category: TRANSITION_TICKET_CATEGORY,    description: TRANSITION_TICKET_DESCRIPTION,    inputFields: transitionTicketInputFields,    outputSchema: transitionTicketOutputSchema },
-  { phaseType: COMMENT_ON_TICKET_PHASE_TYPE,    label: COMMENT_ON_TICKET_LABEL,    category: COMMENT_ON_TICKET_CATEGORY,    description: COMMENT_ON_TICKET_DESCRIPTION,    inputFields: commentOnTicketInputFields,    outputSchema: commentOnTicketOutputSchema },
+  { phaseType: GET_ISSUE_PHASE_TYPE,           label: GET_ISSUE_LABEL,           category: GET_ISSUE_CATEGORY,           description: GET_ISSUE_DESCRIPTION,           inputFields: getIssueInputFields,           outputSchema: getIssueOutputSchema },
+  { phaseType: CREATE_ISSUE_PHASE_TYPE,        label: CREATE_ISSUE_LABEL,        category: CREATE_ISSUE_CATEGORY,        description: CREATE_ISSUE_DESCRIPTION,        inputFields: createIssueInputFields,        outputSchema: createIssueOutputSchema },
+  { phaseType: UPDATE_ISSUE_FIELDS_PHASE_TYPE, label: UPDATE_ISSUE_FIELDS_LABEL, category: UPDATE_ISSUE_FIELDS_CATEGORY, description: UPDATE_ISSUE_FIELDS_DESCRIPTION, inputFields: updateIssueFieldsInputFields, outputSchema: updateIssueFieldsOutputSchema },
+  { phaseType: TRANSITION_ISSUE_PHASE_TYPE,    label: TRANSITION_ISSUE_LABEL,    category: TRANSITION_ISSUE_CATEGORY,    description: TRANSITION_ISSUE_DESCRIPTION,    inputFields: transitionIssueInputFields,    outputSchema: transitionIssueOutputSchema },
+  { phaseType: COMMENT_ON_ISSUE_PHASE_TYPE,    label: COMMENT_ON_ISSUE_LABEL,    category: COMMENT_ON_ISSUE_CATEGORY,    description: COMMENT_ON_ISSUE_DESCRIPTION,    inputFields: commentOnIssueInputFields,    outputSchema: commentOnIssueOutputSchema },
 
   // Messaging
   { phaseType: SEND_MESSAGE_PHASE_TYPE, label: SEND_MESSAGE_LABEL, category: SEND_MESSAGE_CATEGORY, description: SEND_MESSAGE_DESCRIPTION, inputFields: sendMessageInputFields, outputSchema: sendMessageOutputSchema },

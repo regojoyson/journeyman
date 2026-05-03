@@ -17,12 +17,12 @@ function buildTimestamp(now: Date = new Date()): string {
 }
 
 /**
- * Creates a fresh directory for a ticket/flow under `baseDir`, named
+ * Creates a fresh directory for a issue/flow under `baseDir`, named
  * `<issueRef>-<ISO-timestamp>` (e.g. "jira:PROJ-123-2026-04-18T14-30-22Z").
  *
  * The parent directory is created recursively if missing. If the target
  * directory already exists (unlikely — collisions require two calls in the
- * same second for the same ticket), it is silently reused.
+ * same second for the same issue), it is silently reused.
  *
  * Returns per-call success with folderName + absolute repoDir. On failure
  * the error field is populated — never throws.
