@@ -7,14 +7,13 @@ export const OPEN_PULL_REQUEST_DESCRIPTION =
   "Open a pull/merge request on the remote.";
 
 export const openPullRequestOutputSchema: OutputSchema = {
-  pullRequest: { type: "ref", name: "PullRequest" },
+  pullRequests: { type: "array", items: { type: "ref", name: "PullRequest" }, description: "All PRs opened (one per repo when `repos` input is wired)" },
+  pullRequest:  { type: "ref", name: "PullRequest", description: "Convenience: the first PR (matches single-repo flows)" },
 };
 
 export const openPullRequestInputFields: InputFields = {
-  owner: { shape: { type: "string" }, label: "Owner / org", required: true },
-  repo:  { shape: { type: "string" }, label: "Repository", required: true },
-  title: { shape: { type: "string" }, label: "Title", required: true },
-  body:  { shape: { type: "string" }, label: "Body" },
-  head:  { shape: { type: "string" }, label: "Head branch", required: true },
-  base:  { shape: { type: "string" }, label: "Base branch", required: true },
+  repos:        { shape: { type: "array", items: { type: "ref", name: "Repo" } }, label: "Repos", required: true, bindOnly: true },
+  title:        { shape: { type: "string" }, label: "Title", required: true },
+  body:         { shape: { type: "string" }, label: "Body" },
+  sourceBranch: { shape: { type: "string" }, label: "Source branch", required: true },
 };

@@ -22,13 +22,11 @@ export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> 
   defaultConfig: {},
   configSchema: z.object({}),
   configFields: {},
-  tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT used by `git push` / `git fetch` against origin.",
-    },
-  ],
+  // No secret slots — git auth is reused from the embedded credential in the
+  // already-cloned repo's `.git/config` (set by clone-repos). Hide the tab to
+  // avoid confusing users.
+  tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
+  slots: [],
   summary: () => "sync + branch",
   executor: { kind: "coding-cli", method: "checkoutRepo" },
   outputSchema: startFeatureBranchOutputSchema,

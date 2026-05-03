@@ -21,3 +21,4 @@ export { PhaseRegistry } from "./state/phase-registry.ts";
 export { defaultControlCatalog } from "./palette/built-in-categories.ts";
 export { defaultMcpCatalog } from "./catalogs/built-in-mcp-catalog.ts";
 export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
+export { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";

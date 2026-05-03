@@ -41,6 +41,16 @@ export async function updateFlowDefinition(flowId: string, definition: FlowGraph
   );
 }
 
+export async function updateFlowMeta(
+  flowId: string,
+  meta: { name?: string; description?: string },
+): Promise<{ flow: Flow; version: FlowVersion | null }> {
+  return await api<{ flow: Flow; version: FlowVersion | null }>(
+    `/flows/${encodeURIComponent(flowId)}`,
+    { method: "PUT", body: JSON.stringify(meta) },
+  );
+}
+
 export async function runFlow(flowId: string, inputs: Record<string, unknown>): Promise<{ runId: string; engineWorkflowId: string }> {
   return await api<{ runId: string; engineWorkflowId: string }>(
     `/flows/${encodeURIComponent(flowId)}/runs`,

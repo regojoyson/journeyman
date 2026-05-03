@@ -120,6 +120,7 @@ export function FlowEditor(props: FlowEditorProps) {
           runDisabledReason={validity.ok ? undefined : validity.errors[0]}
           validationErrors={validity.errors}
           onFlowConfig={() => setFlowConfigOpen(o => !o)}
+          onImport={props.readOnly ? undefined : (flow) => props.onChange(flow)}
         />
         {heal.restored.length > 0 && !healDismissed && (
           <div className="je-editor__heal-banner">

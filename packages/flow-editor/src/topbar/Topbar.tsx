@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FlowGraph, FlowSaveWarning } from "@journeyman/core";
 import { validateFlowInputs } from "@journeyman/core";
 import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
@@ -13,6 +13,7 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
+  Upload,
   X,
 } from "lucide-react";
 import { toYaml } from "./yaml-serialize.ts";
@@ -42,6 +43,8 @@ export interface TopbarProps {
   runDisabledReason?: string;
   validationErrors?: string[];
   onFlowConfig?: () => void;
+  /** When provided, an Import button appears that lets the user paste/upload a flow JSON to replace the current one. */
+  onImport?: (flow: FlowGraph) => void;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -50,6 +53,7 @@ export function Topbar(p: TopbarProps) {
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [validating, setValidating] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const validationCatalog = useValidationCatalog();
   const inputWarnings = useMemo(
@@ -77,6 +81,32 @@ export function Topbar(p: TopbarProps) {
     }
   };
 
+  const canSave = !p.busy && !!p.saveEnabled && !!p.onSave;
+  const canValidate = !p.busy && !validating && !!p.onValidate;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
+      if (e.key.toLowerCase() === "s" && !e.shiftKey) {
+        e.preventDefault();
+        if (canSave) p.onSave!();
+        return;
+      }
+      if (e.key.toLowerCase() === "v" && e.shiftKey && !isEditable) {
+        e.preventDefault();
+        if (canValidate) void runValidate();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSave, canValidate, p.onSave]);
+
   return (
     <div>
       <header className="je-editor__topbar">
@@ -101,47 +131,31 @@ export function Topbar(p: TopbarProps) {
         <div className="spacer" />
         {p.flow && (
           <IconButton
+            className="je-icon-btn--view-json"
             label="View JSON"
             hint="View the flow as JSON / YAML"
             icon={<FileCode2 size={16} aria-hidden="true" focusable="false" />}
             onClick={() => setExportOpen(true)}
           />
         )}
+        {p.onImport && (
+          <IconButton
+            className="je-icon-btn--import"
+            label="Import"
+            hint="Replace this flow from JSON (paste or file)"
+            icon={<Upload size={16} aria-hidden="true" focusable="false" />}
+            onClick={() => setImportOpen(true)}
+          />
+        )}
         {p.onFlowConfig && (
           <IconButton
+            className="je-icon-btn--flow-config"
             label="Flow Config"
             hint="Edit workflow-level defaults (provider, retry, secrets, inputs)"
             icon={<SlidersHorizontal size={16} aria-hidden="true" focusable="false" />}
             onClick={p.onFlowConfig}
           />
         )}
-        {p.onValidate && (
-          <IconButton
-            label={validating ? "Validating…" : "Validate"}
-            hint={validating ? "Checking the flow…" : "Check the flow without saving"}
-            disabled={p.busy || validating}
-            busy={validating}
-            onClick={runValidate}
-            icon={
-              validating
-                ? <Loader2 size={16} className="je-spin" aria-hidden="true" focusable="false" />
-                : <ShieldCheck size={16} aria-hidden="true" focusable="false" />
-            }
-          />
-        )}
-        <IconButton
-          className="primary"
-          label={p.busy ? "Saving…" : "Save"}
-          hint={p.busy ? "Saving the flow…" : "Save changes to this flow"}
-          disabled={p.busy || !p.saveEnabled}
-          busy={p.busy}
-          onClick={p.onSave}
-          icon={
-            p.busy
-              ? <Loader2 size={16} className="je-spin" aria-hidden="true" focusable="false" />
-              : <Save size={16} aria-hidden="true" focusable="false" />
-          }
-        />
         {p.onRun && (
           <IconButton
             className="primary"
@@ -168,6 +182,45 @@ export function Topbar(p: TopbarProps) {
       )}
       {exportOpen && p.flow && (
         <ExportPanel flow={p.flow} flowName={p.flowName} onClose={() => setExportOpen(false)} />
+      )}
+      {importOpen && p.onImport && (
+        <ImportPanel
+          hasExisting={!!p.flow && (p.flow.nodes.length > 2 || p.flow.edges.length > 0)}
+          onImport={(flow) => { p.onImport!(flow); setImportOpen(false); }}
+          onClose={() => setImportOpen(false)}
+        />
+      )}
+      {(p.onSave || p.onValidate) && (
+        <div className="je-fab" role="group" aria-label="Quick actions">
+          {p.onValidate && (
+            <button
+              type="button"
+              className="je-fab__btn je-fab__btn--validate"
+              data-tooltip="Validate flow · ⌘/Ctrl+Shift+V"
+              aria-label="Validate flow"
+              disabled={!canValidate}
+              onClick={runValidate}
+            >
+              {validating
+                ? <Loader2 size={18} className="je-spin" aria-hidden="true" focusable="false" />
+                : <ShieldCheck size={18} aria-hidden="true" focusable="false" />}
+            </button>
+          )}
+          {p.onSave && (
+            <button
+              type="button"
+              className="je-fab__btn je-fab__btn--primary"
+              data-tooltip="Save flow · ⌘/Ctrl+S"
+              aria-label="Save flow"
+              disabled={!canSave}
+              onClick={p.onSave}
+            >
+              {p.busy
+                ? <Loader2 size={18} className="je-spin" aria-hidden="true" focusable="false" />
+                : <Save size={18} aria-hidden="true" focusable="false" />}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -242,6 +295,144 @@ function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: s
         />
       </div>
       <pre className="je-export-panel__body"><code>{text}</code></pre>
+    </div>
+  );
+}
+
+function parseFlowJson(text: string): FlowGraph {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Invalid JSON: ${(e as Error).message}`);
+  }
+  if (!raw || typeof raw !== "object") throw new Error("Expected a JSON object at the root.");
+  const obj = raw as Record<string, unknown>;
+  if (!Array.isArray(obj.nodes)) throw new Error("Missing or invalid 'nodes' array.");
+  if (!Array.isArray(obj.edges)) throw new Error("Missing or invalid 'edges' array.");
+  if (typeof obj.schemaVersion !== "string" && typeof obj.schemaVersion !== "number") {
+    throw new Error("Missing 'schemaVersion'.");
+  }
+  return obj as unknown as FlowGraph;
+}
+
+function ImportPanel({
+  hasExisting,
+  onImport,
+  onClose,
+}: {
+  hasExisting: boolean;
+  onImport: (flow: FlowGraph) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [filename, setFilename] = useState<string | null>(null);
+
+  const handleFile = async (file: File) => {
+    setFilename(file.name);
+    setError(null);
+    try {
+      const t = await file.text();
+      setText(t);
+    } catch (e) {
+      setError(`Could not read file: ${(e as Error).message}`);
+    }
+  };
+
+  const handleImport = () => {
+    setError(null);
+    let flow: FlowGraph;
+    try {
+      flow = parseFlowJson(text);
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
+    if (hasExisting) {
+      const ok = window.confirm(
+        "Replace the current flow? Unsaved changes and undo history will be lost.",
+      );
+      if (!ok) return;
+    }
+    onImport(flow);
+  };
+
+  return (
+    <div className="je-export-panel">
+      <div className="je-export-panel__header">
+        <div className="je-export-panel__tabs">
+          <span style={{ fontSize: 12, color: "#bbb" }}>Import flow (JSON)</span>
+        </div>
+        <div className="je-export-panel__spacer" />
+        <label
+          className="je-icon-btn"
+          style={{
+            background: "#2a2a3e", border: "1px solid #3a3a4e", color: "#ddd",
+            padding: "6px 10px", borderRadius: 5, fontSize: 12, cursor: "pointer",
+            display: "inline-flex", alignItems: "center", gap: 6,
+          }}
+          title="Choose a .json file"
+        >
+          <Upload size={14} aria-hidden="true" focusable="false" />
+          <span>Choose file</span>
+          <input
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) void handleFile(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <button
+          className="primary"
+          onClick={handleImport}
+          disabled={text.trim().length === 0}
+          style={{
+            background: "#00b894", border: "1px solid #00b894", color: "#fff",
+            padding: "6px 12px", borderRadius: 5, fontSize: 12, fontWeight: 600,
+            cursor: text.trim().length === 0 ? "not-allowed" : "pointer",
+            opacity: text.trim().length === 0 ? 0.5 : 1,
+          }}
+        >
+          Replace flow
+        </button>
+        <IconButton
+          className="je-export-panel__close"
+          label="Close"
+          onClick={onClose}
+          icon={<X size={16} aria-hidden="true" focusable="false" />}
+        />
+      </div>
+      {filename && (
+        <div style={{ padding: "6px 14px", fontSize: 11, color: "#bbb", borderBottom: "1px solid #2a2a3a" }}>
+          Loaded: <code>{filename}</code>
+        </div>
+      )}
+      {error && (
+        <div style={{
+          padding: "8px 14px", fontSize: 12, color: "#ff7675",
+          background: "#2a1a1a", borderBottom: "1px solid #ff7675",
+        }}>
+          {error}
+        </div>
+      )}
+      <textarea
+        className="je-export-panel__body"
+        value={text}
+        onChange={e => { setText(e.target.value); setError(null); }}
+        placeholder='Paste flow JSON here, or use "Choose file"…'
+        spellCheck={false}
+        style={{
+          width: "100%", minHeight: 280, resize: "vertical",
+          background: "#11111a", color: "#ddd", border: 0, outline: "none",
+          fontFamily: "ui-monospace, monospace", fontSize: 12, padding: 14,
+          boxSizing: "border-box",
+        }}
+      />
     </div>
   );
 }

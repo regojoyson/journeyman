@@ -19,6 +19,10 @@ export type CloneResult = {
   repoDir: string;
   url: string;
   branch: string;
+  /** GitHub/GitLab owner or org parsed from the clone URL (e.g. "regojoyson"). */
+  owner?: string;
+  /** Bare repository name parsed from the clone URL (e.g. "agentic-ai-revolution"). */
+  repoName?: string;
   error?: string;
 };
 

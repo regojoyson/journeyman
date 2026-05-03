@@ -42,7 +42,12 @@ export class ConductorClient {
     }
     if (res.status === 204) return undefined as T;
     const text = await res.text();
-    return text ? JSON.parse(text) as T : undefined as T;
+    if (!text) return undefined as T;
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      return JSON.parse(text) as T;
+    }
+    return text as unknown as T;
   }
 
   /** Register or update a workflow definition. */

@@ -6,8 +6,9 @@ import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { FlowGraph, FlowScope } from "@journeyman/core";
-import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
+import { ConductorJsonConverter } from "@journeyman/orchestrator";
 import { phaseCatalog } from "@journeyman/phases/catalog";
+import { validateFlowInputs, type ValidationCatalog } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import type { FlowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
@@ -53,9 +54,14 @@ async function computeSaveWarnings(
 
   const warnings: FlowSaveWarning[] = [];
   if (inaccessible.size > 0) {
+    // Resolver lookup order at runtime: user scope → org scope → process-level globals
+    // (see packages/secrets/src/resolver.ts). These names aren't visible to the caller now,
+    // but a run can still succeed if any of those scopes provides them. If none does,
+    // the run fails with MissingSecretsError.
     warnings.push({
       code: "inaccessible_secrets",
-      message: "Flow references secrets you cannot currently access. Runs will fail until they are created.",
+      message:
+        "Flow references secrets you can't see. At runtime they're resolved from your user scope, then the org scope, then global env. If none provides them, the run fails with MissingSecretsError.",
       names: [...inaccessible].sort(),
     });
   }
@@ -95,7 +101,6 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  const outputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.outputSchema ?? {}]));
   const inputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.inputFields ?? {}]));
 
   // Check 1: required input fields are satisfied (typed value or binding) on every phase node.
@@ -116,23 +121,22 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
     }
   }
 
-  // Check 2: ref points at declared field on upstream phase (warning only).
-  for (const node of definition.nodes) {
-    for (const [field, v] of Object.entries(node.inputs ?? {})) {
-      if (v.kind !== "ref") continue;
-      const parsed = parseRef(v.ref);
-      if (!parsed || parsed.scope === "workflow.input") continue;
-      const upstream = definition.nodes.find((n) => n.id === parsed.source);
-      if (!upstream?.phaseType) continue;
-      const declared =
-        parsed.scope === "input"
-          ? (inputsByPhase.get(upstream.phaseType) ?? {})
-          : (outputsByPhase.get(upstream.phaseType) ?? {});
-      if (!(parsed.field in declared))
-        warnings.push(
-          `'${node.id}.${field}' uses undeclared ${parsed.scope} field '${parsed.field}' on '${upstream.phaseType}'`,
-        );
-    }
+  // Check 2: shape-aware ref + binding validation (delegates to @journeyman/core).
+  // Walks every phase node, validates each input against its catalog declaration:
+  // shape-mismatch, dangling-ref-node, dangling-ref-path, missing-input-shape.
+  // missing-required is already handled by Check 1 above (which produces a
+  // hard-blocking `missing[]` signal — keep that contract intact).
+  const validationCatalog: ValidationCatalog = {};
+  for (const entry of phaseCatalog) {
+    validationCatalog[entry.phaseType] = {
+      inputFields: entry.inputFields,
+      outputSchema: entry.outputSchema,
+    };
+  }
+  const inputWarnings = validateFlowInputs(definition, validationCatalog);
+  for (const w of inputWarnings) {
+    if (w.code === "missing-required") continue; // already in `missing[]` via Check 1
+    warnings.push(w.message);
   }
 
   return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { RunViewer } from "@journeyman/run-viewer";
+import { PhaseRegistryProvider } from "@journeyman/flow-editor";
+import { builtInPhases } from "@journeyman/phases";
 import type { RunEvent } from "@journeyman/core";
 import { getRun, openRunEventStream } from "../api/runs.ts";
 import { getFlowVersionById } from "../api/flow-versions.ts";
@@ -104,6 +106,7 @@ export function RunDetailPage() {
           </details>
         </div>
       )}
+      <PhaseRegistryProvider phases={builtInPhases}>
       <RunViewer
         flow={versionQ.data.definition}
         flowName={`Flow v${versionQ.data.versionNumber}`}
@@ -118,6 +121,7 @@ export function RunDetailPage() {
         onRerun={isViewer ? undefined : () => actions.rerun.mutate()}
         onFork={isViewer ? undefined : () => actions.fork.mutate()}
       />
+      </PhaseRegistryProvider>
       {busy && (
         <div style={{ position: "fixed", bottom: 16, left: 16, color: "#888", fontSize: 11 }}>
           working…

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Flow } from "@journeyman/core";
-import { listFlows } from "../api/flows.ts";
+import { listFlows, updateFlowMeta } from "../api/flows.ts";
 import { cloneFlow, promoteFlow, deleteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
@@ -64,6 +64,19 @@ export function FlowsListPage() {
       await fetchFlows(scopeFilter);
     } catch (e) {
       alert(`Promote failed: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleRename(flow: Flow) {
+    const next = window.prompt("Rename flow", flow.name);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === flow.name) return;
+    try {
+      await updateFlowMeta(flow.id, { name: trimmed });
+      await fetchFlows(scopeFilter);
+    } catch (e) {
+      alert(`Rename failed: ${(e as Error).message}`);
     }
   }
 
@@ -165,6 +178,10 @@ export function FlowsListPage() {
                               <Link to={`/flows/${f.id}/edit`} className="text-indigo-300 hover:text-indigo-200">
                                 Edit
                               </Link>
+                              <button
+                                onClick={() => handleRename(f)}
+                                className="text-indigo-300 hover:text-indigo-200"
+                              >Rename</button>
                               <button
                                 onClick={() => handleClone(f)}
                                 className="text-indigo-300 hover:text-indigo-200"

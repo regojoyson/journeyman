@@ -8,12 +8,9 @@ import {
 } from "./open-pull-request.meta.ts";
 
 interface OpenPullRequestConfig {
-  owner: string;
-  repo: string;
   title: string;
-  body: string;
-  head: string;
-  base: string;
+  body?: string;
+  sourceBranch?: string;
 }
 
 export const openPullRequestPhase: PhaseDefinition<OpenPullRequestConfig> = {
@@ -23,22 +20,16 @@ export const openPullRequestPhase: PhaseDefinition<OpenPullRequestConfig> = {
   description: OPEN_PULL_REQUEST_DESCRIPTION,
   color: "#74b9ff",
   icon: "🔀",
-  defaultConfig: { owner: "", repo: "", title: "", body: "", head: "", base: "main" },
+  defaultConfig: { title: "", body: "", sourceBranch: "" },
   configSchema: z.object({
-    owner: z.string().min(1),
-    repo: z.string().min(1),
     title: z.string().min(1),
-    body: z.string(),
-    head: z.string().min(1),
-    base: z.string().min(1),
+    body: z.string().optional(),
+    sourceBranch: z.string().optional(),
   }),
   configFields: {
-    owner: { label: "Owner / org", widget: "text" },
-    repo:  { label: "Repository", widget: "text" },
-    title: { label: "Title", widget: "text" },
-    body:  { label: "Body",  widget: "textarea" },
-    head:  { label: "Head branch", widget: "text" },
-    base:  { label: "Base branch", widget: "text" },
+    title:        { label: "Title",         widget: "text" },
+    body:         { label: "Body",          widget: "textarea" },
+    sourceBranch: { label: "Source branch", widget: "text", help: "The feature branch to open the PR from. Typically ref'd from start-feature-branch.output.newBranch." },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
   slots: [
@@ -47,6 +38,6 @@ export const openPullRequestPhase: PhaseDefinition<OpenPullRequestConfig> = {
       description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
     },
   ],
-  summary: c => c.head && c.base ? `${c.base} ← ${c.head}` : (c.title || ""),
+  summary: c => c.sourceBranch ? `← ${c.sourceBranch}` : (c.title || ""),
   executor: { kind: "git-provider", method: "createPR" },
 };

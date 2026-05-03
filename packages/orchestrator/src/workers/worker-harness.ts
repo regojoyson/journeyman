@@ -54,7 +54,6 @@ export class WorkerHarness {
   async processOnce(phaseType: string): Promise<void> {
     const task = await this.deps.client.pollTask(phaseType, this.deps.workerId);
     if (!task) return;
-    await this.deps.client.ackTask(task.taskId, this.deps.workerId);
 
     const handler = this.deps.registry.get(phaseType);
     if (!handler) {

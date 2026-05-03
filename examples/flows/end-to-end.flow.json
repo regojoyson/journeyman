@@ -104,12 +104,13 @@
         "id": "n_open_pr",
         "type": "phase",
         "phaseType": "open-pull-request",
+        "config": {
+          "title": "Automated PR",
+          "body": ""
+        },
         "inputs": {
-          "owner": { "kind": "ref", "ref": "workflow.input.owner" },
-          "repo":  { "kind": "ref", "ref": "workflow.input.repo" },
-          "title": { "kind": "ref", "ref": "n_get_issue.output.issue" },
-          "head":  { "kind": "ref", "ref": "n_branch.output.newBranch" },
-          "base":  { "kind": "ref", "ref": "workflow.input.baseBranch" }
+          "repos":        { "kind": "ref", "ref": "n_branch.output.repos" },
+          "sourceBranch": { "kind": "ref", "ref": "n_branch.output.newBranch" }
         }
       },
 

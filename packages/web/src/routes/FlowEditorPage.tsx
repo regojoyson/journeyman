@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Flow, FlowGraph } from "@journeyman/core";
-import { getFlow, getCurrentFlowVersion, updateFlowDefinition, validateFlowDefinition } from "../api/flows.ts";
+import { getFlow, getCurrentFlowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
@@ -63,6 +63,19 @@ export function FlowEditorPage() {
     },
   });
 
+  const renameM = useMutation({
+    mutationFn: (name: string) => updateFlowMeta(id!, { name }),
+    onSuccess: ({ flow: updated }) => {
+      qc.setQueryData(["flow", id], updated);
+      qc.invalidateQueries({ queryKey: ["flows"] });
+      setSaveToast({ kind: "success", message: "Flow renamed." });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Could not rename the flow.";
+      setSaveToast({ kind: "error", message: msg });
+    },
+  });
+
   if (!id) { navigate("/flows"); return null; }
   if (flowQ.isLoading || versionQ.isLoading || !graph) {
     return <div style={{ padding: 24, color: "#888" }}>Loading editor…</div>;
@@ -98,6 +111,11 @@ export function FlowEditorPage() {
         <FlowEditor
           flow={graph}
           flowName={flow.name}
+          onRename={editable ? (next) => {
+            const trimmed = next.trim();
+            if (!trimmed || trimmed === flow.name) return;
+            renameM.mutate(trimmed);
+          } : undefined}
           orgId={activeOrgId}
           phases={builtInPhases}
           controlCatalog={defaultControlCatalog}

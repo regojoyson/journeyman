@@ -28,6 +28,10 @@ export const RepoShape: Shape = {
     repoDir:   { type: "string", description: "Local checkout directory" },
     branch:    { type: "string", description: "Current branch in this repo" },
     newBranch: { type: "string", description: "The feature branch created on this repo (if any)" },
+    owner:     { type: "string", description: "GitHub/GitLab owner or org" },
+    repoName:  { type: "string", description: "Bare repository name (e.g. 'api')" },
+    url:       { type: "string", description: "Clone URL" },
+    folderName:{ type: "string", description: "Folder basename inside the workspace" },
   },
 };
 
