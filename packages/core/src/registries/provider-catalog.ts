@@ -1,4 +1,5 @@
 // packages/core/src/registries/provider-catalog.ts
+import type { SecretSlotDef } from "../types/secret-slot.types.ts";
 
 export type ExecutorKind =
   | "coding-cli"
@@ -16,6 +17,8 @@ export interface ProviderEntry {
   implemented: boolean;
   /** Marks the resolver default for its kind. Exactly one per kind should set this. */
   isDefault?: boolean;
+  /** Credential slots required by this provider at runtime. */
+  slots?: SecretSlotDef[];
 }
 
 export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
@@ -25,15 +28,25 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 
   // git-provider
-  { kind: "git-provider", value: "github", label: "GitHub", implemented: true, isDefault: true },
+  { kind: "git-provider", value: "github", label: "GitHub", implemented: true, isDefault: true, slots: [
+    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo scope" },
+  ]},
   { kind: "git-provider", value: "gitlab", label: "GitLab", implemented: false },
 
   // issue-provider
-  { kind: "issue-provider", value: "jira",            label: "Jira",            implemented: true, isDefault: true },
-  { kind: "issue-provider", value: "github-issues",   label: "GitHub Issues",   implemented: true },
-  { kind: "issue-provider", value: "github-projects", label: "GitHub Projects", implemented: true },
-  { kind: "issue-provider", value: "linear",          label: "Linear",          implemented: false },
-  { kind: "issue-provider", value: "monday",          label: "Monday",          implemented: false },
+  { kind: "issue-provider", value: "jira", label: "Jira", implemented: true, isDefault: true, slots: [
+    { name: "JIRA_API_TOKEN", description: "Atlassian API token (user or service account)" },
+    { name: "JIRA_EMAIL",     description: "Atlassian account email associated with the token" },
+    { name: "JIRA_HOST",      description: "Your Jira domain, e.g. acme.atlassian.net" },
+  ]},
+  { kind: "issue-provider", value: "github-issues", label: "GitHub Issues", implemented: true, slots: [
+    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo scope" },
+  ]},
+  { kind: "issue-provider", value: "github-projects", label: "GitHub Projects", implemented: true, slots: [
+    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo and project scopes" },
+  ]},
+  { kind: "issue-provider", value: "linear",  label: "Linear",  implemented: false },
+  { kind: "issue-provider", value: "monday",  label: "Monday",  implemented: false },
 
   // notification
   { kind: "notification", value: "console", label: "Console", implemented: true, isDefault: true },
@@ -62,7 +75,6 @@ export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   // coding-cli
   "analyze-repo":         "coding-cli",
   "cleanup-workspace":    "coding-cli",
-  "clone-repos":          "coding-cli",
   "commit-and-push":      "coding-cli",
   "create-workspace":     "coding-cli",
   "implement-changes":    "coding-cli",
@@ -70,6 +82,7 @@ export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   "plan-implementation":  "coding-cli",
   "start-feature-branch": "coding-cli",
   // git-provider
+  "clone-repos":                "git-provider",
   "get-repository":             "git-provider",
   "list-pull-request-comments": "git-provider",
   "list-pull-requests":         "git-provider",

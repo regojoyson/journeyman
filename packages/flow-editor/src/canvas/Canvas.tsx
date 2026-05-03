@@ -95,6 +95,14 @@ function CanvasInner(p: CanvasProps) {
   const catalog = usePhaseCatalog();
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = usePhaseRegistry();
+
+  // Mount log
+  const canvasMountedRef = useRef(false);
+  if (!canvasMountedRef.current) {
+    canvasMountedRef.current = true;
+    // eslint-disable-next-line no-console
+    console.log("[Canvas] mounted", { nodes: p.flow.nodes.length, edges: p.flow.edges.length });
+  }
   // Stable refs so callbacks don't recreate on every drag frame.
   const onChangeRef = useRef(p.onChange);
   const onSelectRef = useRef(p.onSelect);
@@ -157,13 +165,26 @@ function CanvasInner(p: CanvasProps) {
       resyncTimesRef.current = [];
     }
 
+    const t0 = performance.now();
     const sig = structuralSig(p.flow);
+    const sigMs = performance.now() - t0;
+    if (sigMs > 10) {
+      // eslint-disable-next-line no-console
+      console.warn("[Canvas] structuralSig slow", { ms: +sigMs.toFixed(2), nodes: p.flow.nodes.length });
+    }
+
     if (sig === propagatedSigRef.current) {
       // Echoed back our own change — accept it without resyncing internal RF state.
       lastSigRef.current = sig;
       return;
     }
     if (sig !== lastSigRef.current || p.selectedNodeId !== lastSelectedRef.current) {
+      // eslint-disable-next-line no-console
+      console.log("[Canvas] resync — external change detected", {
+        nodes: p.flow.nodes.length,
+        edges: p.flow.edges.length,
+        selectedNodeId: p.selectedNodeId,
+      });
       lastSigRef.current = sig;
       lastSelectedRef.current = p.selectedNodeId;
       setNodes(toReactFlowNodes(p.flow, p.selectedNodeId, p.phaseRunStates));

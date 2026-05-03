@@ -41,9 +41,11 @@ export class GetIssuePhaseHandler implements IPhaseHandler {
     const result = await issueProvider.getIssue({ id, sessionId: ctx.runId });
     if (result?.error || !result?.issue) {
       log.error({ result }, "get-issue failed");
+      const msg = String(result?.error ?? "no issue returned");
+      const retryable = !/not found|404/i.test(msg);
       return {
         kind: "failure",
-        failure: { errorClass: "GetIssueFailed", message: String(result?.error ?? "no issue returned"), retryable: true },
+        failure: { errorClass: "GetIssueFailed", message: msg, retryable },
       };
     }
     return {

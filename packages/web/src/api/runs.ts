@@ -53,7 +53,7 @@ export function openRunEventStream(args: {
   onOpen?: () => void;
 }): () => void {
   const url = `${baseUrl}/runs/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
-  const es = new EventSource(url);
+  const es = new EventSource(url, { withCredentials: true });
   es.onopen = () => args.onOpen?.();
   es.onerror = (e) => args.onError?.(e);
   const types = [

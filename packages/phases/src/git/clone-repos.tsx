@@ -37,7 +37,7 @@ export const cloneReposPhase: PhaseDefinition<CloneReposConfig> = {
     },
   ],
   summary: c => {
-    const lines = c.repos.split("\n").filter(s => s.trim());
+    const lines = (c.repos ?? "").split("\n").filter(s => s.trim());
     return lines.length ? `${lines.length} repo${lines.length === 1 ? "" : "s"}` : "(no repos)";
   },
   executor: { kind: "git-provider", method: "cloneRepos" },

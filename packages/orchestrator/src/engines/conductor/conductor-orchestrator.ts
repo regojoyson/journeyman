@@ -73,7 +73,14 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     if (grantsToWrite.length > 0) await this.deps.runGrants.createForRun(run.id, grantsToWrite);
 
     const engineWorkflowId = await this.deps.client.startWorkflow({
-      name: wfName, version: 1, input: args.inputs,
+      name: wfName,
+      version: 1,
+      input: {
+        ...args.inputs,
+        startedByUserId: args.startedByUserId ?? null,
+        startedByOrgId: args.startedByOrgId ?? null,
+        flowId: args.flowId,
+      },
     });
 
     await this.deps.runs.setEngineWorkflowId(run.id, engineWorkflowId);

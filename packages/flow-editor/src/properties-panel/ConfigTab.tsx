@@ -1,5 +1,5 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FlowDefaults, FlowGraph, FlowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
@@ -31,6 +31,36 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const sources = useUpstreamSources(flow, node.id, catalog);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const nodeWarningsByKey = useNodeWarningsByKey(node.id);
+
+  // Strip stale keys that are no longer declared in the phase definition.
+  // Runs once per node selection or phase type change, but only after the
+  // async catalog has loaded — otherwise knownInputKeys would be empty and
+  // every binding would be incorrectly treated as stale.
+  useEffect(() => {
+    if (node.phaseType && !catalogEntry) return;
+
+    const currentInputs = (node.inputs ?? {}) as Record<string, unknown>;
+    const currentConfig = (node.config ?? {}) as Record<string, unknown>;
+
+    const knownInputKeys = new Set(Object.keys(catalogEntry?.inputFields ?? {}));
+    const staleInputKeys = Object.keys(currentInputs).filter(k => !knownInputKeys.has(k));
+
+    const knownConfigKeys = definition?.configFields ? new Set(Object.keys(definition.configFields)) : null;
+    const staleConfigKeys = knownConfigKeys
+      ? Object.keys(currentConfig).filter(k => !knownConfigKeys.has(k))
+      : [];
+
+    if (staleInputKeys.length === 0 && staleConfigKeys.length === 0) return;
+
+    const cleanedInputs = { ...currentInputs };
+    for (const k of staleInputKeys) delete cleanedInputs[k];
+
+    const cleanedConfig = { ...currentConfig };
+    for (const k of staleConfigKeys) delete cleanedConfig[k];
+
+    onChange({ ...node, inputs: cleanedInputs as FlowNode["inputs"], config: cleanedConfig });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.id, node.phaseType]);
 
   const handlePick = (fieldKey: string, ref: string) => {
     const clean = sanitizeRef(ref);

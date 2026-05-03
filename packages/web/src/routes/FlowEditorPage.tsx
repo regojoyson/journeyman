@@ -32,21 +32,56 @@ export function FlowEditorPage() {
 
   const flowQ = useQuery({
     queryKey: ["flow", id],
-    queryFn: () => getFlow(id!),
+    queryFn: async () => {
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] fetching flow meta", { id });
+      const result = await getFlow(id!);
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] flow meta loaded", { id, name: result.name });
+      return result;
+    },
     enabled: !!id,
   });
 
   const versionQ = useQuery({
     queryKey: ["flow-version-current", id],
-    queryFn: () => getCurrentFlowVersion(id!),
+    queryFn: async () => {
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] fetching current version", { id });
+      const result = await getCurrentFlowVersion(id!);
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] current version loaded", {
+        id,
+        nodes: result.definition?.nodes?.length,
+        edges: result.definition?.edges?.length,
+      });
+      return result;
+    },
     enabled: !!id && !!flowQ.data,
   });
 
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[FlowEditorPage] graph-init effect", {
+      id, hasGraph: !!graph,
+      versionLoaded: !!versionQ.data,
+      flowLoaded: !!flowQ.data,
+      flowLoading: flowQ.isLoading,
+      versionLoading: versionQ.isLoading,
+    });
     if (!id || graph) return;
     const cached = qc.getQueryData<FlowGraph>(["flow-graph", id]);
-    if (cached) { setGraph(cached); return; }
-    if (versionQ.data) setGraph(versionQ.data.definition);
+    if (cached) {
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] restoring graph from query cache", { id });
+      setGraph(cached);
+      return;
+    }
+    if (versionQ.data) {
+      // eslint-disable-next-line no-console
+      console.log("[FlowEditorPage] setting graph from version data", { id });
+      setGraph(versionQ.data.definition);
+    }
   }, [id, graph, qc, versionQ.data]);
 
   const saveM = useMutation({
@@ -78,6 +113,12 @@ export function FlowEditorPage() {
 
   if (!id) { navigate("/flows"); return null; }
   if (flowQ.isLoading || versionQ.isLoading || !graph) {
+    // eslint-disable-next-line no-console
+    console.log("[FlowEditorPage] still loading", {
+      flowLoading: flowQ.isLoading, versionLoading: versionQ.isLoading,
+      flowStatus: flowQ.status, versionStatus: versionQ.status,
+      hasGraph: !!graph,
+    });
     return <div style={{ padding: 24, color: "#888" }}>Loading editor…</div>;
   }
   if (flowQ.isError || !flowQ.data) {

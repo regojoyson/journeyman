@@ -29,12 +29,6 @@ export const getIssuePhase: PhaseDefinition<GetIssueConfig> = {
     issueRef: { label: "Issue ref", widget: "text", help: "e.g. jira:PROJ-123 (supports #{issue} placeholder)" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
   summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",
   executor: { kind: "issue-provider", method: "getIssue" },
   outputSchema: getIssueOutputSchema,

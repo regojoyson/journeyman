@@ -1,8 +1,10 @@
 // packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx
 import { useEffect, useState, useMemo } from "react";
+import { PROVIDER_CATALOG } from "@journeyman/core";
 import type { FlowGraph, FlowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { defaultProviderFor } from "../executor-common-config.ts";
 import type { SecretSlotDef } from "../phase-definition.ts";
 
 export interface RequiredSecretsTabProps {
@@ -63,7 +65,16 @@ function flowScope(flow: FlowGraph): "user" | "org" | "global" | null {
 export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: RequiredSecretsTabProps) {
   const registry = usePhaseRegistry();
   const phaseDef = node.phaseType ? registry.get(node.phaseType) : undefined;
-  const slots: SecretSlotDef[] = phaseDef?.slots ?? [];
+
+  const kind = phaseDef?.executor.kind;
+  const effectiveProvider =
+    node.executorConfig?.provider ??
+    (kind && kind !== "control"
+      ? flow.defaults?.executorConfig?.[kind]?.provider
+      : undefined) ??
+    (kind ? defaultProviderFor(kind) : undefined);
+  const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
+  const slots: SecretSlotDef[] = phaseDef?.slots?.length ? phaseDef.slots : providerSlots;
 
   const [visible, setVisible] = useState<VisibleSecret[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -71,8 +82,20 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
 
   useEffect(() => {
     let cancelled = false;
+    const t0 = performance.now();
+    // eslint-disable-next-line no-console
+    console.log("[RequiredSecretsTab] fetching visible secrets", { orgId });
     fetchVisibleSecrets(orgId).then(r => {
-      if (!cancelled) { setVisible(r.scoped); setLoaded(true); }
+      if (!cancelled) {
+        // eslint-disable-next-line no-console
+        console.log("[RequiredSecretsTab] secrets loaded", {
+          orgId, count: r.scoped.length, ms: +(performance.now() - t0).toFixed(2),
+        });
+        setVisible(r.scoped); setLoaded(true);
+      }
+    }).catch(err => {
+      // eslint-disable-next-line no-console
+      console.error("[RequiredSecretsTab] fetchVisibleSecrets failed", err);
     });
     return () => { cancelled = true; };
   }, [orgId]);

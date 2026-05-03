@@ -14,6 +14,7 @@ export type {
   FieldMeta,
   TabVisibility,
   ExecutorKind,
+  SecretSlotDef,
 } from "./phase-definition.ts";
 export { formatRefShort, summaryValue } from "./phase-definition.ts";
 export { executorCommonConfig, defaultProviderFor } from "./executor-common-config.ts";

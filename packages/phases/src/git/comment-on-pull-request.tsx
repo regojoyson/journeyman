@@ -44,6 +44,6 @@ export const commentOnPullRequestPhase: PhaseDefinition<CommentOnPullRequestConf
       description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
     },
   ],
-  summary: c => c.template || (c.prNumber !== "" ? `#${c.prNumber}` : "(no target)"),
+  summary: c => c.template || (c.prNumber ? `#${c.prNumber}` : "(no target)"),
   executor: { kind: "git-provider", method: "addComment" },
 };

@@ -92,12 +92,6 @@ export const updateIssueFieldsPhase: PhaseDefinition<UpdateIssueFieldsConfig> = 
   }),
   ConfigForm: UpdateIssueFieldsConfigForm,
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
   summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",
   executor: { kind: "issue-provider", method: "updateIssue" },
   outputSchema: updateIssueFieldsOutputSchema,

@@ -192,9 +192,13 @@ class ConvertCtx {
         return {
           ...(resolvedNode.config ?? {}),
           ...resolveInputs(resolvedNode.inputs),
+          provider: resolvedNode.executorConfig?.provider,
           retry: resolvedNode.retry ?? {},
           secretBindings: bindings,
           _flowDefaultSources: defaultSources,
+          startedByUserId: "${workflow.input.startedByUserId}",
+          startedByOrgId: "${workflow.input.startedByOrgId}",
+          flowId: "${workflow.input.flowId}",
         };
       })(),
       retryCount: enabled ? (r.maxAttempts ?? 3) : 0,

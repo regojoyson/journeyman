@@ -4,7 +4,10 @@
   "description": "Pure React flow editor component for Journeyman. n8n-style canvas, properties panel, palette. No backend coupling.",
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
   "files": ["src"],
   "scripts": {
     "typecheck": "tsc --noEmit"

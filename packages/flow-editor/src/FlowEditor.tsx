@@ -35,6 +35,17 @@ function autoHeal(flow: FlowGraph): { healed: FlowGraph; restored: string[] } {
 }
 
 export function FlowEditor(props: FlowEditorProps) {
+  // Mount log — fires once on first render.
+  const mountedRef = useRef(false);
+  if (!mountedRef.current) {
+    mountedRef.current = true;
+    // eslint-disable-next-line no-console
+    console.log("[FlowEditor] mounted", {
+      nodes: props.flow.nodes.length,
+      edges: props.flow.edges.length,
+    });
+  }
+
   // Render-loop detector — counts FlowEditor renders within a 1s window.
   const renderTimesRef = useRef<number[]>([]);
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -51,7 +62,14 @@ export function FlowEditor(props: FlowEditorProps) {
     renderTimesRef.current = [];
   }
 
-  const heal = useMemo(() => autoHeal(props.flow), [props.flow]);
+  const heal = useMemo(() => {
+    const result = autoHeal(props.flow);
+    if (result.restored.length) {
+      // eslint-disable-next-line no-console
+      console.warn("[FlowEditor] autoHeal restored nodes", result.restored);
+    }
+    return result;
+  }, [props.flow]);
   const [healDismissed, setHealDismissed] = useState(false);
   // If we healed, push the corrected flow back up so save persists it.
   // Guard with a ref so we don't re-fire onChange repeatedly if the parent
@@ -71,7 +89,16 @@ export function FlowEditor(props: FlowEditorProps) {
   }, [heal.restored.join(",")]);
 
   const s = useFlowEditorState({ flow: heal.healed, onChange: props.onChange });
-  const validity = useMemo(() => isValidPhase4Graph(heal.healed), [heal.healed]);
+  const validity = useMemo(() => {
+    const t0 = performance.now();
+    const result = isValidPhase4Graph(heal.healed);
+    const elapsed = performance.now() - t0;
+    if (elapsed > 20) {
+      // eslint-disable-next-line no-console
+      console.warn("[FlowEditor] isValidPhase4Graph slow", { ms: +elapsed.toFixed(2), nodes: heal.healed.nodes.length });
+    }
+    return result;
+  }, [heal.healed]);
 
   const [propsWidth, setPropsWidth] = useState<number>(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(PROPS_WIDTH_KEY) : null;
@@ -98,10 +125,16 @@ export function FlowEditor(props: FlowEditorProps) {
   };
 
   const validationCatalog = useValidationCatalog();
-  const inputWarnings = useMemo(
-    () => validateFlowInputs(heal.healed, validationCatalog),
-    [heal.healed, validationCatalog],
-  );
+  const inputWarnings = useMemo(() => {
+    const t0 = performance.now();
+    const result = validateFlowInputs(heal.healed, validationCatalog);
+    const elapsed = performance.now() - t0;
+    if (elapsed > 20) {
+      // eslint-disable-next-line no-console
+      console.warn("[FlowEditor] validateFlowInputs slow", { ms: +elapsed.toFixed(2), nodes: heal.healed.nodes.length });
+    }
+    return result;
+  }, [heal.healed, validationCatalog]);
 
   return (
     <PhaseRegistryProvider phases={props.phases}>

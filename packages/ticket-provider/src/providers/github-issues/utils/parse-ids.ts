@@ -14,7 +14,8 @@ export function parseOwnerRepo(projectId: string | undefined): { owner: string; 
 }
 
 export function parseIssueId(id: string): { owner: string; repo: string; number: number } {
-  const match = /^([^/]+)\/([^#]+)#(\d+)$/.exec(id);
+  const normalized = id.replace(/^github:/, "");
+  const match = /^([^/]+)\/([^#]+)#(\d+)$/.exec(normalized);
   if (!match) {
     throw new Error(
       `GitHubIssuesProvider: id must be "owner/repo#<number>", got ${JSON.stringify(id)}`,

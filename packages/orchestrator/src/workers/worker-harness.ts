@@ -1,4 +1,4 @@
-import { createLogger } from "@journeyman/core";
+import { createLogger, PROVIDER_CATALOG, kindForPhaseType } from "@journeyman/core";
 import type {
   IEventBus, IPhaseRegistry, IWorkspaceProvider,
   SecretBinding,
@@ -21,7 +21,7 @@ export interface WorkerHarnessDeps {
    * declared slots and the task's bindings, returns slot-keyed env values.
    */
   bindingResolver: (input: {
-    ctx: { userId: string | null; flowId: string | null };
+    ctx: { userId: string | null; orgId: string | null; flowId: string | null };
     slots: Array<{ name: string; optional?: boolean }>;
     bindings: Record<string, SecretBinding>;
   }) => Promise<Record<string, string>>;
@@ -87,13 +87,14 @@ export class WorkerHarness {
     }
 
     const runId = task.workflowInstanceId;
-    const nodeId = task.taskDefName;
+    const nodeId = task.referenceTaskName;
     const rawInput = (task.inputData ?? {}) as Record<string, unknown>;
     const inputSources = (rawInput as { _flowDefaultSources?: Record<string, "node" | "flow-default"> })._flowDefaultSources;
     const phaseInput: Record<string, unknown> = { ...rawInput };
     delete phaseInput["_flowDefaultSources"];
 
     const userId = (phaseInput as { startedByUserId?: string | null }).startedByUserId ?? null;
+    const orgId = (phaseInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
     const ws = await this.deps.workspace.create({ runId, nodeId, userId });
     const abort = new AbortController();
 
@@ -104,13 +105,29 @@ export class WorkerHarness {
     let resolvedEnv: Record<string, string>;
     try {
       const phaseDef = this.deps.registry.get(phaseType);
-      const slots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
+      const phaseKind = kindForPhaseType(phaseType);
+      const provider = (phaseInput as { provider?: string }).provider;
+      const providerSlots = phaseKind
+        ? (PROVIDER_CATALOG.find(p => p.value === provider && p.kind === phaseKind)?.slots ?? [])
+        : [];
+      const phaseSlots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
+      const slots = phaseSlots.length > 0 ? phaseSlots : providerSlots;
+
+      log.info({
+        runId, nodeId, phaseKind, provider,
+        slots: slots.map(s => s.name),
+        bindings: Object.fromEntries(Object.entries(declaredBindings).map(([k, v]) => [k, v.mode])),
+        userId: userId ?? "(null)",
+        orgId: orgId ?? "(null)",
+      }, "resolving secrets");
 
       resolvedEnv = await this.deps.bindingResolver({
-        ctx: { userId, flowId },
+        ctx: { userId, orgId, flowId },
         slots,
         bindings: declaredBindings,
       });
+
+      log.info({ runId, nodeId, resolvedKeys: Object.keys(resolvedEnv) }, "secrets resolved");
     } catch (err: any) {
       const isCredErr = err?.name === "MissingSecretsError";
       if (isCredErr) {
@@ -172,6 +189,19 @@ export class WorkerHarness {
         });
       }
     } catch (err: any) {
+      if (err?.name === "ConfigurationError") {
+        log.error({ runId, nodeId, message: err.message }, "phase failed: configuration error");
+        await this.deps.events.append({
+          runId, nodeId, eventType: "phase.failed",
+          payload: { reason: "configuration_error", message: String(err?.message ?? "") },
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: runId, taskId: task.taskId,
+          status: "FAILED_WITH_TERMINAL_ERROR",
+          reasonForIncompletion: `configuration_error: ${err.message}`,
+        });
+        return;
+      }
       log.error({ runId, nodeId, err }, "phase threw unhandled error");
       await this.deps.events.append({
         runId, nodeId, eventType: "phase.failed",

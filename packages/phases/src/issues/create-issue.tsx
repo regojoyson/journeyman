@@ -37,12 +37,6 @@ export const createIssuePhase: PhaseDefinition<CreateIssueConfig> = {
     // labels rendered as comma-separated string for round 1; the schema enforces array shape via the form's array handling below.
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
   summary: c => c.title || c.project,
   executor: { kind: "issue-provider", method: "createIssue" },
   outputSchema: createIssueOutputSchema,

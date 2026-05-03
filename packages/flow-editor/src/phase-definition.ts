@@ -20,16 +20,8 @@ export interface FieldMeta {
   options?: { value: string; label: string }[];
 }
 
-export interface SecretSlotDef {
-  /** Slot identifier — what the phase reads at runtime as ctx.env[name].
-   *  Convention: SCREAMING_SNAKE_CASE. Validated against ^[A-Z][A-Z0-9_]*$. */
-  name: string;
-  /** Short, human-friendly explanation. Shown next to the slot in the editor. */
-  description: string;
-  /** Optional slots: Auto-mode failing to resolve does NOT fail the run.
-   *  Phase handler must tolerate ctx.env[name] being undefined. */
-  optional?: boolean;
-}
+import type { SecretSlotDef } from "@journeyman/core";
+export type { SecretSlotDef };
 
 export interface PhaseRunState {
   status: "idle" | "running" | "succeeded" | "failed";

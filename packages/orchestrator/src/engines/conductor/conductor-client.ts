@@ -11,6 +11,8 @@ export interface PolledTask {
   taskId: string;
   workflowInstanceId: string;
   taskDefName: string;
+  /** Unique reference name for this task within the workflow — maps to the flow node ID. */
+  referenceTaskName: string;
   inputData: Record<string, unknown>;
   retryCount: number;
 }

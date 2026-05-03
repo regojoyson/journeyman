@@ -33,12 +33,6 @@ export const commentOnIssuePhase: PhaseDefinition<CommentOnIssueConfig> = {
     body:      { label: "Inline body (optional)", widget: "textarea", help: "Used when no template is set" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
   summary: c => c.template || c.issueRef || "(no target)",
   executor: { kind: "issue-provider", method: "addComment" },
   outputSchema: commentOnIssueOutputSchema,

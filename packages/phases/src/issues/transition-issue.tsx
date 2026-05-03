@@ -30,12 +30,6 @@ export const transitionIssuePhase: PhaseDefinition<TransitionIssueConfig> = {
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
   summary: c => c.status || "(no status)",
   executor: { kind: "issue-provider", method: "updateStatus" },
   outputSchema: transitionIssueOutputSchema,

@@ -4,6 +4,9 @@ import { NodeDetailDrawer } from "./drawer/NodeDetailDrawer.tsx";
 import { RunTopbar } from "./topbar/RunTopbar.tsx";
 import { computeNodeStatuses } from "./status/compute-node-status.ts";
 import type { RunViewerProps } from "./types.ts";
+// Pull in flow-editor styles so PhaseNode (`je-node*`) and ReactFlow handle/edge
+// overrides render correctly — RunViewer reuses the editor's node components.
+import "@journeyman/flow-editor/styles.css";
 import "./styles.css";
 
 export function RunViewer(props: RunViewerProps & { flowName?: string }) {
