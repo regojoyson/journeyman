@@ -1,6 +1,7 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
 import type { Issue } from "./issue.types.ts";
 import type { ResolvedMcpInstance } from "./mcp.types.ts";
+import type { ResolvedSkillPackage } from "./skills.types.ts";
 
 // ---------------------------------------------------------------------------
 // Provider config — shared across all coding-CLI providers
@@ -37,6 +38,8 @@ export type AnalyzeOptions = SessionOptions & {
   model?: string;
   /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
   mcps?: ResolvedMcpInstance[];
+  /** Resolved skill packages to load as plugins for the SDK query. */
+  skills?: ResolvedSkillPackage[];
 };
 
 export type AnalyzeIssueType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
@@ -94,6 +97,8 @@ export type PlanOptions = SessionOptions & {
   model?: string;
   /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
   mcps?: ResolvedMcpInstance[];
+  /** Resolved skill packages to load as plugins for the SDK query. */
+  skills?: ResolvedSkillPackage[];
 };
 
 export type PlanStepKind =
@@ -154,6 +159,8 @@ export type ImplementOptions = SessionOptions & {
   model?: string;
   /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
   mcps?: ResolvedMcpInstance[];
+  /** Resolved skill packages to load as plugins for the SDK query. */
+  skills?: ResolvedSkillPackage[];
 };
 
 export type ImplementChangeKind = "created" | "modified" | "deleted";

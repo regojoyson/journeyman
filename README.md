@@ -78,6 +78,7 @@ Flows and product/provider configuration are managed through the web UI and stor
 | `JOURNEYMAN_BASE_DIR` | Root under which all run workspaces are created. Set in `.env`. | `/workspaces` |
 | `workspaceDir` | Per-run directory created by the `create-workspace` phase. | `/workspaces/PROJ-123-2026-05-01T14-00-00Z` |
 | `repoDir` | Directory of a single cloned repository inside the workspace. | `/workspaces/PROJ-123-…/my-api` |
+| `SKILLS_CACHE_DIR` | Root under which skill packages are cloned from git. Each package lives at `<dir>/<name>-<8-char-hash>/`. Falls back to `~/.journeyman/skills`. | `/data/skills-cache` |
 
 ## Commands
 
@@ -186,6 +187,7 @@ For more architectural detail, see the [spec](docs/superpowers/specs/2026-04-18-
 
 | Component | Status |
 |---|---|
+| `@journeyman/skills` (add/remove packages, clone on create, pull latest, per-skill toggle, org promote) | ✅ |
 | `ClaudeProvider` (analyze, plan, implement, clone, commit+push, cleanup) | ✅ |
 | `GitHubProvider` (getRepo, createPR, listPRs) | ✅ |
 | `GitHubIssuesProvider` (incl. label-based updateStatus) | ✅ |

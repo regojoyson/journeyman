@@ -10,6 +10,7 @@
   "dependencies": {
     "@journeyman/core": "*",
     "@journeyman/mcp": "*",
+    "@journeyman/skills": "*",
     "@opencode-ai/sdk": "latest"
   },
   "peerDependencies": {

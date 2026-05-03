@@ -19,6 +19,7 @@
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
     "@journeyman/mcp": "*",
+    "@journeyman/skills": "*",
     "@journeyman/orchestrator": "*",
     "@journeyman/phases": "*",
     "@journeyman/secrets": "*",

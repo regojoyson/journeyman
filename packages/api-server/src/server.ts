@@ -12,6 +12,7 @@ import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
+import { registerSkillRoutes } from "@journeyman/skills";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -31,6 +32,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   if (c.pool) {
     await registerSecretsRoutes(app, c.pool);
     await registerMcpRoutes(app, c.pool);
+    await registerSkillRoutes(app, c.pool);
   }
   registerFlowRoutes(app, c);
   registerPhasesRoutes(app);

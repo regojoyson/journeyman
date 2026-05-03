@@ -7,6 +7,7 @@ export type { INotificationProvider } from "./interfaces/notification.interface.
 // Types
 export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
+export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";

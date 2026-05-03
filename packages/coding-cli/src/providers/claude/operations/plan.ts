@@ -1,6 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger, formatIssueForPrompt } from "@journeyman/core";
 import { toMcpServerConfigs, mergeSystemPrompts } from "@journeyman/mcp/sdk-adapter";
+import { toSdkPluginConfigs, buildSkillSystemPrompt } from "@journeyman/skills/sdk-adapter";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { PlanOptions, PlanResult } from "@journeyman/core";
@@ -201,10 +202,12 @@ export async function plan(opts: PlanOptions): Promise<PlanResult> {
   const mcpPromptSuffix = opts.mcps?.length ? mergeSystemPrompts(opts.mcps) : "";
   const mcpKeys = mcpServers ? Object.keys(mcpServers) : [];
   const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
+  const plugins = opts.skills?.length ? toSdkPluginConfigs(opts.skills) : undefined;
+  const skillPromptSuffix = opts.skills?.length ? buildSkillSystemPrompt(opts.skills) : "";
   let output: PlanResult = { ...EMPTY_RESULT, sessionId };
 
   for await (const msg of query({
-    prompt: mcpPromptSuffix ? `${buildPrompt(opts)}\n\n${mcpPromptSuffix}` : buildPrompt(opts),
+    prompt: [buildPrompt(opts), mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n"),
     options: {
       tools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames],
       allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames],
@@ -214,6 +217,7 @@ export async function plan(opts: PlanOptions): Promise<PlanResult> {
       settingSources: [],
       settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
       ...(mcpServers ? { mcpServers } : {}),
+      ...(plugins?.length ? { plugins } : {}),
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
       ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),

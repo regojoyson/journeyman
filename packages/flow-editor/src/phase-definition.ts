@@ -93,6 +93,7 @@ export interface PhaseDefinition<TConfig = unknown> {
     io: TabVisibility;
     requiredSecrets?: TabVisibility;
     mcp: TabVisibility;
+    skills?: TabVisibility;
     retry: TabVisibility;
   };
 
@@ -109,6 +110,9 @@ export interface PhaseDefinition<TConfig = unknown> {
     kind: ExecutorKind;
     method: string;
   };
+
+  /** Whether this phase can consume skill packages. Drives the Skills tab in the editor. */
+  supportsSkills?: boolean;
 
   /** Declared shape of this phase's output — drives the editor picker. */
   outputSchema?: OutputSchema;

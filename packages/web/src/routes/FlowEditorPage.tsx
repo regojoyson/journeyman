@@ -36,6 +36,7 @@ export function FlowEditorPage() {
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] fetching flow meta", { id });
       const result = await getFlow(id!);
+      if (!result) throw new Error(`Flow ${id} not found`);
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] flow meta loaded", { id, name: result.name });
       return result;
