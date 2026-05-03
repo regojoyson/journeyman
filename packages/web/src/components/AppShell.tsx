@@ -48,8 +48,10 @@ export default function AppShell() {
         <NavLink to="/flows" style={navStyle}>Flows</NavLink>
         <NavLink to="/runs" style={navStyle}>Runs</NavLink>
         <NavLink to="/me/secrets" style={navStyle}>My Secrets</NavLink>
+        <NavLink to="/me/mcps" style={navStyle}>My MCPs</NavLink>
         {role === "admin" && <NavLink to="/admin/users" style={navStyle}>Users</NavLink>}
         {role === "admin" && <NavLink to="/admin/secrets" style={navStyle}>Org Secrets</NavLink>}
+        {role === "admin" && <NavLink to="/admin/mcps" style={navStyle}>Org MCPs</NavLink>}
         {role === "admin" && <NavLink to="/admin/flows" style={navStyle}>Admin → Flows</NavLink>}
 
         <div style={{ marginLeft: "auto" }} ref={menuRef} className="relative">
@@ -96,6 +98,14 @@ export default function AppShell() {
                 className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
               >
                 My Secrets
+              </Link>
+              <Link
+                to="/me/mcps"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              >
+                My MCPs
               </Link>
               <Link
                 to="/me/password"

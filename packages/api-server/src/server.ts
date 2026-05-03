@@ -11,6 +11,7 @@ import { registerRunRoutes } from "./routes/runs.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
+import { registerMcpRoutes } from "@journeyman/mcp";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -29,6 +30,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   await registerIdentityRoutes(app, c.pool!);
   if (c.pool) {
     await registerSecretsRoutes(app, c.pool);
+    await registerMcpRoutes(app, c.pool);
   }
   registerFlowRoutes(app, c);
   registerPhasesRoutes(app);

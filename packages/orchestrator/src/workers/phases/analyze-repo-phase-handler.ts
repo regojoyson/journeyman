@@ -1,6 +1,7 @@
 import { createLogger, isIssueLike } from "@journeyman/core";
 import type {
   ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
+  ResolvedMcpInstance,
 } from "@journeyman/core";
 
 const log = createLogger("worker:analyze");
@@ -36,11 +37,13 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Analyzing ${workspaceDir}`);
+    const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     const result = await coding.analyze({
       workspaceDir,
       issue,
       sessionId: ctx.runId,
       signal: ctx.signal,
+      ...(mcps ? { mcps } : {}),
     });
     if (result && typeof result === "object" && "error" in result && (result as any).error) {
       log.error({ result }, "analyze failed");

@@ -1,5 +1,6 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
 import type { Issue } from "./issue.types.ts";
+import type { ResolvedMcpInstance } from "./mcp.types.ts";
 
 // ---------------------------------------------------------------------------
 // Provider config — shared across all coding-CLI providers
@@ -34,6 +35,8 @@ export type AnalyzeOptions = SessionOptions & {
   reviewComments?: string;
   signal?: AbortSignal;
   model?: string;
+  /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
+  mcps?: ResolvedMcpInstance[];
 };
 
 export type AnalyzeIssueType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
@@ -89,6 +92,8 @@ export type PlanOptions = SessionOptions & {
   reviewComments?: string;
   signal?: AbortSignal;
   model?: string;
+  /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
+  mcps?: ResolvedMcpInstance[];
 };
 
 export type PlanStepKind =
@@ -147,6 +152,8 @@ export type ImplementOptions = SessionOptions & {
   reviewComments?: string;
   signal?: AbortSignal;
   model?: string;
+  /** Resolved MCP instances to attach to the SDK query. Empty/undefined ⇒ no MCPs. */
+  mcps?: ResolvedMcpInstance[];
 };
 
 export type ImplementChangeKind = "created" | "modified" | "deleted";

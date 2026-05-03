@@ -112,4 +112,11 @@ export interface PhaseDefinition<TConfig = unknown> {
 
   /** Declared shape of this phase's output — drives the editor picker. */
   outputSchema?: OutputSchema;
+
+  /**
+   * When true, the flow editor properties panel renders an MCP multi-select
+   * populated from /api/orgs/:orgId/mcp-instances/visible. The chosen IDs are
+   * stored on the phase config under `mcpInstanceIds: string[]`.
+   */
+  supportsMcp?: boolean;
 }

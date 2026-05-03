@@ -33,6 +33,7 @@ claude-sdk-test/            ← repo root (name: journeyman)
 | `@journeyman/github-api` | Shared GitHub Octokit-based client (`@octokit/rest` + `@octokit/graphql` with retry/throttling plugins). Exposes `createGitHubClient({ token })` returning `{ rest, graphql }`. Consumed by `git-provider` and `ticket-provider` GitHub implementations. |
 | `@journeyman/ticket-provider` | Issue tracker operations (CRUD tickets). Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`. |
 | `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`. |
+| `@journeyman/mcp` | DB-backed MCP instance registry (user/org scope), routes for CRUD + visible-list + static catalog, resolver that produces `ResolvedMcpInstance[]`, and a pure subpath `@journeyman/mcp/sdk-adapter` consumed by `coding-cli`. |
 
 ## Key Design Rules
 
@@ -143,6 +144,14 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 | `MondayProvider` | Stub |
 | `SlackProvider` | Stub |
 | `retryable` step flag | Implemented (`retryable?: boolean` on `FlowStepDefinition`; gates `POST /retry`) |
+| `@journeyman/mcp` package | Implemented |
+| MCP instance CRUD (user + org routes) | Implemented |
+| `resolveMcpInstances` resolver | Implemented |
+| `toMcpServerConfigs` / `mergeSystemPrompts` (subpath export) | Implemented |
+| `analyze`/`plan`/`implement` consume `mcps?: ResolvedMcpInstance[]` | Implemented |
+| `PhaseDefinition.supportsMcp` flag | Implemented |
+| Flow-editor MCP picker UI | Stub |
+| Worker pre-resolution of `mcpInstanceIds → ResolvedMcpInstance[]` | Stub |
 
 ## Adding a New Provider
 

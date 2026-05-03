@@ -18,6 +18,7 @@
     "@fastify/sensible": "^5.6.0",
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
+    "@journeyman/mcp": "*",
     "@journeyman/orchestrator": "*",
     "@journeyman/phases": "*",
     "@journeyman/secrets": "*",

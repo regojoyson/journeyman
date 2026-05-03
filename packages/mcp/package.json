@@ -1,18 +1,19 @@
 {
-  "name": "@journeyman/secrets",
+  "name": "@journeyman/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes/index.ts",
-    "./db": "./src/db.ts"
+    "./sdk-adapter": "./src/sdk-adapter.ts"
   },
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "*",
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
+    "@journeyman/secrets": "*",
     "pg": "^8.13.0"
   },
   "devDependencies": {

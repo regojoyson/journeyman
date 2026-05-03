@@ -1,5 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger, formatIssueForPrompt } from "@journeyman/core";
+import { toMcpServerConfigs, mergeSystemPrompts } from "@journeyman/mcp/sdk-adapter";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { ImplementOptions, ImplementResult } from "@journeyman/core";
@@ -205,18 +206,23 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
         return ac;
       })()
     : undefined;
+  const mcpServers = opts.mcps?.length ? toMcpServerConfigs(opts.mcps) : undefined;
+  const mcpPromptSuffix = opts.mcps?.length ? mergeSystemPrompts(opts.mcps) : "";
+  const mcpKeys = mcpServers ? Object.keys(mcpServers) : [];
+  const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
   let output: ImplementResult = { ...EMPTY_RESULT, sessionId };
 
   for await (const msg of query({
-    prompt: buildPrompt(opts),
+    prompt: mcpPromptSuffix ? `${buildPrompt(opts)}\n\n${mcpPromptSuffix}` : buildPrompt(opts),
     options: {
-      tools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit"],
-      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit"],
+      tools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames],
+      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns: 120,
       settingSources: [],
-      settings: { allowedMcpServers: [] },
+      settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
+      ...(mcpServers ? { mcpServers } : {}),
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
       ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),

@@ -106,6 +106,7 @@ export {
   NAMED_SHAPES, resolveShape, shapesEqual, shapeAtPath,
 } from "./types/shapes.ts";
 export * from "./types/secrets.types.ts";
+export * from "./types/mcp.types.ts";
 export { buildIssueRef, parseIssueRef } from "./utils/issue-ref.ts";
 export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";
 export { formatIssueForPrompt, isIssueLike } from "./utils/format-issue.ts";
