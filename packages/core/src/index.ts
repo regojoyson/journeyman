@@ -108,6 +108,16 @@ export * from "./types/secrets.types.ts";
 export { buildIssueRef, parseIssueRef } from "./utils/issue-ref.ts";
 export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";
 export { formatIssueForPrompt, isIssueLike } from "./utils/format-issue.ts";
+export {
+  validateInputBinding,
+  validateFlowInputs,
+  shapeTag,
+} from "./utils/validate-flow.ts";
+export type {
+  BindingCheck,
+  ValidationCatalog,
+  ValidationCatalogEntry,
+} from "./utils/validate-flow.ts";
 export type {
   WebhookEvent,
   WebhookEventStatus,

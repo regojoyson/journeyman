@@ -847,3 +847,51 @@ label.je-switch,
 .je-props__field-help { font-size: 11px; color: #888; margin-top: 4px; }
 .je-props__field-error { margin-top: 8px; font-size: 11px; color: #ff7675; }
 .je-props__phase-desc { font-size: 11px; color: #888; margin-top: 8px; line-height: 1.4; }
+
+/* Validation: picker — disabled bind button on shape mismatch */
+.vp-shape-node--incompatible > .vp-shape-row > .vp-shape-bind {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.vp-shape-node--incompatible > .vp-shape-row > .vp-shape-bind:hover {
+  background: transparent;
+}
+
+/* Validation: per-input red border in panel */
+.je-props__field--invalid {
+  border-left: 2px solid #ff6b6b;
+  padding-left: 8px;
+  margin-left: -10px;
+}
+.je-props__field-error-msg {
+  color: #ff8a8a;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Validation: node tile red dot (top-left to avoid clash with run-state badge) */
+.je-node-warning-dot {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  box-shadow: 0 0 4px #ff6b6b;
+  pointer-events: auto;
+  cursor: help;
+}
+
+/* Validation: topbar input warnings */
+.je-topbar__warnings--input {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+.je-topbar__warning-row--input {
+  cursor: pointer;
+}
+.je-topbar__warning-row--input:hover {
+  background: rgba(255, 107, 107, 0.15);
+}

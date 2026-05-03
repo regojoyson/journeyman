@@ -1,6 +1,7 @@
 // packages/flow-editor/src/properties-panel/SchemaForm.tsx
 import type { ZodTypeAny } from "zod";
 import type { ReactNode } from "react";
+import type { FlowSaveWarning } from "@journeyman/core";
 import type { FieldMeta } from "../phase-definition.ts";
 
 export interface SchemaFormProps {
@@ -15,11 +16,13 @@ export interface SchemaFormProps {
   renderFieldBindControl?: (key: string) => ReactNode;
   /** Renders the bound-state pill that replaces the input when a key is bound. */
   renderBoundPill?: (key: string) => ReactNode;
+  /** Optional per-key validation warnings to render with red highlight + inline message. */
+  warningsByKey?: Map<string, FlowSaveWarning>;
 }
 
 export function SchemaForm({
   config, fields, schema, onChange, readOnly,
-  boundKeys, renderFieldBindControl, renderBoundPill,
+  boundKeys, renderFieldBindControl, renderBoundPill, warningsByKey,
 }: SchemaFormProps) {
   const set = (key: string, value: unknown) => onChange({ ...config, [key]: value });
 
@@ -39,9 +42,11 @@ export function SchemaForm({
     <div>
       {Object.entries(fields).map(([key, meta]) => {
         const isBound = !!boundKeys?.has(key);
+        const warning = warningsByKey?.get(key);
+        const fieldClass = `je-props__field${warning ? " je-props__field--invalid" : ""}`;
         if (meta.widget === "checkbox" && !isBound) {
           return (
-            <div key={key} className="je-props__field">
+            <div key={key} className={fieldClass}>
               <label className="je-props__check-row">
                 <input
                   type="checkbox"
@@ -52,11 +57,12 @@ export function SchemaForm({
                 {meta.label}
               </label>
               {meta.help && <div className="je-props__field-help">{meta.help}</div>}
+              {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
             </div>
           );
         }
         return (
-          <div key={key} className="je-props__field">
+          <div key={key} className={fieldClass}>
             <div className="je-props__field-label-row">
               <label>{meta.label}</label>
               {renderFieldBindControl?.(key)}
@@ -72,6 +78,7 @@ export function SchemaForm({
               />
             )}
             {meta.help && <div className="je-props__field-help">{meta.help}</div>}
+            {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
           </div>
         );
       })}

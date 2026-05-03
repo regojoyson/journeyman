@@ -193,4 +193,41 @@ export type FlowSaveWarning =
         pinnedScope: SecretScope;
         flowScope: FlowScope;
       }>;
+    }
+  | {
+      code: "shape-mismatch";
+      message: string;
+      nodeId: string;
+      inputKey: string;
+      ref: string;
+      expected: string;
+      actual: string;
+    }
+  | {
+      code: "missing-required";
+      message: string;
+      nodeId: string;
+      inputKey: string;
+    }
+  | {
+      code: "dangling-ref-node";
+      message: string;
+      nodeId: string;
+      inputKey: string;
+      ref: string;
+      missingNodeId: string;
+    }
+  | {
+      code: "dangling-ref-path";
+      message: string;
+      nodeId: string;
+      inputKey: string;
+      ref: string;
+      missingPath: string;
+    }
+  | {
+      code: "missing-input-shape";
+      message: string;
+      nodeId: string;
+      inputKey: string;
     };

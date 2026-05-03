@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Shape } from "@journeyman/core";
-import { resolveShape, shapesEqual } from "@journeyman/core";
+import { resolveShape, validateInputBinding, shapeTag } from "@journeyman/core";
 
 interface Props {
   shape: Shape;
@@ -18,25 +18,30 @@ export function ShapeTree({ shape, path, onBind, onInsert, expected }: Props) {
   } catch {
     resolved = shape;
   }
-  let compatible = false;
-  if (expected) {
-    try {
-      compatible = shapesEqual(resolved, expected);
-    } catch {
-      compatible = false;
-    }
-  }
+  const check = expected ? validateInputBinding(expected, resolved) : undefined;
+  const compatible = !check || check.ok;
+  const incompatibleReason = check?.ok === false && check.reason === "shape-mismatch"
+    ? `Type mismatch: expected ${shapeTag(check.expected)}, got ${shapeTag(check.actual)}`
+    : null;
 
   const label = labelFor(path, resolved);
 
   return (
-    <div className={`vp-shape-node${compatible ? " vp-shape-node--compatible" : ""}`}>
+    <div
+      className={
+        `vp-shape-node` +
+        (compatible ? " vp-shape-node--compatible" : "") +
+        (incompatibleReason ? " vp-shape-node--incompatible" : "")
+      }
+    >
       <div className="vp-shape-row">
         <button
           type="button"
           className="vp-shape-bind"
-          onClick={() => onBind(path)}
-          title={compatible ? "Bind (compatible)" : "Bind"}
+          disabled={!!incompatibleReason}
+          aria-disabled={!!incompatibleReason}
+          onClick={() => { if (!incompatibleReason) onBind(path); }}
+          title={incompatibleReason ?? (compatible ? "Bind (compatible)" : "Bind")}
         >
           {label}
         </button>
@@ -94,13 +99,3 @@ function labelFor(path: string[], s: Shape): string {
   return `${last} : ${tag}`;
 }
 
-function shapeTag(s: Shape): string {
-  switch (s.type) {
-    case "string":
-    case "number":
-    case "boolean": return s.type;
-    case "ref":     return s.name;
-    case "object":  return s.named ?? "object";
-    case "array":   return `${shapeTag(s.items)}[]`;
-  }
-}

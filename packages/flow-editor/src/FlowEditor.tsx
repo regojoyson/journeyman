@@ -9,6 +9,9 @@ import { Topbar } from "./topbar/Topbar.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
+import { ValidationProvider } from "./state/validation-context.tsx";
+import { useValidationCatalog } from "./properties-panel/use-validation-catalog.ts";
+import { validateFlowInputs } from "@journeyman/core";
 import type { FlowEditorProps } from "./types.ts";
 import type { FlowGraph, FlowNode } from "@journeyman/core";
 import "./styles.css";
@@ -94,8 +97,15 @@ export function FlowEditor(props: FlowEditorProps) {
     s.update(f => ({ ...f, nodes: f.nodes.map(n => n.id === next.id ? next : n) }));
   };
 
+  const validationCatalog = useValidationCatalog();
+  const inputWarnings = useMemo(
+    () => validateFlowInputs(heal.healed, validationCatalog),
+    [heal.healed, validationCatalog],
+  );
+
   return (
     <PhaseRegistryProvider phases={props.phases}>
+      <ValidationProvider inputWarnings={inputWarnings}>
       <div className="je-editor">
         <Topbar
           flowName={props.flowName}
@@ -154,6 +164,7 @@ export function FlowEditor(props: FlowEditorProps) {
           )}
         </div>
       </div>
+      </ValidationProvider>
     </PhaseRegistryProvider>
   );
 }

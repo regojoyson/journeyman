@@ -10,6 +10,7 @@ import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { useNodeWarningsByKey } from "../state/validation-context.tsx";
 
 export interface ConfigTabProps {
   flow: FlowGraph;
@@ -29,6 +30,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const catalog = usePhaseCatalog();
   const sources = useUpstreamSources(flow, node.id, catalog);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const nodeWarningsByKey = useNodeWarningsByKey(node.id);
 
   const handlePick = (fieldKey: string, ref: string) => {
     const clean = sanitizeRef(ref);
@@ -167,6 +169,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
               boundKeys={boundKeys}
               renderFieldBindControl={renderFieldBindControl}
               renderBoundPill={renderBoundPill}
+              warningsByKey={nodeWarningsByKey}
             />
           )}
           {bindOnlyFields.length > 0 && (
@@ -175,8 +178,9 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
               {bindOnlyFields.map(([key, meta]) => {
                 const isBound = boundKeys.has(key);
                 const isRequired = !!meta.required;
+                const warning = nodeWarningsByKey.get(key);
                 return (
-                  <div key={key} className="je-props__field">
+                  <div key={key} className={`je-props__field${warning ? " je-props__field--invalid" : ""}`}>
                     <div className="je-props__field-label-row">
                       <label>
                         {meta.label ?? key}
@@ -189,6 +193,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                         {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
                       </div>
                     )}
+                    {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
                   </div>
                 );
               })}

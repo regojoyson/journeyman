@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FlowGraph, FlowSaveWarning } from "@journeyman/core";
+import { validateFlowInputs } from "@journeyman/core";
+import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
+import { InputWarningsSection } from "./InputWarningsSection.tsx";
 import {
   Check,
   Copy,
@@ -21,6 +24,7 @@ export interface ValidationReport {
   missing: string[];
   warnings: string[];
   secretWarnings?: FlowSaveWarning[];
+  inputWarnings?: FlowSaveWarning[];
 }
 
 export interface TopbarProps {
@@ -47,12 +51,18 @@ export function Topbar(p: TopbarProps) {
   const [validating, setValidating] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
+  const validationCatalog = useValidationCatalog();
+  const inputWarnings = useMemo(
+    () => (p.flow ? validateFlowInputs(p.flow, validationCatalog) : []),
+    [p.flow, validationCatalog],
+  );
+
   const runValidate = async () => {
     if (!p.onValidate) return;
     setValidating(true);
     try {
       const r = await p.onValidate();
-      setReport(r);
+      setReport({ ...r, inputWarnings });
     } catch (e) {
       setReport({
         ok: false,
@@ -60,6 +70,7 @@ export function Topbar(p: TopbarProps) {
         missing: [],
         warnings: [],
         secretWarnings: [],
+        inputWarnings,
       });
     } finally {
       setValidating(false);
@@ -237,16 +248,19 @@ function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: s
 
 function ValidationPanel({ report, onClose }: { report: ValidationReport; onClose: () => void }) {
   const secretWarnings = report.secretWarnings ?? [];
+  const inputWarnings = report.inputWarnings ?? [];
   const total =
-    report.errors.length + report.missing.length + report.warnings.length + secretWarnings.length;
+    report.errors.length + report.missing.length + report.warnings.length +
+    secretWarnings.length + inputWarnings.length;
+  const totalWarn = secretWarnings.length + inputWarnings.length;
   return (
     <div className="je-validate-panel">
       <div className="je-validate-panel__header">
         <span className={`je-validate-panel__status ${report.ok ? "ok" : "fail"}`}>
-          {report.ok && secretWarnings.length === 0
+          {report.ok && totalWarn === 0
             ? "✓ Flow looks good"
             : report.ok
-              ? `⚠ ${secretWarnings.length} warning${secretWarnings.length === 1 ? "" : "s"}`
+              ? `⚠ ${totalWarn} warning${totalWarn === 1 ? "" : "s"}`
               : `✕ ${total} issue${total === 1 ? "" : "s"}`}
         </span>
         <button className="je-validate-panel__close" onClick={onClose}>×</button>
@@ -266,6 +280,9 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
         )}
         {secretWarnings.length > 0 && (
           <SecretWarningsSection warnings={secretWarnings} />
+        )}
+        {inputWarnings.length > 0 && (
+          <InputWarningsSection warnings={inputWarnings} />
         )}
       </div>
     </div>
@@ -299,20 +316,23 @@ function SecretWarningsSection({ warnings }: { warnings: FlowSaveWarning[] }) {
             </div>
           );
         }
-        // code === "cross_scope_pin"
-        return (
-          <div key={i} style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 4 }}>{w.message}</div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
-              {w.entries.map((e, j) => (
-                <li key={j}>
-                  <code>{e.slot}</code> on node <code>{e.nodeId}</code> pinned to{" "}
-                  <b>{e.pinnedScope}</b> in a <b>{e.flowScope}</b>-scope flow
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
+        if (w.code === "cross_scope_pin") {
+          return (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+                {w.entries.map((e, j) => (
+                  <li key={j}>
+                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> pinned to{" "}
+                    <b>{e.pinnedScope}</b> in a <b>{e.flowScope}</b>-scope flow
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        // Other codes (input-validation variants) handled by InputWarningsSection — skip here.
+        return null;
       })}
     </div>
   );

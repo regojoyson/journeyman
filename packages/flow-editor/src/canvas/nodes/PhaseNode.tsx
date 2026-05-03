@@ -2,6 +2,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue, handleRed } from "../handle-styles.ts";
 import { usePhaseRegistry } from "../../state/phase-registry-context.tsx";
+import { useNodeHasWarning } from "../../state/validation-context.tsx";
 import type { PhaseRunState } from "../../phase-definition.ts";
 
 export interface PhaseNodeData {
@@ -48,10 +49,12 @@ export function PhaseNode(props: NodeProps) {
     definition?.label ||
     data.phaseType;
   const Badge = definition?.StatusBadge ?? DefaultStatusBadge;
+  const hasWarning = useNodeHasWarning(props.id);
 
   return (
     <div className="je-node je-node--phase" style={{ borderColor: accent, position: "relative" }}>
       {data.runState && <Badge state={data.runState} />}
+      {hasWarning && <span className="je-node-warning-dot" aria-hidden title="Input validation warnings — see topbar Validate panel" />}
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: accent }}>{icon}</div>
