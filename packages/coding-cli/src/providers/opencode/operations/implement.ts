@@ -1,5 +1,5 @@
 // packages/coding-cli/src/providers/opencode/operations/implement.ts
-import { createLogger } from "@journeyman/core";
+import { createLogger, formatIssueForPrompt } from "@journeyman/core";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
@@ -82,8 +82,8 @@ const DEFAULT_RULES = [
 ];
 
 function buildPrompt(opts: ImplementOptions): string {
-  const root = opts.repoDir.replace(/\/+$/, "");
-  const issue = opts.issueContent?.trim() || "(no issue content provided — derive from plan / analyze reports)";
+  const root = opts.workspaceDir.replace(/\/+$/, "");
+  const issue = opts.issue ? formatIssueForPrompt(opts.issue) : "(no issue provided — derive from plan / analyze reports)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
@@ -111,8 +111,9 @@ function buildPrompt(opts: ImplementOptions): string {
     "=== TICKET / GOAL ===",
     issue,
     "",
-    "=== CODEBASE ===",
-    `Root path: ${root}`,
+    "=== WORKSPACE ===",
+    `Workspace root: ${root}`,
+    "(may contain one or more cloned repos as subdirectories)",
     focus ? `Focus area: ${focus}` : "Focus: whatever the plan + analyze reports indicate.",
     "",
     "=== IMPLEMENTATION RULES (non-negotiable) ===",
@@ -160,7 +161,7 @@ export async function implement(
   opts: ImplementOptions,
 ): Promise<ImplementResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "implement start");
+  log.info({ sessionId, workspaceDir: opts.workspaceDir, focus: opts.focus }, "implement start");
 
   const session = await client.session.create({ title: "implement" });
   if (!session.data) throw new Error("opencode session.create returned no data");

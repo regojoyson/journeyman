@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { createLogger } from "@journeyman/core";
+import { createLogger, formatIssueForPrompt } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { AnalyzeOptions, AnalyzeResult } from "@journeyman/core";
@@ -96,9 +96,9 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 function buildPrompt(opts: AnalyzeOptions): string {
-  const issue = opts.issueContent?.trim() || "(no issue content provided — infer intent from repoDir)";
+  const issue = opts.issue ? formatIssueForPrompt(opts.issue) : "(no issue provided — infer intent from workspace contents)";
   const focus = opts.focus?.trim();
-  const docsDir = `${opts.repoDir.replace(/\/+$/, "")}/docs/analyze`;
+  const docsDir = `${opts.workspaceDir.replace(/\/+$/, "")}/docs/analyze`;
   const reviewBlock = opts.reviewComments
     ? `\n\n## Reviewer feedback (incorporate into the revised analysis)\n\n${opts.reviewComments}\n`
     : "";
@@ -117,12 +117,13 @@ function buildPrompt(opts: AnalyzeOptions): string {
     "=== TICKET ===",
     issue,
     "",
-    "=== CODEBASE ===",
-    `Root path: ${opts.repoDir}`,
+    "=== WORKSPACE ===",
+    `Workspace root: ${opts.workspaceDir}`,
+    "(may contain one or more cloned repos as subdirectories — locate the relevant one(s) from the issue)",
     focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the issue.",
     "",
     "=== INVESTIGATION STEPS (use Bash / Read / Grep / Glob) ===",
-    `  1. ls ${opts.repoDir} and inspect top-level structure`,
+    `  1. ls ${opts.workspaceDir} and inspect top-level structure`,
     "  2. Read README / package.json / pyproject / go.mod etc. to understand the project",
     "  3. grep for keywords from the issue (feature names, symbols, identifiers) to locate affected modules",
     "  4. Read the most relevant files (entrypoints, modules matching the issue scope)",
@@ -172,21 +173,21 @@ function buildPrompt(opts: AnalyzeOptions): string {
  * and a readiness score. No human-in-the-loop — the agent makes reasonable
  * assumptions and records them.
  *
- * @param opts - repoDir (codebase), issueContent (Jira/Linear/etc. payload),
+ * @param opts - workspaceDir (codebase root), issue (full Issue object from a tracker),
  *   optional focus to narrow scope.
  * @returns A structured AnalyzeResult.
  *
  * @example
  * ```ts
  * const report = await analyze({
- *   repoDir: "/projects/api",
- *   issueContent: "PROJ-123: Add rate limiting to /users endpoint...",
+ *   workspaceDir: "/projects/api",
+ *   issue: { id: "PROJ-123", title: "Add rate limiting to /users endpoint", description: "..." },
  * });
  * ```
  */
 export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
-  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "analyze start");
+  log.info({ sessionId, workspaceDir: opts.workspaceDir, focus: opts.focus }, "analyze start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -241,9 +242,13 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
 // Run: npx tsx analyze.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await analyze({
-    repoDir: "/Users/admin/data/workspace/claude-skils/journeyman",
-    issueContent:
-      "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them. Must log the planned commands per repo and return success=true with a new `planned` array.",
+    workspaceDir: "/Users/admin/data/workspace/claude-skils/journeyman",
+    issue: {
+      id: "JM-42",
+      title: "Add `dry-run` flag to checkoutRepo",
+      description:
+        "Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them. Must log the planned commands per repo and return success=true with a new `planned` array.",
+    },
   });
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }

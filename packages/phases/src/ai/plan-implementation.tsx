@@ -10,8 +10,6 @@ import {
 } from "./plan-implementation.meta.ts";
 
 interface PlanImplementationConfig {
-  repoDir: string;
-  issueContent?: string;
   analyzeReportPath?: string;
 }
 
@@ -22,15 +20,11 @@ export const planImplementationPhase: PhaseDefinition<PlanImplementationConfig> 
   description: PLAN_IMPLEMENTATION_DESCRIPTION,
   color: "#0984e3",
   icon: "📝",
-  defaultConfig: { repoDir: "", issueContent: "", analyzeReportPath: "" },
+  defaultConfig: { analyzeReportPath: "" },
   configSchema: z.object({
-    repoDir: z.string().min(1),
-    issueContent: z.string().optional(),
     analyzeReportPath: z.string().optional(),
   }),
   configFields: {
-    repoDir:           { label: "Repo directory",      widget: "text" },
-    issueContent:     { label: "Issue content",     widget: "textarea", help: "Markdown body of the issue" },
     analyzeReportPath: { label: "Analyze report path", widget: "text", help: "Optional path to a prior analyze output" },
   },
   tabs: { io: "shown", mcp: "shown", retry: "shown" },
@@ -41,7 +35,7 @@ export const planImplementationPhase: PhaseDefinition<PlanImplementationConfig> 
       optional: true,
     },
   ],
-  summary: (c, ctx) => summaryValue(c, ctx, "repoDir") || "(no repo)",
+  summary: (c, ctx) => summaryValue(c, ctx, "workspaceDir") || "(no workspace)",
   executor: { kind: "coding-cli", method: "plan" },
   outputSchema: planImplementationOutputSchema,
 };

@@ -10,6 +10,7 @@ import {
 
 interface CloneReposConfig {
   repos: string;
+  branch?: string;
 }
 
 export const cloneReposPhase: PhaseDefinition<CloneReposConfig> = {
@@ -19,12 +20,14 @@ export const cloneReposPhase: PhaseDefinition<CloneReposConfig> = {
   description: CLONE_REPOS_DESCRIPTION,
   color: "#74b9ff",
   icon: "📦",
-  defaultConfig: { repos: "" },
+  defaultConfig: { repos: "", branch: "" },
   configSchema: z.object({
     repos: z.string().min(1),
+    branch: z.string().optional(),
   }),
   configFields: {
-    repos:     { label: "Repos", widget: "textarea", help: "One owner/repo (or URL) per line" },
+    repos:  { label: "Repos",  widget: "textarea", help: "One owner/repo (or URL) per line" },
+    branch: { label: "Branch", widget: "text",     help: "Optional — defaults to main" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
   slots: [

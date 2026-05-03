@@ -9,10 +9,7 @@ import {
   analyzeRepoOutputSchema,
 } from "./analyze-repo.meta.ts";
 
-interface AnalyzeRepoConfig {
-  repoDir: string;
-  issueContent: string;
-}
+type AnalyzeRepoConfig = Record<string, never>;
 
 export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   phaseType: ANALYZE_REPO_PHASE_TYPE,
@@ -21,15 +18,9 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   description: ANALYZE_REPO_DESCRIPTION,
   color: "#00b894",
   icon: "🤖",
-  defaultConfig: { repoDir: "", issueContent: "" },
-  configSchema: z.object({
-    repoDir: z.string().min(1, "repoDir is required"),
-    issueContent: z.string().min(1, "issueContent is required"),
-  }),
-  configFields: {
-    repoDir:       { label: "Repo directory",  widget: "text",     help: "Local path or workspace ref" },
-    issueContent: { label: "Issue content",  widget: "textarea", help: "Markdown body of the issue" },
-  },
+  defaultConfig: {},
+  configSchema: z.object({}),
+  configFields: {},
   tabs: { io: "shown", mcp: "shown", retry: "shown" },
   slots: [
     {
@@ -38,7 +29,7 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
       optional: true,
     },
   ],
-  summary: (c, ctx) => summaryValue(c, ctx, "repoDir") || "(no repo)",
+  summary: (c, ctx) => summaryValue(c, ctx, "workspaceDir") || "(no workspace)",
   executor: { kind: "coding-cli", method: "analyze" },
   outputSchema: analyzeRepoOutputSchema,
 };

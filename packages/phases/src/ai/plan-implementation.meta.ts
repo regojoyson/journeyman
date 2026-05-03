@@ -14,8 +14,8 @@ export const planImplementationOutputSchema: OutputSchema = {
 };
 
 export const planImplementationInputFields: InputFields = {
-  repoDir:           { shape: { type: "string" }, label: "Repo directory", required: true },
-  issueContent:      { shape: { type: "string" }, label: "Issue content" },
+  workspaceDir:      { shape: { type: "string" }, label: "Workspace dir", required: true, bindOnly: true },
+  issue:             { shape: { type: "ref", name: "Issue" }, label: "Issue", bindOnly: true },
   analyzeReportPath: { shape: { type: "string" }, label: "Analyze report path" },
   focus:             { shape: { type: "string" }, label: "Focus / scope narrowing" },
   reviewComments:    { shape: { type: "string" }, label: "Reviewer comments" },

@@ -174,15 +174,4 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
   return output;
 }
 
-// Run directly: npx tsx checkout-repo.ts
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const result = await checkoutRepo({
-    repos: [
-      { repoDir: "/Users/admin/data/workspace/my-api", branch: "main" },
-      { repoDir: "/Users/admin/data/workspace/my-web", branch: "main" },
-    ],
-    issue: { id: "EV-12345", title: "Fix header alignment on checkout" },
-  });
 
-  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-}

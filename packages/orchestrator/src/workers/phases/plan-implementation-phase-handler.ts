@@ -1,4 +1,4 @@
-import { createLogger } from "@journeyman/core";
+import { createLogger, isIssueLike } from "@journeyman/core";
 import type {
   ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
@@ -9,9 +9,9 @@ const log = createLogger("worker:plan");
  * Phase 1 wrapper around ICodingCLI.plan.
  *
  * Required input keys:
- *   - repoDir            — absolute path to the repo
+ *   - workspaceDir       — absolute path to the workspace root
  * Optional input keys:
- *   - issueContent      — markdown body of the issue
+ *   - issue              — full Issue object
  *   - analyzeReportPath  — explicit path to a prior analyze report
  *   - focus              — narrowing of scope
  *   - reviewComments     — reviewer feedback to incorporate
@@ -25,27 +25,27 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
-    const repoDir = input.repoDir;
-    if (typeof repoDir !== "string") {
+    const workspaceDir = input.workspaceDir;
+    if (typeof workspaceDir !== "string") {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "plan requires string `repoDir`",
+          message: "plan requires string `workspaceDir`",
           retryable: false,
         },
       };
     }
-    const issueContent = typeof input.issueContent === "string" ? input.issueContent : undefined;
+    const issue = isIssueLike(input.issue) ? input.issue : undefined;
     const analyzeReportPath = typeof input.analyzeReportPath === "string" ? input.analyzeReportPath : undefined;
     const focus = typeof input.focus === "string" ? input.focus : undefined;
     const reviewComments = typeof input.reviewComments === "string" ? input.reviewComments : undefined;
 
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Planning ${repoDir}`);
+    ctx.log(`Planning ${workspaceDir}`);
     const result = await coding.plan({
-      repoDir,
-      issueContent,
+      workspaceDir,
+      issue,
       analyzeReportPath,
       focus,
       reviewComments,

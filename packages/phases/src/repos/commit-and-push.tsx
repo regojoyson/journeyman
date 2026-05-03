@@ -9,9 +9,8 @@ import {
 } from "./commit-and-push.meta.ts";
 
 interface CommitAndPushConfig {
-  repos: string;
-  message: string;
-  branch?: string;
+  repos?: string;
+  message?: string;
 }
 
 export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
@@ -21,16 +20,14 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
   description: COMMIT_AND_PUSH_DESCRIPTION,
   color: "#fdcb6e",
   icon: "⬆",
-  defaultConfig: { repos: "", message: "", branch: "" },
+  defaultConfig: { repos: "", message: "" },
   configSchema: z.object({
-    repos: z.string().min(1),
-    message: z.string().min(1),
-    branch: z.string().optional(),
+    repos: z.string().optional(),
+    message: z.string().optional(),
   }),
   configFields: {
-    repos:   { label: "Repos", widget: "text" },
-    message: { label: "Commit message", widget: "textarea" },
-    branch:  { label: "Branch", widget: "text", help: "Defaults to current branch" },
+    repos:   { label: "Repos", widget: "text", help: "Repo path. Leave blank to wire from IO (Repo[] from start-feature-branch)." },
+    message: { label: "Commit message", widget: "textarea", help: "Optional. If set, used as the literal commit message (skips AI generation). Otherwise the agent writes a message from the issue + diff." },
   },
   tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
   slots: [
@@ -39,7 +36,7 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
       description: "GitHub PAT used by `git push` / `git fetch` against origin.",
     },
   ],
-  summary: c => c.message ? `"${c.message.slice(0, 40)}"` : c.repos,
+  summary: (c) => (c.message ? `"${c.message.slice(0, 40)}"` : c.repos) || "(unwired)",
   executor: { kind: "coding-cli", method: "commitPushRepos" },
   outputSchema: commitAndPushOutputSchema,
 };

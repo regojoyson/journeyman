@@ -9,8 +9,8 @@
         "type": "start",
         "config": {
           "runInputs": [
-            { "name": "repoDir",      "type": "string", "required": true },
-            { "name": "issueContent", "type": "string", "required": true }
+            { "name": "workspaceDir", "type": "string", "required": true },
+            { "name": "issue",   "type": "json",   "required": true, "description": "Full Issue object (id, title, description, ...)" }
           ]
         }
       },
@@ -19,8 +19,8 @@
         "type": "phase",
         "phaseType": "analyze-repo",
         "inputs": {
-          "repoDir":      { "kind": "ref", "ref": "workflow.input.repoDir" },
-          "issueContent": { "kind": "ref", "ref": "workflow.input.issueContent" }
+          "workspaceDir": { "kind": "ref", "ref": "workflow.input.workspaceDir" },
+          "issue":        { "kind": "ref", "ref": "workflow.input.issue" }
         }
       },
       { "id": "end", "type": "end" }

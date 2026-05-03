@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { createLogger } from "@journeyman/core";
+import { createLogger, formatIssueForPrompt } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type { PlanOptions, PlanResult } from "@journeyman/core";
@@ -92,8 +92,8 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 function buildPrompt(opts: PlanOptions): string {
-  const root = opts.repoDir.replace(/\/+$/, "");
-  const issue = opts.issueContent?.trim() || "(no issue content provided — derive goal from analyze report)";
+  const root = opts.workspaceDir.replace(/\/+$/, "");
+  const issue = opts.issue ? formatIssueForPrompt(opts.issue) : "(no issue provided — derive goal from analyze report)";
   const focus = opts.focus?.trim();
   const analyzeDir = `${root}/docs/analyze`;
   const planDir = `${root}/docs/plan`;
@@ -116,8 +116,9 @@ function buildPrompt(opts: PlanOptions): string {
     "=== TICKET / GOAL ===",
     issue,
     "",
-    "=== CODEBASE ===",
-    `Root path: ${root}`,
+    "=== WORKSPACE ===",
+    `Workspace root: ${root}`,
+    "(may contain one or more cloned repos as subdirectories)",
     focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the goal.",
     "",
     "=== STEP 1: LOAD THE PRIOR ANALYZE REPORT ===",
@@ -186,7 +187,7 @@ function buildPrompt(opts: PlanOptions): string {
  */
 export async function plan(opts: PlanOptions): Promise<PlanResult> {
   const { sessionId, queryOption } = resolveSession(opts.sessionId);
-  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "plan start");
+  log.info({ sessionId, workspaceDir: opts.workspaceDir, focus: opts.focus }, "plan start");
   const controller = opts.signal
     ? (() => {
         const ac = new AbortController();
@@ -239,9 +240,13 @@ export async function plan(opts: PlanOptions): Promise<PlanResult> {
 // Run: npx tsx plan.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await plan({
-    repoDir: "/Users/admin/data/workspace/claude-skils/journeyman",
-    issueContent:
-      "JM-42: Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them.",
+    workspaceDir: "/Users/admin/data/workspace/claude-skils/journeyman",
+    issue: {
+      id: "JM-42",
+      title: "Add `dry-run` flag to checkoutRepo",
+      description:
+        "Add a `dry-run` flag to checkoutRepo so callers can preview the git commands that would run without actually executing them.",
+    },
   });
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }

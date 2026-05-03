@@ -12,9 +12,9 @@ export const implementChangesOutputSchema: OutputSchema = {
 };
 
 export const implementChangesInputFields: InputFields = {
-  repoDir:           { shape: { type: "string" }, label: "Repo directory", required: true },
+  workspaceDir:      { shape: { type: "string" }, label: "Workspace dir", required: true, bindOnly: true },
   planReportPath:    { shape: { type: "string" }, label: "Plan report path", required: true },
-  issueContent:      { shape: { type: "string" }, label: "Issue content" },
+  issue:             { shape: { type: "ref", name: "Issue" }, label: "Issue", bindOnly: true },
   analyzeReportPath: { shape: { type: "string" }, label: "Analyze report path" },
   focus:             { shape: { type: "string" }, label: "Focus / scope narrowing" },
   reviewComments:    { shape: { type: "string" }, label: "Reviewer comments" },

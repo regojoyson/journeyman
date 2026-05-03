@@ -14,6 +14,6 @@ export const analyzeRepoOutputSchema: OutputSchema = {
 };
 
 export const analyzeRepoInputFields: InputFields = {
-  repoDir:      { shape: { type: "string" }, label: "Repo directory", required: true },
-  issueContent: { shape: { type: "string" }, label: "Issue content", required: true },
+  workspaceDir: { shape: { type: "string" }, label: "Workspace dir", required: true, bindOnly: true },
+  issue:        { shape: { type: "ref", name: "Issue" }, label: "Issue", required: true, bindOnly: true },
 };

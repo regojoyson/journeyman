@@ -62,8 +62,8 @@
         "type": "phase",
         "phaseType": "analyze-repo",
         "inputs": {
-          "repoDir":      { "kind": "ref", "ref": "n_branch.output.repos" },
-          "issueContent": { "kind": "ref", "ref": "n_get_issue.output.issue" }
+          "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
+          "issue":        { "kind": "ref", "ref": "n_get_issue.output.issue" }
         }
       },
 
@@ -72,8 +72,8 @@
         "type": "phase",
         "phaseType": "plan-implementation",
         "inputs": {
-          "repoDir":           { "kind": "ref", "ref": "n_branch.output.repos" },
-          "issueContent":      { "kind": "ref", "ref": "n_get_issue.output.issue" },
+          "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
+          "issue":             { "kind": "ref", "ref": "n_get_issue.output.issue" },
           "analyzeReportPath": { "kind": "ref", "ref": "n_analyze.output.analyzeReportPath" }
         }
       },
@@ -83,10 +83,10 @@
         "type": "phase",
         "phaseType": "implement-changes",
         "inputs": {
-          "repoDir":           { "kind": "ref", "ref": "n_branch.output.repos" },
+          "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
           "planReportPath":    { "kind": "ref", "ref": "n_plan.output.planReportPath" },
           "analyzeReportPath": { "kind": "ref", "ref": "n_analyze.output.analyzeReportPath" },
-          "issueContent":      { "kind": "ref", "ref": "n_get_issue.output.issue" }
+          "issue":             { "kind": "ref", "ref": "n_get_issue.output.issue" }
         }
       },
 

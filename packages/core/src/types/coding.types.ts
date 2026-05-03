@@ -1,4 +1,5 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
+import type { Issue } from "./issue.types.ts";
 
 // ---------------------------------------------------------------------------
 // Provider config — shared across all coding-CLI providers
@@ -24,8 +25,10 @@ export interface CodingCLIProviderConfig {
 }
 
 export type AnalyzeOptions = SessionOptions & {
-  repoDir: string;
-  issueContent?: string;
+  /** Workspace root containing one or more cloned repos. The agent explores this tree. */
+  workspaceDir: string;
+  /** Optional — full issue object. Serialised into the prompt by the operation. */
+  issue?: Issue;
   focus?: string;
   /** Optional — reviewer feedback (markdown) to incorporate into analysis. */
   reviewComments?: string;
@@ -74,9 +77,10 @@ export type AnalyzeResult = SessionResult & {
 };
 
 export type PlanOptions = SessionOptions & {
-  repoDir: string;
-  /** Optional — issue / goal text. If omitted, the plan is derived purely from the analyze report. */
-  issueContent?: string;
+  /** Workspace root containing one or more cloned repos. */
+  workspaceDir: string;
+  /** Optional — full issue object. If omitted, the plan is derived purely from the analyze report. */
+  issue?: Issue;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest report in docs/analyze is used. */
   analyzeReportPath?: string;
   /** Optional narrowing of scope. */
@@ -127,9 +131,10 @@ export type PlanResult = SessionResult & {
 };
 
 export type ImplementOptions = SessionOptions & {
-  repoDir: string;
-  /** Optional — issue / goal text. */
-  issueContent?: string;
+  /** Workspace root containing one or more cloned repos. */
+  workspaceDir: string;
+  /** Optional — full issue object. */
+  issue?: Issue;
   /** Optional — explicit path to a prior analyze report (markdown). If omitted, the latest file in docs/analyze is used. */
   analyzeReportPath?: string;
   /** Optional — explicit path to a prior plan report (markdown). If omitted, the latest file in docs/plan is used. */

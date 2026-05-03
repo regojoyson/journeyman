@@ -1,5 +1,5 @@
 // packages/coding-cli/src/providers/opencode/operations/analyze.ts
-import { createLogger } from "@journeyman/core";
+import { createLogger, formatIssueForPrompt } from "@journeyman/core";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
@@ -62,9 +62,9 @@ const OUTPUT_SCHEMA = {
 const DEFAULT_TOOLS: Record<string, boolean> = { bash: true, read: true, glob: true, grep: true, write: true };
 
 function buildPrompt(opts: AnalyzeOptions): string {
-  const issue = opts.issueContent?.trim() || "(no issue content provided — infer intent from repoDir)";
+  const issue = opts.issue ? formatIssueForPrompt(opts.issue) : "(no issue provided — infer intent from workspace contents)";
   const focus = opts.focus?.trim();
-  const docsDir = `${opts.repoDir.replace(/\/+$/, "")}/docs/analyze`;
+  const docsDir = `${opts.workspaceDir.replace(/\/+$/, "")}/docs/analyze`;
   const reviewBlock = opts.reviewComments
     ? `\n\n## Reviewer feedback (incorporate into the revised analysis)\n\n${opts.reviewComments}\n`
     : "";
@@ -84,11 +84,11 @@ function buildPrompt(opts: AnalyzeOptions): string {
     issue,
     "",
     "=== CODEBASE ===",
-    `Root path: ${opts.repoDir}`,
+    `Root path: ${opts.workspaceDir}`,
     focus ? `Focus area: ${focus}` : "Focus: whole codebase relevant to the issue.",
     "",
     "=== INVESTIGATION STEPS (use Bash / Read / Grep / Glob) ===",
-    `  1. ls ${opts.repoDir} and inspect top-level structure`,
+    `  1. ls ${opts.workspaceDir} and inspect top-level structure`,
     "  2. Read README / package.json / pyproject / go.mod etc. to understand the project",
     "  3. grep for keywords from the issue (feature names, symbols, identifiers) to locate affected modules",
     "  4. Read the most relevant files (entrypoints, modules matching the issue scope)",
@@ -134,7 +134,7 @@ export async function analyze(
   opts: AnalyzeOptions,
 ): Promise<AnalyzeResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, repoDir: opts.repoDir, focus: opts.focus }, "analyze start");
+  log.info({ sessionId, workspaceDir: opts.workspaceDir, focus: opts.focus }, "analyze start");
 
   const session = await client.session.create({ title: "analyze" });
   if (!session.data) throw new Error("opencode session.create returned no data");

@@ -13,7 +13,8 @@ export const commitAndPushOutputSchema: OutputSchema = {
 };
 
 export const commitAndPushInputFields: InputFields = {
-  repos:   { shape: { type: "array", items: { type: "ref", name: "Repo" } }, label: "Repos", required: true, bindOnly: true },
+  repos:   { shape: { type: "array", items: { type: "ref", name: "Repo" } }, label: "Repos", bindOnly: true },
+  message: { shape: { type: "string" }, label: "Commit message (literal override)" },
   issue:   { shape: { type: "string" }, label: "Issue (commit subject)" },
   pattern: { shape: { type: "string" }, label: "Message pattern (e.g. {issue} : {summary})" },
 };
