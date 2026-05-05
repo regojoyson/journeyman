@@ -7,9 +7,15 @@ import { existsSync } from "node:fs";
  * Each resolved package with a valid localPath becomes one plugin entry.
  */
 export function toSdkPluginConfigs(skills: ResolvedSkillPackage[]): SdkPluginConfig[] {
-  return skills
-    .filter((s) => s.localPath && existsSync(s.localPath))
-    .map((s) => ({ type: "local" as const, path: s.localPath }));
+  const seen = new Set<string>();
+  const out: SdkPluginConfig[] = [];
+  for (const s of skills) {
+    if (!s.localPath || !existsSync(s.localPath)) continue;
+    if (seen.has(s.localPath)) continue;
+    seen.add(s.localPath);
+    out.push({ type: "local" as const, path: s.localPath });
+  }
+  return out;
 }
 
 /**

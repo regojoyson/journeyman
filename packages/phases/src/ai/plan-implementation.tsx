@@ -27,7 +27,8 @@ export const planImplementationPhase: PhaseDefinition<PlanImplementationConfig> 
   configFields: {
     analyzeReportPath: { label: "Analyze report path", widget: "text", help: "Optional path to a prior analyze output" },
   },
-  tabs: { io: "shown", mcp: "shown", retry: "shown" },
+  tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
+  supportsSkills: true,
   slots: [
     {
       name: "ANTHROPIC_API_KEY",

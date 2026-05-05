@@ -21,7 +21,8 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   defaultConfig: {},
   configSchema: z.object({}),
   configFields: {},
-  tabs: { io: "shown", mcp: "shown", retry: "shown" },
+  tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
+  supportsSkills: true,
   slots: [
     {
       name: "ANTHROPIC_API_KEY",

@@ -2,13 +2,14 @@
 import type { ReactNode } from "react";
 import type { TabVisibility } from "../phase-definition.ts";
 
-export type TabId = "config" | "mcp" | "requiredSecrets" | "retry" | "io";
+export type TabId = "config" | "mcp" | "skills" | "requiredSecrets" | "retry" | "io";
 
 export interface TabsVisibility {
   config?: TabVisibility; // always shown effectively; declared for symmetry
   io: TabVisibility;
   requiredSecrets: TabVisibility;
   mcp: TabVisibility;
+  skills: TabVisibility;
   retry: TabVisibility;
 }
 
@@ -16,6 +17,7 @@ export interface TabRequiredFlags {
   io?: boolean;
   requiredSecrets?: boolean;
   mcp?: boolean;
+  skills?: boolean;
   retry?: boolean;
 }
 
@@ -31,6 +33,7 @@ export interface TabShellProps {
 const ALL_TABS: Array<{ id: TabId; label: string }> = [
   { id: "config",          label: "Config"           },
   { id: "mcp",             label: "MCP & Tools"      },
+  { id: "skills",          label: "Skills"           },
   { id: "requiredSecrets", label: "Required secrets" },
   { id: "retry",           label: "Retry"            },
   { id: "io",              label: "I/O"              },

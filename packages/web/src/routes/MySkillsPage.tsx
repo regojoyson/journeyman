@@ -12,6 +12,11 @@ export function MySkillsPage(props: { orgId: string }) {
   const [modal, setModal] = useState<"catalog" | "custom" | null>(null);
   const [editing, setEditing] = useState<SkillPackage | null>(null);
 
+  const sharedPathCounts = rows.reduce<Record<string, number>>((acc, r) => {
+    if (r.localPath) acc[r.localPath] = (acc[r.localPath] ?? 0) + 1;
+    return acc;
+  }, {});
+
   async function refresh() {
     setLoading(true);
     try {
@@ -82,7 +87,14 @@ export function MySkillsPage(props: { orgId: string }) {
                   <tr key={r.id} className="hover:bg-slate-800/30">
                     <td className="px-6 py-3">
                       <div>
-                        <code className={codePill}>{r.name}</code>
+                        <div className="flex items-center gap-2">
+                          <code className={codePill}>{r.name}</code>
+                          {r.localPath && (sharedPathCounts[r.localPath] ?? 0) > 1 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300">
+                              shared ({sharedPathCounts[r.localPath]})
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-0.5 text-xs text-slate-500 truncate max-w-xs">{r.gitUrl}</div>
                       </div>
                     </td>

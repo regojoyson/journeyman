@@ -36,6 +36,7 @@ import type { McpCatalog } from "../types.ts";
 import { TabsShell, type TabId, type TabsVisibility } from "./tabs-shell.tsx";
 import { ConfigTab } from "./ConfigTab.tsx";
 import { McpToolsTab } from "./McpToolsTab.tsx";
+import { SkillsTab } from "./SkillsTab.tsx";
 import { RequiredSecretsTab } from "./RequiredSecretsTab.tsx";
 import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
@@ -56,6 +57,7 @@ const DEFAULT_VISIBILITY: TabsVisibility = {
   io:              "shown",
   requiredSecrets: "shown",
   mcp:             "shown",
+  skills:          "hidden",
   retry:           "shown",
 };
 
@@ -87,6 +89,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         io: definition.tabs.io,
         requiredSecrets: definition.tabs.requiredSecrets ?? "shown",
         mcp: definition.tabs.mcp,
+        skills: definition.tabs.skills ?? "hidden",
         retry: definition.tabs.retry,
       }
     : DEFAULT_VISIBILITY;
@@ -96,6 +99,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
     io: !((node as { inputs?: unknown[] }).inputs?.length || (node as { outputs?: unknown[] }).outputs?.length),
     requiredSecrets: !(node.secretBindings && Object.keys(node.secretBindings).length),
     mcp: !(((node.config as { mcpInstanceIds?: unknown[] } | undefined)?.mcpInstanceIds?.length ?? 0) > 0),
+    skills: !(((node.config as { skillPackageIds?: unknown[] } | undefined)?.skillPackageIds?.length ?? 0) > 0),
     retry: !node.retry,
   };
 
@@ -115,6 +119,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         >
           {effectiveActive === "config"          && <ConfigTab          flow={flow} node={node} onChange={onChange} readOnly={readOnly} mcpCatalog={mcpCatalog} flowDefaults={flow.defaults} />}
           {effectiveActive === "mcp"             && <McpToolsTab        node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
+          {effectiveActive === "skills"          && <SkillsTab          node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "requiredSecrets" && <RequiredSecretsTab flow={flow} node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
           {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}

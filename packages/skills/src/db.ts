@@ -2,8 +2,8 @@ import type { Pool } from "pg";
 import type { SkillPackage, SkillInstallStatus } from "@journeyman/core";
 
 export class DuplicateSkillPackageError extends Error {
-  constructor(gitUrl: string) {
-    super(`Skill package already added: ${gitUrl}`);
+  constructor(name: string) {
+    super(`Skill package name already in use: ${name}`);
     this.name = "DuplicateSkillPackageError";
   }
 }
@@ -36,9 +36,34 @@ export async function insertSkillPackage(
     gitUrl: string;
     name: string;
     cliType?: string;
+    shareCloneWith?: string;
   },
 ): Promise<SkillPackage> {
   try {
+    if (input.shareCloneWith) {
+      const { rows } = await pool.query(
+        `INSERT INTO jm_skill_packages
+            (scope, user_id, org_id, git_url, name, cli_type,
+             local_path, commit_sha, install_status)
+         SELECT $1, $2, $3, $4, $5, $6,
+                src.local_path, src.commit_sha, 'ready'
+         FROM jm_skill_packages src
+         WHERE src.id = $7
+           AND src.org_id = $3
+           AND COALESCE(src.user_id::text, '') = COALESCE($2::text, '')
+           AND src.git_url = $4
+           AND src.install_status = 'ready'
+         RETURNING *`,
+        [
+          input.scope, input.userId, input.orgId, input.gitUrl,
+          input.name, input.cliType ?? 'claude', input.shareCloneWith,
+        ],
+      );
+      if (!rows[0]) {
+        throw new Error("Share-clone source not found, not in same scope, or not ready");
+      }
+      return rowToPackage(rows[0]);
+    }
     const { rows } = await pool.query(
       `INSERT INTO jm_skill_packages (scope, user_id, org_id, git_url, name, cli_type)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -47,7 +72,7 @@ export async function insertSkillPackage(
     );
     return rowToPackage(rows[0]);
   } catch (err: any) {
-    if (err.code === '23505') throw new DuplicateSkillPackageError(input.gitUrl);
+    if (err.code === '23505') throw new DuplicateSkillPackageError(input.name);
     throw err;
   }
 }
@@ -219,4 +244,104 @@ export async function promoteSkillPackage(
     name: src.name,
     cliType: src.cliType,
   });
+}
+
+export async function findShareableSkillPackage(
+  pool: Pool,
+  orgId: string,
+  userId: string | null,
+  gitUrl: string,
+): Promise<SkillPackage | null> {
+  const { rows } = userId
+    ? await pool.query(
+        `SELECT * FROM jm_skill_packages
+          WHERE org_id = $1 AND user_id = $2
+            AND git_url = $3 AND install_status = 'ready'
+          ORDER BY created_at LIMIT 1`,
+        [orgId, userId, gitUrl],
+      )
+    : await pool.query(
+        `SELECT * FROM jm_skill_packages
+          WHERE org_id = $1 AND user_id IS NULL
+            AND git_url = $2 AND install_status = 'ready'
+          ORDER BY created_at LIMIT 1`,
+        [orgId, gitUrl],
+      );
+  return rows[0] ? rowToPackage(rows[0]) : null;
+}
+
+export async function updateSkillPackageStatusByPath(
+  pool: Pool,
+  localPath: string,
+  patch: {
+    installStatus: SkillInstallStatus;
+    commitSha?: string;
+    installError?: string;
+  },
+): Promise<void> {
+  await pool.query(
+    `UPDATE jm_skill_packages
+     SET install_status = $2,
+         commit_sha = COALESCE($3, commit_sha),
+         install_error = $4,
+         updated_at = now()
+     WHERE local_path = $1`,
+    [localPath, patch.installStatus, patch.commitSha ?? null, patch.installError ?? null],
+  );
+}
+
+export async function countRowsByLocalPath(pool: Pool, localPath: string): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM jm_skill_packages WHERE local_path = $1`,
+    [localPath],
+  );
+  return rows[0]?.n ?? 0;
+}
+
+export interface VisibleSkillRow {
+  id: string;
+  name: string;
+  scope: "user" | "org";
+  installStatus: SkillInstallStatus;
+  enabledSkillCount: number;
+}
+
+export async function listVisibleSkillPackages(
+  pool: Pool,
+  orgId: string,
+  userId: string,
+): Promise<VisibleSkillRow[]> {
+  const { rows } = await pool.query(
+    `SELECT id, name, user_id, install_status, enabled_skills
+       FROM jm_skill_packages
+      WHERE org_id = $1
+        AND install_status = 'ready'
+        AND (user_id = $2 OR user_id IS NULL)
+      ORDER BY name`,
+    [orgId, userId],
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    scope: r.user_id === null ? "org" : "user",
+    installStatus: r.install_status,
+    enabledSkillCount: (r.enabled_skills ?? []).length,
+  }));
+}
+
+export async function fetchSkillPackagesByIds(
+  pool: Pool,
+  orgId: string,
+  userId: string,
+  ids: string[],
+): Promise<SkillPackage[]> {
+  if (ids.length === 0) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_skill_packages
+      WHERE org_id = $1
+        AND (user_id = $2 OR user_id IS NULL)
+        AND id = ANY($3::uuid[])`,
+    [orgId, userId, ids],
+  );
+  return rows.map(rowToPackage);
 }

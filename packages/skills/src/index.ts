@@ -1,4 +1,8 @@
-export { resolveSkillPackages } from "./resolver.ts";
+export {
+  resolveSkillPackages,
+  resolveSkillPackagesByIds,
+  MissingSkillPackagesError,
+} from "./resolver.ts";
 export { registerSkillRoutes } from "./routes/index.ts";
 export { SKILL_CATALOG } from "./catalog.ts";
 export {
@@ -7,13 +11,18 @@ export {
   listSkillPackages,
   getSkillPackage,
   updateSkillPackageStatus,
+  updateSkillPackageStatusByPath,
   updateEnabledSkills,
   deleteSkillPackage,
   listSkillPackagesForResolver,
   listPromotableSkillPackages,
   promoteSkillPackage,
+  findShareableSkillPackage,
+  countRowsByLocalPath,
+  listVisibleSkillPackages,
+  fetchSkillPackagesByIds,
 } from "./db.ts";
-export type { PromotableSkillRow } from "./db.ts";
+export type { PromotableSkillRow, VisibleSkillRow } from "./db.ts";
 export {
   clonePackage,
   refreshPackage,

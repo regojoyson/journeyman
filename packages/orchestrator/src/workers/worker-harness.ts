@@ -3,6 +3,7 @@ import type {
   IEventBus, IPhaseRegistry, IWorkspaceProvider,
   SecretBinding,
   ResolvedMcpInstance,
+  ResolvedSkillPackage,
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
@@ -37,6 +38,17 @@ export interface WorkerHarnessDeps {
     ctx: { userId: string; orgId: string };
     instanceIds: string[];
   }) => Promise<ResolvedMcpInstance[]>;
+
+  /**
+   * Resolves `skillPackageIds` (declared on a phase's node config) into
+   * fully-formed `ResolvedSkillPackage[]` ready to hand to coding-cli.
+   * Composition root supplies the implementation (curries the pg pool
+   * over `resolveSkillPackagesByIds` from `@journeyman/skills`).
+   */
+  skillsResolver: (input: {
+    ctx: { userId: string; orgId: string };
+    packageIds: string[];
+  }) => Promise<ResolvedSkillPackage[]>;
 }
 
 export class WorkerHarness {
@@ -187,6 +199,35 @@ export class WorkerHarness {
       }
     }
     (phaseInput as { mcps?: ResolvedMcpInstance[] }).mcps = mcps;
+
+    const skillPackageIds = Array.isArray((phaseInput as { skillPackageIds?: unknown }).skillPackageIds)
+      ? ((phaseInput as { skillPackageIds: unknown[] }).skillPackageIds.filter(
+          (x): x is string => typeof x === "string"
+        ))
+      : [];
+    let skills: ResolvedSkillPackage[] = [];
+    if (skillPackageIds.length > 0 && userId && orgId) {
+      try {
+        skills = await this.deps.skillsResolver({
+          ctx: { userId, orgId },
+          packageIds: skillPackageIds,
+        });
+        log.info({ runId, nodeId, count: skills.length }, "skills resolved");
+      } catch (err: any) {
+        log.error({ runId, nodeId, err: err?.message }, "skills resolution failed");
+        await this.deps.events.append({
+          runId, nodeId, eventType: "phase.failed",
+          payload: { reason: "skills_resolution_failed", message: String(err?.message ?? "") },
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: runId, taskId: task.taskId,
+          status: "FAILED_WITH_TERMINAL_ERROR",
+          reasonForIncompletion: `Skills resolution failed: ${err?.message ?? String(err)}`,
+        });
+        return;
+      }
+    }
+    (phaseInput as { skills?: ResolvedSkillPackage[] }).skills = skills;
 
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",

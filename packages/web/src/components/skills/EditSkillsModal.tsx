@@ -32,6 +32,14 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
     });
   }
 
+  const allSelected = available.length > 0 && available.every((s) => enabled.has(s));
+  const someSelected = available.some((s) => enabled.has(s)) && !allSelected;
+
+  function toggleAll() {
+    if (allSelected) setEnabled(new Set());
+    else setEnabled(new Set(available));
+  }
+
   async function save() {
     setBusy(true);
     setError(null);
@@ -68,6 +76,23 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
           </div>
         ) : (
           <div className="space-y-2">
+            <label
+              className={`${card} flex items-center gap-3 p-3 cursor-pointer hover:border-indigo-500 transition bg-slate-900/40`}
+            >
+              <input
+                type="checkbox"
+                className="accent-indigo-500"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                onChange={toggleAll}
+              />
+              <span className="text-sm font-medium text-slate-200">
+                {allSelected ? "Deselect all" : "Select all"}
+              </span>
+              <span className="text-xs text-slate-500 ml-auto">
+                {enabled.size} / {available.length}
+              </span>
+            </label>
             {available.map((skill) => (
               <label
                 key={skill}

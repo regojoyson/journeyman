@@ -80,16 +80,22 @@ export async function runInstall(
   gitUrl: string,
   existingLocalPath: string | undefined,
 ): Promise<void> {
-  const { updateSkillPackageStatus } = await import("./db.ts");
+  const { updateSkillPackageStatus, updateSkillPackageStatusByPath } = await import("./db.ts");
   await updateSkillPackageStatus(pool, id, { installStatus: "installing" });
   try {
     const result =
       existingLocalPath && existsSync(existingLocalPath)
         ? refreshPackage(existingLocalPath, gitUrl)
         : clonePackage(name, gitUrl);
+    // Update this row first so localPath gets persisted, then propagate the
+    // commit/status to every row that points at the same on-disk clone.
     await updateSkillPackageStatus(pool, id, {
       installStatus: "ready",
       localPath: result.localPath,
+      commitSha: result.commitSha,
+    });
+    await updateSkillPackageStatusByPath(pool, result.localPath, {
+      installStatus: "ready",
       commitSha: result.commitSha,
     });
   } catch (err) {

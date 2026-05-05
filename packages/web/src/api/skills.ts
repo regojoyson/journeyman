@@ -25,6 +25,14 @@ export interface SkillCatalogEntry {
   author: string;
 }
 
+export interface VisibleSkillRow {
+  id: string;
+  name: string;
+  scope: "user" | "org";
+  installStatus: SkillInstallStatus;
+  enabledSkillCount: number;
+}
+
 export interface PromotableSkillRow {
   id: string;
   name: string;
@@ -39,6 +47,7 @@ export interface CreateSkillBody {
   gitUrl: string;
   name: string;
   cliType?: SkillCliType;
+  shareCloneWith?: string;
 }
 
 const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/skill-packages`;
@@ -56,6 +65,11 @@ export const skillsApi = {
 
   listOrg: (orgId: string) =>
     fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<SkillPackage[]>),
+
+  listVisible: (orgId: string) =>
+    fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(
+      jsonOrThrow<VisibleSkillRow[]>,
+    ),
 
   listPromotable: (orgId: string) =>
     fetch(`${orgBase(orgId)}/promotable`, { credentials: "include" }).then(
@@ -118,6 +132,24 @@ export const skillsApi = {
     fetch(`${orgBase(orgId)}/${id}/skills`, { credentials: "include" }).then(
       jsonOrThrow<string[]>,
     ),
+
+  findByUrlMy: async (orgId: string, gitUrl: string): Promise<SkillPackage | null> => {
+    const r = await fetch(
+      `${userBase(orgId)}/by-url?url=${encodeURIComponent(gitUrl)}`,
+      { credentials: "include" },
+    );
+    if (r.status === 404) return null;
+    return jsonOrThrow<SkillPackage>(r);
+  },
+
+  findByUrlOrg: async (orgId: string, gitUrl: string): Promise<SkillPackage | null> => {
+    const r = await fetch(
+      `${orgBase(orgId)}/by-url?url=${encodeURIComponent(gitUrl)}`,
+      { credentials: "include" },
+    );
+    if (r.status === 404) return null;
+    return jsonOrThrow<SkillPackage>(r);
+  },
 
   pullMy: (orgId: string, id: string) =>
     fetch(`${userBase(orgId)}/${id}/pull`, {

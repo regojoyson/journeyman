@@ -18,6 +18,7 @@
     "@journeyman/core": "*",
     "@journeyman/git-provider": "*",
     "@journeyman/mcp": "*",
+    "@journeyman/skills": "*",
     "@journeyman/notification-provider": "*",
     "@journeyman/secrets": "*",
     "@journeyman/ticket-provider": "*",

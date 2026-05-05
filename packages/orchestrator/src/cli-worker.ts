@@ -18,6 +18,7 @@ import type {
 import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
+import { resolveSkillPackagesByIds } from "@journeyman/skills";
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
 import { InMemoryPhaseRegistry } from "./registry/in-memory-phase-registry.ts";
@@ -235,6 +236,10 @@ const harness = new WorkerHarness({
   mcpResolver: ({ ctx, instanceIds }) => {
     if (!pool) return Promise.resolve([]);
     return resolveMcpInstances(pool, ctx, instanceIds);
+  },
+  skillsResolver: ({ ctx, packageIds }) => {
+    if (!pool) return Promise.resolve([]);
+    return resolveSkillPackagesByIds(pool, ctx, packageIds, "claude");
   },
 });
 
