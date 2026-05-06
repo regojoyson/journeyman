@@ -1,0 +1,154 @@
+import type { Pool } from "pg";
+import type {
+  CustomAiPhase,
+  CustomAiPhaseCreateInput,
+  CustomAiPhaseUpdateInput,
+} from "@journeyman/core";
+
+export class DuplicateCustomPhaseError extends Error {
+  constructor(name: string) {
+    super(`Custom phase name already in use: ${name}`);
+    this.name = "DuplicateCustomPhaseError";
+  }
+}
+
+function rowToPhase(r: any): CustomAiPhase {
+  return {
+    id: r.id,
+    scope: r.scope,
+    userId: r.user_id ?? undefined,
+    orgId: r.org_id,
+    name: r.name,
+    description: r.description ?? "",
+    inputFields: r.input_fields ?? [],
+    outputMode: r.output_mode,
+    outputSchema: r.output_schema ?? undefined,
+    promptTemplate: r.prompt_template ?? "",
+    defaultTools: Array.isArray(r.default_tools) ? r.default_tools : [],
+    defaultProvider: r.default_provider ?? undefined,
+    defaultMcpIds: r.default_mcp_ids ?? [],
+    defaultSkillIds: r.default_skill_ids ?? [],
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function insertCustomAiPhase(
+  pool: Pool,
+  input: CustomAiPhaseCreateInput & { orgId: string; userId: string | null; createdBy: string },
+): Promise<CustomAiPhase> {
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO jm_custom_ai_phases
+         (scope, user_id, org_id, name, description,
+          input_fields, output_mode, output_schema,
+          prompt_template, default_tools,
+          default_provider, default_mcp_ids, default_skill_ids,
+          created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       RETURNING *`,
+      [
+        input.scope,
+        input.userId,
+        input.orgId,
+        input.name,
+        input.description ?? "",
+        JSON.stringify(input.inputFields ?? []),
+        input.outputMode ?? "none",
+        input.outputSchema ? JSON.stringify(input.outputSchema) : null,
+        input.promptTemplate ?? "",
+        JSON.stringify(input.defaultTools ?? []),
+        input.defaultProvider ?? null,
+        JSON.stringify(input.defaultMcpIds ?? []),
+        JSON.stringify(input.defaultSkillIds ?? []),
+        input.createdBy,
+      ],
+    );
+    return rowToPhase(rows[0]);
+  } catch (err: any) {
+    if (err.code === "23505") throw new DuplicateCustomPhaseError(input.name);
+    throw err;
+  }
+}
+
+export async function getCustomAiPhase(
+  pool: Pool,
+  id: string,
+): Promise<CustomAiPhase | null> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_custom_ai_phases WHERE id = $1`,
+    [id],
+  );
+  return rows[0] ? rowToPhase(rows[0]) : null;
+}
+
+export async function listCustomAiPhases(
+  pool: Pool,
+  orgId: string,
+  userId: string | null,
+): Promise<CustomAiPhase[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_custom_ai_phases
+     WHERE org_id = $1
+       AND COALESCE(user_id::text, '') = COALESCE($2::text, '')
+     ORDER BY name ASC`,
+    [orgId, userId],
+  );
+  return rows.map(rowToPhase);
+}
+
+export async function listVisibleCustomAiPhases(
+  pool: Pool,
+  orgId: string,
+  userId: string,
+): Promise<CustomAiPhase[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_custom_ai_phases
+     WHERE org_id = $1
+       AND (user_id IS NULL OR user_id = $2)
+     ORDER BY name ASC`,
+    [orgId, userId],
+  );
+  return rows.map(rowToPhase);
+}
+
+export async function updateCustomAiPhase(
+  pool: Pool,
+  id: string,
+  patch: CustomAiPhaseUpdateInput,
+): Promise<CustomAiPhase | null> {
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  const push = (col: string, v: unknown) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
+  if (patch.name !== undefined)            push("name", patch.name);
+  if (patch.description !== undefined)     push("description", patch.description);
+  if (patch.inputFields !== undefined)     push("input_fields", JSON.stringify(patch.inputFields));
+  if (patch.outputMode !== undefined)      push("output_mode", patch.outputMode);
+  if (patch.outputSchema !== undefined)    push("output_schema", patch.outputSchema ? JSON.stringify(patch.outputSchema) : null);
+  if (patch.promptTemplate !== undefined)  push("prompt_template", patch.promptTemplate);
+  if (patch.defaultTools !== undefined)    push("default_tools", JSON.stringify(patch.defaultTools));
+  if (patch.defaultProvider !== undefined) push("default_provider", patch.defaultProvider ?? null);
+  if (patch.defaultMcpIds !== undefined)   push("default_mcp_ids", JSON.stringify(patch.defaultMcpIds));
+  if (patch.defaultSkillIds !== undefined) push("default_skill_ids", JSON.stringify(patch.defaultSkillIds));
+  if (sets.length === 0) return getCustomAiPhase(pool, id);
+  sets.push(`updated_at = now()`);
+  vals.push(id);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE jm_custom_ai_phases SET ${sets.join(", ")} WHERE id = $${vals.length} RETURNING *`,
+      vals,
+    );
+    return rows[0] ? rowToPhase(rows[0]) : null;
+  } catch (err: any) {
+    if (err.code === "23505" && patch.name) throw new DuplicateCustomPhaseError(patch.name);
+    throw err;
+  }
+}
+
+export async function deleteCustomAiPhase(pool: Pool, id: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM jm_custom_ai_phases WHERE id = $1`, [id],
+  );
+  return (rowCount ?? 0) > 0;
+}

@@ -9,7 +9,11 @@ import type {
   CodingCLIPhase,
   CodingCLIProviderConfig,
 } from "@journeyman/core";
-import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "@journeyman/core";
+import type {
+  AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult,
+  ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
+} from "@journeyman/core";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { checkoutRepo } from "./operations/checkout-repo.ts";
 import { commitPushRepos } from "./operations/commit-push-repos.ts";
@@ -18,6 +22,7 @@ import { createWorkspace } from "./operations/create-workspace.ts";
 import { analyze } from "./operations/analyze.ts";
 import { plan } from "./operations/plan.ts";
 import { implement } from "./operations/implement.ts";
+import { runCustomPrompt } from "./operations/run-custom-prompt.ts";
 
 export class ClaudeProvider implements ICodingCLI {
   static meta: IProviderMeta = {
@@ -63,5 +68,9 @@ export class ClaudeProvider implements ICodingCLI {
 
   implement(opts: ImplementOptions): Promise<ImplementResult> {
     return implement({ ...opts, model: this.resolveModel("implement") });
+  }
+
+  runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
+    return runCustomPrompt({ ...opts, model: opts.model ?? this.resolveModel("runCustomPrompt") });
   }
 }

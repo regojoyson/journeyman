@@ -49,6 +49,14 @@ export interface WorkerHarnessDeps {
     ctx: { userId: string; orgId: string };
     packageIds: string[];
   }) => Promise<ResolvedSkillPackage[]>;
+
+  /**
+   * Optional fallback resolver for the model when neither the node nor the
+   * flow defaults provide one. Returns the admin-flagged DB default model_id
+   * for the given coding provider, or undefined to defer to the provider's
+   * own hardcoded fallback.
+   */
+  modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
 }
 
 export class WorkerHarness {
@@ -228,6 +236,24 @@ export class WorkerHarness {
       }
     }
     (phaseInput as { skills?: ResolvedSkillPackage[] }).skills = skills;
+
+    // Model resolution: if the converter didn't set `model` (no node override
+    // and no flow default), ask the optional resolver for the system default
+    // for this coding provider. Undefined ⇒ provider uses its own fallback.
+    const existingModel = (phaseInput as { model?: unknown }).model;
+    if ((typeof existingModel !== "string" || !existingModel) && this.deps.modelResolver) {
+      const provider = (phaseInput as { provider?: string }).provider;
+      if (typeof provider === "string" && provider) {
+        try {
+          const sysModel = await this.deps.modelResolver({ provider });
+          if (sysModel) {
+            (phaseInput as { model?: string }).model = sysModel;
+          }
+        } catch (err: any) {
+          log.warn({ runId, nodeId, err: err?.message }, "model resolver failed; deferring to provider default");
+        }
+      }
+    }
 
     await this.deps.events.append({
       runId, nodeId, eventType: "phase.started",

@@ -8,6 +8,9 @@ export interface ControlNodeCatalogEntry {
   description?: string;
   color: string;
   icon: string;
+  /** When true, this control node is shown in the palette's collapsible
+   *  "Coming soon" panel and cannot be dragged onto the canvas. */
+  comingSoon?: boolean;
 }
 export type ControlNodeCatalog = ControlNodeCatalogEntry[];
 

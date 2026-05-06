@@ -21,11 +21,23 @@ export function applyFlowDefaults(
 
   const retry          = mergeRetry(node.retry, defaults.retry, sources);
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);
+  const model          = mergeModel(node.model, defaults.defaultModel, sources);
 
   return {
-    resolved: { ...node, retry, executorConfig },
+    resolved: { ...node, retry, executorConfig, model },
     sources,
   };
+}
+
+function mergeModel(
+  nodeModel: string | null | undefined,
+  defaultModel: string | undefined,
+  sources: FieldSources,
+): string | null | undefined {
+  if (nodeModel === null) return undefined;
+  if (nodeModel) { sources["model"] = "node"; return nodeModel; }
+  if (defaultModel) { sources["model"] = "flow-default"; return defaultModel; }
+  return undefined;
 }
 
 function mergeRetry(

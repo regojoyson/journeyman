@@ -1,5 +1,6 @@
 import type { SecretScope } from "./secrets.types.ts";
 import type { ExecutorKind } from "../registries/provider-catalog.ts";
+import type { JsonLogicExpr } from "./flow-condition.types.ts";
 
 /**
  * Flow JSON schema version. Bumped when flow JSON shape changes
@@ -54,6 +55,12 @@ export interface FlowNode {
   executorConfig?: { provider?: string } | null;
   /** Per-phase retry policy. */
   retry?: RetryPolicy | null;
+  /**
+   * Per-step model override for AI-capable phases.
+   * Empty/undefined ⇒ use FlowGraph.defaults.defaultModel, then the system DB default.
+   * References coding_models.model_id for the resolved coding provider.
+   */
+  model?: string | null;
   /** Per-slot binding map. Key is the slot name from the phase definition. */
   secretBindings?: Record<string, SecretBinding> | null;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
@@ -70,7 +77,7 @@ export interface FlowEdge {
   target: string;       // node id
   type?: FlowEdgeType;  // default = "default"
   /** JSONLogic expression — applies when type === "conditional". */
-  condition?: unknown;
+  condition?: JsonLogicExpr;
   /** Reserved — labels for "then" / "else" outputs of the `if` node. */
   label?: string;
   /** SWITCH branch label — used when type === "conditional" on a gateway-xor or `if`. */
@@ -154,6 +161,12 @@ export interface FlowDefaults {
    * Each phase resolves its default via kindForPhaseType(phaseType).
    */
   executorConfig?: Partial<Record<ExecutorKind, { provider?: string }>>;
+  /**
+   * Default model for AI-capable phases. Used when a phase node does not set
+   * its own `model`. Resolved against coding_models.model_id for the coding
+   * provider configured on the phase node.
+   */
+  defaultModel?: string;
 }
 
 export type McpTransport = "stdio" | "http" | "sse";
@@ -230,4 +243,25 @@ export type FlowSaveWarning =
       message: string;
       nodeId: string;
       inputKey: string;
+    }
+  | {
+      code: "unknown_models";
+      message: string;
+      /** Each entry is a model_id referenced by the flow that isn't enabled in the catalog for the flow's coding provider. */
+      entries: Array<{
+        location: "flow-default" | "node";
+        nodeId?: string;
+        provider: string;
+        modelId: string;
+      }>;
+    }
+  | {
+      code: "deprecated_models";
+      message: string;
+      entries: Array<{
+        location: "flow-default" | "node";
+        nodeId?: string;
+        provider: string;
+        modelId: string;
+      }>;
     };

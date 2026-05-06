@@ -9,6 +9,7 @@ import type {
   AnalyzeOptions, AnalyzeResult,
   PlanOptions, PlanResult,
   ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
 } from "@journeyman/core";
 import { getClient } from "./client.ts";
 import type { OpenCodeClient } from "./client.ts";
@@ -74,5 +75,8 @@ export class OpenCodeProvider implements ICodingCLI {
   }
   async implement(opts: ImplementOptions): Promise<ImplementResult> {
     return implement(await this.client(), this.#config, opts);
+  }
+  async runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
+    throw new Error("OpenCodeProvider.runCustomPrompt not implemented");
   }
 }

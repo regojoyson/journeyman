@@ -4,6 +4,7 @@ import { Canvas } from "./canvas/Canvas.tsx";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
 import { PropertiesPanel } from "./properties-panel/PropertiesPanel.tsx";
+import { EdgeInspector } from "./inspector/EdgeInspector.tsx";
 import { FlowConfigPanel } from "./flow-config/FlowConfigPanel.tsx";
 import { Topbar } from "./topbar/Topbar.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
@@ -14,6 +15,7 @@ import { useValidationCatalog } from "./properties-panel/use-validation-catalog.
 import { validateFlowInputs } from "@journeyman/core";
 import type { FlowEditorProps } from "./types.ts";
 import type { FlowGraph, FlowNode } from "@journeyman/core";
+import { isJsonLogicExpr } from "@journeyman/core";
 import "./styles.css";
 
 const PROPS_WIDTH_KEY = "je-editor:propsWidth";
@@ -46,6 +48,18 @@ function migrateLegacyMcpConfig(flow: FlowGraph): FlowGraph {
   return touched ? { ...flow, nodes } : flow;
 }
 
+function stripUnparseableConditions(flow: FlowGraph): FlowGraph {
+  let touched = false;
+  const edges = flow.edges.map((e) => {
+    if (e.condition === undefined) return e;
+    if (isJsonLogicExpr(e.condition)) return e;
+    touched = true;
+    const { condition: _c, ...rest } = e;
+    return rest;
+  });
+  return touched ? { ...flow, edges } : flow;
+}
+
 export function FlowEditor(props: FlowEditorProps) {
   // Mount log — fires once on first render.
   const mountedRef = useRef(false);
@@ -75,7 +89,7 @@ export function FlowEditor(props: FlowEditorProps) {
   }
 
   const heal = useMemo(() => {
-    const migrated = migrateLegacyMcpConfig(props.flow);
+    const migrated = stripUnparseableConditions(migrateLegacyMcpConfig(props.flow));
     const result = autoHeal(migrated);
     if (result.restored.length) {
       // eslint-disable-next-line no-console
@@ -187,6 +201,7 @@ export function FlowEditor(props: FlowEditorProps) {
             flow={heal.healed}
             selectedNodeId={s.selectedNodeId}
             onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
+            onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
             onChange={props.onChange}
             readOnly={props.readOnly}
             phaseRunStates={props.phaseRunStates}
@@ -198,6 +213,12 @@ export function FlowEditor(props: FlowEditorProps) {
               onChange={props.onChange}
               onClose={() => setFlowConfigOpen(false)}
               readOnly={props.readOnly}
+            />
+          ) : s.selectedEdge ? (
+            <EdgeInspector
+              flow={heal.healed}
+              edge={s.selectedEdge}
+              onChange={s.updateEdge}
             />
           ) : (
             <PropertiesPanel

@@ -1,4 +1,5 @@
 import type { FlowGraph } from "@journeyman/core";
+import { isJsonLogicExpr } from "@journeyman/core";
 
 export interface ValidationResult { ok: boolean; errors: string[]; }
 
@@ -32,6 +33,27 @@ export function isValidPhase4Graph(flow: FlowGraph): ValidationResult {
     }
     if (n.type === "subflow" && !(n.config as { workflowName?: string } | undefined)?.workflowName) {
       errors.push(`Subflow '${n.id}' is missing config.workflowName`);
+    }
+  }
+
+  for (const node of flow.nodes) {
+    if (node.type !== "gateway-xor" && node.type !== "if") continue;
+    const outs = flow.edges.filter(e => e.source === node.id);
+    const labels = new Set<string>();
+    for (const e of outs) {
+      if (e.type !== "conditional") continue;
+      if (!e.branchLabel) {
+        errors.push(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
+      } else if (labels.has(e.branchLabel)) {
+        errors.push(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
+      } else {
+        labels.add(e.branchLabel);
+      }
+      if (e.condition === undefined) {
+        errors.push(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
+      } else if (!isJsonLogicExpr(e.condition)) {
+        errors.push(`Edge ${e.id} on gateway '${node.id}' has an invalid condition shape`);
+      }
     }
   }
 

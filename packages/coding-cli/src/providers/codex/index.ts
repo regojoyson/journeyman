@@ -8,6 +8,7 @@ import type {
   AnalyzeOptions, AnalyzeResult,
   PlanOptions, PlanResult,
   ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
   IProviderMeta,
   CodingCLIProviderConfig,
 } from "@journeyman/core";
@@ -31,4 +32,5 @@ export class CodexProvider implements ICodingCLI {
   analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> { throw new Error("CodexProvider.analyze not implemented"); }
   plan(_opts: PlanOptions): Promise<PlanResult> { throw new Error("CodexProvider.plan not implemented"); }
   implement(_opts: ImplementOptions): Promise<ImplementResult> { throw new Error("CodexProvider.implement not implemented"); }
+  runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> { throw new Error("CodexProvider.runCustomPrompt not implemented"); }
 }

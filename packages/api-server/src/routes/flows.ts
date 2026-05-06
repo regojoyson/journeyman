@@ -11,6 +11,7 @@ import { phaseCatalog } from "@journeyman/phases/catalog";
 import { validateFlowInputs, type ValidationCatalog } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { listVisibleSecrets } from "@journeyman/secrets";
+import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { FlowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
 
 /**
@@ -72,6 +73,45 @@ async function computeSaveWarnings(
       entries: crossScope,
     });
   }
+
+  // Model catalog validation: warn on references to unknown / deprecated models.
+  const codingProvider = definition.defaults?.executorConfig?.["coding-cli"]?.provider;
+  if (codingProvider) {
+    const refs: Array<{ location: "flow-default" | "node"; nodeId?: string; modelId: string }> = [];
+    if (definition.defaults?.defaultModel) {
+      refs.push({ location: "flow-default", modelId: definition.defaults.defaultModel });
+    }
+    for (const node of definition.nodes) {
+      if (node.type === "phase" && typeof node.model === "string" && node.model) {
+        refs.push({ location: "node", nodeId: node.id, modelId: node.model });
+      }
+    }
+    if (refs.length > 0) {
+      const models = await listEnabledCodingModelsByProvider(c.pool, codingProvider);
+      const enabled = new Map(models.map(m => [m.modelId, m]));
+      const unknownEntries = refs
+        .filter(r => !enabled.has(r.modelId))
+        .map(r => ({ ...r, provider: codingProvider }));
+      const deprecatedEntries = refs
+        .filter(r => enabled.get(r.modelId)?.deprecated === true)
+        .map(r => ({ ...r, provider: codingProvider }));
+      if (unknownEntries.length > 0) {
+        warnings.push({
+          code: "unknown_models",
+          message: "Flow references models that aren't enabled in the catalog for this coding provider.",
+          entries: unknownEntries,
+        });
+      }
+      if (deprecatedEntries.length > 0) {
+        warnings.push({
+          code: "deprecated_models",
+          message: "Flow references deprecated models. They still run but should be replaced.",
+          entries: deprecatedEntries,
+        });
+      }
+    }
+  }
+
   return warnings;
 }
 

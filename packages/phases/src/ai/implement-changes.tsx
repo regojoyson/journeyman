@@ -31,6 +31,7 @@ export const implementChangesPhase: PhaseDefinition<ImplementChangesConfig> = {
   },
   tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
   supportsSkills: true,
+  supportsModelSelection: true,
   slots: [
     {
       name: "ANTHROPIC_API_KEY",

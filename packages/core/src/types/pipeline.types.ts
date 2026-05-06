@@ -77,6 +77,8 @@ export type FlowStepDefinition = {
   id: string;                           // unique within flow
   phase: string;
   config?: Record<string, unknown>;
+  /** Per-step model override. Empty/undefined ⇒ use flow.defaultModel. */
+  model?: string;
   retry?: { attempts: number; backoffMs: number };
   timeoutMs?: number;
   onFailure?: "fail" | "skip" | "retry" | "block";  // default "fail"
@@ -86,6 +88,8 @@ export type FlowStepDefinition = {
 export type FlowDefinition = {
   name: string;
   providers: { issue: string; git: string; coding: string; notification: string };
+  /** Default model for AI phases. References coding_models.model_id for providers.coding. */
+  defaultModel?: string;
   steps: FlowStepDefinition[];
 };
 

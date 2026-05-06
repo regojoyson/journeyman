@@ -37,4 +37,5 @@ export const getRepositoryPhase: PhaseDefinition<GetRepositoryConfig> = {
   ],
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo}` : "",
   executor: { kind: "git-provider", method: "getRepo" },
+  comingSoon: true,
 };

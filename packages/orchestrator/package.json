@@ -15,10 +15,12 @@
   },
   "dependencies": {
     "@journeyman/coding-cli": "*",
+    "@journeyman/coding-models": "*",
     "@journeyman/core": "*",
     "@journeyman/git-provider": "*",
     "@journeyman/mcp": "*",
     "@journeyman/skills": "*",
+    "@journeyman/custom-phases": "*",
     "@journeyman/notification-provider": "*",
     "@journeyman/secrets": "*",
     "@journeyman/ticket-provider": "*",

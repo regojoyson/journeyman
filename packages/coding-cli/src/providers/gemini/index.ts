@@ -8,6 +8,7 @@ import type {
   AnalyzeOptions, AnalyzeResult,
   PlanOptions, PlanResult,
   ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
   IProviderMeta,
   CodingCLIProviderConfig,
 } from "@journeyman/core";
@@ -31,4 +32,5 @@ export class GeminiProvider implements ICodingCLI {
   analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> { throw new Error("GeminiProvider.analyze not implemented"); }
   plan(_opts: PlanOptions): Promise<PlanResult> { throw new Error("GeminiProvider.plan not implemented"); }
   implement(_opts: ImplementOptions): Promise<ImplementResult> { throw new Error("GeminiProvider.implement not implemented"); }
+  runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> { throw new Error("GeminiProvider.runCustomPrompt not implemented"); }
 }

@@ -46,6 +46,7 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
     ctx.log(`Planning ${workspaceDir}`);
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     const skills = Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;
+    const model = typeof input.model === "string" && input.model ? input.model : undefined;
     const result = await coding.plan({
       workspaceDir,
       issue,
@@ -56,6 +57,7 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
       signal: ctx.signal,
       ...(mcps ? { mcps } : {}),
       ...(skills ? { skills } : {}),
+      ...(model ? { model } : {}),
     });
     if (result && typeof result === "object" && "error" in result && (result as any).error) {
       log.error({ result }, "plan failed");

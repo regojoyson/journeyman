@@ -30,4 +30,5 @@ export const listWorkspaceFilesPhase: PhaseDefinition<ListWorkspaceFilesConfig> 
   summary: c => c.pattern,
   executor: { kind: "coding-cli", method: "scanRepos" },
   outputSchema: listWorkspaceFilesOutputSchema,
+  comingSoon: true,
 };

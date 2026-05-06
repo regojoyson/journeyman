@@ -5,7 +5,11 @@ import type {
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
 } from "../types/git.types.ts";
-import type { AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult, ImplementOptions, ImplementResult } from "../types/coding.types.ts";
+import type {
+  AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult,
+  ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
+} from "../types/coding.types.ts";
 
 /**
  * Contract for AI coding CLI providers (Claude, Gemini, Codex).
@@ -23,4 +27,7 @@ export interface ICodingCLI {
   analyze(opts: AnalyzeOptions): Promise<AnalyzeResult>;
   plan(opts: PlanOptions): Promise<PlanResult>;
   implement(opts: ImplementOptions): Promise<ImplementResult>;
+
+  // Custom user-defined AI phase
+  runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult>;
 }

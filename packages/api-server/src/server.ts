@@ -13,6 +13,8 @@ import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
 import { registerSkillRoutes } from "@journeyman/skills";
+import { registerCustomPhaseRoutes } from "@journeyman/custom-phases";
+import { registerCodingModelRoutes } from "@journeyman/coding-models";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -33,6 +35,8 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerSecretsRoutes(app, c.pool);
     await registerMcpRoutes(app, c.pool);
     await registerSkillRoutes(app, c.pool);
+    await registerCustomPhaseRoutes(app, c.pool);
+    await registerCodingModelRoutes(app, c.pool);
   }
   registerFlowRoutes(app, c);
   registerPhasesRoutes(app);

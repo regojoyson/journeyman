@@ -40,4 +40,5 @@ export const listPullRequestCommentsPhase: PhaseDefinition<ListPullRequestCommen
   ],
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo}#${c.prNumber || "?"}` : "",
   executor: { kind: "git-provider", method: "fetchPRComments" },
+  comingSoon: true,
 };

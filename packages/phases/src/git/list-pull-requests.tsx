@@ -47,4 +47,5 @@ export const listPullRequestsPhase: PhaseDefinition<ListPullRequestsConfig> = {
   ],
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo} [${c.state}]` : "",
   executor: { kind: "git-provider", method: "listPRs" },
+  comingSoon: true,
 };

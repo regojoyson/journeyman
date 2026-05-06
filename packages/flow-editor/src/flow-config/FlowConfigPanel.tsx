@@ -2,6 +2,7 @@ import type { FlowDefaults, FlowGraph } from "@journeyman/core";
 import { X } from "lucide-react";
 import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
 import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
+import { DefaultsModelSection } from "./DefaultsModelSection.tsx";
 
 export interface FlowConfigPanelProps {
   flow: FlowGraph;
@@ -29,6 +30,7 @@ export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfi
       </div>
 
       <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
+      <DefaultsModelSection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsRetrySection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
     </aside>
   );

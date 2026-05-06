@@ -4,6 +4,7 @@ import type { FlowDefaults, FlowGraph, FlowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
+import { CodingModelSelect } from "../components/CodingModelSelect.tsx";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { ValuePicker } from "./ValuePicker.tsx";
@@ -177,6 +178,33 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           flowDefaults={flowDefaults}
         />
       )}
+
+      {definition?.supportsModelSelection && (() => {
+        const provider =
+          executorConfig?.provider
+          ?? flowDefaults?.executorConfig?.["coding-cli"]?.provider;
+        const flowDefault = flowDefaults?.defaultModel;
+        const emptyLabel = flowDefault
+          ? `Use flow default (${flowDefault})`
+          : "Use system default";
+        return (
+          <div className="je-props__field">
+            <label>Model</label>
+            <CodingModelSelect
+              provider={provider}
+              value={node.model ?? undefined}
+              onChange={(modelId) => onChange({ ...node, model: modelId ?? null })}
+              emptyLabel={emptyLabel}
+              disabled={readOnly}
+            />
+            {!provider && (
+              <div className="je-props__field-help">
+                Set a coding-cli provider (above or in flow defaults) to enable model selection.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {definition?.ConfigForm && (
         <definition.ConfigForm

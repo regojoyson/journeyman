@@ -36,4 +36,5 @@ export const commentOnIssuePhase: PhaseDefinition<CommentOnIssueConfig> = {
   summary: c => c.template || c.issueRef || "(no target)",
   executor: { kind: "issue-provider", method: "addComment" },
   outputSchema: commentOnIssueOutputSchema,
+  comingSoon: true,
 };

@@ -2,6 +2,7 @@ import type { SessionOptions, SessionResult } from "./session.types.ts";
 import type { Issue } from "./issue.types.ts";
 import type { ResolvedMcpInstance } from "./mcp.types.ts";
 import type { ResolvedSkillPackage } from "./skills.types.ts";
+import type { CanonicalTool } from "./coding-tools.types.ts";
 
 // ---------------------------------------------------------------------------
 // Provider config — shared across all coding-CLI providers
@@ -15,7 +16,8 @@ export type CodingCLIPhase =
   | "createWorkspace"
   | "analyze"
   | "plan"
-  | "implement";
+  | "implement"
+  | "runCustomPrompt";
 
 export interface CodingCLIProviderConfig {
   /** Fallback model for any phase not listed in `models`. */
@@ -192,3 +194,31 @@ export type ImplementResult = SessionResult & {
   summary: string;
   error?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Custom AI phase — generic prompt runner
+// ---------------------------------------------------------------------------
+
+export interface RunCustomPromptOptions {
+  prompt: string;
+  outputMode: "none" | "text" | "structured";
+  outputSchema?: Record<string, unknown>;
+  cwd?: string;
+  mcps?: ResolvedMcpInstance[];
+  skills?: ResolvedSkillPackage[];
+  /**
+   * Canonical Journeyman tool names. Each provider translates to its native
+   * tool names. Empty/undefined means a pure-prompt phase (no tools).
+   */
+  tools?: CanonicalTool[];
+  sessionId?: string;
+  signal?: AbortSignal;
+  model?: string;
+}
+
+export interface RunCustomPromptResult {
+  result?: string;
+  structured?: unknown;
+  error?: string;
+  sessionId?: string;
+}

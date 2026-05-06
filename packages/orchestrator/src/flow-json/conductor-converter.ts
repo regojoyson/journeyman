@@ -8,6 +8,7 @@ import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { applyFlowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, type CatalogShapeEntry } from "./validate-ref-shape.ts";
+import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
 
 /**
  * Read-side migration: legacy nodes used `requiredSecrets: string[]` to declare
@@ -195,6 +196,7 @@ class ConvertCtx {
           provider: resolvedNode.executorConfig?.provider,
           retry: resolvedNode.retry ?? {},
           secretBindings: bindings,
+          ...(resolvedNode.model ? { model: resolvedNode.model } : {}),
           _flowDefaultSources: defaultSources,
           startedByUserId: "${workflow.input.startedByUserId}",
           startedByOrgId: "${workflow.input.startedByOrgId}",
@@ -216,31 +218,51 @@ class ConvertCtx {
     if (outs.length === 0) {
       throw new FlowValidationError(`Switch '${node.id}' has no outgoing edges`);
     }
-    const cases: Record<string, ConductorTaskDef[]> = {};
-    let defaultCase: ConductorTaskDef[] | undefined;
+
+    const conditional = outs.filter(e => e.type === "conditional");
+    const elseEdge    = outs.find(e => e.type === "else");
+
+    const seenLabels = new Set<string>();
+    for (const e of conditional) {
+      if (e.condition === undefined) {
+        throw new FlowValidationError(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
+      }
+      if (!e.branchLabel) {
+        throw new FlowValidationError(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
+      }
+      if (seenLabels.has(e.branchLabel)) {
+        throw new FlowValidationError(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
+      }
+      seenLabels.add(e.branchLabel);
+    }
 
     const branchTargets = outs.map(e => e.target);
-    const convergence = findConvergence(branchTargets, this);
-    const stopAt = convergence ? new Set([convergence]) : undefined;
+    const convergence   = findConvergence(branchTargets, this);
+    const stopAt        = convergence ? new Set([convergence]) : undefined;
 
-    for (const e of outs) {
-      const branchTasks = this.buildSequence(e.target, stopAt);
-      if (e.type === "else" || e.branchLabel === "default") {
-        defaultCase = branchTasks;
-      } else {
-        const label = e.branchLabel
-          ?? (e.type === "conditional" ? jsonLogicToString(e.condition) : `case_${Object.keys(cases).length + 1}`);
-        cases[label] = branchTasks;
-      }
+    const cases: Record<string, ConductorTaskDef[]> = {};
+    for (const e of conditional) {
+      cases[e.branchLabel!] = this.buildSequence(e.target, stopAt);
+    }
+    const defaultCase = elseEdge ? this.buildSequence(elseEdge.target, stopAt) : undefined;
+
+    let expression: string;
+    let inputParameters: Record<string, string>;
+    try {
+      ({ expression, inputParameters } = compileSwitchExpression(conditional));
+    } catch (err) {
+      throw new FlowValidationError(
+        `Failed to compile conditions on gateway '${node.id}': ${(err as Error).message}`,
+      );
     }
 
     const task: SwitchTask = {
       type: "SWITCH",
       name: `switch_${node.id}`,
       taskReferenceName: node.id,
-      evaluatorType: "value-param",
-      expression: "branch",
-      inputParameters: { branch: "${workflow.input.branch}" },
+      evaluatorType: "javascript",
+      expression,
+      inputParameters,
       decisionCases: cases,
       ...(defaultCase ? { defaultCase } : {}),
     };
@@ -367,11 +389,6 @@ function walkReachable(start: string, ctx: ConvertCtx): Set<string> {
     }
   }
   return seen;
-}
-
-function jsonLogicToString(expr: unknown): string {
-  if (expr == null) return "case";
-  try { return JSON.stringify(expr).slice(0, 32); } catch { return "case"; }
 }
 
 function mapBackoff(b: "fixed" | "linear" | "exponential"): "FIXED" | "LINEAR_BACKOFF" | "EXPONENTIAL_BACKOFF" {

@@ -42,4 +42,5 @@ export const sendMessagePhase: PhaseDefinition<SendMessageConfig> = {
   summary: c => c.channel || "(no channel)",
   executor: { kind: "notification", method: "send" },
   outputSchema: sendMessageOutputSchema,
+  comingSoon: true,
 };

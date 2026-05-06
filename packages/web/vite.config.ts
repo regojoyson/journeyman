@@ -9,7 +9,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api":          { target: API_TARGET, changeOrigin: true },
-      "/admin":        { target: API_TARGET, changeOrigin: true },
+      "/admin": {
+        target: API_TARGET, changeOrigin: true,
+        bypass: (req) => req.headers.accept?.includes("text/html") ? "/index.html" : undefined,
+      },
       "/webhooks":     { target: API_TARGET, changeOrigin: true },
       "/healthz":      { target: API_TARGET, changeOrigin: true },
       "/flow_versions":{ target: API_TARGET, changeOrigin: true },

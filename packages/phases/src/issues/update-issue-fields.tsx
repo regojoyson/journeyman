@@ -95,4 +95,5 @@ export const updateIssueFieldsPhase: PhaseDefinition<UpdateIssueFieldsConfig> = 
   summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",
   executor: { kind: "issue-provider", method: "updateIssue" },
   outputSchema: updateIssueFieldsOutputSchema,
+  comingSoon: true,
 };

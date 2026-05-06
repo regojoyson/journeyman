@@ -46,4 +46,5 @@ export const commentOnPullRequestPhase: PhaseDefinition<CommentOnPullRequestConf
   ],
   summary: c => c.template || (c.prNumber ? `#${c.prNumber}` : "(no target)"),
   executor: { kind: "git-provider", method: "addComment" },
+  comingSoon: true,
 };

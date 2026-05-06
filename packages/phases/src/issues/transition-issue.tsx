@@ -33,4 +33,5 @@ export const transitionIssuePhase: PhaseDefinition<TransitionIssueConfig> = {
   summary: c => c.status || "(no status)",
   executor: { kind: "issue-provider", method: "updateStatus" },
   outputSchema: transitionIssueOutputSchema,
+  comingSoon: true,
 };

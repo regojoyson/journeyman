@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
+  { to: "/me/custom-phases", icon: "🧩", label: "My Custom Phases" },
 ];
 
 const ADMIN_ITEMS = [
@@ -15,6 +16,8 @@ const ADMIN_ITEMS = [
   { to: "/admin/secrets", icon: "🔐", label: "Org Secrets" },
   { to: "/admin/mcps",    icon: "🧩", label: "Org MCPs"    },
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
+  { to: "/admin/custom-phases", icon: "🧩", label: "Org Custom Phases" },
+  { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
   { to: "/admin/flows",   icon: "📋", label: "Admin Flows" },
 ];
 
@@ -71,8 +74,8 @@ export default function Sidebar() {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: expanded ? 160 : 52,
-        minWidth: expanded ? 160 : 52,
+        width: expanded ? 200 : 52,
+        minWidth: expanded ? 200 : 52,
         height: "100vh",
         background: "#11111a",
         borderRight: "1px solid #2a2a3a",
@@ -209,6 +212,7 @@ export default function Sidebar() {
               { to: "/me/secrets",  label: "My Secrets"      },
               { to: "/me/mcps",     label: "My MCPs"         },
               { to: "/me/skills",   label: "My Skills"       },
+              { to: "/me/custom-phases", label: "My Custom Phases" },
               { to: "/me/password", label: "Change password" },
             ].map(({ to, label: itemLabel }) => (
               <Link

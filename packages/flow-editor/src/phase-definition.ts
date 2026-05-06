@@ -114,6 +114,15 @@ export interface PhaseDefinition<TConfig = unknown> {
   /** Whether this phase can consume skill packages. Drives the Skills tab in the editor. */
   supportsSkills?: boolean;
 
+  /** Whether this phase consumes a model selection (renders the Model dropdown in the step config panel). */
+  supportsModelSelection?: boolean;
+
   /** Declared shape of this phase's output — drives the editor picker. */
   outputSchema?: OutputSchema;
+
+  /** When true, this phase is shown in the palette's collapsible
+   *  "Coming soon" panel and cannot be dragged onto the canvas.
+   *  Default: false (available). Editorial flag — not derived from
+   *  provider implementation status. */
+  comingSoon?: boolean;
 }

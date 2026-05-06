@@ -60,6 +60,7 @@ export interface CanvasProps {
   selectedNodeId: string | null;
   onChange: (next: FlowGraph) => void;
   onSelect: (nodeId: string | null) => void;
+  onEdgeSelect?: (edgeId: string | null) => void;
   readOnly?: boolean;
   phaseRunStates?: Record<string, PhaseRunState>;
 }
@@ -106,12 +107,14 @@ function CanvasInner(p: CanvasProps) {
   // Stable refs so callbacks don't recreate on every drag frame.
   const onChangeRef = useRef(p.onChange);
   const onSelectRef = useRef(p.onSelect);
+  const onEdgeSelectRef = useRef(p.onEdgeSelect);
   const readOnlyRef = useRef(p.readOnly);
   const flowRef = useRef(p.flow);
   const selectedNodeIdRef = useRef(p.selectedNodeId);
   const phaseRunStatesRef = useRef(p.phaseRunStates);
   onChangeRef.current = p.onChange;
   onSelectRef.current = p.onSelect;
+  onEdgeSelectRef.current = p.onEdgeSelect;
   readOnlyRef.current = p.readOnly;
   flowRef.current = p.flow;
   selectedNodeIdRef.current = p.selectedNodeId;
@@ -373,6 +376,8 @@ function CanvasInner(p: CanvasProps) {
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onSelectionChange={handleSelectionChange}
+        onEdgeClick={(_, edge) => onEdgeSelectRef.current?.(edge.id)}
+        onPaneClick={() => { onSelectRef.current(null); onEdgeSelectRef.current?.(null); }}
         fitView
         fitViewOptions={{ padding: 0.25 }}
         connectionRadius={40}

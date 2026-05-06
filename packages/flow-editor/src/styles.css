@@ -1012,3 +1012,41 @@ label.je-switch,
 .je-topbar__warning-row--input:hover {
   background: rgba(255, 107, 107, 0.15);
 }
+
+/* Coming-soon palette items + panel */
+.je-palette__item--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.je-palette__item--disabled:hover { background: #1f1f2c; }
+
+.je-palette__coming-soon { margin-top: 12px; }
+
+.je-palette__coming-soon-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  margin-bottom: 4px;
+  color: #888;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  text-align: left;
+}
+.je-palette__coming-soon-header:hover { color: #b8b8c4; }
+
+.je-palette__coming-soon-caret {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+}
+
+.je-palette__coming-soon-label { flex: 0 0 auto; }
+.je-palette__coming-soon-count { color: #555; }
+
+.je-palette__coming-soon-body { display: block; }

@@ -40,4 +40,5 @@ export const createIssuePhase: PhaseDefinition<CreateIssueConfig> = {
   summary: c => c.title || c.project,
   executor: { kind: "issue-provider", method: "createIssue" },
   outputSchema: createIssueOutputSchema,
+  comingSoon: true,
 };

@@ -36,4 +36,5 @@ export const cleanupWorkspacePhase: PhaseDefinition<CleanupWorkspaceConfig> = {
   summary: c => c.mode,
   executor: { kind: "coding-cli", method: "cleanupRepos" },
   outputSchema: cleanupWorkspaceOutputSchema,
+  comingSoon: true,
 };

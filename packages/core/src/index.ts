@@ -7,6 +7,9 @@ export type { INotificationProvider } from "./interfaces/notification.interface.
 // Types
 export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
+export type * from "./types/coding-models.types.ts";
+export * from "./types/coding-tools.types.ts";
+export type * from "./types/custom-phases.types.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
@@ -84,6 +87,13 @@ export type {
   FlowDefaults,
 } from "./types/flow.types.ts";
 export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
+export type {
+  JsonLogicExpr, JsonLogicVar, JsonLogicLiteral,
+} from "./types/flow-condition.types.ts";
+export {
+  WORKFLOW_INPUT_SUGGESTIONS,
+  isJsonLogicExpr,
+} from "./types/flow-condition.types.ts";
 export type {
   FlowScope, FlowGrantPrincipalType, FlowGrantRole, FlowGrant,
 } from "./types/flow.types.ts";

@@ -26,6 +26,8 @@ import { commentOnIssuePhase } from "./issues/comment-on-issue.tsx";
 
 import { sendMessagePhase } from "./notifications/send-message.tsx";
 
+import { customAiPhase } from "./custom/custom-ai.tsx";
+
 // `PhaseDefinition<TConfig>` is invariant in TConfig (the `onChange` and
 // `defaultConfig` positions are both contravariant), so a list of definitions
 // with different config types cannot be typed as `PhaseDefinition<unknown>[]`.
@@ -42,4 +44,6 @@ export const builtInPhases: PhaseDefinition<any>[] = [
   getIssuePhase, createIssuePhase, updateIssueFieldsPhase, transitionIssuePhase, commentOnIssuePhase,
   // Messaging
   sendMessagePhase,
+  // User-defined custom phases
+  customAiPhase,
 ];
