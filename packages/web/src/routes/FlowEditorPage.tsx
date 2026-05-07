@@ -6,6 +6,7 @@ import type { Flow, FlowGraph } from "@journeyman/core";
 import { getFlow, getCurrentFlowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
+import { useCustomPhasePaletteEntries } from "../flow-editor-integration/useCustomPhasePaletteEntries.ts";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { StatusToast } from "../components/StatusToast.tsx";
@@ -29,6 +30,7 @@ export function FlowEditorPage() {
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
+  const customPhaseDefs = useCustomPhasePaletteEntries(activeOrgId);
 
   const flowQ = useQuery({
     queryKey: ["flow", id],
@@ -159,7 +161,7 @@ export function FlowEditorPage() {
             renameM.mutate(trimmed);
           } : undefined}
           orgId={activeOrgId}
-          phases={builtInPhases}
+          phases={[...builtInPhases, ...customPhaseDefs]}
           controlCatalog={defaultControlCatalog}
           mcpCatalog={defaultMcpCatalog}
           onChange={(next) => { setGraph(next); setDirty(true); }}

@@ -1,11 +1,14 @@
 import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
+import type { CanonicalTool } from "@journeyman/core";
+import { CustomAiConfigForm } from "./CustomAiConfigForm.tsx";
 
 interface CustomAiConfig {
   customPhaseId: string;
-  provider?: "claude" | "gemini" | "codex";
+  provider?: string;
   mcpInstanceIds?: string[];
   skillIds?: string[];
+  tools?: CanonicalTool[];
 }
 
 export const customAiPhase: PhaseDefinition<CustomAiConfig> = {
@@ -18,12 +21,15 @@ export const customAiPhase: PhaseDefinition<CustomAiConfig> = {
   defaultConfig: { customPhaseId: "" },
   configSchema: z.object({
     customPhaseId: z.string().min(1),
-    provider: z.enum(["claude", "gemini", "codex"]).optional(),
+    provider: z.string().optional(),
     mcpInstanceIds: z.array(z.string()).optional(),
     skillIds: z.array(z.string()).optional(),
+    tools: z.array(z.string()).optional(),
   }),
   configFields: {},
-  tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
+  ConfigForm: CustomAiConfigForm,
+  hiddenFromPalette: true,
+  tabs: { io: "hidden", mcp: "shown", skills: "shown", retry: "shown" },
   supportsSkills: true,
   supportsModelSelection: true,
   slots: [

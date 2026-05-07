@@ -8,11 +8,13 @@ import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { FlowGraph, FlowScope } from "@journeyman/core";
 import { ConductorJsonConverter } from "@journeyman/orchestrator";
 import { phaseCatalog } from "@journeyman/phases/catalog";
-import { validateFlowInputs, type ValidationCatalog } from "@journeyman/core";
+import { validateFlowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
+import { getCustomAiPhase } from "@journeyman/custom-phases";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { FlowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
+import { assertFlowReady } from "../services/assert-flow-ready.ts";
 
 /**
  * Compute non-blocking warnings about secret references in a flow definition.
@@ -129,8 +131,13 @@ export interface FlowValidationReport {
   secretWarnings: FlowSaveWarning[];        // inaccessible secret references — non-blocking
 }
 
-/** Pure function — does not mutate any reply. Returns the full report. */
-export function computeValidationReport(definition: FlowGraph): FlowValidationReport {
+/** Pure function — does not mutate any reply. Returns the full report.
+ *  `customPhaseInputs` maps a customPhaseId to its declared input fields,
+ *  so custom-ai nodes get per-instance validation (required-field checks). */
+export function computeValidationReport(
+  definition: FlowGraph,
+  customPhaseInputs: Map<string, Record<string, unknown>> = new Map(),
+): FlowValidationReport {
   const errors: string[] = [];
   const missing: string[] = [];
   const warnings: string[] = [];
@@ -143,10 +150,19 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
 
   const inputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.inputFields ?? {}]));
 
+  function declaredInputsFor(node: FlowGraph["nodes"][number]): Record<string, unknown> {
+    if (node.phaseType === "custom-ai") {
+      const cfg = (node.config ?? {}) as { customPhaseId?: string };
+      const id = cfg.customPhaseId;
+      if (id && customPhaseInputs.has(id)) return customPhaseInputs.get(id)!;
+    }
+    return inputsByPhase.get(node.phaseType ?? "") ?? {};
+  }
+
   // Check 1: required input fields are satisfied (typed value or binding) on every phase node.
   for (const node of definition.nodes) {
     if (node.type !== "phase" || !node.phaseType) continue;
-    const declared = inputsByPhase.get(node.phaseType) ?? {};
+    const declared = declaredInputsFor(node);
     const config = (node.config ?? {}) as Record<string, unknown>;
     const inputs = (node.inputs ?? {}) as Record<string, { kind?: string }>;
     for (const [fieldName, meta] of Object.entries(declared)) {
@@ -173,7 +189,29 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
       outputSchema: entry.outputSchema,
     };
   }
-  const inputWarnings = validateFlowInputs(definition, validationCatalog);
+  // Per-node overlay: custom-ai nodes get per-instance inputFields keyed by
+  // the synthetic phaseType `custom-ai:<id>` so validateFlowInputs picks up
+  // the right declarations. We mutate the validationCatalog AND temporarily
+  // rewrite the node's phaseType for the validator's lookup.
+  for (const [id, fields] of customPhaseInputs) {
+    validationCatalog[`custom-ai:${id}`] = {
+      inputFields: fields as ValidationCatalog[string]["inputFields"],
+      outputSchema: validationCatalog["custom-ai"]?.outputSchema ?? null,
+    };
+  }
+  const adaptedDef: FlowGraph = {
+    ...definition,
+    nodes: definition.nodes.map((n) => {
+      if (n.phaseType === "custom-ai") {
+        const cfg = (n.config ?? {}) as { customPhaseId?: string };
+        if (cfg.customPhaseId && customPhaseInputs.has(cfg.customPhaseId)) {
+          return { ...n, phaseType: `custom-ai:${cfg.customPhaseId}` };
+        }
+      }
+      return n;
+    }),
+  };
+  const inputWarnings = validateFlowInputs(adaptedDef, validationCatalog);
   for (const w of inputWarnings) {
     if (w.code === "missing-required") continue; // already in `missing[]` via Check 1
     warnings.push(w.message);
@@ -182,12 +220,57 @@ export function computeValidationReport(definition: FlowGraph): FlowValidationRe
   return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };
 }
 
+/** Pre-fetches custom-ai phase inputFields referenced by the flow so the
+ *  validator can apply per-instance required-field checks. */
+async function loadCustomPhaseInputs(
+  c: Composition,
+  definition: FlowGraph,
+): Promise<Map<string, Record<string, unknown>>> {
+  const map = new Map<string, Record<string, unknown>>();
+  if (!c.pool) return map;
+  const ids = new Set<string>();
+  for (const node of definition.nodes) {
+    if (node.phaseType !== "custom-ai") continue;
+    const cfg = (node.config ?? {}) as { customPhaseId?: string };
+    if (cfg.customPhaseId) ids.add(cfg.customPhaseId);
+  }
+  for (const id of ids) {
+    const phase = await getCustomAiPhase(c.pool, id);
+    if (!phase) continue;
+    // Convert CustomPhaseInputField[] → InputFields shape (record keyed by name).
+    const fields: Record<string, { shape: { type: string }; required: boolean; label?: string }> = {};
+    for (const f of phase.inputFields ?? []) {
+      fields[f.name] = {
+        shape: { type: customTypeToShape(f.type) },
+        required: f.required,
+        label: f.name,
+      };
+    }
+    map.set(id, fields as unknown as Record<string, unknown>);
+  }
+  return map;
+}
+
+function customTypeToShape(t: string): string {
+  switch (t) {
+    case "string": case "number": case "boolean": return t;
+    case "string[]": return "array";
+    case "object": return "object";
+    case "array": return "array";
+    case "workspaceId": return "string";
+    case "repoRef": return "ref";
+    case "issueRef": return "ref";
+    default: return "string";
+  }
+}
+
 /** Save-path adapter: writes 400 to reply if invalid. */
 function validateAndWarnDefinition(
   definition: FlowGraph,
   reply: import("fastify").FastifyReply,
+  customPhaseInputs?: Map<string, Record<string, unknown>>,
 ): { ok: true } | { ok: false } {
-  const report = computeValidationReport(definition);
+  const report = computeValidationReport(definition, customPhaseInputs);
   if (report.errors.length) {
     reply.code(400).send({ error: "FlowValidationError", message: report.errors[0], errors: report.errors });
     return { ok: false };
@@ -203,6 +286,14 @@ import {
   canCreateAtScope, canDelete, canEdit, canPromoteTo, canRead,
   type Caller,
 } from "../services/flow-access.ts";
+
+function hasFlowTrigger(flow: FlowGraph): boolean {
+  // A flow has a trigger if any node opts in. Until the trigger model is
+  // formalised at the flow level (webhooks list, cron strings, etc.), accept
+  // any flow with a start node — every flow has one, so this stays permissive
+  // and matches existing behaviour for manual triggers via /runs.
+  return flow.nodes.some(n => n.type === "start");
+}
 
 function callerFromCtx(ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>): Caller {
   return {
@@ -224,7 +315,8 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
       reply.code(400);
       return { error: "bad_request", message: "definition is required" };
     }
-    const report = computeValidationReport(body.definition);
+    const customPhaseInputs = await loadCustomPhaseInputs(c, body.definition);
+    const report = computeValidationReport(body.definition, customPhaseInputs);
     // Validate works against the user's caller scope — fall back to "user" since
     // no flow record exists yet at validate time.
     const callerScope: FlowScope = "user";
@@ -252,7 +344,8 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
 
     const ownerUserId = body.scope === "user" ? caller.userId : null;
 
-    const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
+    const _customPhaseInputsCreate = await loadCustomPhaseInputs(c, body.definition as FlowGraph);
+    const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply, _customPhaseInputsCreate);
     if (!_v.ok) return;
 
     const warnings = await computeSaveWarnings(c, ctx, body.scope as FlowScope, body.definition as FlowGraph);
@@ -302,6 +395,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     const flow = await c.flows.getById(id);
     if (!flow) { reply.code(404); return { error: "not_found" }; }
     if (!canEdit(flow, caller)) { reply.code(403); return { error: "forbidden" }; }
+    if (flow.status === "ready") { reply.code(409); return { error: "flow_is_ready" }; }
 
     if (body.name !== undefined || body.description !== undefined) {
       await c.flows.updateMeta(id, { name: body.name, description: body.description });
@@ -309,7 +403,8 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     let newVersion = null;
     let warnings: FlowSaveWarning[] = [];
     if (body.definition) {
-      const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply);
+      const _customPhaseInputsUpd = await loadCustomPhaseInputs(c, body.definition as FlowGraph);
+      const _v = validateAndWarnDefinition(body.definition as FlowGraph, reply, _customPhaseInputsUpd);
       if (!_v.ok) return;
       warnings = await computeSaveWarnings(c, ctx, flow.scope, body.definition as FlowGraph);
       newVersion = await c.flowVersions.appendVersion({
@@ -349,6 +444,58 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     return { version };
   });
 
+  app.post("/flows/:id/publish", { preHandler: requireAuth() }, async (req, reply) => {
+    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
+    const { id } = req.params as { id: string };
+
+    const flow = await c.flows.getById(id);
+    if (!flow) { reply.code(404); return { error: "not_found" }; }
+    if (!canEdit(flow, caller)) { reply.code(403); return { error: "forbidden" }; }
+    if (!flow.currentVersionId) { reply.code(409); return { error: "flow_has_no_versions" }; }
+
+    const version = await c.flowVersions.getById(flow.currentVersionId);
+    if (!version) { reply.code(500); return { error: "version_missing" }; }
+
+    const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
+    const visibleSecretNames = new Set(visible.map(v => v.name));
+
+    const result = validateForPublish(version.definition, {
+      hasTrigger: hasFlowTrigger(version.definition),
+      visibleSecretNames,
+    });
+    if (!result.ok) { reply.code(400); return { errors: result.errors }; }
+
+    const updated = await c.flows.setStatus(id, "ready");
+    if (!updated) { reply.code(500); return { error: "update_failed" }; }
+    return { flow: updated };
+  });
+
+  app.post("/flows/:id/unpublish", { preHandler: requireAuth() }, async (req, reply) => {
+    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { confirm?: boolean };
+
+    const flow = await c.flows.getById(id);
+    if (!flow) { reply.code(404); return { error: "not_found" }; }
+    if (!canEdit(flow, caller)) { reply.code(403); return { error: "forbidden" }; }
+
+    // In-flight run count and active-trigger counts: hooks for future wiring.
+    // Until IRunStore exposes a count helper, treat as zero so the warning
+    // never fires. The pre-flip warning becomes meaningful once those
+    // subsystems land.
+    const inFlightRunCount = 0;
+    const activeTriggers = { webhooks: 0, schedules: 0 };
+
+    if (!body.confirm && (inFlightRunCount > 0 || activeTriggers.webhooks > 0 || activeTriggers.schedules > 0)) {
+      reply.code(409);
+      return { warning: { inFlightRunCount, activeTriggers } };
+    }
+
+    const updated = await c.flows.setStatus(id, "draft");
+    if (!updated) { reply.code(500); return { error: "update_failed" }; }
+    return { flow: updated };
+  });
+
   app.post("/flows/:id/runs", { preHandler: requireAuth() }, async (req, reply) => {
     const ctx = req.runContext!; const caller = callerFromCtx(ctx);
     const { id } = req.params as { id: string };
@@ -357,6 +504,7 @@ export function registerFlowRoutes(app: FastifyInstance, c: Composition): void {
     const flow = await c.flows.getById(id);
     if (!flow) { reply.code(404); return { error: "not_found" }; }
     if (!canRead(flow, caller)) { reply.code(403); return { error: "forbidden" }; }
+    if (!assertFlowReady(flow, reply)) return;
     if (!flow.currentVersionId) { reply.code(409); return { error: "flow_has_no_versions" }; }
     const version = await c.flowVersions.getById(flow.currentVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }

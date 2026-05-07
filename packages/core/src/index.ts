@@ -15,6 +15,7 @@ export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";
 export type * from "./types/pipeline.types.ts";
+export type * from "./types/human-task.types.ts";
 export type * from "./types/secret-slot.types.ts";
 export * from "./types/identity.types.ts";
 // Logger
@@ -95,8 +96,14 @@ export {
   isJsonLogicExpr,
 } from "./types/flow-condition.types.ts";
 export type {
-  FlowScope, FlowGrantPrincipalType, FlowGrantRole, FlowGrant,
+  FlowScope, FlowGrantPrincipalType, FlowGrantRole, FlowGrant, FlowStatus,
 } from "./types/flow.types.ts";
+export {
+  validateForPublish,
+} from "./validation/validate-for-publish.ts";
+export type {
+  PublishError, PublishValidationResult, PublishValidationContext,
+} from "./validation/validate-for-publish.ts";
 export type {
   RunGrant, RunGrantPrincipalType, RunGrantRole,
   CreateRunGrantArgs, ActorContext, RunListScope,

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
-  CreateFlowArgs, Flow, FlowGrant, FlowGraph, FlowListFilter, FlowVersion,
+  CreateFlowArgs, Flow, FlowGrant, FlowGraph, FlowListFilter, FlowStatus, FlowVersion,
   IFlowGrantsStore, IFlowStore, IFlowVersionStore,
 } from "@journeyman/core";
 
@@ -44,6 +44,7 @@ export class MemoryFlowStore implements IFlowStore {
     id: string; name: string; description: string | null;
     currentVersionId: string | null; createdByUserId: string | null;
     createdAt: Date; updatedAt: Date;
+    status: FlowStatus;
   }>();
 
   constructor(
@@ -58,6 +59,7 @@ export class MemoryFlowStore implements IFlowStore {
       id, name: args.name, description: args.description ?? null,
       currentVersionId: null, createdByUserId: args.createdByUserId,
       createdAt: now, updatedAt: now,
+      status: "draft",
     });
     const version = await this.versions.appendVersion({
       flowId: id, definition: args.initialDefinition, createdByUserId: args.createdByUserId,
@@ -119,12 +121,20 @@ export class MemoryFlowStore implements IFlowStore {
     return this.getById(flowId);
   }
 
+  async setStatus(flowId: string, status: FlowStatus): Promise<Flow | null> {
+    const row = this.rows.get(flowId);
+    if (!row) return null;
+    row.status = status;
+    row.updatedAt = new Date();
+    return this.getById(flowId);
+  }
+
   async delete(flowId: string): Promise<void> { this.rows.delete(flowId); }
 }
 
 function hydrate(
   row: { id: string; name: string; description: string | null; currentVersionId: string | null;
-         createdByUserId: string | null; createdAt: Date; updatedAt: Date; },
+         createdByUserId: string | null; createdAt: Date; updatedAt: Date; status: FlowStatus; },
   owner: FlowGrant | null,
   orgHint: string | null,
 ): Flow {
@@ -132,6 +142,7 @@ function hydrate(
     id: row.id, name: row.name, description: row.description,
     currentVersionId: row.currentVersionId, createdByUserId: row.createdByUserId,
     createdAt: row.createdAt, updatedAt: row.updatedAt,
+    status: row.status,
   };
   if (!owner) return { ...base, scope: "user", orgId: null, ownerUserId: null };
   if (owner.principalType === "global") return { ...base, scope: "global", orgId: null, ownerUserId: null };

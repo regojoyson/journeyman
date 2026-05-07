@@ -143,4 +143,11 @@ export const phaseCatalog: PhaseCatalogEntry[] = [
 
   // Messaging
   { phaseType: SEND_MESSAGE_PHASE_TYPE, label: SEND_MESSAGE_LABEL, category: SEND_MESSAGE_CATEGORY, description: SEND_MESSAGE_DESCRIPTION, inputFields: sendMessageInputFields, outputSchema: sendMessageOutputSchema },
+
+  // Custom AI Phase — runtime task type. Declared input/output shapes are
+  // dynamic per saved definition; the bare entry exists so the server-side
+  // catalog and validators recognize the phase type.
+  { phaseType: "custom-ai", label: "Custom AI Phase", category: "Custom",
+    description: "User-defined AI phase. Inputs and output schema come from the saved definition.",
+    inputFields: {}, outputSchema: {} },
 ];

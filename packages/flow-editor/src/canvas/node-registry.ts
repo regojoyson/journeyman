@@ -7,6 +7,7 @@ import { LoopNode } from "./nodes/LoopNode.tsx";
 import { SubflowNode } from "./nodes/SubflowNode.tsx";
 import { IfNode } from "./nodes/IfNode.tsx";
 import { TimerNode } from "./nodes/TimerNode.tsx";
+import { HumanTaskNode } from "./nodes/HumanTaskNode.tsx";
 import { DefaultEdge } from "./edges/DefaultEdge.tsx";
 import { ConditionalEdge } from "./edges/ConditionalEdge.tsx";
 import { ErrorEdge } from "./edges/ErrorEdge.tsx";
@@ -22,6 +23,7 @@ export const nodeTypes = {
   subflow: SubflowNode,
   if: IfNode,
   timer: TimerNode,
+  "human-task": HumanTaskNode,
 };
 
 export const edgeTypes = {

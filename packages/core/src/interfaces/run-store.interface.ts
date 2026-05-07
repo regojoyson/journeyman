@@ -35,9 +35,21 @@ export interface IRunStore {
     provider?: string;
     issueRef?: string;
   }): Promise<Run[]>;
+  /** Paused runs (status='paused') whose `inputs.issueRef` equals the given value. */
+  findPausedRunsByIssueRef(issueRef: string): Promise<Run[]>;
+  /** Active (not-yet-finished) runs whose `inputs.issueRef` equals the given value. */
+  findActiveRunsByIssueRef(issueRef: string): Promise<Run[]>;
 }
 
 export interface INodeExecutionStore {
   upsert(execution: NodeExecution): Promise<void>;
   listByRun(runId: string): Promise<NodeExecution[]>;
+  /** Mark (or insert) a `waiting` execution row and store the Conductor task id. */
+  markWaiting(runId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution>;
+  /** Mark a specific execution row as `completed` with output. */
+  markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution>;
+  /** Most recent execution row for the (run, node) pair, regardless of attempt. */
+  latestForNode(runId: string, nodeId: string): Promise<NodeExecution | null>;
+  /** Most recent execution row for the run whose status is `waiting`. */
+  latestWaitingForRun(runId: string): Promise<NodeExecution | null>;
 }

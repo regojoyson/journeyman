@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 468" width="800" height="468">
+
+  <!-- Canvas background -->
+  <rect width="800" height="468" fill="#F8FAFC" rx="12"/>
+
+  <!-- ═══════════════════════════════════════════════
+       LAYER 1 — Web UI  (y=16, h=82)
+  ══════════════════════════════════════════════════ -->
+  <rect x="16" y="16" width="768" height="82" rx="8" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+  <!-- left label -->
+  <text x="32" y="47" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#1D4ED8">Web UI</text>
+  <text x="32" y="63" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#60A5FA">React · XYFlow</text>
+  <!-- divider -->
+  <line x1="186" y1="20" x2="186" y2="94" stroke="#BFDBFE" stroke-width="1"/>
+  <!-- chips -->
+  <rect x="196" y="30" width="68" height="26" rx="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="230" y="47" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle">web</text>
+  <rect x="272" y="30" width="112" height="26" rx="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="328" y="47" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle">flow-editor</text>
+  <rect x="392" y="30" width="106" height="26" rx="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="445" y="47" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle">run-viewer</text>
+  <rect x="506" y="30" width="96" height="26" rx="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="554" y="47" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle">runs-list</text>
+
+  <!-- Arrow 1 -->
+  <line x1="400" y1="98" x2="400" y2="108" stroke="#CBD5E1" stroke-width="1.5"/>
+  <polygon points="393,108 407,108 400,116" fill="#CBD5E1"/>
+
+  <!-- ═══════════════════════════════════════════════
+       LAYER 2 — API Gateway  (y=116, h=62)
+  ══════════════════════════════════════════════════ -->
+  <rect x="16" y="116" width="768" height="62" rx="8" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+  <text x="32" y="143" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#4C1D95">API Gateway</text>
+  <text x="32" y="159" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#8B5CF6">Fastify</text>
+  <line x1="186" y1="120" x2="186" y2="174" stroke="#DDD6FE" stroke-width="1"/>
+  <rect x="196" y="130" width="112" height="26" rx="13" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1"/>
+  <text x="252" y="147" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#5B21B6" text-anchor="middle">api-server</text>
+  <text x="317" y="147" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#7C3AED">REST + SSE · auth · validation · routing</text>
+
+  <!-- Arrow 2 -->
+  <line x1="400" y1="178" x2="400" y2="188" stroke="#CBD5E1" stroke-width="1.5"/>
+  <polygon points="393,188 407,188 400,196" fill="#CBD5E1"/>
+
+  <!-- ═══════════════════════════════════════════════
+       LAYER 3 — Orchestrator  (y=196, h=62)
+  ══════════════════════════════════════════════════ -->
+  <rect x="16" y="196" width="768" height="62" rx="8" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="1.5"/>
+  <text x="32" y="223" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#064E3B">Orchestrator</text>
+  <text x="32" y="239" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#34D399">Conductor</text>
+  <line x1="186" y1="200" x2="186" y2="254" stroke="#A7F3D0" stroke-width="1"/>
+  <rect x="196" y="210" width="126" height="26" rx="13" fill="#D1FAE5" stroke="#6EE7B7" stroke-width="1"/>
+  <text x="259" y="227" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#065F46" text-anchor="middle">orchestrator</text>
+  <text x="331" y="227" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#059669">Conductor adapter · worker harness · durable execution</text>
+
+  <!-- Arrow 3 -->
+  <line x1="400" y1="258" x2="400" y2="268" stroke="#CBD5E1" stroke-width="1.5"/>
+  <polygon points="393,268 407,268 400,276" fill="#CBD5E1"/>
+
+  <!-- ═══════════════════════════════════════════════
+       LAYER 4 — Phases & Providers  (y=276, h=96)
+  ══════════════════════════════════════════════════ -->
+  <rect x="16" y="276" width="768" height="96" rx="8" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/>
+  <text x="32" y="310" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#78350F">Phases &amp;</text>
+  <text x="32" y="326" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#78350F">Providers</text>
+  <line x1="186" y1="280" x2="186" y2="368" stroke="#FDE68A" stroke-width="1"/>
+  <!-- row 1 -->
+  <rect x="196" y="288" width="82" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="237" y="305" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">phases</text>
+  <rect x="286" y="288" width="100" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="336" y="305" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">coding-cli</text>
+  <rect x="394" y="288" width="108" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="448" y="305" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">git-provider</text>
+  <rect x="510" y="288" width="118" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="569" y="305" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">ticket-provider</text>
+  <!-- row 2 -->
+  <rect x="196" y="324" width="162" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="277" y="341" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">notification-provider</text>
+  <rect x="366" y="324" width="60" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="396" y="341" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">mcp</text>
+  <rect x="434" y="324" width="76" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="472" y="341" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">skills</text>
+  <rect x="518" y="324" width="130" height="26" rx="13" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+  <text x="583" y="341" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#92400E" text-anchor="middle">custom-phases</text>
+
+  <!-- Arrow 4 -->
+  <line x1="400" y1="372" x2="400" y2="382" stroke="#CBD5E1" stroke-width="1.5"/>
+  <polygon points="393,382 407,382 400,390" fill="#CBD5E1"/>
+
+  <!-- ═══════════════════════════════════════════════
+       LAYER 5 — Storage  (y=390, h=62)
+  ══════════════════════════════════════════════════ -->
+  <rect x="16" y="390" width="768" height="62" rx="8" fill="#FFF1F2" stroke="#FDA4AF" stroke-width="1.5"/>
+  <text x="32" y="417" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#881337">Storage</text>
+  <text x="32" y="433" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="11" fill="#FB7185">PostgreSQL · Redis</text>
+  <line x1="186" y1="394" x2="186" y2="448" stroke="#FECDD3" stroke-width="1"/>
+  <rect x="196" y="404" width="106" height="26" rx="13" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="1"/>
+  <text x="249" y="421" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#9F1239" text-anchor="middle">PostgreSQL</text>
+  <rect x="310" y="404" width="72" height="26" rx="13" fill="#FFE4E6" stroke="#FDA4AF" stroke-width="1"/>
+  <text x="346" y="421" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" fill="#9F1239" text-anchor="middle">Redis</text>
+
+  <!-- footnote -->
+  <text x="784" y="460" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="10" fill="#94A3B8" text-anchor="end">all packages prefixed @journeyman/</text>
+
+</svg>

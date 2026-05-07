@@ -71,6 +71,9 @@ export interface PhaseFormProps<TConfig> {
   onChange: (next: TConfig) => void;
   readOnly?: boolean;
   catalogs: { mcp?: McpCatalog };
+  /** Upstream sources reachable from this node — used by ConfigForms that
+   *  render binding pickers. Optional because not every form needs it. */
+  sources?: import("./properties-panel/use-upstream-sources.ts").UpstreamSource[];
 }
 
 export interface PhaseDefinition<TConfig = unknown> {
@@ -125,4 +128,10 @@ export interface PhaseDefinition<TConfig = unknown> {
    *  Default: false (available). Editorial flag — not derived from
    *  provider implementation status. */
   comingSoon?: boolean;
+
+  /** When true, this phase is excluded from the palette entirely but
+   *  still registered for ConfigForm/IoTab lookups. Used by phases like
+   *  `custom-ai` that ship a generic runtime + per-instance synthetic
+   *  palette entries. */
+  hiddenFromPalette?: boolean;
 }

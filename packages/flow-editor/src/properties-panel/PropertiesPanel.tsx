@@ -124,7 +124,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
           {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
-      ) : node.type === "loop" || node.type === "timer" ? (
+      ) : node.type === "loop" || node.type === "timer" || node.type === "human-task" ? (
         <ControlNodeConfigTab flow={flow} node={node} onChange={onChange} readOnly={readOnly} />
       ) : node.type === "end" ? (
         <EndNodeConfig node={node} onChange={onChange} readOnly={readOnly} />

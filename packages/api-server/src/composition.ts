@@ -27,6 +27,7 @@ import {
   PostgresNodeExecutionStore,
   PostgresEventBus,
   PostgresWebhookEventStore,
+  PostgresHumanTaskResolutionStore,
   MemoryFlowGrantsStore,
   MemoryRunGrantsStore,
   MemoryFlowStore,
@@ -35,11 +36,17 @@ import {
   MemoryNodeExecutionStore,
   MemoryEventBus,
   MemoryWebhookEventStore,
+  MemoryHumanTaskResolutionStore,
   DirectoryWorkspaceProvider,
   InMemoryPhaseRegistry,
   JsonLogicEvaluator,
   createPool,
+  type IHumanTaskResolutionStore,
 } from "@journeyman/orchestrator";
+import {
+  InMemoryHumanTaskTimeoutService,
+  type HumanTaskTimeoutService,
+} from "./services/human-task-timeout.ts";
 
 export interface Composition {
   flowGrants: IFlowGrantsStore;
@@ -50,6 +57,9 @@ export interface Composition {
   nodeExecutions: INodeExecutionStore;
   events: IEventBus;
   webhookEvents: IWebhookEventStore;
+  humanTaskResolutions: IHumanTaskResolutionStore;
+  humanTaskTimeouts: HumanTaskTimeoutService;
+  conductorClient: ConductorClient;
   orchestrator: IOrchestratorEngine;
   registry: IPhaseRegistry;
   workspace: IWorkspaceProvider;
@@ -79,6 +89,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   let nodeExecutions: INodeExecutionStore;
   let events: IEventBus;
   let webhookEvents: IWebhookEventStore;
+  let humanTaskResolutions: IHumanTaskResolutionStore;
   let pool: Pool | null = null;
 
   if (useMemory) {
@@ -91,6 +102,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     nodeExecutions = new MemoryNodeExecutionStore();
     events = new MemoryEventBus();
     webhookEvents = new MemoryWebhookEventStore();
+    humanTaskResolutions = new MemoryHumanTaskResolutionStore();
   } else {
     pool = createPool({ connectionString: cfg.databaseUrl });
     const v = new PostgresFlowVersionStore(pool);
@@ -102,7 +114,10 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     nodeExecutions = new PostgresNodeExecutionStore(pool);
     events = new PostgresEventBus(pool);
     webhookEvents = new PostgresWebhookEventStore(pool);
+    humanTaskResolutions = new PostgresHumanTaskResolutionStore(pool);
   }
+
+  const humanTaskTimeouts: HumanTaskTimeoutService = new InMemoryHumanTaskTimeoutService();
 
   const conductorClient = new ConductorClient({ baseUrl: cfg.conductorBaseUrl });
   const orchestrator = new ConductorOrchestrator({
@@ -124,6 +139,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   return {
     flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events, webhookEvents,
+    humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,
     shutdown: async () => { if (pool) await pool.end(); },

@@ -212,6 +212,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           onChange={next => onChange({ ...node, config: next as Record<string, unknown> })}
           readOnly={readOnly}
           catalogs={{ mcp: mcpCatalog }}
+          sources={sources}
         />
       )}
 

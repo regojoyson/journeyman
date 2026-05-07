@@ -1,5 +1,6 @@
-import type { FlowGraph, FlowNodeType, FlowSaveWarning, McpTransport } from "@journeyman/core";
+import type { FlowGraph, FlowNodeType, FlowSaveWarning, FlowStatus, McpTransport, PublishError } from "@journeyman/core";
 import type { PhaseDefinition, PhaseRunState } from "./phase-definition.ts";
+import type { UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 
 export interface ControlNodeCatalogEntry {
   nodeType: FlowNodeType;
@@ -52,4 +53,13 @@ export interface FlowEditorProps {
   readOnly?: boolean;
   busy?: boolean;
   onRename?: (newName: string) => void;
+  /** Lifecycle status of the flow. When "ready", the editor renders read-only and the topbar shows "Move to Draft". */
+  status?: FlowStatus;
+  /** Called when the user confirms publish in the modal. Returns ok + any server-side errors. */
+  onPublish?: () => Promise<{ ok: boolean; serverErrors?: PublishError[] }>;
+  /**
+   * Called when the user confirms unpublish (with confirm=true) or when the editor first attempts unpublish (confirm=false).
+   * Returns the warning shape if the server demanded confirmation; null when the flip succeeded.
+   */
+  onUnpublish?: (confirm: boolean) => Promise<UnpublishWarning | null>;
 }

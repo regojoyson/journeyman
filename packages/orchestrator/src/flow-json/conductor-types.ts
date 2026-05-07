@@ -54,6 +54,28 @@ export interface WaitTask {
   inputParameters: { duration?: string; until?: string };
 }
 
+export interface HumanTask {
+  type: "HUMAN";
+  name: string;
+  taskReferenceName: string;
+  inputParameters: {
+    outputs: Array<{
+      name: string;
+      type: "string" | "number" | "boolean" | "json" | "date";
+      label?: string;
+      description?: string;
+      required?: boolean;
+      default?: unknown;
+      fromPath?: string;
+    }>;
+    prompt?: string;
+    listensFor?: string[];
+    acceptIf?: unknown;             // JSONLogic expression — opaque at the engine layer
+    timeoutDurationMs?: number;
+    timeoutDefaults?: Record<string, unknown>;
+  };
+}
+
 export interface SubWorkflowTask {
   type: "SUB_WORKFLOW";
   name: string;
@@ -76,6 +98,7 @@ export type ConductorTaskDef =
   | JoinTask
   | DoWhileTask
   | WaitTask
+  | HumanTask
   | SubWorkflowTask
   | TerminateTask;
 

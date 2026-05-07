@@ -7,9 +7,12 @@ import { PropertiesPanel } from "./properties-panel/PropertiesPanel.tsx";
 import { EdgeInspector } from "./inspector/EdgeInspector.tsx";
 import { FlowConfigPanel } from "./flow-config/FlowConfigPanel.tsx";
 import { Topbar } from "./topbar/Topbar.tsx";
+import { PublishModal } from "./topbar/PublishModal.tsx";
+import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
+import { OrgIdProvider } from "./state/org-context.tsx";
 import { ValidationProvider } from "./state/validation-context.tsx";
 import { useValidationCatalog } from "./properties-panel/use-validation-catalog.ts";
 import { validateFlowInputs } from "@journeyman/core";
@@ -115,7 +118,8 @@ export function FlowEditor(props: FlowEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heal.restored.join(",")]);
 
-  const s = useFlowEditorState({ flow: heal.healed, onChange: props.onChange });
+  const effectiveReadOnly = props.readOnly || props.status === "ready";
+  const s = useFlowEditorState({ flow: heal.healed, onChange: props.onChange, readOnly: effectiveReadOnly });
   const validity = useMemo(() => {
     const t0 = performance.now();
     const result = isValidPhase4Graph(heal.healed);
@@ -146,6 +150,20 @@ export function FlowEditor(props: FlowEditorProps) {
   }, [paletteWidth]);
 
   const [flowConfigOpen, setFlowConfigOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [unpublishWarning, setUnpublishWarning] = useState<UnpublishWarning | null>(null);
+
+  const handlePublishClick = (): void => { setPublishOpen(true); };
+  const handleUnpublishClick = async (): Promise<void> => {
+    if (!props.onUnpublish) return;
+    const w = await props.onUnpublish(false);
+    if (w) {
+      setUnpublishWarning(w);
+      setUnpublishOpen(true);
+    }
+    // null → server flipped to draft directly; host re-renders with new status.
+  };
 
   const onUpdateNode = (next: FlowNode) => {
     s.update(f => ({ ...f, nodes: f.nodes.map(n => n.id === next.id ? next : n) }));
@@ -165,23 +183,36 @@ export function FlowEditor(props: FlowEditorProps) {
 
   return (
     <PhaseRegistryProvider phases={props.phases}>
+     <OrgIdProvider orgId={props.orgId}>
       <ValidationProvider inputWarnings={inputWarnings}>
       <div className="je-editor">
         <Topbar
           flowName={props.flowName}
-          onRename={props.onRename}
+          onRename={effectiveReadOnly ? undefined : props.onRename}
           onSave={props.onSave ? () => props.onSave!(heal.healed) : undefined}
           onRun={props.onRun ? () => props.onRun!(heal.healed) : undefined}
           onValidate={props.onValidate ? () => props.onValidate!(heal.healed) : undefined}
           flow={heal.healed}
           busy={props.busy}
-          saveEnabled={!props.readOnly && !!props.onSave}
-          runEnabled={!props.readOnly && !!props.onRun && validity.ok}
-          runDisabledReason={validity.ok ? undefined : validity.errors[0]}
+          saveEnabled={!effectiveReadOnly && !!props.onSave}
+          runEnabled={!effectiveReadOnly && !!props.onRun && validity.ok && props.status !== "draft"}
+          runDisabledReason={
+            props.status === "draft"
+              ? "Publish this flow to run it."
+              : validity.ok ? undefined : validity.errors[0]
+          }
           validationErrors={validity.errors}
           onFlowConfig={() => setFlowConfigOpen(o => !o)}
-          onImport={props.readOnly ? undefined : (flow) => props.onChange(flow)}
+          onImport={effectiveReadOnly ? undefined : (flow) => props.onChange(flow)}
+          status={props.status}
+          onPublishClick={props.onPublish ? handlePublishClick : undefined}
+          onUnpublishClick={props.onUnpublish ? handleUnpublishClick : undefined}
         />
+        {effectiveReadOnly && props.status === "ready" && (
+          <div className="fe-readonly-banner">
+            This flow is published and read-only. Move to Draft to edit.
+          </div>
+        )}
         {heal.restored.length > 0 && !healDismissed && (
           <div className="je-editor__heal-banner">
             <span>
@@ -203,7 +234,7 @@ export function FlowEditor(props: FlowEditorProps) {
             onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
             onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
             onChange={props.onChange}
-            readOnly={props.readOnly}
+            readOnly={effectiveReadOnly}
             phaseRunStates={props.phaseRunStates}
           />
           <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
@@ -212,7 +243,7 @@ export function FlowEditor(props: FlowEditorProps) {
               flow={heal.healed}
               onChange={props.onChange}
               onClose={() => setFlowConfigOpen(false)}
-              readOnly={props.readOnly}
+              readOnly={effectiveReadOnly}
             />
           ) : s.selectedEdge ? (
             <EdgeInspector
@@ -227,12 +258,40 @@ export function FlowEditor(props: FlowEditorProps) {
               mcpCatalog={props.mcpCatalog ?? []}
               orgId={props.orgId}
               onChange={onUpdateNode}
-              readOnly={props.readOnly}
+              readOnly={effectiveReadOnly}
             />
           )}
         </div>
+        {publishOpen && props.onPublish && (
+          <PublishModal
+            flow={heal.healed}
+            hasTrigger={true}
+            onCancel={() => setPublishOpen(false)}
+            onSelectNode={(id) => { s.setSelectedNodeId(id); }}
+            onConfirm={async () => {
+              const r = await props.onPublish!();
+              if (r.ok) setPublishOpen(false);
+              return r;
+            }}
+          />
+        )}
+        {unpublishOpen && props.onUnpublish && (
+          <UnpublishDialog
+            initialWarning={unpublishWarning}
+            onCancel={() => { setUnpublishOpen(false); setUnpublishWarning(null); }}
+            onConfirm={async (confirm) => {
+              const w = await props.onUnpublish!(confirm);
+              if (!w) {
+                setUnpublishOpen(false);
+                setUnpublishWarning(null);
+              }
+              return w;
+            }}
+          />
+        )}
       </div>
       </ValidationProvider>
+     </OrgIdProvider>
     </PhaseRegistryProvider>
   );
 }

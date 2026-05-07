@@ -179,6 +179,26 @@ export class PostgresRunStore implements IRunStore {
     const { rows } = await this.pool.query(sql, params);
     return rows.map(rowToRun);
   }
+
+  async findPausedRunsByIssueRef(issueRef: string): Promise<import("@journeyman/core").Run[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM jm_runs
+       WHERE status = 'paused' AND (inputs->>'issueRef') = $1
+       ORDER BY started_at DESC NULLS LAST`,
+      [issueRef],
+    );
+    return rows.map(rowToRun);
+  }
+
+  async findActiveRunsByIssueRef(issueRef: string): Promise<import("@journeyman/core").Run[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM jm_runs
+       WHERE status IN ('pending','running','paused') AND (inputs->>'issueRef') = $1
+       ORDER BY started_at DESC NULLS LAST`,
+      [issueRef],
+    );
+    return rows.map(rowToRun);
+  }
 }
 
 function rowToExec(row: any): NodeExecution {
@@ -194,6 +214,7 @@ function rowToExec(row: any): NodeExecution {
     output: row.output,
     errorClass: row.error_class,
     errorMessage: row.error_message,
+    conductorTaskId: row.conductor_task_id ?? null,
   };
 }
 
@@ -229,5 +250,50 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
       [runId],
     );
     return rows.map(rowToExec);
+  }
+
+  async markWaiting(runId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
+    const { rows } = await this.pool.query(
+      `INSERT INTO jm_node_executions
+         (run_id, node_id, attempt, status, started_at, input, conductor_task_id)
+       VALUES ($1, $2, 1, 'waiting', now(), '{}'::jsonb, $3)
+       ON CONFLICT (run_id, node_id, attempt) DO UPDATE SET
+         status = 'waiting',
+         conductor_task_id = EXCLUDED.conductor_task_id
+       RETURNING *`,
+      [runId, nodeId, conductorTaskId],
+    );
+    return rowToExec(rows[0]);
+  }
+
+  async markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution> {
+    const { rows } = await this.pool.query(
+      `UPDATE jm_node_executions
+       SET status = 'completed', completed_at = now(), output = $2::jsonb
+       WHERE id = $1 RETURNING *`,
+      [executionId, JSON.stringify(output)],
+    );
+    if (rows.length === 0) throw new Error(`node_execution ${executionId} not found`);
+    return rowToExec(rows[0]);
+  }
+
+  async latestForNode(runId: string, nodeId: string): Promise<NodeExecution | null> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM jm_node_executions
+       WHERE run_id = $1 AND node_id = $2
+       ORDER BY started_at DESC NULLS LAST LIMIT 1`,
+      [runId, nodeId],
+    );
+    return rows[0] ? rowToExec(rows[0]) : null;
+  }
+
+  async latestWaitingForRun(runId: string): Promise<NodeExecution | null> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM jm_node_executions
+       WHERE run_id = $1 AND status = 'waiting'
+       ORDER BY started_at DESC NULLS LAST LIMIT 1`,
+      [runId],
+    );
+    return rows[0] ? rowToExec(rows[0]) : null;
   }
 }

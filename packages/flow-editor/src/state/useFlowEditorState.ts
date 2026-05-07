@@ -4,15 +4,18 @@ import type { FlowEdge, FlowGraph } from "@journeyman/core";
 export interface UseFlowEditorStateArgs {
   flow: FlowGraph;
   onChange: (flow: FlowGraph) => void;
+  readOnly?: boolean;
 }
 
 export function useFlowEditorState(args: UseFlowEditorStateArgs) {
   const [selectedNodeId, setSelectedNodeIdState] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeIdState] = useState<string | null>(null);
+  const readOnly = args.readOnly ?? false;
 
   const update = useCallback((mutator: (f: FlowGraph) => FlowGraph) => {
+    if (readOnly) return;
     args.onChange(mutator(args.flow));
-  }, [args]);
+  }, [args, readOnly]);
 
   const selectedNode = useMemo(
     () => args.flow.nodes.find(n => n.id === selectedNodeId) ?? null,
@@ -35,11 +38,12 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
   }, []);
 
   const updateEdge = useCallback((next: FlowEdge) => {
+    if (readOnly) return;
     args.onChange({
       ...args.flow,
       edges: args.flow.edges.map(e => e.id === next.id ? next : e),
     });
-  }, [args]);
+  }, [args, readOnly]);
 
   return {
     flow: args.flow,
@@ -49,5 +53,6 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
     setSelectedEdgeId,
     updateEdge,
     update,
+    readOnly,
   };
 }

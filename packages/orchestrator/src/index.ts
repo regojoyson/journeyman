@@ -32,6 +32,12 @@ export {
   MemoryRunStore, MemoryNodeExecutionStore,
 } from "./stores/memory/memory-run-store.ts";
 export { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
+export {
+  PostgresHumanTaskResolutionStore,
+  MemoryHumanTaskResolutionStore,
+  type IHumanTaskResolutionStore,
+  type HumanTaskResolutionRow,
+} from "./stores/human-task-resolution-store.ts";
 export { InMemoryPhaseRegistry } from "./registry/in-memory-phase-registry.ts";
 export { MapProviderResolver, ProviderNotImplementedError } from "./registry/map-provider-resolver.ts";
 export { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";

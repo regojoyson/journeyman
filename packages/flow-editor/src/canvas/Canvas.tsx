@@ -302,9 +302,14 @@ function CanvasInner(p: CanvasProps) {
     let newNode: FlowNode | null = null;
     if (phaseType) {
       const def = registry.get(phaseType);
+      // Synthetic palette entries for custom AI phases use a unique
+      // `custom-ai:<uuid>` phaseType to avoid collisions in the palette.
+      // The runtime only knows the bare `custom-ai` phase — strip the
+      // suffix so the node submits as the registered task type.
+      const runtimePhaseType = phaseType.startsWith("custom-ai:") ? "custom-ai" : phaseType;
       const base = newPhaseNode({
-        phaseType,
-        displayName: def?.label ?? phaseType,
+        phaseType: runtimePhaseType,
+        displayName: def?.label ?? runtimePhaseType,
         position,
       });
       newNode = def

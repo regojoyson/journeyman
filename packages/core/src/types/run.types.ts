@@ -39,6 +39,8 @@ export type RunEventType =
   | "phase.retrying"
   | "phase.completed"
   | "node.cycled"
+  | "node.waiting"
+  | "node.resolved"
   | "run.started"
   | "run.completed"
   | "run.failed"
@@ -57,6 +59,7 @@ export type NodeExecutionStatus =
   | "pending"
   | "running"
   | "retrying"
+  | "waiting"
   | "completed"
   | "failed"
   | "skipped";
@@ -73,4 +76,6 @@ export interface NodeExecution {
   output: Record<string, unknown> | null;
   errorClass: string | null;
   errorMessage: string | null;
+  /** Conductor task id captured by the engine reconciler when a HUMAN task enters IN_PROGRESS. */
+  conductorTaskId?: string | null;
 }

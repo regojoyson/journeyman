@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Composition } from "../composition.ts";
 import type { WebhookProvider } from "@journeyman/core";
+import { matchAndResolveHumanTasks } from "../services/match-human-tasks.ts";
 
 const DELIVERY_HEADERS: Record<string, string> = {
   github: "x-github-delivery",
@@ -74,6 +75,21 @@ export function registerWebhookRoutes(app: FastifyInstance, c: Composition): voi
           "UPDATE jm_webhook_events SET issue_ref = $1, event_type = $2 WHERE id = $3",
           [issueRef, eventType, event.id],
         );
+      }
+
+      // First: try to resolve any pending human-task waiting on this issueRef.
+      const resolveResult = await matchAndResolveHumanTasks(c, {
+        id: event.id,
+        provider,
+        eventType,
+        issueRef,
+        rawPayload,
+      });
+
+      if (resolveResult.matched > 0) {
+        await c.webhookEvents.setStatus(event.id, "processed");
+        reply.code(200);
+        return { status: "resolved", count: resolveResult.matched };
       }
 
       // Flow resolution stub — replace with real resolver when available

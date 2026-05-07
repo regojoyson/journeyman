@@ -8,6 +8,7 @@ import {
 import { rerunFromExisting, forkFromRun } from "@journeyman/orchestrator";
 import { makeRequireAuth } from "@journeyman/identity";
 import { makeRequireRunRole } from "../auth/require-run-role.ts";
+import { reconcileRun } from "../services/engine-reconciler.ts";
 
 const PING_INTERVAL_MS = 15_000;
 
@@ -55,6 +56,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     async (req, reply) => {
       const { id } = req.params as { id: string };
       await c.orchestrator.syncStatus(id).catch(() => { /* best-effort */ });
+      await reconcileRun(c, id).catch(() => { /* best-effort */ });
       const run = await c.runs.getById(id);
       if (!run) { reply.code(404); return { error: "not_found" }; }
       const executions = await c.nodeExecutions.listByRun(id);
@@ -72,7 +74,59 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
         receivedAt: webhookEvent.receivedAt.toISOString(),
         rawPayload: webhookEvent.rawPayload,
       } : null;
-      return { run: { ...run, effectiveRole: effectiveRunRole ?? null }, executions, events, webhookEvent: webhookEventSummary };
+
+      const waitingExec = await c.nodeExecutions.latestWaitingForRun(id);
+      let pendingHumanTask: {
+        nodeId: string;
+        prompt?: string;
+        outputs: Array<{
+          name: string;
+          type: "string" | "number" | "boolean" | "json" | "date";
+          label?: string;
+          description?: string;
+          required?: boolean;
+          default?: unknown;
+        }>;
+        startedAt: string;
+        timeout?: { durationMs: number };
+      } | null = null;
+      if (waitingExec) {
+        const node = run.definitionSnapshot.nodes.find(n => n.id === waitingExec.nodeId);
+        if (node?.type === "human-task") {
+          const cfg = (node.config ?? {}) as {
+            prompt?: string;
+            outputs?: Array<{
+              name: string;
+              type: "string" | "number" | "boolean" | "json" | "date";
+              label?: string;
+              description?: string;
+              required?: boolean;
+              default?: unknown;
+              fromPath?: string;
+            }>;
+            timeout?: { duration: string };
+          };
+          pendingHumanTask = {
+            nodeId: node.id,
+            prompt: cfg.prompt,
+            outputs: (cfg.outputs ?? []).map(({ fromPath: _drop, ...rest }) => rest),
+            startedAt: (waitingExec.startedAt ?? new Date()).toISOString(),
+            ...(cfg.timeout
+              ? { timeout: { durationMs: parseDurationMsLite(cfg.timeout.duration) } }
+              : {}),
+          };
+        }
+      }
+      const humanTaskHistory = await c.humanTaskResolutions.listForRun(id);
+
+      return {
+        run: { ...run, effectiveRole: effectiveRunRole ?? null },
+        executions,
+        events,
+        webhookEvent: webhookEventSummary,
+        pendingHumanTask,
+        humanTaskHistory,
+      };
     },
   );
 
@@ -208,4 +262,11 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       };
     },
   );
+}
+
+function parseDurationMsLite(input: string): number {
+  const m = /^(\d+)\s*(ms|s|m|h|d)$/.exec(input.trim());
+  if (!m) return 0;
+  const n = Number(m[1]);
+  return n * ({ ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const)[m[2] as "ms"];
 }

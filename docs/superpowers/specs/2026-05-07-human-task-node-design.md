@@ -25,7 +25,7 @@ A previous iteration on this idea — [`2026-04-20-human-review-loop-design.md`]
 ## 2. Design Goals
 
 1. **First-class node, not a phase.** Human-task is a flow-graph node, expressed on the canvas like any other tile.
-2. **Outcome-driven branching.** A human-task is essentially a human-controlled xor-gateway: outcome label decides which outgoing edge to follow.
+2. **Single responsibility.** Human-task only **pauses and collects** an outcome + comment. It does not branch. Branching is the responsibility of a downstream `if` / `gateway-xor` node that reads `<humanTask>.output.outcome` via JSONLogic — same machinery used for any other condition. This composes cleanly: "AI implements → human reviews → if-else routes" is three small nodes wired together, not one compound node.
 3. **Webhook-primary, manual fallback.** Resolution comes from provider webhooks correlated by `issueRef`. An in-app form synthesizes the same internal call for cases where no webhook fires.
 4. **Pure graph-driven loops.** Rework loops are just edges that point back at an upstream node — no compound nodes, no special engine concepts. Bounded by the existing `maxCycleVisits`.
 5. **Single resolve path.** Webhook, in-app form, and timeout all funnel into one internal `resolveHumanTask` function.
@@ -37,61 +37,87 @@ A previous iteration on this idea — [`2026-04-20-human-review-loop-design.md`]
 ### 3.1 Config shape
 
 ```ts
-interface HumanTaskConfig {
-  /** Free-form outcome labels. Outgoing edges' branchLabel must be a subset. */
-  outcomes: string[];                // e.g. ["approve", "request-changes", "abandon"]
+interface HumanTaskOutputField {
+  name: string;
+  type: "string" | "number" | "boolean" | "json" | "date";
+  label?: string;
+  description?: string;
+  required?: boolean;
+  default?: unknown;
+  /** Dot-path into the webhook payload to auto-fill this field. */
+  fromPath?: string;
+}
 
+interface HumanTaskConfig {
   /** Shown to the human in the UI / notification. */
   prompt?: string;
 
-  /** Provider event filter — only events matching these types resolve the task. */
-  listensFor?: string[];             // e.g. ["jira.issue_updated", "github.pull_request.review"]
+  /** Fields the human-task produces. Each becomes a top-level artifact. */
+  outputs: HumanTaskOutputField[];
 
-  /** Per-provider mapping payload → outcome. */
-  outcomeMap?: Record<
-    string,                          // provider name ("jira" | "github" | "gitlab" | "monday")
-    {
-      /** JSONPath into payload that yields the raw value to map. */
-      valuePath: string;             // e.g. "issue.fields.status.name"
-      /** Mapping from raw value → declared outcome. */
-      map: Record<string, string>;   // e.g. { "Approved": "approve", "Changes Requested": "request-changes" }
-      /** JSONPath into payload yielding the optional comment text. */
-      commentPath?: string;          // e.g. "comment.body"
-    }
-  >;
+  /** Webhook event-type whitelist. */
+  listensFor?: string[];             // e.g. ["jira:issue_updated", "github.pull_request.review"]
+
+  /**
+   * JSONLogic expression evaluated against the webhook payload. Event is
+   * accepted only when this evaluates truthy. Same expression language as
+   * `if` gateways — supports `and`/`or`/`==`/`in` etc.
+   */
+  acceptIf?: JsonLogicExpr;
 
   /** Optional auto-resolve. Off by default. */
-  timeout?: { duration: string; onTimeout: string };  // duration is human ("48h", "7d")
+  timeout?: {
+    duration: string;                          // human-readable, e.g. "48h"
+    defaults?: Record<string, unknown>;        // values to fill into outputs on timeout
+  };
 }
 ```
 
-### 3.2 Outputs
+### 3.2 Output artifact
 
-When the node resolves, it emits the following artifact (consumable downstream via `inputs: { x: { kind: "ref", ref: "humanTask1.<key>" } }`):
+When the node resolves, it emits a single artifact whose top level is **declared output values + reserved meta keys**:
 
 ```ts
 {
-  outcome: string;        // one of the declared outcomes
-  comment: string | null;
-  actor: string | null;   // resolver identity (webhook user id or in-app user id)
-  source: "webhook" | "manual" | "timeout";
-  resolvedAt: string;     // ISO-8601
+  // Declared outputs spread at top level (keys = output.name).
+  decision: "approve",
+  feedback: "looks good",
+  shipBy:   "2026-05-15",
+
+  // Reserved meta keys (output names cannot collide with these).
+  source:     "webhook" | "manual" | "timeout",
+  actor:      string | null,
+  resolvedAt: string,                  // ISO-8601
+  payload:    Record<string, unknown>, // raw webhook body, or { ...form values } for manual
 }
 ```
 
+Downstream nodes wire fields cleanly:
+```yaml
+inputs:
+  reviewComments: { kind: ref, ref: "humanTask1.feedback" }
+```
+
+`if` gateways branch on declared outputs:
+```json
+{ "==": [ { "var": "humanTask1.decision" }, "approve" ] }
+```
+
+Reserved meta key names: `source`, `actor`, `resolvedAt`, `payload`. Declaring an output with one of these names is a validation error.
+
 ### 3.3 Editor validation
 
-- Every outgoing edge's `branchLabel` must match one of `outcomes`.
-- Every outcome must have at least one outgoing edge (no dead outcomes).
-- If `timeout` is set, `onTimeout` must be one of `outcomes`.
-- If any outgoing edge loops back to an upstream node, `FlowGraph.maxCycleVisits` must be > 0.
+- A human-task has exactly one outgoing edge (it does not branch). Branching downstream is done by an `if` / `gateway-xor` node.
+- Output `name` values must be unique within the node, valid identifiers (`/^[A-Za-z_][A-Za-z0-9_]*$/`), and not collide with reserved meta keys (`source`, `actor`, `resolvedAt`, `payload`).
+- If `timeout.defaults` is set, the keys should match declared output names (the runtime tolerates extras but the editor warns).
+- If a downstream `if` / `gateway-xor` outgoing edge loops back to an upstream node, `FlowGraph.maxCycleVisits` must be > 0.
 
 ### 3.4 Example
 
 ```
-implement → human-task ──approve──→ create-PR
-                  │
-                  └──request-changes──→ implement (loops back, reads humanTask1.comment)
+implement → human-task → if(decision=="approve") ──→ create-PR
+                              │
+                              └─(else)──→ implement (loops, reads humanTask1.feedback)
 ```
 
 ```yaml
@@ -101,26 +127,50 @@ nodes:
     displayName: "Code review gate"
     config:
       prompt: "Review the implementation. Approve to ship, or request changes."
-      outcomes: ["approve", "request-changes"]
-      listensFor: ["jira.issue_updated"]
-      outcomeMap:
-        jira:
-          valuePath: "issue.fields.status.name"
-          map:
-            "Approved": "approve"
-            "Changes Requested": "request-changes"
-          commentPath: "comment.body"
+      outputs:
+        - name: decision
+          type: string
+          required: true
+          fromPath: "issue.fields.status.name"
+        - name: feedback
+          type: string
+          fromPath: "comment.body"
+      listensFor: ["jira:issue_updated"]
+      acceptIf:
+        in:
+          - { var: "issue.fields.status.name" }
+          - ["Approved", "Changes Requested"]
+      timeout:
+        duration: "48h"
+        defaults: { decision: "abandon" }
+
+  - id: gateApprove
+    type: if
+    displayName: "Approved?"
 
   - id: implement1
     type: phase
     phaseType: implement
     inputs:
-      reviewComments: { kind: "ref", ref: "humanTask1.comment" }
+      reviewComments: { kind: "ref", ref: "humanTask1.feedback" }
 
 edges:
-  - { source: humanTask1, target: createPR1, type: conditional, branchLabel: "approve" }
-  - { source: humanTask1, target: implement1, type: conditional, branchLabel: "request-changes" }
+  - { source: humanTask1, target: gateApprove, type: default }
+  - source: gateApprove
+    target: createPR1
+    type: conditional
+    branchLabel: "approve"
+    condition: { "==": [ { "var": "humanTask1.decision" }, "Approved" ] }
+  - { source: gateApprove, target: implement1, type: else }
 ```
+
+**Resolution paths in this example:**
+
+- **Webhook** (Jira status change to "Approved"): `acceptIf` matches → `decision` is filled from `issue.fields.status.name` → `feedback` is filled from `comment.body` → resolves with `{ decision: "Approved", feedback: "...", source: "webhook" }`.
+- **Manual** (in-app form): reviewer types decision + feedback in the auto-rendered form → resolves with the typed values + `source: "manual"`.
+- **Timeout** (48h elapses): defaults applied → resolves with `{ decision: "abandon", source: "timeout" }`.
+
+In all three cases, the downstream `if` reads `humanTask1.decision` to route.
 
 ---
 

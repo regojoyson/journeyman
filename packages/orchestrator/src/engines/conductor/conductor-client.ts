@@ -122,4 +122,25 @@ export class ConductorClient {
   async completeTask(body: TaskCompletionBody): Promise<void> {
     await this.request(`/tasks`, { method: "POST", body: JSON.stringify(body) });
   }
+
+  /**
+   * Read workflow execution including all task statuses. Used by the engine
+   * reconciler to find HUMAN tasks currently in IN_PROGRESS state and capture
+   * their `taskId` (which the resolver later passes to `completeTask`).
+   */
+  async getWorkflowWithTasks(workflowId: string): Promise<{
+    workflowId: string;
+    status: "RUNNING" | "COMPLETED" | "FAILED" | "TERMINATED" | "PAUSED" | "TIMED_OUT";
+    tasks: Array<{
+      taskId: string;
+      taskType: string;
+      referenceTaskName: string;
+      status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "CANCELED" | "TIMED_OUT" | "SKIPPED";
+      inputData?: Record<string, unknown>;
+      outputData?: Record<string, unknown>;
+    }>;
+    output?: Record<string, unknown>;
+  }> {
+    return await this.request(`/workflow/${encodeURIComponent(workflowId)}?includeTasks=true`);
+  }
 }

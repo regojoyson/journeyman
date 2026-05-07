@@ -45,16 +45,18 @@ function entryDragMime(e: AnyEntry): string {
 
 export function Palette({ phases, controlCatalog }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
-    ...phases.map((p): AnyEntry => ({
-      kind: "phase",
-      phaseType: p.phaseType,
-      label: p.label,
-      category: p.category,
-      color: p.color,
-      icon: p.icon,
-      description: p.description,
-      comingSoon: p.comingSoon === true,
-    })),
+    ...phases
+      .filter((p) => !p.hiddenFromPalette)
+      .map((p): AnyEntry => ({
+        kind: "phase",
+        phaseType: p.phaseType,
+        label: p.label,
+        category: p.category,
+        color: p.color,
+        icon: p.icon,
+        description: p.description,
+        comingSoon: p.comingSoon === true,
+      })),
     ...(controlCatalog ?? []).map((c): AnyEntry => ({
       kind: "control",
       nodeType: c.nodeType,

@@ -13,6 +13,7 @@ export type FlowNodeType =
   | "start"
   | "end"
   | "phase"
+  | "human-task"
   // node types reserved for later phases — listed so the converter can reject
   // them in Phase 1 with a clear "not yet supported" error.
   | "gateway-xor"
@@ -22,8 +23,7 @@ export type FlowNodeType =
   | "if"
   | "timer"
   | "retry-block"
-  | "try-catch"
-  | "human-task";
+  | "try-catch";
 
 export type FlowInputValue =
   | { kind: "literal"; value: unknown }
@@ -104,6 +104,8 @@ export interface FlowVersion {
   createdAt: Date;
 }
 
+export type FlowStatus = "draft" | "ready";
+
 export interface Flow {
   id: string;
   name: string;
@@ -112,6 +114,7 @@ export interface Flow {
   createdByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  status: FlowStatus;
 
   // Hydrated from owner grant by the API/store layer:
   scope: FlowScope;

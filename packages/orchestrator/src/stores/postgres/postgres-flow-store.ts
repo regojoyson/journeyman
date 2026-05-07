@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import type {
-  CreateFlowArgs, Flow, FlowGrant, FlowGraph, FlowListFilter, FlowVersion,
+  CreateFlowArgs, Flow, FlowGrant, FlowGraph, FlowListFilter, FlowStatus, FlowVersion,
   IFlowGrantsStore, IFlowStore, IFlowVersionStore,
 } from "@journeyman/core";
 
@@ -13,6 +13,7 @@ function rowToFlowBase(row: any): Omit<Flow, "scope" | "orgId" | "ownerUserId"> 
     createdByUserId: row.created_by_user_id,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+    status: row.status as FlowStatus,
   };
 }
 
@@ -231,6 +232,15 @@ export class PostgresFlowStore implements IFlowStore {
     sets.push("updated_at = now()");
     params.push(flowId);
     await this.pool.query(`UPDATE jm_flows SET ${sets.join(", ")} WHERE id = $${params.length}`, params);
+    return this.getById(flowId);
+  }
+
+  async setStatus(flowId: string, status: FlowStatus): Promise<Flow | null> {
+    const { rows } = await this.pool.query(
+      "UPDATE jm_flows SET status = $1, updated_at = now() WHERE id = $2 RETURNING id",
+      [status, flowId],
+    );
+    if (!rows[0]) return null;
     return this.getById(flowId);
   }
 

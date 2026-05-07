@@ -1,5 +1,5 @@
 import type {
-  Flow, FlowGrant, FlowGrantRole, FlowGraph, FlowScope, FlowVersion,
+  Flow, FlowGrant, FlowGrantRole, FlowGraph, FlowScope, FlowStatus, FlowVersion,
 } from "../types/flow.types.ts";
 
 export interface CreateFlowArgs {
@@ -32,6 +32,8 @@ export interface IFlowStore {
   list(filter: FlowListFilter): Promise<Flow[]>;
   /** Update name/description metadata. Does NOT touch versions or grants. */
   updateMeta(flowId: string, patch: { name?: string; description?: string | null }): Promise<Flow | null>;
+  /** Lifecycle status flip. Returns the updated flow, or null if not found. */
+  setStatus(flowId: string, status: FlowStatus): Promise<Flow | null>;
   delete(flowId: string): Promise<void>;
 }
 

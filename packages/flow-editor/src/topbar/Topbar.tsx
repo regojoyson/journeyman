@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FlowGraph, FlowSaveWarning } from "@journeyman/core";
+import type { FlowGraph, FlowSaveWarning, FlowStatus } from "@journeyman/core";
 import { validateFlowInputs } from "@journeyman/core";
 import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
 import { InputWarningsSection } from "./InputWarningsSection.tsx";
+import { StatusPill } from "./StatusPill.tsx";
 import {
   Check,
   Copy,
@@ -45,6 +46,12 @@ export interface TopbarProps {
   onFlowConfig?: () => void;
   /** When provided, an Import button appears that lets the user paste/upload a flow JSON to replace the current one. */
   onImport?: (flow: FlowGraph) => void;
+  /** Lifecycle status of the flow. When omitted, the pill and transition button are hidden. */
+  status?: FlowStatus;
+  /** Called when the user clicks "Publish" (status pill area). */
+  onPublishClick?: () => void;
+  /** Called when the user clicks "Move to Draft" (status pill area). */
+  onUnpublishClick?: () => void;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -128,7 +135,28 @@ export function Topbar(p: TopbarProps) {
           </h1>
         )}
         {p.dirty && <span style={{ color: "#fdcb6e", fontSize: 11 }}>● unsaved</span>}
+        {p.status && <StatusPill status={p.status} />}
         <div className="spacer" />
+        {p.status === "draft" && p.onPublishClick && (
+          <button
+            type="button"
+            onClick={p.onPublishClick}
+            disabled={p.busy}
+            style={{ padding: "4px 12px", borderRadius: 4, fontWeight: 600 }}
+          >
+            Publish
+          </button>
+        )}
+        {p.status === "ready" && p.onUnpublishClick && (
+          <button
+            type="button"
+            onClick={p.onUnpublishClick}
+            disabled={p.busy}
+            style={{ padding: "4px 12px", borderRadius: 4 }}
+          >
+            Move to Draft
+          </button>
+        )}
         {p.flow && (
           <IconButton
             className="je-icon-btn--view-json"

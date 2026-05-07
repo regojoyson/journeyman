@@ -171,9 +171,9 @@ class ConvertCtx {
       case "loop":         return this.emitDoWhile(node);
       case "timer":        return this.emitWait(node);
       case "subflow":      return this.emitSubflow(node);
+      case "human-task":   return this.emitHumanTask(node);
       case "retry-block":
-      case "try-catch":
-      case "human-task":   throw new UnsupportedNodeTypeError(node.type);
+      case "try-catch":    throw new UnsupportedNodeTypeError(node.type);
       default:             throw new UnsupportedNodeTypeError(node.type);
     }
   }
@@ -267,6 +267,51 @@ class ConvertCtx {
       ...(defaultCase ? { defaultCase } : {}),
     };
     return { tasks: [task], nextNodeId: convergence };
+  }
+
+  emitHumanTask(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
+
+    const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+    const reserved = new Set(["source", "actor", "resolvedAt", "payload"]);
+    const seenNames = new Set<string>();
+    for (const o of outputs) {
+      if (!o.name || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(o.name)) {
+        throw new FlowValidationError(
+          `Human-task '${node.id}' output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
+        );
+      }
+      if (reserved.has(o.name)) {
+        throw new FlowValidationError(
+          `Human-task '${node.id}' output name '${o.name}' collides with a reserved meta key`,
+        );
+      }
+      if (seenNames.has(o.name)) {
+        throw new FlowValidationError(`Human-task '${node.id}' has duplicate output name '${o.name}'`);
+      }
+      seenNames.add(o.name);
+    }
+
+    // The HUMAN task pauses until externally completed via Conductor's
+    // POST /tasks endpoint. Branching is the responsibility of a downstream
+    // `if` / `gateway-xor` node reading the human-task's declared outputs.
+    const human: import("./conductor-types.ts").HumanTask = {
+      type: "HUMAN",
+      name: `human_${node.id}`,
+      taskReferenceName: node.id,
+      inputParameters: {
+        outputs,
+        ...(cfg.prompt !== undefined ? { prompt: cfg.prompt } : {}),
+        ...(cfg.listensFor ? { listensFor: cfg.listensFor } : {}),
+        ...(cfg.acceptIf ? { acceptIf: cfg.acceptIf } : {}),
+        ...(cfg.timeout ? {
+          timeoutDurationMs: parseDurationMs(cfg.timeout.duration),
+          ...(cfg.timeout.defaults ? { timeoutDefaults: cfg.timeout.defaults } : {}),
+        } : {}),
+      },
+    };
+
+    return { tasks: [human], nextNodeId: this.successor(node.id) };
   }
 
   emitForkJoin(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
@@ -396,5 +441,19 @@ function mapBackoff(b: "fixed" | "linear" | "exponential"): "FIXED" | "LINEAR_BA
     case "fixed":       return "FIXED";
     case "linear":      return "LINEAR_BACKOFF";
     case "exponential": return "EXPONENTIAL_BACKOFF";
+  }
+}
+
+function parseDurationMs(input: string): number {
+  const m = /^(\d+)\s*(ms|s|m|h|d)$/.exec(input.trim());
+  if (!m) throw new FlowValidationError(`Invalid duration '${input}' — expected e.g. '48h', '30m', '7d'`);
+  const n = Number(m[1]);
+  switch (m[2]) {
+    case "ms": return n;
+    case "s":  return n * 1000;
+    case "m":  return n * 60_000;
+    case "h":  return n * 3_600_000;
+    case "d":  return n * 86_400_000;
+    default:   throw new FlowValidationError(`Invalid duration unit '${m[2]}'`);
   }
 }

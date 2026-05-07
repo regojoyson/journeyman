@@ -56,6 +56,8 @@ export function RunViewer(props: RunViewerProps & { flowName?: string }) {
           onRetryStep={selectedNodeId && props.onRetryStep
             ? () => props.onRetryStep!(selectedNodeId)
             : undefined}
+          pendingHumanTask={props.pendingHumanTask ?? null}
+          onResolveHumanTask={props.onResolveHumanTask}
         />
       </div>
     </div>
