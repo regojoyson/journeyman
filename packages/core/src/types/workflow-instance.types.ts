@@ -1,4 +1,7 @@
-export type RunStatus =
+import type { WorkflowGraph } from "./flow.types.ts";
+import type { WorkflowInstanceGrantRole } from "./workflow-instance-grants.types.ts";
+
+export type WorkflowInstanceStatus =
   | "pending"
   | "running"
   | "paused"
@@ -8,14 +11,14 @@ export type RunStatus =
 
 export type TriggerSource = "manual" | "webhook" | "schedule" | "api";
 
-export interface Run {
+export interface WorkflowInstance {
   id: string;
-  flowId: string | null;            // advisory; nullable if source flow deleted
-  flowVersionId: string | null;     // advisory; nullable if source version deleted
-  flowNameSnapshot: string;
-  flowScopeSnapshot: "user" | "org" | "global";
-  definitionSnapshot: import("./flow.types.ts").FlowGraph;
-  status: RunStatus;
+  workflowId: string | null;
+  workflowVersionId: string | null;
+  workflowNameSnapshot: string;
+  workflowScopeSnapshot: "user" | "org" | "global";
+  definitionSnapshot: WorkflowGraph;
+  status: WorkflowInstanceStatus;
   triggerSource: TriggerSource;
   startedByUserId: string | null;
   engineWorkflowId: string | null;
@@ -25,14 +28,14 @@ export interface Run {
   failedAtNodeId: string | null;
   inputs: Record<string, unknown>;
   outputs: Record<string, unknown> | null;
-  /** Flow-wide retry attempt number (1 on first run; incremented when flowRetry fires). */
+  /** Workflow-wide retry attempt number (1 on first run; incremented when workflowRetry fires). */
   attemptNumber: number;
   webhookEventId: string | null;
   /** Hydrated by the API layer for the calling actor. */
-  effectiveRole?: import("./run-grants.types.ts").RunGrantRole;
+  effectiveRole?: WorkflowInstanceGrantRole;
 }
 
-export type RunEventType =
+export type WorkflowInstanceEventType =
   | "phase.started"
   | "phase.log"
   | "phase.failed"
@@ -41,16 +44,16 @@ export type RunEventType =
   | "node.cycled"
   | "node.waiting"
   | "node.resolved"
-  | "run.started"
-  | "run.completed"
-  | "run.failed"
-  | "run.cancelled";
+  | "workflow_instance.started"
+  | "workflow_instance.completed"
+  | "workflow_instance.failed"
+  | "workflow_instance.cancelled";
 
-export interface RunEvent {
-  id: number;             // monotonically increasing — used for SSE replay-since
-  runId: string;
+export interface WorkflowInstanceEvent {
+  id: number;
+  workflowInstanceId: string;
   nodeId: string | null;
-  eventType: RunEventType;
+  eventType: WorkflowInstanceEventType;
   payload: Record<string, unknown>;
   ts: Date;
 }
@@ -66,7 +69,7 @@ export type NodeExecutionStatus =
 
 export interface NodeExecution {
   id: string;
-  runId: string;
+  workflowInstanceId: string;
   nodeId: string;
   attempt: number;
   status: NodeExecutionStatus;
