@@ -121,7 +121,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
                     <td className="px-6 py-3 text-slate-300">{r.ownerEmail}</td>
                     <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
                     <td className="px-6 py-3 text-slate-300">{r.transport}</td>
-                    <td className="px-6 py-3 text-slate-300">{r.bindingCount}</td>
+                    <td className="px-6 py-3 text-slate-300">{r.bindingEnvVars.length}</td>
                     <td className="px-6 py-3 text-right">
                       <button onClick={() => setPromoting(r)} className={btnPrimary}>Promote →</button>
                     </td>

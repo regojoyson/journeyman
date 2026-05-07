@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background, Controls, ReactFlow, ReactFlowProvider,
   ConnectionMode,
-  useNodesState, useEdgesState,
+  useNodesState, useEdgesState, useReactFlow,
   type Connection, type Edge, type Node,
   type NodeChange, type EdgeChange,
 } from "@xyflow/react";
@@ -96,6 +96,7 @@ function CanvasInner(p: CanvasProps) {
   const catalog = usePhaseCatalog();
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = usePhaseRegistry();
+  const { screenToFlowPosition } = useReactFlow();
 
   // Mount log
   const canvasMountedRef = useRef(false);
@@ -294,10 +295,7 @@ function CanvasInner(p: CanvasProps) {
     ev.preventDefault();
     const phaseType = ev.dataTransfer.getData("application/journeyman-phase");
     const controlType = ev.dataTransfer.getData("application/journeyman-control");
-    const rect = wrapper.current?.getBoundingClientRect();
-    const position = rect
-      ? { x: ev.clientX - rect.left - 80, y: ev.clientY - rect.top - 30 }
-      : { x: 200, y: 200 };
+    const position = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     let newNode: FlowNode | null = null;
     if (phaseType) {
@@ -355,7 +353,7 @@ function CanvasInner(p: CanvasProps) {
     console.log("[flow-editor] add node — applyExternalChange done", {
       totalMs: +(performance.now() - t0).toFixed(2),
     });
-  }, [applyExternalChange, registry, catalog]);
+  }, [applyExternalChange, registry, catalog, screenToFlowPosition]);
 
   const handleDragOver = useCallback((ev: React.DragEvent) => {
     ev.preventDefault();

@@ -138,25 +138,9 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     <div>
       <div className="je-props__field">
         <label>Phase type</label>
-        <select
-          value={node.phaseType ?? ""}
-          disabled={readOnly}
-          onChange={e => {
-            const nextType = e.target.value;
-            const nextDef = registry.get(nextType);
-            const nextProvider = nextDef ? defaultProviderFor(nextDef.executor.kind) : undefined;
-            onChange({
-              ...node,
-              phaseType: nextType,
-              config: nextDef ? { ...(nextDef.defaultConfig as Record<string, unknown>) } : node.config,
-              executorConfig: nextProvider ? { provider: nextProvider } : undefined,
-            });
-          }}
-        >
-          {registry.list().map(d => (
-            <option key={d.phaseType} value={d.phaseType}>{d.label}</option>
-          ))}
-        </select>
+        <span className="je-props__readonly-value">
+          {registry.get(node.phaseType ?? "")?.label ?? node.phaseType ?? "—"}
+        </span>
       </div>
 
       <div className="je-props__field">

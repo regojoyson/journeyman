@@ -35,7 +35,8 @@ export interface PromotableRow {
   transport: McpTransport;
   ownerId: string;
   ownerEmail: string;
-  bindingCount: number;
+  /** Env-var names that need to be re-bound to org/global secrets on promote. */
+  bindingEnvVars: string[];
   updatedAt: string;
 }
 

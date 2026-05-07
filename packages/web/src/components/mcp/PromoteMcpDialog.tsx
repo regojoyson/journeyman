@@ -20,20 +20,12 @@ export function PromoteMcpDialog(props: PromoteMcpDialogProps) {
 
   useEffect(() => {
     const init: Record<string, string> = {};
-    for (let i = 0; i < props.promotable.bindingCount; i++) init[`__binding_${i}`] = "";
+    for (const envVar of props.promotable.bindingEnvVars) {
+      // Pre-fill the env var name from the user-scope instance; secret picker stays blank.
+      init[envVar] = "";
+    }
     setBindings(init);
-  }, [props.promotable.id, props.promotable.bindingCount]);
-
-  function setBindingEnv(key: string, envVar: string) {
-    setBindings((prev) => {
-      const out: Record<string, string> = {};
-      for (const k of Object.keys(prev)) {
-        if (k === key) out[envVar.toUpperCase()] = prev[k];
-        else out[k] = prev[k];
-      }
-      return out;
-    });
-  }
+  }, [props.promotable.id, props.promotable.bindingEnvVars]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +35,7 @@ export function PromoteMcpDialog(props: PromoteMcpDialogProps) {
       description: description || undefined,
       systemPrompt: systemPrompt || undefined,
       bindings: Object.entries(bindings)
-        .filter(([k, v]) => !k.startsWith("__binding_") && v)
+        .filter(([_k, v]) => v)
         .map(([envVar, secretName]) => ({ envVar, secretName })),
     };
     try {
@@ -71,34 +63,31 @@ export function PromoteMcpDialog(props: PromoteMcpDialogProps) {
           <input className={inputCls} placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} />
           <textarea className={inputCls} placeholder="System prompt (optional)" rows={3} value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} />
 
-          {props.promotable.bindingCount > 0 && (
+          {props.promotable.bindingEnvVars.length > 0 && (
             <div className="space-y-2">
               <div className="text-sm text-slate-300">
-                Re-bind {props.promotable.bindingCount} secret(s) (org/global only)
+                Re-bind {props.promotable.bindingEnvVars.length} secret(s) to org/global secrets
               </div>
-              {Object.keys(bindings).map((key, idx) => {
-                const isPlaceholder = key.startsWith("__binding_");
-                return (
-                  <div key={key} className="flex items-center gap-2">
-                    <input
-                      className={inputCls + " flex-1"}
-                      placeholder={`ENV_VAR_${idx + 1}`}
-                      value={isPlaceholder ? "" : key}
-                      onChange={(e) => setBindingEnv(key, e.target.value)}
+              {Object.keys(bindings).map((envVar) => (
+                <div key={envVar} className="flex items-center gap-2">
+                  <input
+                    className={inputCls + " flex-1 opacity-70 cursor-default"}
+                    value={envVar}
+                    readOnly
+                    title="Env var name (from user-scope binding)"
+                  />
+                  <span className="text-slate-500">→</span>
+                  <div className="flex-1">
+                    <SecretPicker
+                      orgId={props.orgId}
+                      value={bindings[envVar]}
+                      onChange={(name) => setBindings((prev) => ({ ...prev, [envVar]: name }))}
+                      scope="org-and-global"
+                      required
                     />
-                    <span className="text-slate-500">→</span>
-                    <div className="flex-1">
-                      <SecretPicker
-                        orgId={props.orgId}
-                        value={bindings[key]}
-                        onChange={(name) => setBindings((prev) => ({ ...prev, [key]: name }))}
-                        scope="org-and-global"
-                        required
-                      />
-                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
 

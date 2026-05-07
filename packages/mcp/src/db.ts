@@ -325,7 +325,8 @@ export interface PromotableRow {
   transport: McpTransport;
   ownerId: string;
   ownerEmail: string;
-  bindingCount: number;
+  /** Env-var names that need to be re-bound when promoting. Secret names are omitted intentionally. */
+  bindingEnvVars: string[];
   updatedAt: Date;
 }
 
@@ -339,13 +340,16 @@ export async function listPromotable(pool: Pool, orgId: string): Promise<Promota
       ORDER BY u.username, m.name`,
     [orgId],
   );
-  return r.rows.map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    transport: row.transport,
-    ownerId: row.user_id,
-    ownerEmail: row.owner_email,
-    bindingCount: Array.isArray(row.bindings) ? row.bindings.length : 0,
-    updatedAt: row.updated_at,
-  }));
+  return r.rows.map((row: any) => {
+    const bindings: McpBinding[] = Array.isArray(row.bindings) ? row.bindings : [];
+    return {
+      id: row.id,
+      name: row.name,
+      transport: row.transport,
+      ownerId: row.user_id,
+      ownerEmail: row.owner_email,
+      bindingEnvVars: bindings.map((b) => b.envVar),
+      updatedAt: row.updated_at,
+    };
+  });
 }

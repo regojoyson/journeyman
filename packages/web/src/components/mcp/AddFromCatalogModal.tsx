@@ -64,9 +64,19 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
       <div className={`${card} w-full max-w-xl max-h-[90vh] overflow-y-auto p-6`}>
-        <h2 className="text-lg font-semibold text-slate-100 mb-4">
-          {chosen ? `Configure ${chosen.label}` : "Add from catalog"}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">
+            {chosen ? `Configure ${chosen.label}` : "Add from catalog"}
+          </h2>
+          <button
+            type="button"
+            onClick={props.onClose}
+            className="text-slate-400 hover:text-slate-100 transition text-xl leading-none"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
 
         {!chosen ? (
           <div className="grid grid-cols-2 gap-3">
