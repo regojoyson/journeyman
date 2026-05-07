@@ -3,13 +3,13 @@ import type { ExecutorKind } from "../registries/provider-catalog.ts";
 import type { JsonLogicExpr } from "./flow-condition.types.ts";
 
 /**
- * Flow JSON schema version. Bumped when flow JSON shape changes
+ * Workflow JSON schema version. Bumped when workflow JSON shape changes
  * incompatibly. ConductorJsonConverter migrates older versions on read.
  */
-export const FLOW_SCHEMA_VERSION = 1 as const;
-export type FlowSchemaVersion = typeof FLOW_SCHEMA_VERSION;
+export const WORKFLOW_SCHEMA_VERSION = 1 as const;
+export type WorkflowSchemaVersion = typeof WORKFLOW_SCHEMA_VERSION;
 
-export type FlowNodeType =
+export type WorkflowNodeType =
   | "start"
   | "end"
   | "phase"
@@ -25,28 +25,28 @@ export type FlowNodeType =
   | "retry-block"
   | "try-catch";
 
-export type FlowInputValue =
+export type WorkflowInputValue =
   | { kind: "literal"; value: unknown }
   | { kind: "ref"; ref: string };
 
-export interface RunInputDef {
+export interface WorkflowInputDef {
   name: string;
   type: "string" | "number" | "boolean" | "json";
   description?: string;
   required?: boolean;
 }
 
-export interface FlowNode {
+export interface WorkflowNode {
   id: string;
-  type: FlowNodeType;
+  type: WorkflowNodeType;
   /** Human-readable label shown on the canvas tile. */
   displayName?: string;
   /** Phase type ("analyze-repo", "clone-repos", …) — required when type === "phase". */
   phaseType?: string;
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
-  /** Wires from upstream nodes / run inputs. Resolved by converter to Conductor refs. */
-  inputs?: Record<string, FlowInputValue> | null;
+  /** Wires from upstream nodes / workflow inputs. Resolved by converter to Conductor refs. */
+  inputs?: Record<string, WorkflowInputValue> | null;
   /**
    * Common configuration shared by all phases of the same executor kind
    * (e.g. coding-cli phases all carry `{ provider: "claude" | "gemini" | "codex" }`).
@@ -57,7 +57,7 @@ export interface FlowNode {
   retry?: RetryPolicy | null;
   /**
    * Per-step model override for AI-capable phases.
-   * Empty/undefined ⇒ use FlowGraph.defaults.defaultModel, then the system DB default.
+   * Empty/undefined ⇒ use WorkflowGraph.defaults.defaultModel, then the system DB default.
    * References coding_models.model_id for the resolved coding provider.
    */
   model?: string | null;
@@ -65,17 +65,17 @@ export interface FlowNode {
   secretBindings?: Record<string, SecretBinding> | null;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
-  /** Only meaningful on `end` nodes — surfaced as the run's outcome label. */
+  /** Only meaningful on `end` nodes — surfaced as the workflow instance's outcome label. */
   outcome?: string;
 }
 
-export type FlowEdgeType = "default" | "conditional" | "error" | "else";
+export type WorkflowEdgeType = "default" | "conditional" | "error" | "else";
 
-export interface FlowEdge {
+export interface WorkflowEdge {
   id: string;
   source: string;       // node id
   target: string;       // node id
-  type?: FlowEdgeType;  // default = "default"
+  type?: WorkflowEdgeType;  // default = "default"
   /** JSONLogic expression — applies when type === "conditional". */
   condition?: JsonLogicExpr;
   /** Reserved — labels for "then" / "else" outputs of the `if` node. */
@@ -84,29 +84,29 @@ export interface FlowEdge {
   branchLabel?: string;
 }
 
-export interface FlowGraph {
-  schemaVersion: FlowSchemaVersion;
-  nodes: FlowNode[];
-  edges: FlowEdge[];
+export interface WorkflowGraph {
+  schemaVersion: WorkflowSchemaVersion;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
   /** Cycle visit-count guard (per spec §4). 0 = no cycles allowed in Phase 1. */
   maxCycleVisits?: number;
-  defaults?: FlowDefaults;
-  /** Run-time inputs the caller must supply when starting this flow. */
-  inputDefs?: RunInputDef[];
+  defaults?: WorkflowDefaults;
+  /** Run-time inputs the caller must supply when starting this workflow. */
+  inputDefs?: WorkflowInputDef[];
 }
 
-export interface FlowVersion {
+export interface WorkflowVersion {
   id: string;
-  flowId: string;
+  workflowId: string;
   versionNumber: number;
-  definition: FlowGraph;
+  definition: WorkflowGraph;
   createdByUserId: string | null;
   createdAt: Date;
 }
 
-export type FlowStatus = "draft" | "ready";
+export type WorkflowStatus = "draft" | "ready";
 
-export interface Flow {
+export interface Workflow {
   id: string;
   name: string;
   description: string | null;
@@ -114,25 +114,25 @@ export interface Flow {
   createdByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
-  status: FlowStatus;
+  status: WorkflowStatus;
 
   // Hydrated from owner grant by the API/store layer:
-  scope: FlowScope;
+  scope: WorkflowScope;
   orgId: string | null;
   ownerUserId: string | null;
-  grants?: FlowGrant[];
+  grants?: WorkflowGrant[];
 }
 
-export type FlowScope = "user" | "org" | "global";
-export type FlowGrantPrincipalType = FlowScope;
-export type FlowGrantRole = "owner" | "editor" | "viewer";
+export type WorkflowScope = "user" | "org" | "global";
+export type WorkflowGrantPrincipalType = WorkflowScope;
+export type WorkflowGrantRole = "owner" | "editor" | "viewer";
 
-export interface FlowGrant {
+export interface WorkflowGrant {
   id: string;
-  flowId: string;
-  principalType: FlowGrantPrincipalType;
+  workflowId: string;
+  principalType: WorkflowGrantPrincipalType;
   principalId: string | null;
-  role: FlowGrantRole;
+  role: WorkflowGrantRole;
   createdAt: Date;
   createdBy: string | null;
 }
@@ -151,12 +151,12 @@ export interface RetryPolicy {
   onFailure?: "error-edge" | "fail-flow";
 }
 
-export interface FlowRetryPolicy {
+export interface WorkflowRetryPolicy {
   maxAttempts?: number;
   backoffSeconds?: number;
 }
 
-export interface FlowDefaults {
+export interface WorkflowDefaults {
   /** Default retry policy. Merged field-by-field into each node's `retry`. */
   retry?: RetryPolicy;
   /**
@@ -191,10 +191,10 @@ export type SecretBinding =
   | { mode: "pinned"; scope: SecretScope; name: string };
 
 /**
- * Non-blocking warning returned alongside a successful flow save.
+ * Non-blocking warning returned alongside a successful workflow save.
  * The save itself always succeeds when the body is well-formed.
  */
-export type FlowSaveWarning =
+export type WorkflowSaveWarning =
   | {
       code: "inaccessible_secrets";
       message: string;
@@ -207,7 +207,7 @@ export type FlowSaveWarning =
         nodeId: string;
         slot: string;
         pinnedScope: SecretScope;
-        flowScope: FlowScope;
+        workflowScope: WorkflowScope;
       }>;
     }
   | {
