@@ -77,6 +77,7 @@ export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   "cleanup-workspace":    "coding-cli",
   "commit-and-push":      "coding-cli",
   "create-workspace":     "coding-cli",
+  "custom-ai":            "coding-cli",
   "implement-changes":    "coding-cli",
   "list-workspace-files": "coding-cli",
   "plan-implementation":  "coding-cli",

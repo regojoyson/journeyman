@@ -17,7 +17,6 @@ export interface CustomPhaseCatalogEntry {
   outputMode: CustomAiPhase["outputMode"];
   outputSchema: Record<string, unknown>;
   defaultTools: CanonicalTool[];
-  defaultProvider?: string;
   defaultMcpIds: string[];
   defaultSkillIds: string[];
 }
@@ -39,7 +38,6 @@ export function toCatalogEntries(phases: CustomAiPhase[]): CustomPhaseCatalogEnt
           ? { type: "object", properties: { result: { type: "string" } } }
           : {},
     defaultTools: p.defaultTools,
-    defaultProvider: p.defaultProvider,
     defaultMcpIds: p.defaultMcpIds,
     defaultSkillIds: p.defaultSkillIds,
   }));

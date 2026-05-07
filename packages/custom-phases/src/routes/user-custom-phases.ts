@@ -8,6 +8,7 @@ import {
   getCustomAiPhase,
   insertCustomAiPhase,
   listCustomAiPhases,
+  promoteCustomAiPhaseToOrg,
   updateCustomAiPhase,
 } from "../db.ts";
 
@@ -64,7 +65,6 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
           outputSchema: body.outputSchema,
           promptTemplate: body.promptTemplate,
           defaultTools: parseDefaultTools(body.defaultTools),
-          defaultProvider: body.defaultProvider,
           defaultMcpIds: body.defaultMcpIds,
           defaultSkillIds: body.defaultSkillIds,
         });
@@ -116,6 +116,19 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
         if (err instanceof DuplicateCustomPhaseError) return reply.code(409).send({ error: err.message });
         throw err;
       }
+    },
+  );
+
+  app.post(
+    "/api/orgs/:orgId/users/me/custom-phases/:id/promote",
+    { preHandler: requireAuth() },
+    async (req, reply) => {
+      const { orgId, id } = req.params as { orgId: string; id: string };
+      const ctx = req.runContext!;
+      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      const result = await promoteCustomAiPhaseToOrg(pool, id, ctx.user.id);
+      if (!result) return reply.code(404).send({ error: "Not found" });
+      return result;
     },
   );
 

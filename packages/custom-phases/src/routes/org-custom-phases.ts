@@ -6,7 +6,6 @@ import {
   DuplicateCustomPhaseError,
   deleteCustomAiPhase,
   getCustomAiPhase,
-  insertCustomAiPhase,
   listCustomAiPhases,
   updateCustomAiPhase,
 } from "../db.ts";
@@ -39,40 +38,6 @@ export async function registerOrgCustomPhaseRoutes(app: FastifyInstance, pool: P
       const { orgId } = req.params as { orgId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
       return listCustomAiPhases(pool, orgId, null);
-    },
-  );
-
-  app.post(
-    "/api/orgs/:orgId/custom-phases",
-    { preHandler: requireAuth({ role: "admin" }) },
-    async (req, reply) => {
-      const { orgId } = req.params as { orgId: string };
-      const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
-      const body = req.body as any;
-      try {
-        const rec = await insertCustomAiPhase(pool, {
-          orgId,
-          userId: null,
-          createdBy: ctx.user.id,
-          scope: "org",
-          name: body.name,
-          description: body.description,
-          inputFields: body.inputFields,
-          outputMode: body.outputMode,
-          outputSchema: body.outputSchema,
-          promptTemplate: body.promptTemplate,
-          defaultTools: parseDefaultTools(body.defaultTools),
-          defaultProvider: body.defaultProvider,
-          defaultMcpIds: body.defaultMcpIds,
-          defaultSkillIds: body.defaultSkillIds,
-        });
-        reply.code(201);
-        return rec;
-      } catch (err) {
-        if (err instanceof DuplicateCustomPhaseError) return reply.code(409).send({ error: err.message });
-        throw err;
-      }
     },
   );
 

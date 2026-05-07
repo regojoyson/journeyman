@@ -42,7 +42,6 @@ function buildSyntheticPhase(p: CustomAiPhase, color: string): PhaseDefinition<a
     icon: "🧩",
     defaultConfig: {
       customPhaseId: p.id,
-      provider: p.defaultProvider,
       mcpInstanceIds: p.defaultMcpIds ?? [],
       skillIds: p.defaultSkillIds ?? [],
       // Seed one ref-binding row per declared input field so the IoTab

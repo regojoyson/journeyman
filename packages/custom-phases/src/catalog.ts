@@ -13,7 +13,6 @@ export interface CustomPhaseCatalogEntry {
   outputMode: CustomAiPhase["outputMode"];
   outputSchema?: CustomAiPhase["outputSchema"];
   defaultTools: CanonicalTool[];
-  defaultProvider?: string;
   defaultMcpIds: string[];
   defaultSkillIds: string[];
 }
@@ -34,7 +33,6 @@ export async function buildCustomPhaseCatalog(
     outputMode: p.outputMode,
     outputSchema: p.outputSchema,
     defaultTools: p.defaultTools,
-    defaultProvider: p.defaultProvider,
     defaultMcpIds: p.defaultMcpIds,
     defaultSkillIds: p.defaultSkillIds,
   }));

@@ -12,6 +12,7 @@ import {
   type ResolvedSkillPackage,
 } from "@journeyman/core";
 import { getCustomAiPhase, renderPrompt } from "@journeyman/custom-phases";
+import { defaultProviderForKind } from "@journeyman/core";
 
 const log = createLogger("worker:custom-ai");
 
@@ -86,7 +87,9 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
       };
     }
 
-    const provider = typeof input.provider === "string" ? input.provider : phase.defaultProvider;
+    const provider = typeof input.provider === "string"
+      ? input.provider
+      : defaultProviderForKind("coding-cli")?.value;
     const coding = this.deps.coding(provider, ctx.env);
 
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;

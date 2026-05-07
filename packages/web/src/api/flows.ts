@@ -1,5 +1,51 @@
-import type { Flow, FlowGraph, FlowSaveWarning, FlowVersion } from "@journeyman/core";
+import type { Flow, FlowGraph, FlowSaveWarning, FlowVersion, PublishError } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
+
+export interface UnpublishWarning {
+  inFlightRunCount: number;
+  activeTriggers: { webhooks: number; schedules: number };
+}
+
+export async function publishFlow(
+  flowId: string,
+): Promise<{ ok: true; flow: Flow } | { ok: false; errors: PublishError[] }> {
+  try {
+    const res = await api<{ flow: Flow }>(
+      `/flows/${encodeURIComponent(flowId)}/publish`,
+      { method: "POST", body: "{}" },
+    );
+    return { ok: true, flow: res.flow };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 400) {
+      const body = e.body as { errors?: PublishError[] } | null;
+      return { ok: false, errors: body?.errors ?? [] };
+    }
+    throw e;
+  }
+}
+
+/**
+ * Unpublish flow. Returns the warning shape (with the flow still Ready) when
+ * the server demands confirmation; returns the flipped flow when it succeeds.
+ */
+export async function unpublishFlow(
+  flowId: string,
+  confirm: boolean,
+): Promise<{ ok: true; flow: Flow } | { ok: false; warning: UnpublishWarning }> {
+  try {
+    const res = await api<{ flow: Flow }>(
+      `/flows/${encodeURIComponent(flowId)}/unpublish`,
+      { method: "POST", body: JSON.stringify({ confirm }) },
+    );
+    return { ok: true, flow: res.flow };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      const body = e.body as { warning?: UnpublishWarning } | null;
+      if (body?.warning) return { ok: false, warning: body.warning };
+    }
+    throw e;
+  }
+}
 
 export async function listFlows(
   filter?: { scope?: "user" | "org" | "global"; orgId?: string },

@@ -8,7 +8,7 @@ import { toolsRequireWorkspace } from "@journeyman/core";
 import { InputFieldsEditor } from "./InputFieldsEditor.tsx";
 import { OutputSchemaEditor } from "./OutputSchemaEditor.tsx";
 import { ToolsPicker } from "./ToolsPicker.tsx";
-import { btnGhost, btnPrimary, card, inputCls, selectCls } from "../../routes/admin-styles.ts";
+import { btnGhost, btnPrimary, card, inputCls } from "../../routes/admin-styles.ts";
 
 export function EditCustomPhaseModal(props: {
   initial?: CustomAiPhase;
@@ -24,7 +24,6 @@ export function EditCustomPhaseModal(props: {
   const [outputSchema, setOutputSchema] = useState<CustomPhaseJsonSchema | undefined>(initial?.outputSchema);
   const [promptTemplate, setPromptTemplate] = useState(initial?.promptTemplate ?? "");
   const [defaultTools, setDefaultTools] = useState<CanonicalTool[]>(initial?.defaultTools ?? []);
-  const [defaultProvider, setDefaultProvider] = useState<string>(initial?.defaultProvider ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +39,6 @@ export function EditCustomPhaseModal(props: {
         outputSchema: outputMode === "structured" ? outputSchema : undefined,
         promptTemplate,
         defaultTools,
-        defaultProvider: defaultProvider || undefined,
         defaultMcpIds: initial?.defaultMcpIds ?? [],
         defaultSkillIds: initial?.defaultSkillIds ?? [],
       });
@@ -118,23 +116,6 @@ export function EditCustomPhaseModal(props: {
             onChange={(e) => setPromptTemplate(e.target.value)}
             placeholder="Use {{inputName}} to substitute input values"
           />
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-200">Defaults</h3>
-          <label className="flex items-center gap-2 text-xs text-slate-400">
-            Provider
-            <select
-              className={selectCls}
-              value={defaultProvider}
-              onChange={(e) => setDefaultProvider(e.target.value)}
-            >
-              <option value="">(none)</option>
-              <option value="claude">Claude</option>
-              <option value="gemini">Gemini</option>
-              <option value="codex">Codex</option>
-            </select>
-          </label>
         </section>
 
         {error && <p className="text-sm text-rose-400">{error}</p>}

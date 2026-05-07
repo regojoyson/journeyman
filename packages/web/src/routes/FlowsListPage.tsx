@@ -107,6 +107,18 @@ export function FlowsListPage() {
     );
   };
 
+  const statusBadge = (status: Flow["status"]) => {
+    const cls = status === "ready"
+      ? "bg-emerald-900/40 text-emerald-200 border-emerald-800/60"
+      : "bg-amber-900/40 text-amber-200 border-amber-800/60";
+    const label = status === "ready" ? "Ready" : "Draft";
+    return (
+      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
+        {label}
+      </span>
+    );
+  };
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
@@ -153,6 +165,7 @@ export function FlowsListPage() {
               <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
+                  <th className="text-left font-medium px-6 py-3">Status</th>
                   <th className="text-left font-medium px-6 py-3">Description</th>
                   <th className="text-left font-medium px-6 py-3">Updated</th>
                   <th className="text-left font-medium px-6 py-3">Actions</th>
@@ -167,6 +180,7 @@ export function FlowsListPage() {
                         {f.name}
                         {scopeBadge(f.scope)}
                       </td>
+                      <td className="px-6 py-3">{statusBadge(f.status)}</td>
                       <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
                       <td className="px-6 py-3 text-slate-500">
                         {new Date(f.updatedAt).toLocaleString()}

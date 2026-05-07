@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Flow, FlowGraph } from "@journeyman/core";
-import { getFlow, getCurrentFlowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition } from "../api/flows.ts";
+import { getFlow, getCurrentFlowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { useCustomPhasePaletteEntries } from "../flow-editor-integration/useCustomPhasePaletteEntries.ts";
@@ -141,6 +141,28 @@ export function FlowEditorPage() {
     navigate(`/flows/${newId}/edit`);
   };
 
+  const onPublish = async () => {
+    const res = await publishFlow(flow.id);
+    if (res.ok) {
+      qc.setQueryData(["flow", id], res.flow);
+      qc.invalidateQueries({ queryKey: ["flows"] });
+      setSaveToast({ kind: "success", message: "Flow published." });
+      return { ok: true as const };
+    }
+    return { ok: false as const, serverErrors: res.errors };
+  };
+
+  const onUnpublish = async (confirm: boolean): Promise<UnpublishWarning | null> => {
+    const res = await unpublishFlow(flow.id, confirm);
+    if (res.ok) {
+      qc.setQueryData(["flow", id], res.flow);
+      qc.invalidateQueries({ queryKey: ["flows"] });
+      setSaveToast({ kind: "success", message: "Flow moved to Draft." });
+      return null;
+    }
+    return res.warning;
+  };
+
   return (
     <>
       <div style={{ height: "100%" }}>
@@ -168,6 +190,9 @@ export function FlowEditorPage() {
           onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
           onValidate={async (next) => await validateFlowDefinition(next)}
           busy={saveM.isPending}
+          status={flow.status}
+          onPublish={editable ? onPublish : undefined}
+          onUnpublish={editable ? onUnpublish : undefined}
         />
       </div>
       {saveToast && (

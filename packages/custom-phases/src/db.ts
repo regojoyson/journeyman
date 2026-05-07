@@ -25,7 +25,6 @@ function rowToPhase(r: any): CustomAiPhase {
     outputSchema: r.output_schema ?? undefined,
     promptTemplate: r.prompt_template ?? "",
     defaultTools: Array.isArray(r.default_tools) ? r.default_tools : [],
-    defaultProvider: r.default_provider ?? undefined,
     defaultMcpIds: r.default_mcp_ids ?? [],
     defaultSkillIds: r.default_skill_ids ?? [],
     createdBy: r.created_by,
@@ -44,9 +43,9 @@ export async function insertCustomAiPhase(
          (scope, user_id, org_id, name, description,
           input_fields, output_mode, output_schema,
           prompt_template, default_tools,
-          default_provider, default_mcp_ids, default_skill_ids,
+          default_mcp_ids, default_skill_ids,
           created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
       [
         input.scope,
@@ -59,7 +58,6 @@ export async function insertCustomAiPhase(
         input.outputSchema ? JSON.stringify(input.outputSchema) : null,
         input.promptTemplate ?? "",
         JSON.stringify(input.defaultTools ?? []),
-        input.defaultProvider ?? null,
         JSON.stringify(input.defaultMcpIds ?? []),
         JSON.stringify(input.defaultSkillIds ?? []),
         input.createdBy,
@@ -128,7 +126,6 @@ export async function updateCustomAiPhase(
   if (patch.outputSchema !== undefined)    push("output_schema", patch.outputSchema ? JSON.stringify(patch.outputSchema) : null);
   if (patch.promptTemplate !== undefined)  push("prompt_template", patch.promptTemplate);
   if (patch.defaultTools !== undefined)    push("default_tools", JSON.stringify(patch.defaultTools));
-  if (patch.defaultProvider !== undefined) push("default_provider", patch.defaultProvider ?? null);
   if (patch.defaultMcpIds !== undefined)   push("default_mcp_ids", JSON.stringify(patch.defaultMcpIds));
   if (patch.defaultSkillIds !== undefined) push("default_skill_ids", JSON.stringify(patch.defaultSkillIds));
   if (sets.length === 0) return getCustomAiPhase(pool, id);
@@ -144,6 +141,21 @@ export async function updateCustomAiPhase(
     if (err.code === "23505" && patch.name) throw new DuplicateCustomPhaseError(patch.name);
     throw err;
   }
+}
+
+export async function promoteCustomAiPhaseToOrg(
+  pool: Pool,
+  id: string,
+  ownerUserId: string,
+): Promise<CustomAiPhase | null> {
+  const { rows } = await pool.query(
+    `UPDATE jm_custom_ai_phases
+     SET scope = 'org', user_id = NULL, updated_at = now()
+     WHERE id = $1 AND user_id = $2
+     RETURNING *`,
+    [id, ownerUserId],
+  );
+  return rows[0] ? rowToPhase(rows[0]) : null;
 }
 
 export async function deleteCustomAiPhase(pool: Pool, id: string): Promise<boolean> {

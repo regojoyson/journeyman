@@ -31,13 +31,6 @@ export const customPhasesApi = {
       body: JSON.stringify(body),
     }).then(jsonOrThrow<CustomAiPhase>),
 
-  createOrg: (orgId: string, body: CustomAiPhaseCreateInput) =>
-    fetch(orgBase(orgId), {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<CustomAiPhase>),
-
   update: (orgId: string, id: string, scope: "user" | "org", body: CustomAiPhaseUpdateInput) =>
     fetch(
       scope === "user" ? `${userBase(orgId)}/${id}` : `${orgBase(orgId)}/${id}`,
@@ -59,4 +52,9 @@ export const customPhasesApi = {
       scope === "user" ? `${userBase(orgId)}/${id}` : `${orgBase(orgId)}/${id}`,
       { credentials: "include" },
     ).then(jsonOrThrow<CustomAiPhase>),
+
+  promoteToOrg: (orgId: string, id: string) =>
+    fetch(`${userBase(orgId)}/${id}/promote`, {
+      method: "POST", credentials: "include",
+    }).then(jsonOrThrow<CustomAiPhase>),
 };

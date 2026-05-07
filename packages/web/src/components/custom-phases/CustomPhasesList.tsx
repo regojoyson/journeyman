@@ -31,10 +31,8 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
   const handleSave = async (body: CustomAiPhaseCreateInput) => {
     if (editing?.phase) {
       await customPhasesApi.update(orgId, editing.phase.id, scope, body);
-    } else if (scope === "user") {
-      await customPhasesApi.createMine(orgId, body);
     } else {
-      await customPhasesApi.createOrg(orgId, body);
+      await customPhasesApi.createMine(orgId, body);
     }
     setEditing(null);
     await refresh();
@@ -46,6 +44,12 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
     await refresh();
   };
 
+  const handlePromote = async (p: CustomAiPhase) => {
+    if (!confirm(`Promote "${p.name}" to org scope? It will be visible to all org members and removed from your personal phases.`)) return;
+    await customPhasesApi.promoteToOrg(orgId, p.id);
+    await refresh();
+  };
+
   return (
     <>
       <section className={`${card} overflow-hidden`}>
@@ -54,7 +58,9 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
             {scope === "user" ? "Your phases" : "Org phases"}
             <span className="text-slate-500 font-normal ml-2">({items.length})</span>
           </h2>
-          <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom phase</button>
+          {scope === "user" && (
+            <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom phase</button>
+          )}
         </div>
 
         {error && (
@@ -98,6 +104,9 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
                   <td className="px-6 py-3 text-slate-300">{p.inputFields.length}</td>
                   <td className="px-6 py-3 text-right whitespace-nowrap space-x-2">
                     <button className={btnGhost} onClick={() => setEditing({ phase: p })}>Edit</button>
+                    {p.scope === "user" && (
+                      <button className={btnGhost} onClick={() => handlePromote(p)}>Promote to org</button>
+                    )}
                     <button className={btnDanger} onClick={() => handleDelete(p)}>Delete</button>
                   </td>
                 </tr>

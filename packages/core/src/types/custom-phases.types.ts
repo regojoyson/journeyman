@@ -32,7 +32,6 @@ export interface CustomAiPhase {
   outputSchema?: CustomPhaseJsonSchema;
   promptTemplate: string;
   defaultTools: CanonicalTool[];
-  defaultProvider?: string;
   defaultMcpIds: string[];
   defaultSkillIds: string[];
   createdBy: string;
@@ -49,7 +48,6 @@ export interface CustomAiPhaseCreateInput {
   outputSchema?: CustomPhaseJsonSchema;
   promptTemplate?: string;
   defaultTools?: CanonicalTool[];
-  defaultProvider?: string;
   defaultMcpIds?: string[];
   defaultSkillIds?: string[];
 }

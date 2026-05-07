@@ -5,7 +5,6 @@ import { CustomAiConfigForm } from "./CustomAiConfigForm.tsx";
 
 interface CustomAiConfig {
   customPhaseId: string;
-  provider?: string;
   mcpInstanceIds?: string[];
   skillIds?: string[];
   tools?: CanonicalTool[];
@@ -21,7 +20,6 @@ export const customAiPhase: PhaseDefinition<CustomAiConfig> = {
   defaultConfig: { customPhaseId: "" },
   configSchema: z.object({
     customPhaseId: z.string().min(1),
-    provider: z.string().optional(),
     mcpInstanceIds: z.array(z.string()).optional(),
     skillIds: z.array(z.string()).optional(),
     tools: z.array(z.string()).optional(),
