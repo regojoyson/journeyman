@@ -34,14 +34,14 @@ export function useRunActions(runId: string | undefined) {
     mutationFn: () => rerunRun(runId!),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/runs/${res.runId}`);
+      navigate(`/workflow-instances/${res.workflowInstanceId}`);
     },
   });
   const fork = useMutation({
     mutationFn: () => forkRun(runId!),
-    onSuccess: ({ flow }) => {
+    onSuccess: ({ workflow }) => {
       qc.invalidateQueries({ queryKey: ["flows"] });
-      navigate(`/flows/${flow.id}/edit`);
+      navigate(`/workflows/${workflow.id}/edit`);
     },
   });
 

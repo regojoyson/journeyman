@@ -1,4 +1,4 @@
-import type { FlowGraph, FlowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
 import { resolveShape, shapeAtPath, shapesEqual } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
@@ -19,7 +19,7 @@ interface RefShapeResult {
 }
 
 export function resolveRefShape(
-  flow: FlowGraph,
+  flow: WorkflowGraph,
   ref: string,
   catalog: Map<string, CatalogShapeEntry>,
 ): RefShapeResult {
@@ -30,8 +30,8 @@ export function resolveRefShape(
 
   if (parsed.scope === "workflow.input") {
     const startNode = flow.nodes.find(n => n.type === "start");
-    const runInputs = ((startNode?.config as { runInputs?: { name: string; shape?: Shape }[] } | undefined)?.runInputs) ?? [];
-    const decl = runInputs.find(r => r.name === path[0]);
+    const workflowInputs = ((startNode?.config as { workflowInputs?: { name: string; shape?: Shape }[] } | undefined)?.workflowInputs) ?? [];
+    const decl = workflowInputs.find(r => r.name === path[0]);
     if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
     const root = decl.shape ?? ({ type: "string" } as Shape);
     const leaf = shapeAtPath(root, path.slice(1));
@@ -55,7 +55,7 @@ export function resolveRefShape(
 }
 
 export function validateRefShapeAgainst(
-  flow: FlowGraph,
+  flow: WorkflowGraph,
   ref: string,
   expected: Shape,
   catalog: Map<string, CatalogShapeEntry>,
@@ -92,6 +92,6 @@ function describeShape(s: Shape): string {
   }
 }
 
-export function isPhaseNode(n: FlowNode): n is FlowNode & { type: "phase"; phaseType: string } {
+export function isPhaseNode(n: WorkflowNode): n is WorkflowNode & { type: "phase"; phaseType: string } {
   return n.type === "phase" && !!n.phaseType;
 }

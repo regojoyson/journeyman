@@ -1,4 +1,4 @@
-import type { Flow, FlowGrant, FlowGrantRole, FlowScope } from "@journeyman/core";
+import type { Workflow, WorkflowGrant, WorkflowGrantRole, WorkflowScope } from "@journeyman/core";
 
 export interface Caller {
   userId: string;
@@ -7,18 +7,18 @@ export interface Caller {
   isPlatformAdmin: boolean;
 }
 
-const ROLE_ORDER: Record<FlowGrantRole, number> = { viewer: 1, editor: 2, owner: 3 };
+const ROLE_ORDER: Record<WorkflowGrantRole, number> = { viewer: 1, editor: 2, owner: 3 };
 
-export function effectiveRole(flow: Flow, caller: Caller): FlowGrantRole | null {
+export function effectiveRole(workflow: Workflow, caller: Caller): WorkflowGrantRole | null {
   if (caller.isPlatformAdmin) return "owner";
-  const grants = flow.grants ?? [];
-  let best: FlowGrantRole | null = null;
+  const grants = workflow.grants ?? [];
+  let best: WorkflowGrantRole | null = null;
   for (const g of grants) {
     let match = false;
-    let contributed: FlowGrantRole = g.role;
+    let contributed: WorkflowGrantRole = g.role;
     if (g.principalType === "global") {
       match = true;
-      contributed = "viewer"; // global grants give viewer to everyone; platform admins already returned 'owner' above
+      contributed = "viewer";
     } else if (g.principalType === "user" && g.principalId === caller.userId) {
       match = true;
     } else if (g.principalType === "org" && g.principalId === caller.orgId) {
@@ -28,31 +28,28 @@ export function effectiveRole(flow: Flow, caller: Caller): FlowGrantRole | null 
       if (!best || ROLE_ORDER[contributed] > ROLE_ORDER[best]) best = contributed;
     }
   }
-  // Org admin owns any flow with an org grant for their org (already covered above
-  // if the grant exists). Org admin moderation read on user flows owned by org members
-  // is enforced at the list query level, not here.
   if (caller.role === "admin") {
-    const orgOwn = grants.find(g => g.principalType === "org" && g.principalId === caller.orgId);
+    const orgOwn = grants.find((g: WorkflowGrant) => g.principalType === "org" && g.principalId === caller.orgId);
     if (orgOwn) best = "owner";
   }
   return best;
 }
 
-export function canRead(flow: Flow, caller: Caller): boolean {
-  return effectiveRole(flow, caller) !== null;
+export function canRead(workflow: Workflow, caller: Caller): boolean {
+  return effectiveRole(workflow, caller) !== null;
 }
-export function canEdit(flow: Flow, caller: Caller): boolean {
-  const r = effectiveRole(flow, caller);
+export function canEdit(workflow: Workflow, caller: Caller): boolean {
+  const r = effectiveRole(workflow, caller);
   return r === "editor" || r === "owner";
 }
-export function canDelete(flow: Flow, caller: Caller): boolean {
-  return effectiveRole(flow, caller) === "owner";
+export function canDelete(workflow: Workflow, caller: Caller): boolean {
+  return effectiveRole(workflow, caller) === "owner";
 }
-export function canCreateAtScope(scope: FlowScope, caller: Caller): boolean {
+export function canCreateAtScope(scope: WorkflowScope, caller: Caller): boolean {
   if (caller.isPlatformAdmin) return true;
   if (scope === "user") return true;
   if (scope === "org") return caller.role === "admin";
-  if (scope === "global") return false; // only platform admin (handled above)
+  if (scope === "global") return false;
   return false;
 }
 export function canPromoteTo(target: "org" | "global", caller: Caller): boolean {

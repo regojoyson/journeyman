@@ -1,7 +1,7 @@
 import "./styles.css";
 import React from "react";
-import type { RunsListProps } from "./types.ts";
-import { RunFilters } from "./RunFilters.tsx";
+import type { WorkflowInstancesListProps } from "./types.ts";
+import { WorkflowInstanceFilters } from "./RunFilters.tsx";
 import { ProviderBadge } from "./ProviderBadge.tsx";
 
 function rawIssueId(issueRef: string | null | undefined): string {
@@ -10,13 +10,13 @@ function rawIssueId(issueRef: string | null | undefined): string {
   return colon === -1 ? issueRef : issueRef.slice(colon + 1);
 }
 
-export function RunsList(p: RunsListProps) {
+export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
   const scope = p.scope ?? "mine";
   const [expandedIgnored, setExpandedIgnored] = React.useState<Set<string>>(new Set());
   return (
     <div className="je-runslist">
       <div className="je-runslist__header">
-        <h2>Runs</h2>
+        <h2>Workflow Instances</h2>
         {p.onScopeChange && (
           <div className="je-runslist__scope-chips" style={{ display: "flex", gap: 6, marginLeft: 12 }}>
             <button
@@ -41,26 +41,26 @@ export function RunsList(p: RunsListProps) {
           </div>
         )}
         <div style={{ flex: 1 }} />
-        {p.onNewRun && (
+        {p.onNewWorkflowInstance && (
           <button
             type="button"
             className="je-runslist__new-run"
-            onClick={p.onNewRun}
-          >+ New Run</button>
+            onClick={p.onNewWorkflowInstance}
+          >+ New Workflow Instance</button>
         )}
-        <RunFilters filter={p.filter} onChange={p.onFilterChange} />
+        <WorkflowInstanceFilters filter={p.filter} onChange={p.onFilterChange} />
       </div>
       {p.isLoading && <div style={{ color: "#888" }}>Loading…</div>}
-      {!p.isLoading && p.runs.length === 0 && (
-        <div style={{ color: "#888" }}>No runs match the current filters.</div>
+      {!p.isLoading && p.workflowInstances.length === 0 && (
+        <div style={{ color: "#888" }}>No workflow instances match the current filters.</div>
       )}
-      {p.runs.length > 0 && (
+      {p.workflowInstances.length > 0 && (
         <table className="je-runslist__table">
           <thead>
             <tr>
               <th>Status</th>
-              <th>Run</th>
-              <th>Flow</th>
+              <th>Instance</th>
+              <th>Workflow</th>
               <th>Scope</th>
               {scope !== "mine" && <th>Started by</th>}
               <th>Triggered by</th>
@@ -71,7 +71,7 @@ export function RunsList(p: RunsListProps) {
             </tr>
           </thead>
           <tbody>
-            {p.runs.map(r => {
+            {p.workflowInstances.map(r => {
               const canAct = r.effectiveRole === "owner";
               const webhookEvent = (r as any).webhookEvent as {
                 provider: string; issueRef: string | null; deliveryId: string | null; receivedAt: string;
@@ -87,12 +87,12 @@ export function RunsList(p: RunsListProps) {
                           next.has(r.id) ? next.delete(r.id) : next.add(r.id);
                           return next;
                         })
-                      : () => p.onSelectRun(r.id)}
+                      : () => p.onSelectWorkflowInstance(r.id)}
                   >
                     <td><span className={`je-runslist__pill ${r.status}`}>{r.status}</span></td>
                     <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 11 }}>{r.id.slice(0, 8)}</td>
-                    <td style={{ color: "#aaa" }}>{r.flowVersionId ? (p.flowNameByVersionId?.[r.flowVersionId] ?? r.flowVersionId.slice(0, 8)) : r.flowNameSnapshot}</td>
-                    <td><span className={`je-badge je-badge--scope-${r.flowScopeSnapshot}`}>{r.flowScopeSnapshot}</span></td>
+                    <td style={{ color: "#aaa" }}>{r.workflowVersionId ? (p.workflowNameByVersionId?.[r.workflowVersionId] ?? r.workflowVersionId.slice(0, 8)) : r.workflowNameSnapshot}</td>
+                    <td><span className={`je-badge je-badge--scope-${r.workflowScopeSnapshot}`}>{r.workflowScopeSnapshot}</span></td>
                     {scope !== "mine" && (
                       <td style={{ color: "#aaa", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
                         {r.startedByUserId ? r.startedByUserId.slice(0, 8) : "—"}
@@ -122,7 +122,7 @@ export function RunsList(p: RunsListProps) {
                   {isIgnored && expandedIgnored.has(r.id) && (
                     <tr>
                       <td colSpan={99} style={{ background: "#1a1a2e", padding: "8px 16px", color: "#fbbf24", fontSize: 12 }}>
-                        ⚠ Webhook ignored — no matching flow found
+                        ⚠ Webhook ignored — no matching workflow found
                         {webhookEvent?.deliveryId && (
                           <span style={{ marginLeft: 12, color: "#888" }}>
                             Delivery: {webhookEvent.deliveryId}

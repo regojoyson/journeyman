@@ -1,4 +1,4 @@
-import type { FlowGraph, OutputSchema, Shape } from "@journeyman/core";
+import type { WorkflowGraph, OutputSchema, Shape } from "@journeyman/core";
 import { WORKFLOW_INPUT_SUGGESTIONS, resolveShape } from "@journeyman/core";
 
 export interface ConditionSuggestion {
@@ -23,7 +23,7 @@ export interface CatalogLookup {
  * outputSchema, plus the static workflow.input.* entries.
  */
 export function buildConditionSuggestions(
-  flow: FlowGraph,
+  flow: WorkflowGraph,
   gatewayId: string,
   catalog: CatalogLookup,
 ): ConditionSuggestion[] {
@@ -52,7 +52,7 @@ export function buildConditionSuggestions(
   return out;
 }
 
-function collectUpstreamPhases(flow: FlowGraph, gatewayId: string): string[] {
+function collectUpstreamPhases(flow: WorkflowGraph, gatewayId: string): string[] {
   const incoming = new Map<string, string[]>();
   for (const e of flow.edges) {
     const arr = incoming.get(e.target) ?? [];

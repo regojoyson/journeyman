@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { BackoffStrategy, FlowDefaults, RetryPolicy } from "@journeyman/core";
+import type { BackoffStrategy, WorkflowDefaults, RetryPolicy } from "@journeyman/core";
 import { FieldInfo, FieldLabel } from "../properties-panel/field-info.tsx";
 
 const BACKOFFS: BackoffStrategy[] = ["fixed", "linear", "exponential"];
@@ -32,8 +32,8 @@ function fillMissingFields(r: RetryPolicy): RetryPolicy {
 }
 
 interface Props {
-  defaults: FlowDefaults;
-  onChange: (next: FlowDefaults) => void;
+  defaults: WorkflowDefaults;
+  onChange: (next: WorkflowDefaults) => void;
   readOnly?: boolean;
 }
 

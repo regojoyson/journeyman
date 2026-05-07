@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
-import type { Flow, FlowGraph } from "@journeyman/core";
-import { getFlow, getCurrentFlowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
+import type { Workflow, WorkflowGraph } from "@journeyman/core";
+import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInPhases } from "@journeyman/phases";
 import { useCustomPhasePaletteEntries } from "../flow-editor-integration/useCustomPhasePaletteEntries.ts";
@@ -13,7 +13,7 @@ import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
 function canEditFlow(
-  flow: Flow,
+  flow: Workflow,
   ctx: { userId: string | null; orgId: string; role: string; isPlatformAdmin: boolean },
 ): boolean {
   if (ctx.isPlatformAdmin) return true;
@@ -26,7 +26,7 @@ export function FlowEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [graph, setGraph] = useState<FlowGraph | null>(null);
+  const [graph, setGraph] = useState<WorkflowGraph | null>(null);
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
@@ -51,7 +51,7 @@ export function FlowEditorPage() {
     queryFn: async () => {
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] fetching current version", { id });
-      const result = await getCurrentFlowVersion(id!);
+      const result = await getCurrentWorkflowVersion(id!);
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] current version loaded", {
         id,
@@ -73,7 +73,7 @@ export function FlowEditorPage() {
       versionLoading: versionQ.isLoading,
     });
     if (!id || graph) return;
-    const cached = qc.getQueryData<FlowGraph>(["flow-graph", id]);
+    const cached = qc.getQueryData<WorkflowGraph>(["flow-graph", id]);
     if (cached) {
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] restoring graph from query cache", { id });
@@ -88,7 +88,7 @@ export function FlowEditorPage() {
   }, [id, graph, qc, versionQ.data]);
 
   const saveM = useMutation({
-    mutationFn: (next: FlowGraph) => updateFlowDefinition(id!, next),
+    mutationFn: (next: WorkflowGraph) => updateFlowDefinition(id!, next),
     onSuccess: (_, next) => {
       qc.setQueryData(["flow-graph", id], next);
       qc.invalidateQueries({ queryKey: ["flow-version-current", id] });
@@ -103,7 +103,7 @@ export function FlowEditorPage() {
 
   const renameM = useMutation({
     mutationFn: (name: string) => updateFlowMeta(id!, { name }),
-    onSuccess: ({ flow: updated }) => {
+    onSuccess: ({ workflow: updated }) => {
       qc.setQueryData(["flow", id], updated);
       qc.invalidateQueries({ queryKey: ["flows"] });
       setSaveToast({ kind: "success", message: "Flow renamed." });
@@ -138,13 +138,13 @@ export function FlowEditorPage() {
 
   const onClone = async () => {
     const { id: newId } = await cloneFlow(flow.id);
-    navigate(`/flows/${newId}/edit`);
+    navigate(`/workflows/${newId}/edit`);
   };
 
   const onPublish = async () => {
     const res = await publishFlow(flow.id);
     if (res.ok) {
-      qc.setQueryData(["flow", id], res.flow);
+      qc.setQueryData(["flow", id], res.workflow);
       qc.invalidateQueries({ queryKey: ["flows"] });
       setSaveToast({ kind: "success", message: "Flow published." });
       return { ok: true as const };
@@ -155,7 +155,7 @@ export function FlowEditorPage() {
   const onUnpublish = async (confirm: boolean): Promise<UnpublishWarning | null> => {
     const res = await unpublishFlow(flow.id, confirm);
     if (res.ok) {
-      qc.setQueryData(["flow", id], res.flow);
+      qc.setQueryData(["flow", id], res.workflow);
       qc.invalidateQueries({ queryKey: ["flows"] });
       setSaveToast({ kind: "success", message: "Flow moved to Draft." });
       return null;

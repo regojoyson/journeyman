@@ -92,21 +92,21 @@ export function registerWebhookRoutes(app: FastifyInstance, c: Composition): voi
         return { status: "resolved", count: resolveResult.matched };
       }
 
-      // Flow resolution stub — replace with real resolver when available
-      const matchingFlows: string[] = [];
+      // Workflow resolution stub — replace with real resolver when available
+      const matchingWorkflows: string[] = [];
 
-      if (matchingFlows.length === 0) {
+      if (matchingWorkflows.length === 0) {
         await c.webhookEvents.setStatus(event.id, "ignored");
         reply.code(200);
         return { status: "ignored" };
       }
 
-      for (const flowId of matchingFlows) {
-        await c.runs.create({
-          flowId,
-          flowVersionId: null,
-          flowNameSnapshot: flowId,
-          flowScopeSnapshot: "org",
+      for (const workflowId of matchingWorkflows) {
+        await c.workflowInstances.create({
+          workflowId,
+          workflowVersionId: null,
+          workflowNameSnapshot: workflowId,
+          workflowScopeSnapshot: "org",
           definitionSnapshot: {} as any,
           triggerSource: "webhook",
           startedByUserId: null,

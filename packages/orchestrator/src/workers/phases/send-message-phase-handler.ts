@@ -16,7 +16,7 @@ export class SendMessagePhaseHandler implements IPhaseHandler {
     const title = typeof input.title === "string" ? input.title : undefined;
     const notification = this.deps.notification(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Notify ${channel}`);
-    const result = await notification.send({ channel, message, title, sessionId: ctx.runId });
+    const result = await notification.send({ channel, message, title, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.success) {
       log.error({ result }, "notify failed");
       return { kind: "failure", failure: { errorClass: "NotifyFailed", message: String(result?.error ?? "send returned success=false"), retryable: true } };

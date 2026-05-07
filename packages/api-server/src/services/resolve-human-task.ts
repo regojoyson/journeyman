@@ -2,7 +2,7 @@ import type { Composition } from "../composition.ts";
 import type { HumanTaskConfig, HumanTaskOutputField, HumanTaskSource } from "@journeyman/core";
 
 export interface ResolveHumanTaskInput {
-  runId: string;
+  workflowInstanceId: string;
   nodeId: string;
   /**
    * Values for the declared output fields. Keys must match `output.name`.
@@ -18,8 +18,8 @@ export interface ResolveHumanTaskInput {
 }
 
 export class HumanTaskNotWaitingError extends Error {
-  constructor(runId: string, nodeId: string) {
-    super(`Human-task ${runId}/${nodeId} is not in waiting state`);
+  constructor(workflowInstanceId: string, nodeId: string) {
+    super(`Human-task ${workflowInstanceId}/${nodeId} is not in waiting state`);
     this.name = "HumanTaskNotWaitingError";
   }
 }
@@ -32,12 +32,12 @@ export class HumanTaskMissingValueError extends Error {
 }
 
 export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskInput): Promise<void> {
-  const run = await c.runs.getById(input.runId);
-  if (!run) throw new Error(`run ${input.runId} not found`);
+  const workflowInstance = await c.workflowInstances.getById(input.workflowInstanceId);
+  if (!workflowInstance) throw new Error(`workflowInstance ${input.workflowInstanceId} not found`);
 
-  const node = run.definitionSnapshot.nodes.find(n => n.id === input.nodeId);
+  const node = workflowInstance.definitionSnapshot.nodes.find(n => n.id === input.nodeId);
   if (!node || node.type !== "human-task") {
-    throw new Error(`node ${input.nodeId} on run ${input.runId} is not a human-task`);
+    throw new Error(`node ${input.nodeId} on workflowInstance ${input.workflowInstanceId} is not a human-task`);
   }
 
   const cfg = (node.config ?? {}) as unknown as HumanTaskConfig;
@@ -57,26 +57,26 @@ export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskIn
     .map(o => o.name);
   if (missing.length > 0) throw new HumanTaskMissingValueError(missing);
 
-  let exec = await c.nodeExecutions.latestForNode(input.runId, input.nodeId);
+  let exec = await c.nodeExecutions.latestForNode(input.workflowInstanceId, input.nodeId);
   if (!exec || exec.status !== "waiting") {
-    throw new HumanTaskNotWaitingError(input.runId, input.nodeId);
+    throw new HumanTaskNotWaitingError(input.workflowInstanceId, input.nodeId);
   }
 
   let conductorTaskId = exec.conductorTaskId ?? null;
   if (!conductorTaskId) {
-    const { reconcileRun } = await import("./engine-reconciler.ts");
-    await reconcileRun(c, input.runId);
-    exec = await c.nodeExecutions.latestForNode(input.runId, input.nodeId);
+    const { reconcileWorkflowInstance } = await import("./engine-reconciler.ts");
+    await reconcileWorkflowInstance(c, input.workflowInstanceId);
+    exec = await c.nodeExecutions.latestForNode(input.workflowInstanceId, input.nodeId);
     if (!exec || !exec.conductorTaskId) {
-      throw new Error(`No conductor_task_id recorded for ${input.runId}/${input.nodeId}`);
+      throw new Error(`No conductor_task_id recorded for ${input.workflowInstanceId}/${input.nodeId}`);
     }
     conductorTaskId = exec.conductorTaskId;
   }
 
-  c.humanTaskTimeouts.cancel(input.runId, input.nodeId);
+  c.humanTaskTimeouts.cancel(input.workflowInstanceId, input.nodeId);
 
   await c.humanTaskResolutions.create({
-    runId: input.runId,
+    runId: input.workflowInstanceId,
     nodeId: input.nodeId,
     outcome: pickPrimary(filled), // best-effort: a string field that smells like an outcome
     comment: typeof filled.comment === "string" ? filled.comment : null,
@@ -99,22 +99,22 @@ export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskIn
   await c.nodeExecutions.markCompleted(exec.id, output);
 
   await c.events.append({
-    runId: input.runId,
+    workflowInstanceId: input.workflowInstanceId,
     nodeId: input.nodeId,
     eventType: "node.resolved",
     payload: output,
   });
 
-  if (run.engineWorkflowId) {
+  if (workflowInstance.engineWorkflowId) {
     await c.conductorClient.completeTask({
-      workflowInstanceId: run.engineWorkflowId,
+      workflowInstanceId: workflowInstance.engineWorkflowId,
       taskId: conductorTaskId,
       status: "COMPLETED",
       outputData: output,
     });
   }
 
-  await c.runs.setStatus(input.runId, "running");
+  await c.workflowInstances.setStatus(input.workflowInstanceId, "running");
 }
 
 /**

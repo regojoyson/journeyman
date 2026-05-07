@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PhaseFormProps } from "@journeyman/flow-editor";
 import { useOrgId, ValuePicker } from "@journeyman/flow-editor";
-import type { CustomAiPhase, CanonicalTool, FlowInputValue } from "@journeyman/core";
+import type { CustomAiPhase, CanonicalTool, WorkflowInputValue } from "@journeyman/core";
 import { CANONICAL_TOOLS, toolsRequireWorkspace } from "@journeyman/core";
 
 interface CustomAiConfig {
@@ -9,7 +9,7 @@ interface CustomAiConfig {
   mcpInstanceIds?: string[];
   skillIds?: string[];
   tools?: CanonicalTool[];
-  inputs?: Record<string, FlowInputValue>;
+  inputs?: Record<string, WorkflowInputValue>;
 }
 
 export function CustomAiConfigForm({ config, onChange, readOnly, sources }: PhaseFormProps<CustomAiConfig>) {
@@ -33,7 +33,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources }: Phas
   }, [orgId, config.customPhaseId]);
 
   const inputs = useMemo(() => config.inputs ?? {}, [config.inputs]);
-  const setInputs = (next: Record<string, FlowInputValue>) => onChange({ ...config, inputs: next });
+  const setInputs = (next: Record<string, WorkflowInputValue>) => onChange({ ...config, inputs: next });
 
   if (!config.customPhaseId) {
     return <div className="je-props__field-help">No customPhaseId set on this node.</div>;
@@ -58,7 +58,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources }: Phas
   };
 
   const setRef = (name: string, ref: string) => {
-    setInputs({ ...inputs, [name]: { kind: "ref", ref } as FlowInputValue });
+    setInputs({ ...inputs, [name]: { kind: "ref", ref } as WorkflowInputValue });
   };
   const getRef = (name: string): string => {
     const v = inputs[name];

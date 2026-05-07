@@ -7,22 +7,22 @@
 // `{ var: ref }`.
 //
 // TODO(T9): Add an Inspector / edge-properties surface so that
-// FlowEdge.condition (JSONLogic) can be edited with the {x} ValuePicker
+// WorkflowEdge.condition (JSONLogic) can be edited with the {x} ValuePicker
 // button. Today, edges are not selectable in the PropertiesPanel — they
 // only render via ConditionalEdge.tsx with a static branch label. Once an
 // edge inspector exists, plug ValuePicker in there using
 // `surface = "jsonlogic"` and merge the picked `{ var: ref }` into the
 // existing JSONLogic value (or replace if empty).
 import { useState } from "react";
-import type { FlowGraph, FlowNode } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 
 interface Props {
-  flow: FlowGraph;
-  node: FlowNode;
-  onChange: (next: FlowNode) => void;
+  flow: WorkflowGraph;
+  node: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
@@ -135,8 +135,8 @@ export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) 
 }
 
 interface HumanTaskEditorProps {
-  node: FlowNode;
-  onChange: (next: FlowNode) => void;
+  node: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 

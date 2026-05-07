@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import type { FlowGraph, PublishError } from "@journeyman/core";
+import type { WorkflowGraph, PublishError } from "@journeyman/core";
 import { validateForPublish } from "@journeyman/core";
 
 interface Props {
-  flow: FlowGraph;
+  flow: WorkflowGraph;
   onCancel: () => void;
   onConfirm: () => Promise<{ ok: boolean; serverErrors?: PublishError[] }>;
   onSelectNode: (nodeId: string) => void;

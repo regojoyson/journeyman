@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState, useEffect } from "react";
-import type { FlowDefaults, FlowGraph, FlowNode } from "@journeyman/core";
+import type { WorkflowDefaults, WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -14,12 +14,12 @@ import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 import { useNodeWarningsByKey } from "../state/validation-context.tsx";
 
 export interface ConfigTabProps {
-  flow: FlowGraph;
-  node: FlowNode;
-  onChange: (next: FlowNode) => void;
+  flow: WorkflowGraph;
+  node: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
   mcpCatalog?: McpCatalog;
-  flowDefaults?: FlowDefaults;
+  flowDefaults?: WorkflowDefaults;
 }
 
 export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefaults }: ConfigTabProps) {
@@ -59,7 +59,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const cleanedConfig = { ...currentConfig };
     for (const k of staleConfigKeys) delete cleanedConfig[k];
 
-    onChange({ ...node, inputs: cleanedInputs as FlowNode["inputs"], config: cleanedConfig });
+    onChange({ ...node, inputs: cleanedInputs as WorkflowNode["inputs"], config: cleanedConfig });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.id, node.phaseType]);
 
@@ -67,14 +67,14 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const clean = sanitizeRef(ref);
     const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
     inputs[fieldKey] = { kind: "ref", ref: clean };
-    onChange({ ...node, inputs: inputs as FlowNode["inputs"] });
+    onChange({ ...node, inputs: inputs as WorkflowNode["inputs"] });
     setPickerFor(null);
   };
 
   const handleUnbind = (fieldKey: string) => {
     const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
     delete inputs[fieldKey];
-    onChange({ ...node, inputs: inputs as FlowNode["inputs"] });
+    onChange({ ...node, inputs: inputs as WorkflowNode["inputs"] });
   };
 
   /** Append `${ref}` to the field's literal config value (template-string mode). */

@@ -16,7 +16,7 @@ export class CommentOnIssuePhaseHandler implements IPhaseHandler {
     }
     const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Add comment to issue ${id}`);
-    const result = await issueProvider.addComment({ id, body, sessionId: ctx.runId });
+    const result = await issueProvider.addComment({ id, body, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "add-issue-comment failed");
       return { kind: "failure", failure: { errorClass: "AddIssueCommentFailed", message: String(result.error), retryable: true } };

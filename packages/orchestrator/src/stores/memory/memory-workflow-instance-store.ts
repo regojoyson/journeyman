@@ -1,19 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type {
-  CreateRunArgs, INodeExecutionStore, IRunStore, NodeExecution, Run, RunStatus,
-  ActorContext, RunListScope,
+  CreateWorkflowInstanceArgs, INodeExecutionStore, IWorkflowInstanceStore,
+  NodeExecution, WorkflowInstance, WorkflowInstanceStatus,
+  ActorContext, WorkflowInstanceListScope,
 } from "@journeyman/core";
 
-export class MemoryRunStore implements IRunStore {
-  private rows = new Map<string, Run>();
+export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
+  private rows = new Map<string, WorkflowInstance>();
 
-  async create(args: CreateRunArgs): Promise<Run> {
-    const run: Run = {
+  async create(args: CreateWorkflowInstanceArgs): Promise<WorkflowInstance> {
+    const instance: WorkflowInstance = {
       id: randomUUID(),
-      flowId: args.flowId,
-      flowVersionId: args.flowVersionId,
-      flowNameSnapshot: args.flowNameSnapshot,
-      flowScopeSnapshot: args.flowScopeSnapshot,
+      workflowId: args.workflowId,
+      workflowVersionId: args.workflowVersionId,
+      workflowNameSnapshot: args.workflowNameSnapshot,
+      workflowScopeSnapshot: args.workflowScopeSnapshot,
       definitionSnapshot: args.definitionSnapshot,
       status: "pending",
       triggerSource: args.triggerSource,
@@ -28,35 +29,35 @@ export class MemoryRunStore implements IRunStore {
       attemptNumber: 1,
       webhookEventId: args.webhookEventId ?? null,
     };
-    this.rows.set(run.id, run);
-    return run;
+    this.rows.set(instance.id, instance);
+    return instance;
   }
 
-  async getById(runId: string): Promise<Run | null> {
-    return this.rows.get(runId) ?? null;
+  async getById(workflowInstanceId: string): Promise<WorkflowInstance | null> {
+    return this.rows.get(workflowInstanceId) ?? null;
   }
 
-  async setEngineWorkflowId(runId: string, engineWorkflowId: string): Promise<void> {
-    const r = this.rows.get(runId);
+  async setEngineWorkflowId(workflowInstanceId: string, engineWorkflowId: string): Promise<void> {
+    const r = this.rows.get(workflowInstanceId);
     if (!r) return;
-    this.rows.set(runId, { ...r, engineWorkflowId });
+    this.rows.set(workflowInstanceId, { ...r, engineWorkflowId });
   }
 
-  async setAttemptNumber(runId: string, attemptNumber: number): Promise<void> {
-    const r = this.rows.get(runId);
+  async setAttemptNumber(workflowInstanceId: string, attemptNumber: number): Promise<void> {
+    const r = this.rows.get(workflowInstanceId);
     if (!r) return;
-    this.rows.set(runId, { ...r, attemptNumber });
+    this.rows.set(workflowInstanceId, { ...r, attemptNumber });
   }
 
-  async setStatus(runId: string, status: RunStatus, opts: {
+  async setStatus(workflowInstanceId: string, status: WorkflowInstanceStatus, opts: {
     failedAtNodeId?: string;
     completedAt?: Date;
     durationMs?: number;
     outputs?: Record<string, unknown>;
   } = {}): Promise<void> {
-    const r = this.rows.get(runId);
+    const r = this.rows.get(workflowInstanceId);
     if (!r) return;
-    this.rows.set(runId, {
+    this.rows.set(workflowInstanceId, {
       ...r,
       status,
       failedAtNodeId: opts.failedAtNodeId ?? r.failedAtNodeId,
@@ -68,32 +69,32 @@ export class MemoryRunStore implements IRunStore {
   }
 
   async list(opts: {
-    flowId?: string;
-    status?: RunStatus;
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
     limit?: number;
     actor?: ActorContext;
-    scope?: RunListScope;
+    scope?: WorkflowInstanceListScope;
     provider?: string;
     issueRef?: string;
-  } = {}): Promise<Run[]> {
+  } = {}): Promise<WorkflowInstance[]> {
     let out = [...this.rows.values()];
-    if (opts.flowId) out = out.filter(r => r.flowId === opts.flowId);
+    if (opts.workflowId) out = out.filter(r => r.workflowId === opts.workflowId);
     if (opts.status) out = out.filter(r => r.status === opts.status);
     // Memory backend trusts the API layer to apply actor/scope filtering via
-    // runGrants.matchForActor when needed; the postgres backend joins in SQL.
+    // workflowInstanceGrants.matchForActor when needed; the postgres backend joins in SQL.
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }
 
-  async findPausedRunsByIssueRef(issueRef: string): Promise<Run[]> {
+  async findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
     return [...this.rows.values()].filter(r =>
       r.status === "paused"
       && (r.inputs as { issueRef?: unknown })?.issueRef === issueRef,
     );
   }
 
-  async findActiveRunsByIssueRef(issueRef: string): Promise<Run[]> {
-    const active = new Set<RunStatus>(["pending", "running", "paused"]);
+  async findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
+    const active = new Set<WorkflowInstanceStatus>(["pending", "running", "paused"]);
     return [...this.rows.values()].filter(r =>
       active.has(r.status)
       && (r.inputs as { issueRef?: unknown })?.issueRef === issueRef,
@@ -109,13 +110,13 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
     this.rows.set(execution.id, execution);
   }
 
-  async listByRun(runId: string): Promise<NodeExecution[]> {
-    return [...this.rows.values()].filter(x => x.runId === runId);
+  async listByWorkflowInstance(workflowInstanceId: string): Promise<NodeExecution[]> {
+    return [...this.rows.values()].filter(x => x.workflowInstanceId === workflowInstanceId);
   }
 
-  async markWaiting(runId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
+  async markWaiting(workflowInstanceId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
     const existing = [...this.rows.values()].find(r =>
-      r.runId === runId && r.nodeId === nodeId && r.attempt === 1,
+      r.workflowInstanceId === workflowInstanceId && r.nodeId === nodeId && r.attempt === 1,
     );
     if (existing) {
       const updated: NodeExecution = { ...existing, status: "waiting", conductorTaskId };
@@ -124,7 +125,7 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
     }
     const row: NodeExecution = {
       id: `mem-${this.nextId++}`,
-      runId, nodeId, attempt: 1, status: "waiting",
+      workflowInstanceId, nodeId, attempt: 1, status: "waiting",
       startedAt: new Date(), completedAt: null,
       input: {}, output: null, errorClass: null, errorMessage: null,
       conductorTaskId,
@@ -141,16 +142,16 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
     return updated;
   }
 
-  async latestForNode(runId: string, nodeId: string): Promise<NodeExecution | null> {
+  async latestForNode(workflowInstanceId: string, nodeId: string): Promise<NodeExecution | null> {
     const list = [...this.rows.values()]
-      .filter(r => r.runId === runId && r.nodeId === nodeId)
+      .filter(r => r.workflowInstanceId === workflowInstanceId && r.nodeId === nodeId)
       .sort((a, b) => +(b.startedAt ?? 0) - +(a.startedAt ?? 0));
     return list[0] ?? null;
   }
 
-  async latestWaitingForRun(runId: string): Promise<NodeExecution | null> {
+  async latestWaitingForInstance(workflowInstanceId: string): Promise<NodeExecution | null> {
     const list = [...this.rows.values()]
-      .filter(r => r.runId === runId && r.status === "waiting")
+      .filter(r => r.workflowInstanceId === workflowInstanceId && r.status === "waiting")
       .sort((a, b) => +(b.startedAt ?? 0) - +(a.startedAt ?? 0));
     return list[0] ?? null;
   }

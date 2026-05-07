@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Flow } from "@journeyman/core";
+import type { Workflow } from "@journeyman/core";
 import { listFlows } from "../api/flows.ts";
 import { promoteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
@@ -7,8 +7,8 @@ import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
 export function AdminFlowsPage() {
   const { activeOrgId, isPlatformAdmin } = useAuth();
-  const [userFlows, setUserFlows] = useState<Flow[]>([]);
-  const [orgFlows, setOrgFlows] = useState<Flow[]>([]);
+  const [userFlows, setUserFlows] = useState<Workflow[]>([]);
+  const [orgFlows, setOrgFlows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 

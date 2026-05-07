@@ -7,14 +7,14 @@ import {
   type NodeChange, type EdgeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { FlowEdge, FlowEdgeType, FlowGraph, FlowNode, FlowNodeType } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
 import { newPhaseNode, newEdge } from "../state/flow-graph.ts";
 import type { PhaseRunState } from "../phase-definition.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import {
   KNOWN_NODE_TYPES,
-  toReactFlowEdges,
+  toReactWorkflowEdges,
   structuralSig,
   buildFlowFromInternal,
 } from "./flow-rf-adapters.ts";
@@ -28,10 +28,10 @@ import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
  * exactly one match exists, bind. If 0 or >1, skip — user picks manually.
  */
 function autoBindNewNode(
-  newNode: FlowNode,
-  existingNodes: FlowNode[],
+  newNode: WorkflowNode,
+  existingNodes: WorkflowNode[],
   catalog: ReturnType<typeof usePhaseCatalog>,
-): FlowNode {
+): WorkflowNode {
   if (newNode.type !== "phase" || !newNode.phaseType) return newNode;
   const required = catalog[newNode.phaseType]?.inputFields ?? {};
   const inputs: Record<string, { kind: "ref"; ref: string }> = {
@@ -52,21 +52,21 @@ function autoBindNewNode(
       changed = true;
     }
   }
-  return changed ? { ...newNode, inputs: inputs as FlowNode["inputs"] } : newNode;
+  return changed ? { ...newNode, inputs: inputs as WorkflowNode["inputs"] } : newNode;
 }
 
 export interface CanvasProps {
-  flow: FlowGraph;
+  flow: WorkflowGraph;
   selectedNodeId: string | null;
-  onChange: (next: FlowGraph) => void;
+  onChange: (next: WorkflowGraph) => void;
   onSelect: (nodeId: string | null) => void;
   onEdgeSelect?: (edgeId: string | null) => void;
   readOnly?: boolean;
   phaseRunStates?: Record<string, PhaseRunState>;
 }
 
-function toReactFlowNodes(
-  flow: FlowGraph,
+function toReactWorkflowNodes(
+  flow: WorkflowGraph,
   selectedId: string | null,
   runStates?: Record<string, PhaseRunState>,
 ): Node[] {
@@ -122,10 +122,10 @@ function CanvasInner(p: CanvasProps) {
   phaseRunStatesRef.current = p.phaseRunStates;
 
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState<Node>(
-    toReactFlowNodes(p.flow, p.selectedNodeId, p.phaseRunStates),
+    toReactWorkflowNodes(p.flow, p.selectedNodeId, p.phaseRunStates),
   );
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState<Edge>(
-    toReactFlowEdges(p.flow),
+    toReactWorkflowEdges(p.flow),
   );
   // Keep refs in sync so callbacks can read current state without being in dep arrays.
   const nodesRef = useRef(nodes);
@@ -133,7 +133,7 @@ function CanvasInner(p: CanvasProps) {
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
-  // Tracks the structural signature of the FlowGraph that we last emitted
+  // Tracks the structural signature of the WorkflowGraph that we last emitted
   // ourselves via p.onChange. The effect below skips resyncing when the parent
   // is just echoing back our own change — that prevents the rerender feedback
   // loop that hits when an edge is deleted (parent updates → effect resyncs →
@@ -191,19 +191,19 @@ function CanvasInner(p: CanvasProps) {
       });
       lastSigRef.current = sig;
       lastSelectedRef.current = p.selectedNodeId;
-      setNodes(toReactFlowNodes(p.flow, p.selectedNodeId, p.phaseRunStates));
-      setEdges(toReactFlowEdges(p.flow));
+      setNodes(toReactWorkflowNodes(p.flow, p.selectedNodeId, p.phaseRunStates));
+      setEdges(toReactWorkflowEdges(p.flow));
     }
   }, [p.flow, p.selectedNodeId, p.phaseRunStates, setNodes, setEdges]);
 
-  /** Build a fresh FlowGraph from current internal RF state + previous flow's metadata. */
+  /** Build a fresh WorkflowGraph from current internal RF state + previous flow's metadata. */
   const buildFlow = useCallback(
-    (rfNodes: Node[], rfEdges: Edge[]): FlowGraph => buildFlowFromInternal(p.flow, rfNodes, rfEdges),
+    (rfNodes: Node[], rfEdges: Edge[]): WorkflowGraph => buildFlowFromInternal(p.flow, rfNodes, rfEdges),
     [p.flow],
   );
 
   /** Propagate a change to the parent and remember its sig so the resync effect skips the echo. */
-  const propagate = useCallback((next: FlowGraph) => {
+  const propagate = useCallback((next: WorkflowGraph) => {
     propagatedSigRef.current = structuralSig(next);
     onChangeRef.current(next);
   }, []);
@@ -216,9 +216,9 @@ function CanvasInner(p: CanvasProps) {
    * propagate-side updates `propagatedSigRef`, which keeps the resync effect
    * from echoing the change back and undoing the internal update.
    */
-  const applyExternalChange = useCallback((next: FlowGraph) => {
-    setNodes(toReactFlowNodes(next, selectedNodeIdRef.current, phaseRunStatesRef.current));
-    setEdges(toReactFlowEdges(next));
+  const applyExternalChange = useCallback((next: WorkflowGraph) => {
+    setNodes(toReactWorkflowNodes(next, selectedNodeIdRef.current, phaseRunStatesRef.current));
+    setEdges(toReactWorkflowEdges(next));
     propagate(next);
   }, [setNodes, setEdges, propagate]);
 
@@ -282,11 +282,11 @@ function CanvasInner(p: CanvasProps) {
     if (!conn.source || !conn.target) return;
     const flow = flowRef.current;
     const sourceNode = flow.nodes.find(n => n.id === conn.source);
-    let edgeType: FlowEdgeType = "default";
+    let edgeType: WorkflowEdgeType = "default";
     if (sourceNode?.type === "gateway-xor" || sourceNode?.type === "if") edgeType = "conditional";
     if (conn.sourceHandle === "error") edgeType = "error";
     if (conn.sourceHandle === "else")  edgeType = "else";
-    const next: FlowEdge = { ...newEdge(conn.source, conn.target), type: edgeType };
+    const next: WorkflowEdge = { ...newEdge(conn.source, conn.target), type: edgeType };
     applyExternalChange({ ...flow, edges: [...flow.edges, next] });
   }, [applyExternalChange]);
 
@@ -297,7 +297,7 @@ function CanvasInner(p: CanvasProps) {
     const controlType = ev.dataTransfer.getData("application/journeyman-control");
     const position = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
-    let newNode: FlowNode | null = null;
+    let newNode: WorkflowNode | null = null;
     if (phaseType) {
       const def = registry.get(phaseType);
       // Synthetic palette entries for custom AI phases use a unique
@@ -327,7 +327,7 @@ function CanvasInner(p: CanvasProps) {
     } else if (controlType) {
       newNode = {
         id: `${controlType}_${Math.random().toString(36).slice(2, 8)}`,
-        type: controlType as FlowNodeType,
+        type: controlType as WorkflowNodeType,
         displayName: controlType,
         config: {},
         position,

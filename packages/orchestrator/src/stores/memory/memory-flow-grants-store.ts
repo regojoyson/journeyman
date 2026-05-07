@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type {
-  CreateGrantArgs, FlowGrant, IFlowGrantsStore,
+  CreateWorkflowGrantArgs, WorkflowGrant, IWorkflowGrantsStore,
 } from "@journeyman/core";
 
-export class MemoryFlowGrantsStore implements IFlowGrantsStore {
-  private rows = new Map<string, FlowGrant>();
+export class MemoryWorkflowGrantsStore implements IWorkflowGrantsStore {
+  private rows = new Map<string, WorkflowGrant>();
 
-  async create(args: CreateGrantArgs): Promise<FlowGrant> {
-    const g: FlowGrant = {
+  async create(args: CreateWorkflowGrantArgs): Promise<WorkflowGrant> {
+    const g: WorkflowGrant = {
       id: randomUUID(),
-      flowId: args.flowId,
+      workflowId: args.workflowId,
       principalType: args.principalType,
       principalId: args.principalId,
       role: args.role,
@@ -20,11 +20,11 @@ export class MemoryFlowGrantsStore implements IFlowGrantsStore {
     return g;
   }
 
-  async listByFlow(flowId: string): Promise<FlowGrant[]> {
-    return [...this.rows.values()].filter(g => g.flowId === flowId);
+  async listByWorkflow(workflowId: string): Promise<WorkflowGrant[]> {
+    return [...this.rows.values()].filter(g => g.workflowId === workflowId);
   }
 
-  async listForCaller(args: { callerUserId: string | null; callerOrgId: string | null }): Promise<FlowGrant[]> {
+  async listForCaller(args: { callerUserId: string | null; callerOrgId: string | null }): Promise<WorkflowGrant[]> {
     return [...this.rows.values()].filter(g =>
       g.principalType === "global"
       || (g.principalType === "user" && g.principalId === args.callerUserId)
@@ -34,7 +34,7 @@ export class MemoryFlowGrantsStore implements IFlowGrantsStore {
 
   async delete(grantId: string): Promise<void> { this.rows.delete(grantId); }
 
-  async getOwnerGrant(flowId: string): Promise<FlowGrant | null> {
-    return [...this.rows.values()].find(g => g.flowId === flowId && g.role === "owner") ?? null;
+  async getOwnerGrant(workflowId: string): Promise<WorkflowGrant | null> {
+    return [...this.rows.values()].find(g => g.workflowId === workflowId && g.role === "owner") ?? null;
   }
 }

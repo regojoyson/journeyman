@@ -39,7 +39,7 @@ export class CreateWorkspacePhaseHandler implements IPhaseHandler {
     const result = await coding.createWorkspace({
       issueRef,
       baseDir: this.deps.baseDir,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
     });
     if (result?.error) {

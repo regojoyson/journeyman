@@ -36,7 +36,7 @@ export class TransitionIssuePhaseHandler implements IPhaseHandler {
     }
     const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Updating issue ${id} → ${status}`);
-    const result = await issueProvider.updateStatus({ id, status, sessionId: ctx.runId });
+    const result = await issueProvider.updateStatus({ id, status, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "update-status failed");
       return {

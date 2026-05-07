@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FlowGraph, FlowSaveWarning, FlowStatus } from "@journeyman/core";
-import { validateFlowInputs } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowSaveWarning, WorkflowStatus } from "@journeyman/core";
+import { validateWorkflowInputs } from "@journeyman/core";
 import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
 import { InputWarningsSection } from "./InputWarningsSection.tsx";
 import { StatusPill } from "./StatusPill.tsx";
@@ -25,8 +25,8 @@ export interface ValidationReport {
   errors: string[];
   missing: string[];
   warnings: string[];
-  secretWarnings?: FlowSaveWarning[];
-  inputWarnings?: FlowSaveWarning[];
+  secretWarnings?: WorkflowSaveWarning[];
+  inputWarnings?: WorkflowSaveWarning[];
 }
 
 export interface TopbarProps {
@@ -36,7 +36,7 @@ export interface TopbarProps {
   onRun?: () => void;
   onValidate?: () => Promise<ValidationReport>;
   /** Snapshot of the flow definition; used by the export viewer. */
-  flow?: FlowGraph;
+  flow?: WorkflowGraph;
   busy?: boolean;
   dirty?: boolean;
   saveEnabled?: boolean;
@@ -45,9 +45,9 @@ export interface TopbarProps {
   validationErrors?: string[];
   onFlowConfig?: () => void;
   /** When provided, an Import button appears that lets the user paste/upload a flow JSON to replace the current one. */
-  onImport?: (flow: FlowGraph) => void;
+  onImport?: (flow: WorkflowGraph) => void;
   /** Lifecycle status of the flow. When omitted, the pill and transition button are hidden. */
-  status?: FlowStatus;
+  status?: WorkflowStatus;
   /** Called when the user clicks "Publish" (status pill area). */
   onPublishClick?: () => void;
   /** Called when the user clicks "Move to Draft" (status pill area). */
@@ -64,7 +64,7 @@ export function Topbar(p: TopbarProps) {
 
   const validationCatalog = useValidationCatalog();
   const inputWarnings = useMemo(
-    () => (p.flow ? validateFlowInputs(p.flow, validationCatalog) : []),
+    () => (p.flow ? validateWorkflowInputs(p.flow, validationCatalog) : []),
     [p.flow, validationCatalog],
   );
 
@@ -254,7 +254,7 @@ export function Topbar(p: TopbarProps) {
   );
 }
 
-function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: string; onClose: () => void }) {
+function ExportPanel({ flow, flowName, onClose }: { flow: WorkflowGraph; flowName: string; onClose: () => void }) {
   const [format, setFormat] = useState<"json" | "yaml">("json");
   const [copied, setCopied] = useState(false);
 
@@ -327,7 +327,7 @@ function ExportPanel({ flow, flowName, onClose }: { flow: FlowGraph; flowName: s
   );
 }
 
-function parseFlowJson(text: string): FlowGraph {
+function parseFlowJson(text: string): WorkflowGraph {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -341,7 +341,7 @@ function parseFlowJson(text: string): FlowGraph {
   if (typeof obj.schemaVersion !== "string" && typeof obj.schemaVersion !== "number") {
     throw new Error("Missing 'schemaVersion'.");
   }
-  return obj as unknown as FlowGraph;
+  return obj as unknown as WorkflowGraph;
 }
 
 function ImportPanel({
@@ -350,7 +350,7 @@ function ImportPanel({
   onClose,
 }: {
   hasExisting: boolean;
-  onImport: (flow: FlowGraph) => void;
+  onImport: (flow: WorkflowGraph) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
@@ -370,7 +370,7 @@ function ImportPanel({
 
   const handleImport = () => {
     setError(null);
-    let flow: FlowGraph;
+    let flow: WorkflowGraph;
     try {
       flow = parseFlowJson(text);
     } catch (e) {
@@ -508,7 +508,7 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
   );
 }
 
-function SecretWarningsSection({ warnings }: { warnings: FlowSaveWarning[] }) {
+function SecretWarningsSection({ warnings }: { warnings: WorkflowSaveWarning[] }) {
   return (
     <div className="je-validate-section je-validate-section--warn">
       <div className="je-validate-section__title">Secret warnings ({warnings.length})</div>
@@ -543,7 +543,7 @@ function SecretWarningsSection({ warnings }: { warnings: FlowSaveWarning[] }) {
                 {w.entries.map((e, j) => (
                   <li key={j}>
                     <code>{e.slot}</code> on node <code>{e.nodeId}</code> pinned to{" "}
-                    <b>{e.pinnedScope}</b> in a <b>{e.flowScope}</b>-scope flow
+                    <b>{e.pinnedScope}</b> in a <b>{e.workflowScope}</b>-scope flow
                   </li>
                 ))}
               </ul>

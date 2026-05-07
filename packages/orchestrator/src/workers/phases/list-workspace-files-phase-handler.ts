@@ -14,7 +14,7 @@ export class ListWorkspaceFilesPhaseHandler implements IPhaseHandler {
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Scanning ${workspaceDir}`);
-    const result = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.runId, signal: ctx.signal });
+    const result = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
     if (result?.error) {
       log.error({ result }, "scan-repos failed");
       return { kind: "failure", failure: { errorClass: "ScanReposFailed", message: String(result.error), retryable: true } };

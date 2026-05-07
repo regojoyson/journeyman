@@ -1,5 +1,5 @@
 // packages/flow-editor/src/properties-panel/ExecutorBlock.tsx
-import type { FlowDefaults, CoreExecutorKind } from "@journeyman/core";
+import type { WorkflowDefaults, CoreExecutorKind } from "@journeyman/core";
 import type { ExecutorKind } from "../phase-definition.ts";
 import { executorCommonConfig, visibleProvidersFor } from "../executor-common-config.ts";
 import { useFieldInheritance } from "../hooks/use-field-inheritance.ts";
@@ -10,7 +10,7 @@ export interface ExecutorBlockProps {
   value: { provider?: string } | undefined | null;
   onChange: (next: { provider?: string }) => void;
   readOnly?: boolean;
-  flowDefaults?: FlowDefaults;
+  flowDefaults?: WorkflowDefaults;
 }
 
 export function ExecutorBlock({ kind, value, onChange, readOnly, flowDefaults }: ExecutorBlockProps) {

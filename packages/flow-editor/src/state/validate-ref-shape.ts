@@ -1,9 +1,9 @@
-import type { FlowGraph, Shape } from "@journeyman/core";
+import type { WorkflowGraph, Shape } from "@journeyman/core";
 import { resolveShape, shapeAtPath, shapesEqual } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export function validateRefShape(
-  flow: FlowGraph,
+  flow: WorkflowGraph,
   ref: string,
   expected: Shape,
   catalog: Record<string, PhaseCatalogEntry>,

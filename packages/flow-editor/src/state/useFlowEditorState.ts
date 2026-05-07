@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import type { FlowEdge, FlowGraph } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph } from "@journeyman/core";
 
 export interface UseFlowEditorStateArgs {
-  flow: FlowGraph;
-  onChange: (flow: FlowGraph) => void;
+  flow: WorkflowGraph;
+  onChange: (flow: WorkflowGraph) => void;
   readOnly?: boolean;
 }
 
@@ -12,7 +12,7 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
   const [selectedEdgeId, setSelectedEdgeIdState] = useState<string | null>(null);
   const readOnly = args.readOnly ?? false;
 
-  const update = useCallback((mutator: (f: FlowGraph) => FlowGraph) => {
+  const update = useCallback((mutator: (f: WorkflowGraph) => WorkflowGraph) => {
     if (readOnly) return;
     args.onChange(mutator(args.flow));
   }, [args, readOnly]);
@@ -37,7 +37,7 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
     if (id) setSelectedNodeIdState(null);
   }, []);
 
-  const updateEdge = useCallback((next: FlowEdge) => {
+  const updateEdge = useCallback((next: WorkflowEdge) => {
     if (readOnly) return;
     args.onChange({
       ...args.flow,

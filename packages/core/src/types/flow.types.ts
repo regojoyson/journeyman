@@ -252,7 +252,7 @@ export type WorkflowSaveWarning =
       message: string;
       /** Each entry is a model_id referenced by the flow that isn't enabled in the catalog for the flow's coding provider. */
       entries: Array<{
-        location: "flow-default" | "node";
+        location: "workflow-default" | "node";
         nodeId?: string;
         provider: string;
         modelId: string;
@@ -262,7 +262,7 @@ export type WorkflowSaveWarning =
       code: "deprecated_models";
       message: string;
       entries: Array<{
-        location: "flow-default" | "node";
+        location: "workflow-default" | "node";
         nodeId?: string;
         provider: string;
         modelId: string;

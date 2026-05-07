@@ -1,7 +1,7 @@
 // packages/flow-editor/src/properties-panel/SchemaForm.tsx
 import type { ZodTypeAny } from "zod";
 import type { ReactNode } from "react";
-import type { FlowSaveWarning } from "@journeyman/core";
+import type { WorkflowSaveWarning } from "@journeyman/core";
 import type { FieldMeta } from "../phase-definition.ts";
 
 export interface SchemaFormProps {
@@ -17,7 +17,7 @@ export interface SchemaFormProps {
   /** Renders the bound-state pill that replaces the input when a key is bound. */
   renderBoundPill?: (key: string) => ReactNode;
   /** Optional per-key validation warnings to render with red highlight + inline message. */
-  warningsByKey?: Map<string, FlowSaveWarning>;
+  warningsByKey?: Map<string, WorkflowSaveWarning>;
 }
 
 export function SchemaForm({

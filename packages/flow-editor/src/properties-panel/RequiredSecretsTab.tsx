@@ -1,17 +1,17 @@
 // packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx
 import { useEffect, useState, useMemo } from "react";
 import { PROVIDER_CATALOG } from "@journeyman/core";
-import type { FlowGraph, FlowNode, SecretBinding, SecretScope } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import type { SecretSlotDef } from "../phase-definition.ts";
 
 export interface RequiredSecretsTabProps {
-  flow: FlowGraph;
-  node: FlowNode;
+  flow: WorkflowGraph;
+  node: WorkflowNode;
   orgId: string;
-  onChange: (next: FlowNode) => void;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
@@ -22,10 +22,10 @@ const SCOPE_LABEL: Record<SecretScope, string> = {
 };
 const SCOPE_ORDER: SecretScope[] = ["user", "org", "global"];
 
-function getBinding(node: FlowNode, slotName: string): SecretBinding {
+function getBinding(node: WorkflowNode, slotName: string): SecretBinding {
   return node.secretBindings?.[slotName] ?? { mode: "auto" };
 }
-function setBinding(node: FlowNode, slotName: string, binding: SecretBinding): FlowNode {
+function setBinding(node: WorkflowNode, slotName: string, binding: SecretBinding): WorkflowNode {
   return {
     ...node,
     secretBindings: { ...(node.secretBindings ?? {}), [slotName]: binding },
@@ -57,7 +57,7 @@ function pinnedExists(b: SecretBinding, visible: VisibleSecret[]): boolean {
   return visible.some(v => v.scope === b.scope && v.name === b.name);
 }
 
-function flowScope(flow: FlowGraph): "user" | "org" | "global" | null {
+function workflowScope(flow: WorkflowGraph): "user" | "org" | "global" | null {
   const fs = (flow as unknown as { scope?: "user" | "org" | "global" }).scope;
   return fs ?? null;
 }
@@ -109,7 +109,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     return out;
   }, [visible]);
 
-  const fScope = flowScope(flow);
+  const fScope = workflowScope(flow);
 
   if (slots.length === 0) {
     return (
@@ -159,7 +159,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
             visible={visible}
             grouped={grouped}
             loaded={loaded}
-            flowScope={fScope}
+            workflowScope={fScope}
             readOnly={readOnly}
             onChange={(next) => onChange(setBinding(node, slot.name, next))}
           />
@@ -175,12 +175,12 @@ interface SlotRowProps {
   visible: VisibleSecret[];
   grouped: Record<SecretScope, string[]>;
   loaded: boolean;
-  flowScope: "user" | "org" | "global" | null;
+  workflowScope: "user" | "org" | "global" | null;
   readOnly?: boolean;
   onChange: (next: SecretBinding) => void;
 }
 
-function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly, onChange }: SlotRowProps) {
+function SlotRow({ slot, binding, visible, grouped, loaded, workflowScope, readOnly, onChange }: SlotRowProps) {
   const autoTier = useMemo(() => autoResolveTier(slot.name, visible), [slot.name, visible]);
   const exists = pinnedExists(binding, visible);
 
@@ -191,8 +191,8 @@ function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly,
 
   const crossScope =
     binding.mode === "pinned" &&
-    flowScope !== null &&
-    isNarrower(binding.scope, flowScope);
+    workflowScope !== null &&
+    isNarrower(binding.scope, workflowScope);
 
   return (
     <div className="je-props__field" style={{
@@ -248,7 +248,7 @@ function SlotRow({ slot, binding, visible, grouped, loaded, flowScope, readOnly,
           padding: "4px 8px", background: "#3a2e1a",
           border: "1px solid #c08a3e", borderRadius: 4,
         }}>
-          ⚠ This is a {flowScope}-scope flow but you pinned a {(binding as { scope: SecretScope }).scope}-scope secret.
+          ⚠ This is a {workflowScope}-scope flow but you pinned a {(binding as { scope: SecretScope }).scope}-scope secret.
           Other runners won't see it.
         </div>
       )}

@@ -1,6 +1,6 @@
-import type { FlowGraph } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 
-export function dominators(graph: FlowGraph, target: string): Set<string> {
+export function dominators(graph: WorkflowGraph, target: string): Set<string> {
   const startNode = graph.nodes.find(n => n.type === "start");
   if (!startNode) return new Set();
   const start = startNode.id;

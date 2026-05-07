@@ -25,12 +25,12 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route path="/" element={<Navigate to="/flows" replace />} />
-        <Route path="/flows" element={<FlowsListPage />} />
-        <Route path="/flows/new" element={<NewFlowPage />} />
-        <Route path="/flows/:id/edit" element={<FlowEditorPage />} />
-        <Route path="/runs" element={<RunsListPage />} />
-        <Route path="/runs/:id" element={<RunDetailPage />} />
+        <Route path="/" element={<Navigate to="/workflows" replace />} />
+        <Route path="/workflows" element={<FlowsListPage />} />
+        <Route path="/workflows/new" element={<NewFlowPage />} />
+        <Route path="/workflows/:id/edit" element={<FlowEditorPage />} />
+        <Route path="/workflow-instances" element={<RunsListPage />} />
+        <Route path="/workflow-instances/:id" element={<RunDetailPage />} />
         <Route path="/me/secrets" element={<MySecretsPage orgId={activeOrgId} />} />
         <Route path="/me/mcps" element={<MyMcpsPage orgId={activeOrgId} />} />
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
@@ -42,7 +42,7 @@ export default function App() {
         <Route path="/admin/custom-phases" element={role === "admin" ? <AdminCustomPhasesPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/coding-models" element={role === "admin" ? <AdminCodingModelsPage /> : <Navigate to="/" replace />} />
         <Route path="/admin/users" element={role === "admin" ? <AdminUsersPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
-        <Route path="/admin/flows" element={role === "admin" ? <AdminFlowsPage /> : <Navigate to="/" replace />} />
+        <Route path="/admin/workflows" element={role === "admin" ? <AdminFlowsPage /> : <Navigate to="/" replace />} />
       </Route>
     </Routes>
   );

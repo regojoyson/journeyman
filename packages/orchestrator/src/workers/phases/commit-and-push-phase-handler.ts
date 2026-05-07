@@ -65,7 +65,7 @@ export class CommitAndPushPhaseHandler implements IPhaseHandler {
       : entries;
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Commit + push ${repos.length} repo(s)${overrideMessage ? " (literal message)" : ""}`);
-    const result = await coding.commitPushRepos({ repos, issue, pattern, sessionId: ctx.runId, signal: ctx.signal });
+    const result = await coding.commitPushRepos({ repos, issue, pattern, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
     if (result?.error) {
       log.error({ result }, "commit-push failed");
       return { kind: "failure", failure: { errorClass: "CommitPushFailed", message: String(result.error), retryable: true } };

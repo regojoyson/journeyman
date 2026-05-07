@@ -1,37 +1,37 @@
 import type {
-  IFlowVersionStore, IOrchestratorEngine, IRunStore,
+  IWorkflowVersionStore, IOrchestratorEngine, IWorkflowInstanceStore,
 } from "@journeyman/core";
 
 export interface RerunDeps {
-  runs: IRunStore;
-  flowVersions: IFlowVersionStore;
+  workflowInstances: IWorkflowInstanceStore;
+  workflowVersions: IWorkflowVersionStore;
   orchestrator: IOrchestratorEngine;
 }
 
 export interface RerunResult {
-  runId: string;
+  workflowInstanceId: string;
   engineWorkflowId: string;
 }
 
-/** Submit a fresh run with the same flow version + same inputs as `originalRunId`. */
+/** Submit a fresh workflow instance with the same workflow version + same inputs as `originalWorkflowInstanceId`. */
 export async function rerunFromExisting(
   deps: RerunDeps,
-  originalRunId: string,
+  originalWorkflowInstanceId: string,
   opts: { startedByUserId?: string | null; startedByOrgId?: string | null } = {},
 ): Promise<RerunResult> {
-  const original = await deps.runs.getById(originalRunId);
-  if (!original) throw new Error(`Run not found: ${originalRunId}`);
+  const original = await deps.workflowInstances.getById(originalWorkflowInstanceId);
+  if (!original) throw new Error(`WorkflowInstance not found: ${originalWorkflowInstanceId}`);
 
-  // flowVersionId is advisory/nullable — fall back to the definition snapshot baked into the run
-  const definitionSnapshot = original.flowVersionId
-    ? ((await deps.flowVersions.getById(original.flowVersionId))?.definition ?? original.definitionSnapshot)
+  // workflowVersionId is advisory/nullable — fall back to the definition snapshot baked into the instance
+  const definitionSnapshot = original.workflowVersionId
+    ? ((await deps.workflowVersions.getById(original.workflowVersionId))?.definition ?? original.definitionSnapshot)
     : original.definitionSnapshot;
 
   return await deps.orchestrator.submit({
-    flowId: original.flowId,
-    flowVersionId: original.flowVersionId,
-    flowNameSnapshot: original.flowNameSnapshot,
-    flowScopeSnapshot: original.flowScopeSnapshot,
+    workflowId: original.workflowId,
+    workflowVersionId: original.workflowVersionId,
+    workflowNameSnapshot: original.workflowNameSnapshot,
+    workflowScopeSnapshot: original.workflowScopeSnapshot,
     definitionSnapshot,
     inputs: original.inputs ?? {},
     startedByUserId: opts.startedByUserId ?? original.startedByUserId,

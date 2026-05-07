@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { FlowGraph, Shape } from "@journeyman/core";
+import type { WorkflowGraph, Shape } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export interface UpstreamField {
@@ -21,7 +21,7 @@ export interface UpstreamSource {
 
 /** Reverse-walks graph from `nodeId`; returns sources reachable on every path (dominators only). */
 export function useUpstreamSources(
-  graph: FlowGraph,
+  graph: WorkflowGraph,
   nodeId: string,
   catalog: Record<string, PhaseCatalogEntry>,
 ): UpstreamSource[] {

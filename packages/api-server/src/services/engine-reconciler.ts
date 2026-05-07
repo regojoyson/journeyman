@@ -5,23 +5,23 @@ export interface ReconcileResult {
 }
 
 /**
- * Sync our DB with Conductor's view for a single run. Specifically:
+ * Sync our DB with Conductor's view for a single workflow instance. Specifically:
  *   - find HUMAN tasks with Conductor status IN_PROGRESS
  *   - upsert NodeExecution rows with status='waiting' and conductor_task_id
- *   - set Run.status='paused' if any HUMAN task is in progress
+ *   - set WorkflowInstance.status='paused' if any HUMAN task is in progress
  *   - emit `node.waiting` event the first time we see one
  *   - schedule timeout timers per the node's config.timeout
  *
  * Idempotent. Call before any read or resolve operation that depends on
- * "is this run waiting on a human?".
+ * "is this workflow instance waiting on a human?".
  */
-export async function reconcileRun(c: Composition, runId: string): Promise<ReconcileResult> {
-  const run = await c.runs.getById(runId);
-  if (!run || !run.engineWorkflowId) return { pendingNodeIds: [] };
+export async function reconcileWorkflowInstance(c: Composition, workflowInstanceId: string): Promise<ReconcileResult> {
+  const workflowInstance = await c.workflowInstances.getById(workflowInstanceId);
+  if (!workflowInstance || !workflowInstance.engineWorkflowId) return { pendingNodeIds: [] };
 
   let wf;
   try {
-    wf = await c.conductorClient.getWorkflowWithTasks(run.engineWorkflowId);
+    wf = await c.conductorClient.getWorkflowWithTasks(workflowInstance.engineWorkflowId);
   } catch {
     // If Conductor is unreachable we leave the DB as-is.
     return { pendingNodeIds: [] };
@@ -34,13 +34,13 @@ export async function reconcileRun(c: Composition, runId: string): Promise<Recon
   const pendingNodeIds: string[] = [];
   for (const t of humanInProgress) {
     const nodeId = t.referenceTaskName;
-    const existing = await c.nodeExecutions.latestForNode(runId, nodeId);
+    const existing = await c.nodeExecutions.latestForNode(workflowInstanceId, nodeId);
     const isNewlyWaiting = !existing || existing.status !== "waiting";
 
-    await c.nodeExecutions.markWaiting(runId, nodeId, t.taskId);
+    await c.nodeExecutions.markWaiting(workflowInstanceId, nodeId, t.taskId);
 
     if (isNewlyWaiting) {
-      const node = run.definitionSnapshot.nodes.find(n => n.id === nodeId);
+      const node = workflowInstance.definitionSnapshot.nodes.find(n => n.id === nodeId);
       const cfg = (node?.config ?? {}) as {
         prompt?: string;
         outputs?: Array<{ name: string }>;
@@ -48,7 +48,7 @@ export async function reconcileRun(c: Composition, runId: string): Promise<Recon
         timeout?: { duration: string; defaults?: Record<string, unknown> };
       };
       await c.events.append({
-        runId,
+        workflowInstanceId,
         nodeId,
         eventType: "node.waiting",
         payload: {
@@ -62,18 +62,18 @@ export async function reconcileRun(c: Composition, runId: string): Promise<Recon
         const ms = parseDurationMsLite(cfg.timeout.duration);
         const defaults = cfg.timeout.defaults ?? {};
         if (ms > 0) {
-          c.humanTaskTimeouts.schedule(runId, nodeId, ms, async () => {
+          c.humanTaskTimeouts.schedule(workflowInstanceId, nodeId, ms, async () => {
             const { resolveHumanTask } = await import("./resolve-human-task.ts");
             try {
               await resolveHumanTask(c, {
-                runId, nodeId,
+                workflowInstanceId, nodeId,
                 values: defaults,
                 payload: {},
                 actor: null,
                 source: "timeout",
               });
             } catch {
-              // Already resolved by webhook/manual or run cancelled — not an error.
+              // Already resolved by webhook/manual or workflow instance cancelled — not an error.
             }
           });
         }
@@ -83,8 +83,8 @@ export async function reconcileRun(c: Composition, runId: string): Promise<Recon
     pendingNodeIds.push(nodeId);
   }
 
-  if (humanInProgress.length > 0 && run.status !== "paused") {
-    await c.runs.setStatus(runId, "paused");
+  if (humanInProgress.length > 0 && workflowInstance.status !== "paused") {
+    await c.workflowInstances.setStatus(workflowInstanceId, "paused");
   }
 
   return { pendingNodeIds };

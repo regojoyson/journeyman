@@ -100,7 +100,7 @@ export class OpenPullRequestPhaseHandler implements IPhaseHandler {
         body,
         sourceBranch,
         targetBranch: t.base,
-        sessionId: ctx.runId,
+        sessionId: ctx.workflowInstanceId,
       });
       if (result?.error) {
         log.error({ target: t, error: result.error }, "create-pr failed for target");

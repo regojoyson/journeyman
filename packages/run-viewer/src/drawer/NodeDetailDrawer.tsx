@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { NodeExecution, RunEvent } from "@journeyman/core";
+import type { NodeExecution, WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, ResolvedNodeStatus } from "../types.ts";
 
 export interface NodeDetailDrawerProps {
   nodeId: string | null;
   displayName: string | null;
   status: ResolvedNodeStatus | null;
-  events: RunEvent[];
+  events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
   onRetryStep?: () => void;
   pendingHumanTask?: PendingHumanTask | null;

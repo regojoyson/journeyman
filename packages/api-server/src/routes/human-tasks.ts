@@ -5,11 +5,11 @@ import {
   HumanTaskNotWaitingError,
   HumanTaskMissingValueError,
 } from "../services/resolve-human-task.ts";
-import { reconcileRun } from "../services/engine-reconciler.ts";
+import { reconcileWorkflowInstance } from "../services/engine-reconciler.ts";
 
 export function registerHumanTaskRoutes(app: FastifyInstance, c: Composition): void {
-  app.post("/runs/:runId/human-tasks/:nodeId/resolve", async (req, reply) => {
-    const { runId, nodeId } = req.params as { runId: string; nodeId: string };
+  app.post("/workflow-instances/:workflowInstanceId/human-tasks/:nodeId/resolve", async (req, reply) => {
+    const { workflowInstanceId, nodeId } = req.params as { workflowInstanceId: string; nodeId: string };
     const body = (req.body ?? {}) as {
       values?: Record<string, unknown>;
       data?: unknown;
@@ -17,7 +17,7 @@ export function registerHumanTaskRoutes(app: FastifyInstance, c: Composition): v
     };
 
     // Make sure DB reflects current Conductor state before we try to resolve.
-    await reconcileRun(c, runId);
+    await reconcileWorkflowInstance(c, workflowInstanceId);
 
     const session = (req as unknown as { session?: { userId?: string | null } }).session;
     const actor = session?.userId ?? null;
@@ -34,7 +34,7 @@ export function registerHumanTaskRoutes(app: FastifyInstance, c: Composition): v
 
     try {
       await resolveHumanTask(c, {
-        runId,
+        workflowInstanceId,
         nodeId,
         values,
         payload,

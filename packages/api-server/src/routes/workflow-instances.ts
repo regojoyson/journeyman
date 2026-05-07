@@ -3,12 +3,12 @@ import type { Composition } from "../composition.ts";
 import { openSseStream } from "../sse/sse-stream.ts";
 import {
   isPauseableEngine, isRetryableEngine,
-  type ActorContext, type RunGrantRole, type RunListScope, type RunStatus,
+  type ActorContext, type WorkflowInstanceGrantRole, type WorkflowInstanceListScope, type WorkflowInstanceStatus,
 } from "@journeyman/core";
-import { rerunFromExisting, forkFromRun } from "@journeyman/orchestrator";
+import { rerunFromExisting, forkFromWorkflowInstance } from "@journeyman/orchestrator";
 import { makeRequireAuth } from "@journeyman/identity";
-import { makeRequireRunRole } from "../auth/require-run-role.ts";
-import { reconcileRun } from "../services/engine-reconciler.ts";
+import { makeRequireWorkflowInstanceRole } from "../auth/require-run-role.ts";
+import { reconcileWorkflowInstance } from "../services/engine-reconciler.ts";
 
 const PING_INTERVAL_MS = 15_000;
 
@@ -22,13 +22,13 @@ function actorFrom(req: FastifyRequest): ActorContext {
   };
 }
 
-export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
+export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
-  const requireRunRole = makeRequireRunRole(c);
+  const requireWorkflowInstanceRole = makeRequireWorkflowInstanceRole(c);
 
-  app.get("/runs", { preHandler: requireAuth() }, async (req, reply) => {
-    const q = req.query as { flow_id?: string; status?: string; limit?: string; scope?: string; provider?: string; issue_ref?: string };
-    const scope = q.scope as RunListScope | undefined;
+  app.get("/workflow-instances", { preHandler: requireAuth() }, async (req, reply) => {
+    const q = req.query as { workflow_id?: string; status?: string; limit?: string; scope?: string; provider?: string; issue_ref?: string };
+    const scope = q.scope as WorkflowInstanceListScope | undefined;
     const actor = actorFrom(req);
 
     if (scope === "all" && !actor.isPlatformAdmin) {
@@ -36,9 +36,9 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       return { error: "platform_admin_required" };
     }
 
-    const runs = await c.runs.list({
-      flowId: q.flow_id,
-      status: q.status as RunStatus | undefined,
+    const workflowInstances = await c.workflowInstances.list({
+      workflowId: q.workflow_id,
+      status: q.status as WorkflowInstanceStatus | undefined,
       limit: q.limit ? Number(q.limit) : undefined,
       actor,
       scope,
@@ -46,24 +46,24 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       issueRef: q.issue_ref,
     });
 
-    const roleMap = await c.runGrants.matchForActor(actor, runs.map(r => r.id));
-    const hydrated = runs.map(r => ({ ...r, effectiveRole: roleMap.get(r.id) ?? null }));
-    return { runs: hydrated };
+    const roleMap = await c.workflowInstanceGrants.matchForActor(actor, workflowInstances.map(r => r.id));
+    const hydrated = workflowInstances.map(r => ({ ...r, effectiveRole: roleMap.get(r.id) ?? null }));
+    return { workflowInstances: hydrated };
   });
 
-  app.get("/runs/:id",
-    { preHandler: [requireAuth(), requireRunRole("viewer")] },
+  app.get("/workflow-instances/:id",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("viewer")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       await c.orchestrator.syncStatus(id).catch(() => { /* best-effort */ });
-      await reconcileRun(c, id).catch(() => { /* best-effort */ });
-      const run = await c.runs.getById(id);
-      if (!run) { reply.code(404); return { error: "not_found" }; }
-      const executions = await c.nodeExecutions.listByRun(id);
+      await reconcileWorkflowInstance(c, id).catch(() => { /* best-effort */ });
+      const workflowInstance = await c.workflowInstances.getById(id);
+      if (!workflowInstance) { reply.code(404); return { error: "not_found" }; }
+      const executions = await c.nodeExecutions.listByWorkflowInstance(id);
       const events = await c.events.list(id, { limit: 500 });
-      const effectiveRunRole = (req as any).effectiveRunRole as RunGrantRole | undefined;
-      const webhookEvent = run.webhookEventId
-        ? await c.webhookEvents.getById(run.webhookEventId)
+      const effectiveWorkflowInstanceRole = (req as any).effectiveWorkflowInstanceRole as WorkflowInstanceGrantRole | undefined;
+      const webhookEvent = workflowInstance.webhookEventId
+        ? await c.webhookEvents.getById(workflowInstance.webhookEventId)
         : null;
       const webhookEventSummary = webhookEvent ? {
         id: webhookEvent.id,
@@ -75,7 +75,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
         rawPayload: webhookEvent.rawPayload,
       } : null;
 
-      const waitingExec = await c.nodeExecutions.latestWaitingForRun(id);
+      const waitingExec = await c.nodeExecutions.latestWaitingForInstance(id);
       let pendingHumanTask: {
         nodeId: string;
         prompt?: string;
@@ -91,7 +91,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
         timeout?: { durationMs: number };
       } | null = null;
       if (waitingExec) {
-        const node = run.definitionSnapshot.nodes.find(n => n.id === waitingExec.nodeId);
+        const node = workflowInstance.definitionSnapshot.nodes.find(n => n.id === waitingExec.nodeId);
         if (node?.type === "human-task") {
           const cfg = (node.config ?? {}) as {
             prompt?: string;
@@ -120,7 +120,7 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
       const humanTaskHistory = await c.humanTaskResolutions.listForRun(id);
 
       return {
-        run: { ...run, effectiveRole: effectiveRunRole ?? null },
+        workflowInstance: { ...workflowInstance, effectiveRole: effectiveWorkflowInstanceRole ?? null },
         executions,
         events,
         webhookEvent: webhookEventSummary,
@@ -130,15 +130,15 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.get("/runs/:id/events",
-    { preHandler: [requireAuth(), requireRunRole("viewer")] },
+  app.get("/workflow-instances/:id/events",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("viewer")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       const sinceId = (req.query as { since?: string }).since;
       const since = sinceId ? Number(sinceId) : 0;
 
-      const run = await c.runs.getById(id);
-      if (!run) { reply.code(404); return { error: "not_found" }; }
+      const workflowInstance = await c.workflowInstances.getById(id);
+      if (!workflowInstance) { reply.code(404); return { error: "not_found" }; }
 
       const stream = openSseStream(reply);
       const ping = setInterval(() => stream.ping(), PING_INTERVAL_MS);
@@ -155,7 +155,11 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
         for await (const ev of c.events.subscribe(id, { sinceId: start })) {
           if (closed) break;
           stream.send({ id: ev.id, event: ev.eventType, data: ev });
-          if (ev.eventType === "run.completed" || ev.eventType === "run.failed" || ev.eventType === "run.cancelled") {
+          if (
+            ev.eventType === "workflow_instance.completed" ||
+            ev.eventType === "workflow_instance.failed" ||
+            ev.eventType === "workflow_instance.cancelled"
+          ) {
             setTimeout(() => stream.close(), 500);
             break;
           }
@@ -167,8 +171,8 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/cancel",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/cancel",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req) => {
       const { id } = req.params as { id: string };
       const body = (req.body ?? {}) as { reason?: string };
@@ -177,8 +181,8 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/pause",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/pause",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       if (!isPauseableEngine(c.orchestrator)) {
@@ -189,8 +193,8 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/resume",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/resume",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       if (!isPauseableEngine(c.orchestrator)) {
@@ -201,8 +205,8 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/retry-step",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/retry-step",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       const body = (req.body ?? {}) as { node_id?: string };
@@ -214,13 +218,13 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/rerun",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/rerun",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       const ctx = req.runContext!;
       const result = await rerunFromExisting(
-        { runs: c.runs, flowVersions: c.flowVersions, orchestrator: c.orchestrator },
+        { workflowInstances: c.workflowInstances, workflowVersions: c.workflowVersions, orchestrator: c.orchestrator },
         id,
         { startedByUserId: ctx.user.id, startedByOrgId: ctx.org.id },
       );
@@ -229,14 +233,14 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.post("/runs/:id/fork",
-    { preHandler: [requireAuth(), requireRunRole("owner")] },
+  app.post("/workflow-instances/:id/fork",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("owner")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       const body = (req.body ?? {}) as { name?: string };
       const ctx = req.runContext!;
-      const result = await forkFromRun(
-        { runs: c.runs, flows: c.flows, flowVersions: c.flowVersions },
+      const result = await forkFromWorkflowInstance(
+        { workflowInstances: c.workflowInstances, workflows: c.workflows, workflowVersions: c.workflowVersions },
         id,
         { name: body.name, createdByUserId: ctx.user.id, ownerUserId: ctx.user.id },
       );
@@ -245,20 +249,20 @@ export function registerRunRoutes(app: FastifyInstance, c: Composition): void {
     },
   );
 
-  app.get("/runs/:id/export",
-    { preHandler: [requireAuth(), requireRunRole("viewer")] },
+  app.get("/workflow-instances/:id/export",
+    { preHandler: [requireAuth(), requireWorkflowInstanceRole("viewer")] },
     async (req, reply) => {
       const { id } = req.params as { id: string };
-      const run = await c.runs.getById(id);
-      if (!run) { reply.code(404); return { error: "not_found" }; }
-      const version = run.flowVersionId ? await c.flowVersions.getById(run.flowVersionId) : null;
-      const executions = await c.nodeExecutions.listByRun(id);
+      const workflowInstance = await c.workflowInstances.getById(id);
+      if (!workflowInstance) { reply.code(404); return { error: "not_found" }; }
+      const version = workflowInstance.workflowVersionId ? await c.workflowVersions.getById(workflowInstance.workflowVersionId) : null;
+      const executions = await c.nodeExecutions.listByWorkflowInstance(id);
       const events = await c.events.list(id, { limit: 5000 });
       reply.header("Content-Type", "application/json");
-      reply.header("Content-Disposition", `attachment; filename="run-${id}.json"`);
+      reply.header("Content-Disposition", `attachment; filename="workflow-instance-${id}.json"`);
       return {
         exportedAt: new Date().toISOString(),
-        run, version, executions, events,
+        workflowInstance, version, executions, events,
       };
     },
   );

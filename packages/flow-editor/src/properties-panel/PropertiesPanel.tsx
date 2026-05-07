@@ -1,8 +1,8 @@
 // packages/flow-editor/src/properties-panel/PropertiesPanel.tsx
 import { useState } from "react";
-import type { FlowGraph, FlowNode } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 
-function EndNodeConfig({ node, onChange, readOnly }: { node: FlowNode; onChange: (next: FlowNode) => void; readOnly?: boolean }) {
+function EndNodeConfig({ node, onChange, readOnly }: { node: WorkflowNode; onChange: (next: WorkflowNode) => void; readOnly?: boolean }) {
   return (
     <div>
       <div className="je-props__field">
@@ -45,11 +45,11 @@ import { ControlNodeConfigTab } from "./ControlNodeConfigTab.tsx";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 
 export interface PropertiesPanelProps {
-  flow: FlowGraph;
-  node: FlowNode | null;
+  flow: WorkflowGraph;
+  node: WorkflowNode | null;
   mcpCatalog: McpCatalog;
   orgId: string;
-  onChange: (next: FlowNode) => void;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 

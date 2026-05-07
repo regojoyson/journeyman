@@ -1,15 +1,16 @@
 import type { Pool } from "pg";
 import type {
-  ActorContext, CreateRunArgs, INodeExecutionStore, IRunStore, NodeExecution, Run, RunListScope, RunStatus,
+  ActorContext, CreateWorkflowInstanceArgs, INodeExecutionStore, IWorkflowInstanceStore,
+  NodeExecution, WorkflowInstance, WorkflowInstanceListScope, WorkflowInstanceStatus,
 } from "@journeyman/core";
 
-function rowToRun(row: any): Run {
+function rowToWorkflowInstance(row: any): WorkflowInstance {
   return {
     id: row.id,
-    flowId: row.flow_id,
-    flowVersionId: row.flow_version_id,
-    flowNameSnapshot: row.flow_name_snapshot,
-    flowScopeSnapshot: row.flow_scope_snapshot,
+    workflowId: row.workflow_id,
+    workflowVersionId: row.workflow_version_id,
+    workflowNameSnapshot: row.workflow_name_snapshot,
+    workflowScopeSnapshot: row.workflow_scope_snapshot,
     definitionSnapshot: row.definition_snapshot,
     status: row.status,
     triggerSource: row.trigger_source,
@@ -28,7 +29,7 @@ function rowToRun(row: any): Run {
 
 function grantMatchSql(
   actor: ActorContext,
-  scope: RunListScope | undefined,
+  scope: WorkflowInstanceListScope | undefined,
   params: any[],
   nextIdx: () => number,
 ): string {
@@ -64,53 +65,53 @@ function grantMatchSql(
   return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
 }
 
-export class PostgresRunStore implements IRunStore {
+export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
   constructor(private pool: Pool) {}
 
-  async create(args: CreateRunArgs): Promise<Run> {
+  async create(args: CreateWorkflowInstanceArgs): Promise<WorkflowInstance> {
     const { rows } = await this.pool.query(
-      `INSERT INTO jm_runs
-         (flow_id, flow_version_id, flow_name_snapshot, flow_scope_snapshot, definition_snapshot,
+      `INSERT INTO jm_workflow_instances
+         (workflow_id, workflow_version_id, workflow_name_snapshot, workflow_scope_snapshot, definition_snapshot,
           status, trigger_source, started_by_user_id, inputs, webhook_event_id)
        VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9)
        RETURNING *`,
       [
-        args.flowId, args.flowVersionId,
-        args.flowNameSnapshot, args.flowScopeSnapshot,
+        args.workflowId, args.workflowVersionId,
+        args.workflowNameSnapshot, args.workflowScopeSnapshot,
         JSON.stringify(args.definitionSnapshot),
         args.triggerSource, args.startedByUserId,
         JSON.stringify(args.inputs),
         args.webhookEventId ?? null,
       ],
     );
-    return rowToRun(rows[0]);
+    return rowToWorkflowInstance(rows[0]);
   }
 
-  async getById(runId: string): Promise<Run | null> {
-    const { rows } = await this.pool.query("SELECT * FROM jm_runs WHERE id = $1", [runId]);
-    return rows[0] ? rowToRun(rows[0]) : null;
+  async getById(workflowInstanceId: string): Promise<WorkflowInstance | null> {
+    const { rows } = await this.pool.query("SELECT * FROM jm_workflow_instances WHERE id = $1", [workflowInstanceId]);
+    return rows[0] ? rowToWorkflowInstance(rows[0]) : null;
   }
 
-  async setEngineWorkflowId(runId: string, engineWorkflowId: string): Promise<void> {
+  async setEngineWorkflowId(workflowInstanceId: string, engineWorkflowId: string): Promise<void> {
     await this.pool.query(
-      "UPDATE jm_runs SET engine_workflow_id = $1 WHERE id = $2", [engineWorkflowId, runId],
+      "UPDATE jm_workflow_instances SET engine_workflow_id = $1 WHERE id = $2", [engineWorkflowId, workflowInstanceId],
     );
   }
 
-  async setAttemptNumber(runId: string, attemptNumber: number): Promise<void> {
+  async setAttemptNumber(workflowInstanceId: string, attemptNumber: number): Promise<void> {
     await this.pool.query(
-      "UPDATE jm_runs SET attempt_number = $1 WHERE id = $2", [attemptNumber, runId],
+      "UPDATE jm_workflow_instances SET attempt_number = $1 WHERE id = $2", [attemptNumber, workflowInstanceId],
     );
   }
 
-  async setStatus(runId: string, status: RunStatus, opts: {
+  async setStatus(workflowInstanceId: string, status: WorkflowInstanceStatus, opts: {
     failedAtNodeId?: string;
     completedAt?: Date;
     durationMs?: number;
     outputs?: Record<string, unknown>;
   } = {}): Promise<void> {
     await this.pool.query(
-      `UPDATE jm_runs SET
+      `UPDATE jm_workflow_instances SET
          status = $1,
          failed_at_node_id = COALESCE($2, failed_at_node_id),
          completed_at = COALESCE($3, completed_at),
@@ -124,29 +125,29 @@ export class PostgresRunStore implements IRunStore {
         opts.completedAt ?? null,
         opts.durationMs ?? null,
         opts.outputs ? JSON.stringify(opts.outputs) : null,
-        runId,
+        workflowInstanceId,
       ],
     );
   }
 
   async list(opts: {
-    flowId?: string;
-    status?: import("@journeyman/core").RunStatus;
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
     limit?: number;
     actor?: ActorContext;
-    scope?: RunListScope;
+    scope?: WorkflowInstanceListScope;
     provider?: string;
     issueRef?: string;
-  } = {}): Promise<import("@journeyman/core").Run[]> {
+  } = {}): Promise<WorkflowInstance[]> {
     const conds: string[] = [];
     const params: any[] = [];
     let i = 1;
     const nextIdx = () => i++;
 
-    if (opts.flowId)   { conds.push(`r.flow_id = $${nextIdx()}`);    params.push(opts.flowId); }
-    if (opts.status)   { conds.push(`r.status = $${nextIdx()}`);     params.push(opts.status); }
-    if (opts.provider) { conds.push(`w.provider = $${nextIdx()}`);   params.push(opts.provider); }
-    if (opts.issueRef) { conds.push(`w.issue_ref = $${nextIdx()}`);  params.push(opts.issueRef); }
+    if (opts.workflowId) { conds.push(`r.workflow_id = $${nextIdx()}`);   params.push(opts.workflowId); }
+    if (opts.status)     { conds.push(`r.status = $${nextIdx()}`);         params.push(opts.status); }
+    if (opts.provider)   { conds.push(`w.provider = $${nextIdx()}`);       params.push(opts.provider); }
+    if (opts.issueRef)   { conds.push(`w.issue_ref = $${nextIdx()}`);      params.push(opts.issueRef); }
 
     const webhookJoin = (opts.provider || opts.issueRef)
       ? "LEFT JOIN jm_webhook_events w ON r.webhook_event_id = w.id"
@@ -156,8 +157,8 @@ export class PostgresRunStore implements IRunStore {
     if (opts.actor && !(opts.actor.isPlatformAdmin && opts.scope === "all")) {
       joinClause = `
       JOIN LATERAL (
-        SELECT 1 FROM jm_run_grants g
-        WHERE g.run_id = r.id
+        SELECT 1 FROM jm_workflow_instance_grants g
+        WHERE g.workflow_instance_id = r.id
           AND ${grantMatchSql(opts.actor, opts.scope, params, nextIdx)}
         LIMIT 1
       ) gm ON TRUE
@@ -169,7 +170,7 @@ export class PostgresRunStore implements IRunStore {
     if (opts.limit) params.push(opts.limit);
 
     const sql = `
-    SELECT DISTINCT r.* FROM jm_runs r
+    SELECT DISTINCT r.* FROM jm_workflow_instances r
     ${webhookJoin}
     ${joinClause}
     ${whereSql}
@@ -177,34 +178,34 @@ export class PostgresRunStore implements IRunStore {
     ${limitSql}
   `;
     const { rows } = await this.pool.query(sql, params);
-    return rows.map(rowToRun);
+    return rows.map(rowToWorkflowInstance);
   }
 
-  async findPausedRunsByIssueRef(issueRef: string): Promise<import("@journeyman/core").Run[]> {
+  async findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
     const { rows } = await this.pool.query(
-      `SELECT * FROM jm_runs
+      `SELECT * FROM jm_workflow_instances
        WHERE status = 'paused' AND (inputs->>'issueRef') = $1
        ORDER BY started_at DESC NULLS LAST`,
       [issueRef],
     );
-    return rows.map(rowToRun);
+    return rows.map(rowToWorkflowInstance);
   }
 
-  async findActiveRunsByIssueRef(issueRef: string): Promise<import("@journeyman/core").Run[]> {
+  async findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
     const { rows } = await this.pool.query(
-      `SELECT * FROM jm_runs
+      `SELECT * FROM jm_workflow_instances
        WHERE status IN ('pending','running','paused') AND (inputs->>'issueRef') = $1
        ORDER BY started_at DESC NULLS LAST`,
       [issueRef],
     );
-    return rows.map(rowToRun);
+    return rows.map(rowToWorkflowInstance);
   }
 }
 
 function rowToExec(row: any): NodeExecution {
   return {
     id: row.id,
-    runId: row.run_id,
+    workflowInstanceId: row.workflow_instance_id,
     nodeId: row.node_id,
     attempt: row.attempt,
     status: row.status,
@@ -224,10 +225,10 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
   async upsert(e: NodeExecution): Promise<void> {
     await this.pool.query(
       `INSERT INTO jm_node_executions
-         (id, run_id, node_id, attempt, status, started_at, completed_at,
+         (id, workflow_instance_id, node_id, attempt, status, started_at, completed_at,
           input, output, error_class, error_message)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11)
-       ON CONFLICT (run_id, node_id, attempt) DO UPDATE SET
+       ON CONFLICT (workflow_instance_id, node_id, attempt) DO UPDATE SET
          status = EXCLUDED.status,
          started_at = EXCLUDED.started_at,
          completed_at = EXCLUDED.completed_at,
@@ -235,7 +236,7 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
          error_class = EXCLUDED.error_class,
          error_message = EXCLUDED.error_message`,
       [
-        e.id, e.runId, e.nodeId, e.attempt, e.status,
+        e.id, e.workflowInstanceId, e.nodeId, e.attempt, e.status,
         e.startedAt, e.completedAt,
         JSON.stringify(e.input),
         e.output ? JSON.stringify(e.output) : null,
@@ -244,24 +245,24 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
     );
   }
 
-  async listByRun(runId: string): Promise<NodeExecution[]> {
+  async listByWorkflowInstance(workflowInstanceId: string): Promise<NodeExecution[]> {
     const { rows } = await this.pool.query(
-      "SELECT * FROM jm_node_executions WHERE run_id = $1 ORDER BY started_at NULLS LAST",
-      [runId],
+      "SELECT * FROM jm_node_executions WHERE workflow_instance_id = $1 ORDER BY started_at NULLS LAST",
+      [workflowInstanceId],
     );
     return rows.map(rowToExec);
   }
 
-  async markWaiting(runId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
+  async markWaiting(workflowInstanceId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_node_executions
-         (run_id, node_id, attempt, status, started_at, input, conductor_task_id)
+         (workflow_instance_id, node_id, attempt, status, started_at, input, conductor_task_id)
        VALUES ($1, $2, 1, 'waiting', now(), '{}'::jsonb, $3)
-       ON CONFLICT (run_id, node_id, attempt) DO UPDATE SET
+       ON CONFLICT (workflow_instance_id, node_id, attempt) DO UPDATE SET
          status = 'waiting',
          conductor_task_id = EXCLUDED.conductor_task_id
        RETURNING *`,
-      [runId, nodeId, conductorTaskId],
+      [workflowInstanceId, nodeId, conductorTaskId],
     );
     return rowToExec(rows[0]);
   }
@@ -277,22 +278,22 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
     return rowToExec(rows[0]);
   }
 
-  async latestForNode(runId: string, nodeId: string): Promise<NodeExecution | null> {
+  async latestForNode(workflowInstanceId: string, nodeId: string): Promise<NodeExecution | null> {
     const { rows } = await this.pool.query(
       `SELECT * FROM jm_node_executions
-       WHERE run_id = $1 AND node_id = $2
+       WHERE workflow_instance_id = $1 AND node_id = $2
        ORDER BY started_at DESC NULLS LAST LIMIT 1`,
-      [runId, nodeId],
+      [workflowInstanceId, nodeId],
     );
     return rows[0] ? rowToExec(rows[0]) : null;
   }
 
-  async latestWaitingForRun(runId: string): Promise<NodeExecution | null> {
+  async latestWaitingForInstance(workflowInstanceId: string): Promise<NodeExecution | null> {
     const { rows } = await this.pool.query(
       `SELECT * FROM jm_node_executions
-       WHERE run_id = $1 AND status = 'waiting'
+       WHERE workflow_instance_id = $1 AND status = 'waiting'
        ORDER BY started_at DESC NULLS LAST LIMIT 1`,
-      [runId],
+      [workflowInstanceId],
     );
     return rows[0] ? rowToExec(rows[0]) : null;
   }

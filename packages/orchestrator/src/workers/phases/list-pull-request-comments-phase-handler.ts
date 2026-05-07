@@ -15,7 +15,7 @@ export class ListPullRequestCommentsPhaseHandler implements IPhaseHandler {
     }
     const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Fetch PR comments ${prUrl}`);
-    const result = await git.listPRComments({ prUrl, sinceIso, sessionId: ctx.runId });
+    const result = await git.listPRComments({ prUrl, sinceIso, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "fetch-pr-comments failed");
       return { kind: "failure", failure: { errorClass: "FetchPrCommentsFailed", message: String(result.error), retryable: true } };

@@ -1,4 +1,4 @@
-import type { Flow, FlowGraph, FlowSaveWarning, FlowVersion, PublishError } from "@journeyman/core";
+import type { Workflow, WorkflowGraph, WorkflowSaveWarning, WorkflowVersion, PublishError } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
 
 export interface UnpublishWarning {
@@ -7,14 +7,14 @@ export interface UnpublishWarning {
 }
 
 export async function publishFlow(
-  flowId: string,
-): Promise<{ ok: true; flow: Flow } | { ok: false; errors: PublishError[] }> {
+  workflowId: string,
+): Promise<{ ok: true; workflow: Workflow } | { ok: false; errors: PublishError[] }> {
   try {
-    const res = await api<{ flow: Flow }>(
-      `/flows/${encodeURIComponent(flowId)}/publish`,
+    const res = await api<{ workflow: Workflow }>(
+      `/workflows/${encodeURIComponent(workflowId)}/publish`,
       { method: "POST", body: "{}" },
     );
-    return { ok: true, flow: res.flow };
+    return { ok: true, workflow: res.workflow };
   } catch (e) {
     if (e instanceof ApiError && e.status === 400) {
       const body = e.body as { errors?: PublishError[] } | null;
@@ -24,20 +24,16 @@ export async function publishFlow(
   }
 }
 
-/**
- * Unpublish flow. Returns the warning shape (with the flow still Ready) when
- * the server demands confirmation; returns the flipped flow when it succeeds.
- */
 export async function unpublishFlow(
-  flowId: string,
+  workflowId: string,
   confirm: boolean,
-): Promise<{ ok: true; flow: Flow } | { ok: false; warning: UnpublishWarning }> {
+): Promise<{ ok: true; workflow: Workflow } | { ok: false; warning: UnpublishWarning }> {
   try {
-    const res = await api<{ flow: Flow }>(
-      `/flows/${encodeURIComponent(flowId)}/unpublish`,
+    const res = await api<{ workflow: Workflow }>(
+      `/workflows/${encodeURIComponent(workflowId)}/unpublish`,
       { method: "POST", body: JSON.stringify({ confirm }) },
     );
-    return { ok: true, flow: res.flow };
+    return { ok: true, workflow: res.workflow };
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
       const body = e.body as { warning?: UnpublishWarning } | null;
@@ -49,19 +45,19 @@ export async function unpublishFlow(
 
 export async function listFlows(
   filter?: { scope?: "user" | "org" | "global"; orgId?: string },
-): Promise<Flow[]> {
+): Promise<Workflow[]> {
   const params = new URLSearchParams();
   if (filter?.scope) params.set("scope", filter.scope);
   if (filter?.orgId) params.set("orgId", filter.orgId);
   const qs = params.toString();
-  const res = await api<{ flows: Flow[] }>(`/flows${qs ? `?${qs}` : ""}`);
-  return res.flows;
+  const res = await api<{ workflows: Workflow[] }>(`/workflows${qs ? `?${qs}` : ""}`);
+  return res.workflows;
 }
 
-export async function getFlow(id: string): Promise<Flow | null> {
+export async function getFlow(id: string): Promise<Workflow | null> {
   try {
-    const res = await api<{ flow: Flow }>(`/flows/${encodeURIComponent(id)}`);
-    return res.flow;
+    const res = await api<{ workflow: Workflow }>(`/workflows/${encodeURIComponent(id)}`);
+    return res.workflow;
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;
@@ -73,39 +69,39 @@ export async function createFlow(args: {
   orgId?: string;
   name: string;
   description?: string;
-  definition: FlowGraph;
-}): Promise<{ flow: Flow; version: FlowVersion }> {
-  return await api<{ flow: Flow; version: FlowVersion }>("/flows", {
+  definition: WorkflowGraph;
+}): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
+  return await api<{ workflow: Workflow; version: WorkflowVersion }>("/workflows", {
     method: "POST", body: JSON.stringify(args),
   });
 }
 
-export async function updateFlowDefinition(flowId: string, definition: FlowGraph): Promise<{ flow: Flow; version: FlowVersion | null }> {
-  return await api<{ flow: Flow; version: FlowVersion | null }>(
-    `/flows/${encodeURIComponent(flowId)}`,
+export async function updateFlowDefinition(workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
+  return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
+    `/workflows/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify({ definition }) },
   );
 }
 
 export async function updateFlowMeta(
-  flowId: string,
+  workflowId: string,
   meta: { name?: string; description?: string },
-): Promise<{ flow: Flow; version: FlowVersion | null }> {
-  return await api<{ flow: Flow; version: FlowVersion | null }>(
-    `/flows/${encodeURIComponent(flowId)}`,
+): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
+  return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
+    `/workflows/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify(meta) },
   );
 }
 
-export async function runFlow(flowId: string, inputs: Record<string, unknown>): Promise<{ runId: string; engineWorkflowId: string }> {
-  return await api<{ runId: string; engineWorkflowId: string }>(
-    `/flows/${encodeURIComponent(flowId)}/runs`,
+export async function runFlow(workflowId: string, inputs: Record<string, unknown>): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+  return await api<{ workflowInstanceId: string; engineWorkflowId: string }>(
+    `/workflows/${encodeURIComponent(workflowId)}/workflow-instances`,
     { method: "POST", body: JSON.stringify({ inputs }) },
   );
 }
 
-export async function getCurrentFlowVersion(flowId: string): Promise<FlowVersion> {
-  const res = await api<{ version: FlowVersion }>(`/flows/${encodeURIComponent(flowId)}/versions/current`);
+export async function getCurrentWorkflowVersion(workflowId: string): Promise<WorkflowVersion> {
+  const res = await api<{ version: WorkflowVersion }>(`/workflows/${encodeURIComponent(workflowId)}/versions/current`);
   return res.version;
 }
 
@@ -114,13 +110,12 @@ export interface FlowValidationReport {
   errors: string[];
   missing: string[];
   warnings: string[];
-  secretWarnings: FlowSaveWarning[];
+  secretWarnings: WorkflowSaveWarning[];
 }
 
-/** Non-destructive validation. Returns the full report; never throws on validation issues. */
-export async function validateFlowDefinition(definition: FlowGraph): Promise<FlowValidationReport> {
+export async function validateFlowDefinition(definition: WorkflowGraph): Promise<FlowValidationReport> {
   return await api<FlowValidationReport>(
-    "/flows/validate",
+    "/workflows/validate",
     { method: "POST", body: JSON.stringify({ definition }) },
   );
 }

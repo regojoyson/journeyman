@@ -1,24 +1,25 @@
 import { createLogger } from "@journeyman/core";
 import type {
-  IEventBus, IOrchestratorEngine, IRunStore, RunEventType, RunStatus,
+  IEventBus, IOrchestratorEngine, IWorkflowInstanceStore,
+  WorkflowInstanceEventType, WorkflowInstanceStatus,
 } from "@journeyman/core";
 
 const log = createLogger("orchestrator:syncer");
 
-export interface RunSyncerDeps {
-  runs: IRunStore;
+export interface WorkflowInstanceSyncerDeps {
+  workflowInstances: IWorkflowInstanceStore;
   orchestrator: IOrchestratorEngine;
   events: IEventBus;
   intervalMs?: number;
 }
 
-const NON_TERMINAL: RunStatus[] = ["pending", "running", "paused"];
+const NON_TERMINAL: WorkflowInstanceStatus[] = ["pending", "running", "paused"];
 
-export class RunSyncer {
+export class WorkflowInstanceSyncer {
   private running = false;
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private deps: RunSyncerDeps) {}
+  constructor(private deps: WorkflowInstanceSyncerDeps) {}
 
   start(): void {
     if (this.running) return;
@@ -38,16 +39,15 @@ export class RunSyncer {
     this.timer = null;
   }
 
-  /** Test seam. */
   async syncOnce(): Promise<void> {
     const lists = await Promise.all(
-      NON_TERMINAL.map(s => this.deps.runs.list({ status: s, limit: 200 })),
+      NON_TERMINAL.map(s => this.deps.workflowInstances.list({ status: s, limit: 200 })),
     );
     const allActive = lists.flat();
-    for (const r of allActive) {
-      const previous = r.status;
-      const live = await this.deps.orchestrator.syncStatus(r.id).catch((err) => {
-        log.warn({ runId: r.id, err: err?.message }, "syncStatus failed");
+    for (const instance of allActive) {
+      const previous = instance.status;
+      const live = await this.deps.orchestrator.syncStatus(instance.id).catch((err) => {
+        log.warn({ workflowInstanceId: instance.id, err: err?.message }, "syncStatus failed");
         return null;
       });
       if (!live || live === previous) continue;
@@ -55,7 +55,7 @@ export class RunSyncer {
       const eventType = mapStatusToEvent(live);
       if (eventType) {
         await this.deps.events.append({
-          runId: r.id,
+          workflowInstanceId: instance.id,
           eventType,
           payload: { status: live, previousStatus: previous },
         });
@@ -64,12 +64,12 @@ export class RunSyncer {
   }
 }
 
-function mapStatusToEvent(s: RunStatus): RunEventType | null {
+function mapStatusToEvent(s: WorkflowInstanceStatus): WorkflowInstanceEventType | null {
   switch (s) {
-    case "running":   return "run.started";
-    case "completed": return "run.completed";
-    case "failed":    return "run.failed";
-    case "cancelled": return "run.cancelled";
+    case "running":   return "workflow_instance.started";
+    case "completed": return "workflow_instance.completed";
+    case "failed":    return "workflow_instance.failed";
+    case "cancelled": return "workflow_instance.cancelled";
     default:          return null;
   }
 }

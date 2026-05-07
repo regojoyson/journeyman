@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { FlowDefaults } from "@journeyman/core";
+import type { WorkflowDefaults } from "@journeyman/core";
 import { CodingModelSelect } from "../components/CodingModelSelect.tsx";
 
 interface Props {
-  defaults: FlowDefaults;
-  onChange: (next: FlowDefaults) => void;
+  defaults: WorkflowDefaults;
+  onChange: (next: WorkflowDefaults) => void;
   readOnly?: boolean;
 }
 

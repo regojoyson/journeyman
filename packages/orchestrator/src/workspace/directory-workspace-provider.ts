@@ -10,10 +10,10 @@ export interface DirectoryWorkspaceConfig {
 export class DirectoryWorkspaceProvider implements IWorkspaceProvider {
   constructor(private cfg: DirectoryWorkspaceConfig = {}) {}
 
-  async create(opts: { runId: string; nodeId: string; userId?: string | null }): Promise<IWorkspace> {
+  async create(opts: { workflowInstanceId: string; nodeId: string; userId?: string | null }): Promise<IWorkspace> {
     const base = this.cfg.baseDir ?? join(tmpdir(), "journeyman-workspaces");
     const userSeg = opts.userId ?? "anonymous";
-    const path = join(base, userSeg, opts.runId, opts.nodeId);
+    const path = join(base, userSeg, opts.workflowInstanceId, opts.nodeId);
     await mkdir(path, { recursive: true });
     return {
       path,

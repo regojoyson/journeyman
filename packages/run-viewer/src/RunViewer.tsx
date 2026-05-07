@@ -1,22 +1,22 @@
 import { useMemo, useState } from "react";
 import { ReadOnlyCanvas } from "./canvas/ReadOnlyCanvas.tsx";
 import { NodeDetailDrawer } from "./drawer/NodeDetailDrawer.tsx";
-import { RunTopbar } from "./topbar/RunTopbar.tsx";
+import { WorkflowInstanceTopbar } from "./topbar/RunTopbar.tsx";
 import { computeNodeStatuses } from "./status/compute-node-status.ts";
-import type { RunViewerProps } from "./types.ts";
+import type { WorkflowInstanceViewerProps } from "./types.ts";
 // Pull in flow-editor styles so PhaseNode (`je-node*`) and ReactFlow handle/edge
-// overrides render correctly — RunViewer reuses the editor's node components.
+// overrides render correctly — WorkflowInstanceViewer reuses the editor's node components.
 import "@journeyman/flow-editor/styles.css";
 import "./styles.css";
 
-export function RunViewer(props: RunViewerProps & { flowName?: string }) {
+export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { workflowName?: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(props.initialSelectedNodeId ?? null);
 
   const statuses = useMemo(() => computeNodeStatuses({
-    flow: props.flow, events: props.events, executions: props.executions, runStatus: props.run.status,
-  }), [props.flow, props.events, props.executions, props.run.status]);
+    workflow: props.workflow, events: props.events, executions: props.executions, workflowInstanceStatus: props.workflowInstance.status,
+  }), [props.workflow, props.events, props.executions, props.workflowInstance.status]);
 
-  const selectedNode = props.flow.nodes.find(n => n.id === selectedNodeId) ?? null;
+  const selectedNode = props.workflow.nodes.find(n => n.id === selectedNodeId) ?? null;
   const selectedDisplayName = selectedNode?.displayName ?? selectedNode?.phaseType ?? selectedNode?.type ?? null;
 
   const eventsForSelected = useMemo(
@@ -30,9 +30,9 @@ export function RunViewer(props: RunViewerProps & { flowName?: string }) {
 
   return (
     <div className="je-runview">
-      <RunTopbar
-        flowName={props.flowName ?? "Run"}
-        run={props.run}
+      <WorkflowInstanceTopbar
+        workflowName={props.workflowName ?? "Workflow Instance"}
+        workflowInstance={props.workflowInstance}
         onRerun={props.onRerun}
         onCancel={props.onCancel}
         onPause={props.onPause}
@@ -42,7 +42,7 @@ export function RunViewer(props: RunViewerProps & { flowName?: string }) {
       />
       <div className="je-runview__body">
         <ReadOnlyCanvas
-          flow={props.flow}
+          workflow={props.workflow}
           statuses={statuses}
           selectedNodeId={selectedNodeId}
           onSelect={setSelectedNodeId}

@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createBlankFlow } from "@journeyman/flow-editor";
-import type { FlowGraph } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 import { createFlow } from "../api/flows.ts";
 import { useAuth } from "../AuthContext.tsx";
 
 type Source = "blank" | "upload";
 
-function parseFlowJson(text: string): FlowGraph {
+function parseFlowJson(text: string): WorkflowGraph {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -22,7 +22,7 @@ function parseFlowJson(text: string): FlowGraph {
   if (typeof obj.schemaVersion !== "string" && typeof obj.schemaVersion !== "number") {
     throw new Error("Missing 'schemaVersion'.");
   }
-  return obj as unknown as FlowGraph;
+  return obj as unknown as WorkflowGraph;
 }
 
 export function NewFlowPage() {
@@ -30,7 +30,7 @@ export function NewFlowPage() {
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState<"user" | "org" | "global">("user");
   const [source, setSource] = useState<Source>("blank");
-  const [uploaded, setUploaded] = useState<FlowGraph | null>(null);
+  const [uploaded, setUploaded] = useState<WorkflowGraph | null>(null);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -48,11 +48,11 @@ export function NewFlowPage() {
       const definition = source === "upload" && uploaded ? uploaded : createBlankFlow();
       return createFlow({ scope, name, description: description || undefined, definition });
     },
-    onSuccess: ({ flow }, _vars) => {
+    onSuccess: ({ workflow }, _vars) => {
       qc.invalidateQueries({ queryKey: ["flows"] });
       const definition = source === "upload" && uploaded ? uploaded : createBlankFlow();
-      qc.setQueryData(["flow-graph", flow.id], definition);
-      navigate(`/flows/${flow.id}/edit`);
+      qc.setQueryData(["flow-graph", workflow.id], definition);
+      navigate(`/workflows/${workflow.id}/edit`);
     },
   });
 

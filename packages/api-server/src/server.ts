@@ -4,10 +4,10 @@ import sensible from "@fastify/sensible";
 import { ZodError } from "zod";
 import type { Composition } from "./composition.ts";
 import { registerHealthRoutes } from "./routes/health.ts";
-import { registerFlowRoutes } from "./routes/flows.ts";
+import { registerWorkflowRoutes } from "./routes/flows.ts";
 import { registerPhasesRoutes } from "./routes/phases.ts";
-import { registerFlowGrantsRoutes } from "./routes/flow-grants.ts";
-import { registerRunRoutes } from "./routes/runs.ts";
+import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
+import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerHumanTaskRoutes } from "./routes/human-tasks.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
@@ -39,10 +39,10 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerCustomPhaseRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);
   }
-  registerFlowRoutes(app, c);
+  registerWorkflowRoutes(app, c);
   registerPhasesRoutes(app);
-  registerFlowGrantsRoutes(app, c);
-  registerRunRoutes(app, c);
+  registerWorkflowGrantsRoutes(app, c);
+  registerWorkflowInstanceRoutes(app, c);
   registerWebhookRoutes(app, c);
   registerHumanTaskRoutes(app, c);
   return app;

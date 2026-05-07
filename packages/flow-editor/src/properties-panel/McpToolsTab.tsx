@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FlowNode } from "@journeyman/core";
+import type { WorkflowNode } from "@journeyman/core";
 
 interface VisibleMcp {
   id: string;
@@ -10,20 +10,20 @@ interface VisibleMcp {
 }
 
 export interface McpToolsTabProps {
-  node: FlowNode;
+  node: WorkflowNode;
   orgId: string;
-  onChange: (next: FlowNode) => void;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
-function getSelectedIds(node: FlowNode): string[] {
+function getSelectedIds(node: WorkflowNode): string[] {
   const cfg = (node.config ?? {}) as { mcpInstanceIds?: unknown };
   return Array.isArray(cfg.mcpInstanceIds)
     ? cfg.mcpInstanceIds.filter((x): x is string => typeof x === "string")
     : [];
 }
 
-function setSelectedIds(node: FlowNode, ids: string[]): FlowNode {
+function setSelectedIds(node: WorkflowNode, ids: string[]): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), mcpInstanceIds: ids } };
 }
 

@@ -1,19 +1,19 @@
-import type { FlowDefaults, FlowGraph } from "@journeyman/core";
+import type { WorkflowDefaults, WorkflowGraph } from "@journeyman/core";
 import { X } from "lucide-react";
 import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
 import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
 import { DefaultsModelSection } from "./DefaultsModelSection.tsx";
 
 export interface FlowConfigPanelProps {
-  flow: FlowGraph;
-  onChange: (next: FlowGraph) => void;
+  flow: WorkflowGraph;
+  onChange: (next: WorkflowGraph) => void;
   onClose: () => void;
   readOnly?: boolean;
 }
 
 export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfigPanelProps) {
   const defaults = flow.defaults ?? {};
-  const updateDefaults = (next: FlowDefaults) =>
+  const updateDefaults = (next: WorkflowDefaults) =>
     onChange({ ...flow, defaults: Object.keys(next).length ? next : undefined });
 
   return (

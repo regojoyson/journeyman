@@ -3,7 +3,7 @@
 // This is the only file in the codebase allowed to import concrete adapter
 // classes. Every other file depends on the interfaces in @journeyman/core.
 //
-// Replacing an adapter — e.g. swapping PostgresFlowStore for MemoryFlowStore
+// Replacing an adapter — e.g. swapping PostgresWorkflowStore for MemoryWorkflowStore
 // for tests, or ConductorOrchestrator for a future TemporalOrchestrator —
 // MUST require changing only this file. If a swap forces edits anywhere else,
 // the boundaries are wrong (see spec §12 "Architectural exit criterion").
@@ -11,28 +11,28 @@
 import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
-  IFlowGrantsStore, IFlowStore, IFlowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IPhaseRegistry, IRunGrantsStore, IRunStore, IWebhookEventStore, IWorkspaceProvider,
+  IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
+  IPhaseRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
   ConductorClient,
   ConductorOrchestrator,
   ConductorJsonConverter,
-  PostgresFlowGrantsStore,
-  PostgresRunGrantsStore,
-  PostgresFlowStore,
-  PostgresFlowVersionStore,
-  PostgresRunStore,
+  PostgresWorkflowGrantsStore,
+  PostgresWorkflowInstanceGrantsStore,
+  PostgresWorkflowStore,
+  PostgresWorkflowVersionStore,
+  PostgresWorkflowInstanceStore,
   PostgresNodeExecutionStore,
   PostgresEventBus,
   PostgresWebhookEventStore,
   PostgresHumanTaskResolutionStore,
-  MemoryFlowGrantsStore,
-  MemoryRunGrantsStore,
-  MemoryFlowStore,
-  MemoryFlowVersionStore,
-  MemoryRunStore,
+  MemoryWorkflowGrantsStore,
+  MemoryWorkflowInstanceGrantsStore,
+  MemoryWorkflowStore,
+  MemoryWorkflowVersionStore,
+  MemoryWorkflowInstanceStore,
   MemoryNodeExecutionStore,
   MemoryEventBus,
   MemoryWebhookEventStore,
@@ -49,11 +49,11 @@ import {
 } from "./services/human-task-timeout.ts";
 
 export interface Composition {
-  flowGrants: IFlowGrantsStore;
-  runGrants: IRunGrantsStore;
-  flows: IFlowStore;
-  flowVersions: IFlowVersionStore;
-  runs: IRunStore;
+  workflowGrants: IWorkflowGrantsStore;
+  workflowInstanceGrants: IWorkflowInstanceGrantsStore;
+  workflows: IWorkflowStore;
+  workflowVersions: IWorkflowVersionStore;
+  workflowInstances: IWorkflowInstanceStore;
   nodeExecutions: INodeExecutionStore;
   events: IEventBus;
   webhookEvents: IWebhookEventStore;
@@ -81,11 +81,11 @@ export interface CompositionConfig {
 export function buildComposition(cfg: CompositionConfig): Composition {
   const useMemory = cfg.storeBackend === "memory";
 
-  let flowGrants: IFlowGrantsStore;
-  let runGrants: IRunGrantsStore;
-  let flows: IFlowStore;
-  let flowVersions: IFlowVersionStore;
-  let runs: IRunStore;
+  let workflowGrants: IWorkflowGrantsStore;
+  let workflowInstanceGrants: IWorkflowInstanceGrantsStore;
+  let workflows: IWorkflowStore;
+  let workflowVersions: IWorkflowVersionStore;
+  let workflowInstances: IWorkflowInstanceStore;
   let nodeExecutions: INodeExecutionStore;
   let events: IEventBus;
   let webhookEvents: IWebhookEventStore;
@@ -93,24 +93,24 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   let pool: Pool | null = null;
 
   if (useMemory) {
-    const v = new MemoryFlowVersionStore();
-    flowVersions = v;
-    flowGrants = new MemoryFlowGrantsStore();
-    runGrants = new MemoryRunGrantsStore();
-    flows = new MemoryFlowStore(v, flowGrants);
-    runs = new MemoryRunStore();
+    const v = new MemoryWorkflowVersionStore();
+    workflowVersions = v;
+    workflowGrants = new MemoryWorkflowGrantsStore();
+    workflowInstanceGrants = new MemoryWorkflowInstanceGrantsStore();
+    workflows = new MemoryWorkflowStore(v, workflowGrants);
+    workflowInstances = new MemoryWorkflowInstanceStore();
     nodeExecutions = new MemoryNodeExecutionStore();
     events = new MemoryEventBus();
     webhookEvents = new MemoryWebhookEventStore();
     humanTaskResolutions = new MemoryHumanTaskResolutionStore();
   } else {
     pool = createPool({ connectionString: cfg.databaseUrl });
-    const v = new PostgresFlowVersionStore(pool);
-    flowVersions = v;
-    flowGrants = new PostgresFlowGrantsStore(pool);
-    runGrants = new PostgresRunGrantsStore(pool);
-    flows = new PostgresFlowStore(pool, v, flowGrants);
-    runs = new PostgresRunStore(pool);
+    const v = new PostgresWorkflowVersionStore(pool);
+    workflowVersions = v;
+    workflowGrants = new PostgresWorkflowGrantsStore(pool);
+    workflowInstanceGrants = new PostgresWorkflowInstanceGrantsStore(pool);
+    workflows = new PostgresWorkflowStore(pool, v, workflowGrants);
+    workflowInstances = new PostgresWorkflowInstanceStore(pool);
     nodeExecutions = new PostgresNodeExecutionStore(pool);
     events = new PostgresEventBus(pool);
     webhookEvents = new PostgresWebhookEventStore(pool);
@@ -123,13 +123,12 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const orchestrator = new ConductorOrchestrator({
     client: conductorClient,
     converter: new ConductorJsonConverter(),
-    runs,
-    runGrants,
+    workflowInstances,
+    workflowInstanceGrants,
   });
 
   const registry = new InMemoryPhaseRegistry();
   const workspace = new DirectoryWorkspaceProvider();
-  // Inline anonymous auth provider
   const auth: IAuthProvider = {
     async authenticate(_req: FastifyRequest) {
       return { userId: null, roles: ["anonymous"] };
@@ -138,7 +137,8 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const conditions = new JsonLogicEvaluator();
 
   return {
-    flowGrants, runGrants, flows, flowVersions, runs, nodeExecutions, events, webhookEvents,
+    workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
+    nodeExecutions, events, webhookEvents,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,

@@ -1,5 +1,5 @@
 // Minimal JSON → YAML serializer scoped to plain data (no cycles, no anchors,
-// no Date/Symbol/Function). Sufficient for FlowGraph export.
+// no Date/Symbol/Function). Sufficient for WorkflowGraph export.
 //
 // Pure function, no deps.
 

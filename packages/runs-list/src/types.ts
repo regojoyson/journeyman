@@ -1,21 +1,21 @@
-import type { Run } from "@journeyman/core";
+import type { WorkflowInstance } from "@journeyman/core";
 
-export interface RunFilter {
-  status?: Run["status"];
-  flowId?: string;
+export interface WorkflowInstanceFilter {
+  status?: WorkflowInstance["status"];
+  workflowId?: string;
   provider?: string;
   issueRef?: string;
 }
 
-export interface RunsListProps {
-  runs: Run[];
+export interface WorkflowInstancesListProps {
+  workflowInstances: WorkflowInstance[];
   isLoading?: boolean;
-  filter: RunFilter;
-  onFilterChange: (next: RunFilter) => void;
-  onSelectRun: (runId: string) => void;
-  onRerun?: (run: Run) => void;
-  onNewRun?: () => void;
-  flowNameByVersionId?: Record<string, string>;
+  filter: WorkflowInstanceFilter;
+  onFilterChange: (next: WorkflowInstanceFilter) => void;
+  onSelectWorkflowInstance: (workflowInstanceId: string) => void;
+  onRerun?: (workflowInstance: WorkflowInstance) => void;
+  onNewWorkflowInstance?: () => void;
+  workflowNameByVersionId?: Record<string, string>;
   scope?: "mine" | "org" | "all";
   onScopeChange?: (scope: "mine" | "org" | "all") => void;
   showOrgChip?: boolean;

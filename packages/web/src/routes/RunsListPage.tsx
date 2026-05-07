@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RunsList, type RunFilter } from "@journeyman/runs-list";
-import type { Flow, Run, RunInputDef, RunListScope, IssueRefProvider } from "@journeyman/core";
+import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
+import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope, IssueRefProvider } from "@journeyman/core";
 import { buildIssueRef } from "@journeyman/core";
 import { listRuns, rerunRun } from "../api/runs.ts";
-import { getCurrentFlowVersion, listFlows, runFlow } from "../api/flows.ts";
+import { getCurrentWorkflowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
@@ -19,7 +19,7 @@ function scopeBadgeStyle(scope: string): React.CSSProperties {
 
 interface NewRunDialogProps {
   onClose: () => void;
-  onSubmitted: (res: { runId: string; engineWorkflowId: string }) => void;
+  onSubmitted: (res: { workflowInstanceId: string; engineWorkflowId: string }) => void;
 }
 
 function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
@@ -38,11 +38,11 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 
   const versionQ = useQuery({
     queryKey: ["flow-version-current", flowId],
-    queryFn: () => getCurrentFlowVersion(flowId),
+    queryFn: () => getCurrentWorkflowVersion(flowId),
     enabled: !!flowId,
   });
 
-  const inputDefs: RunInputDef[] = versionQ.data?.definition.inputDefs ?? [];
+  const inputDefs: WorkflowInputDef[] = versionQ.data?.definition.inputDefs ?? [];
 
   const submitM = useMutation({
     mutationFn: () => {
@@ -65,7 +65,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     onError: (err: unknown) => setError(err instanceof Error ? err.message : "Failed to start run."),
   });
 
-  const flows: Flow[] = (flowsQ.data ?? []).filter(
+  const flows: Workflow[] =(flowsQ.data ?? []).filter(
     f => isPlatformAdmin || f.scope !== "global",
   );
 
@@ -212,38 +212,38 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 }
 
 export function RunsListPage() {
-  const [filter, setFilter] = useState<RunFilter>({});
-  const [scope, setScope] = useState<RunListScope>("mine");
+  const [filter, setFilter] = useState<WorkflowInstanceFilter>({});
+  const [scope, setScope] = useState<WorkflowInstanceListScope>("mine");
   const [showDialog, setShowDialog] = useState(false);
-  const [runToast, setRunToast] = useState<{ runId: string; engineWorkflowId: string } | null>(null);
+  const [runToast, setRunToast] = useState<{ workflowInstanceId: string; engineWorkflowId: string } | null>(null);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const auth = useAuth();
 
   const q = useQuery({
     queryKey: ["runs", filter, scope],
-    queryFn: () => listRuns({ status: filter.status, flowId: filter.flowId, provider: filter.provider, issueRef: filter.issueRef, scope }),
+    queryFn: () => listRuns({ status: filter.status, workflowId: filter.workflowId, provider: filter.provider, issueRef: filter.issueRef, scope }),
     refetchInterval: 4000,
   });
 
   const rerunM = useMutation({
-    mutationFn: (r: Run) => rerunRun(r.id),
+    mutationFn: (r: WorkflowInstance) => rerunRun(r.id),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/runs/${res.runId}`);
+      navigate(`/workflow-instances/${res.workflowInstanceId}`);
     },
   });
 
   return (
     <>
-      <RunsList
-        runs={q.data ?? []}
+      <WorkflowInstancesList
+        workflowInstances={q.data ?? []}
         isLoading={q.isLoading}
         filter={filter}
         onFilterChange={setFilter}
-        onSelectRun={(id) => navigate(`/runs/${id}`)}
+        onSelectWorkflowInstance={(id) => navigate(`/workflow-instances/${id}`)}
         onRerun={(r) => rerunM.mutate(r)}
-        onNewRun={() => setShowDialog(true)}
+        onNewWorkflowInstance={() => setShowDialog(true)}
         scope={scope}
         onScopeChange={setScope}
         showOrgChip={!!auth.activeOrgId}
@@ -261,9 +261,9 @@ export function RunsListPage() {
       )}
       {runToast && (
         <RunSubmittedToast
-          runId={runToast.runId}
+          workflowInstanceId={runToast.workflowInstanceId}
           engineWorkflowId={runToast.engineWorkflowId}
-          onViewLive={() => { navigate(`/runs/${runToast.runId}`); setRunToast(null); }}
+          onViewLive={() => { navigate(`/workflow-instances/${runToast.workflowInstanceId}`); setRunToast(null); }}
           onDismiss={() => setRunToast(null)}
         />
       )}

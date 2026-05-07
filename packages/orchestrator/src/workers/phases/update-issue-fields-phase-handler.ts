@@ -20,7 +20,7 @@ export class UpdateIssueFieldsPhaseHandler implements IPhaseHandler {
     const labels = Array.isArray(input.labels) && input.labels.every((l) => typeof l === "string") ? (input.labels as string[]) : undefined;
     const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Update issue ${id}`);
-    const result = await issueProvider.updateIssue({ id, title, description, status, assignee, labels, sessionId: ctx.runId });
+    const result = await issueProvider.updateIssue({ id, title, description, status, assignee, labels, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "update-issue failed");
       return { kind: "failure", failure: { errorClass: "UpdateIssueFailed", message: String(result.error), retryable: true } };

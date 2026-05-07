@@ -1,24 +1,24 @@
-import type { Flow, FlowVersion, NodeExecution, Run, RunEvent, RunListScope } from "@journeyman/core";
+import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceListScope } from "@journeyman/core";
 import { api } from "./client.ts";
 
 export async function listRuns(filter: {
-  status?: Run["status"];
-  flowId?: string;
+  status?: WorkflowInstance["status"];
+  workflowId?: string;
   provider?: string;
   issueRef?: string;
   limit?: number;
-  scope?: RunListScope;
-} = {}): Promise<Run[]> {
+  scope?: WorkflowInstanceListScope;
+} = {}): Promise<WorkflowInstance[]> {
   const qs = new URLSearchParams();
-  if (filter.status)   qs.set("status",    filter.status);
-  if (filter.flowId)   qs.set("flow_id",   filter.flowId);
-  if (filter.provider) qs.set("provider",  filter.provider);
-  if (filter.issueRef) qs.set("issue_ref", filter.issueRef);
-  if (filter.limit)    qs.set("limit",     String(filter.limit));
-  if (filter.scope)    qs.set("scope",     filter.scope);
+  if (filter.status)     qs.set("status",       filter.status);
+  if (filter.workflowId) qs.set("workflow_id",  filter.workflowId);
+  if (filter.provider)   qs.set("provider",     filter.provider);
+  if (filter.issueRef)   qs.set("issue_ref",    filter.issueRef);
+  if (filter.limit)      qs.set("limit",        String(filter.limit));
+  if (filter.scope)      qs.set("scope",        filter.scope);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  const res = await api<{ runs: Run[] }>(`/runs${suffix}`);
-  return res.runs;
+  const res = await api<{ workflowInstances: WorkflowInstance[] }>(`/workflow-instances${suffix}`);
+  return res.workflowInstances;
 }
 
 export type WebhookEventSummary = {
@@ -31,28 +31,28 @@ export type WebhookEventSummary = {
   rawPayload: unknown;
 };
 
-export interface RunDetail {
-  run: Run;
+export interface WorkflowInstanceDetail {
+  workflowInstance: WorkflowInstance;
   executions: NodeExecution[];
-  events: RunEvent[];
+  events: WorkflowInstanceEvent[];
   webhookEvent: WebhookEventSummary | null;
 }
 
-export async function getRun(runId: string): Promise<RunDetail> {
-  return await api<RunDetail>(`/runs/${encodeURIComponent(runId)}`);
+export async function getRun(workflowInstanceId: string): Promise<WorkflowInstanceDetail> {
+  return await api<WorkflowInstanceDetail>(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}`);
 }
 
 // Same-origin default; localhost dev value lives in packages/web/.env.development.
 const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
-export function openRunEventStream(args: {
+export function openWorkflowInstanceEventStream(args: {
   runId: string;
   sinceId?: number;
-  onEvent: (ev: RunEvent) => void;
+  onEvent: (ev: WorkflowInstanceEvent) => void;
   onError?: (e: Event) => void;
   onOpen?: () => void;
 }): () => void {
-  const url = `${baseUrl}/runs/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
+  const url = `${baseUrl}/workflow-instances/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
   const es = new EventSource(url, { withCredentials: true });
   es.onopen = () => args.onOpen?.();
   es.onerror = (e) => args.onError?.(e);
@@ -63,7 +63,7 @@ export function openRunEventStream(args: {
   for (const t of types) {
     es.addEventListener(t, (raw) => {
       const data = (raw as MessageEvent).data;
-      try { args.onEvent(JSON.parse(data) as RunEvent); }
+      try { args.onEvent(JSON.parse(data) as WorkflowInstanceEvent); }
       catch { /* ignore malformed */ }
     });
   }
@@ -71,37 +71,37 @@ export function openRunEventStream(args: {
 }
 
 export async function cancelRun(runId: string, reason?: string): Promise<void> {
-  await api(`/runs/${encodeURIComponent(runId)}/cancel`, {
+  await api(`/workflow-instances/${encodeURIComponent(runId)}/cancel`, {
     method: "POST", body: JSON.stringify({ reason }),
   });
 }
 
 export async function pauseRun(runId: string): Promise<void> {
-  await api(`/runs/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
+  await api(`/workflow-instances/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
 }
 
 export async function resumeRun(runId: string): Promise<void> {
-  await api(`/runs/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
+  await api(`/workflow-instances/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
 }
 
 export async function retryStep(runId: string, nodeId: string): Promise<void> {
-  await api(`/runs/${encodeURIComponent(runId)}/retry-step`, {
+  await api(`/workflow-instances/${encodeURIComponent(runId)}/retry-step`, {
     method: "POST", body: JSON.stringify({ node_id: nodeId }),
   });
 }
 
-export async function rerunRun(runId: string): Promise<{ runId: string; engineWorkflowId: string }> {
-  return await api(`/runs/${encodeURIComponent(runId)}/rerun`, {
+export async function rerunRun(workflowInstanceId: string): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+  return await api(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}/rerun`, {
     method: "POST", body: "{}",
   });
 }
 
-export async function forkRun(runId: string, name?: string): Promise<{ flow: Flow; version: FlowVersion }> {
-  return await api(`/runs/${encodeURIComponent(runId)}/fork`, {
+export async function forkRun(workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
+  return await api(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}/fork`, {
     method: "POST", body: JSON.stringify({ name }),
   });
 }
 
 export function exportRunUrl(runId: string): string {
-  return `${baseUrl}/runs/${encodeURIComponent(runId)}/export`;
+  return `${baseUrl}/workflow-instances/${encodeURIComponent(runId)}/export`;
 }

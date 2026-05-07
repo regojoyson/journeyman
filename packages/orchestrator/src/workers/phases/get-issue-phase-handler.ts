@@ -38,7 +38,7 @@ export class GetIssuePhaseHandler implements IPhaseHandler {
       ctx.env,
     );
     ctx.log(`Fetching issue ${id}`);
-    const result = await issueProvider.getIssue({ id, sessionId: ctx.runId });
+    const result = await issueProvider.getIssue({ id, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.issue) {
       log.error({ result }, "get-issue failed");
       const msg = String(result?.error ?? "no issue returned");

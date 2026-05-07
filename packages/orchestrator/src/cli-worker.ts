@@ -164,7 +164,7 @@ for (const handler of registry.list()) {
 }
 
 const cliBindingResolver = async (input: {
-  ctx: { userId: string | null; orgId: string | null; flowId: string | null };
+  ctx: { userId: string | null; orgId: string | null; workflowId: string | null };
   slots: Array<{ name: string; optional?: boolean }>;
   bindings: Record<string, SecretBinding>;
 }): Promise<Record<string, string>> => {
@@ -177,7 +177,7 @@ const cliBindingResolver = async (input: {
       if (pinnedSlot) {
         const err = new Error(
           `pinned binding for slot "${pinnedSlot.name}" requires userId/orgId context — ` +
-          `was the flow started via api-server?`,
+          `was the workflow started via api-server?`,
         ) as Error & { name: string; missing: string[] };
         err.name = "MissingSecretsError";
         err.missing = [pinnedSlot.name];
@@ -227,7 +227,7 @@ const cliBindingResolver = async (input: {
 // in the run viewer. Fall back to in-memory only when DATABASE_URL isn't set.
 const events = pool ? new PostgresEventBus(pool) : new MemoryEventBus();
 if (!pool) {
-  log.warn("DATABASE_URL not set — phase events will be in-memory only and invisible to the run viewer");
+  log.warn("DATABASE_URL not set — phase events will be in-memory only and invisible to the workflow instance viewer");
 }
 
 const harness = new WorkerHarness({

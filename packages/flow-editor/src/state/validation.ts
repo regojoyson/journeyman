@@ -1,9 +1,9 @@
-import type { FlowGraph } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 import { isJsonLogicExpr } from "@journeyman/core";
 
 export interface ValidationResult { ok: boolean; errors: string[]; }
 
-export function isValidPhase4Graph(flow: FlowGraph): ValidationResult {
+export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
   const _t0 = performance.now();
   const errors: string[] = [];
   const starts = flow.nodes.filter(n => n.type === "start");

@@ -1,7 +1,7 @@
 import { conductorUiUrl } from "../api/client.ts";
 
 export interface RunSubmittedToastProps {
-  runId: string;
+  workflowInstanceId: string;
   engineWorkflowId: string;
   onDismiss: () => void;
   onViewLive?: () => void;
@@ -14,9 +14,9 @@ export function RunSubmittedToast(p: RunSubmittedToastProps) {
       border: "1px solid #00b894", borderRadius: 8, padding: 14,
       color: "#fff", fontSize: 13, maxWidth: 360, zIndex: 100,
     }}>
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>Run submitted</div>
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>Workflow instance submitted</div>
       <div style={{ color: "#aaa", marginBottom: 4 }}>
-        Run id: <span style={{ color: "#fff", fontFamily: "ui-monospace, monospace" }}>{p.runId}</span>
+        Instance id: <span style={{ color: "#fff", fontFamily: "ui-monospace, monospace" }}>{p.workflowInstanceId}</span>
       </div>
       <div style={{ color: "#aaa", marginBottom: 8 }}>
         Workflow: <a

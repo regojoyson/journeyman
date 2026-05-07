@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { RunViewer } from "@journeyman/run-viewer";
+import { WorkflowInstanceViewer as RunViewer } from "@journeyman/run-viewer";
 import { PhaseRegistryProvider } from "@journeyman/flow-editor";
 import { builtInPhases } from "@journeyman/phases";
-import type { RunEvent } from "@journeyman/core";
-import { getRun, openRunEventStream } from "../api/runs.ts";
-import { getFlowVersionById } from "../api/flow-versions.ts";
+import type { WorkflowInstanceEvent } from "@journeyman/core";
+import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
+import { getWorkflowVersionById } from "../api/flow-versions.ts";
 import { useRunActions } from "../hooks/useRunActions.ts";
 
 export function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [liveEvents, setLiveEvents] = useState<RunEvent[]>([]);
+  const [liveEvents, setLiveEvents] = useState<WorkflowInstanceEvent[]>([]);
   const actions = useRunActions(id);
 
   const detailQ = useQuery({
@@ -21,18 +21,18 @@ export function RunDetailPage() {
     enabled: !!id,
   });
 
-  const versionId = detailQ.data?.run.flowVersionId;
-  const isViewer = detailQ.data?.run.effectiveRole === "viewer";
+  const versionId = detailQ.data?.workflowInstance.workflowVersionId;
+  const isViewer = detailQ.data?.workflowInstance.effectiveRole === "viewer";
   const versionQ = useQuery({
     queryKey: ["flow-version-by-id", versionId],
-    queryFn: () => getFlowVersionById(versionId!),
+    queryFn: () => getWorkflowVersionById(versionId!),
     enabled: !!versionId,
   });
 
   useEffect(() => {
     if (!id || !detailQ.data) return;
     const lastId = detailQ.data.events.at(-1)?.id ?? 0;
-    const close = openRunEventStream({
+    const close = openWorkflowInstanceEventStream({
       runId: id, sinceId: lastId,
       onEvent: (ev) => setLiveEvents(prev => [...prev, ev]),
     });
@@ -44,7 +44,7 @@ export function RunDetailPage() {
     ...liveEvents,
   ], [detailQ.data?.events, liveEvents]);
 
-  if (!id) { navigate("/runs"); return null; }
+  if (!id) { navigate("/workflow-instances"); return null; }
   if (detailQ.isLoading) return <div style={{ padding: 24, color: "#888" }}>Loading run…</div>;
   if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "#ff7675" }}>Run not found.</div>;
   if (versionQ.isLoading || !versionQ.data) {
@@ -108,16 +108,16 @@ export function RunDetailPage() {
       )}
       <PhaseRegistryProvider phases={builtInPhases}>
       <RunViewer
-        flow={versionQ.data.definition}
-        flowName={`Flow v${versionQ.data.versionNumber}`}
-        run={detailQ.data.run}
+        workflow={versionQ.data.definition}
+        workflowName={`Workflow v${versionQ.data.versionNumber}`}
+        workflowInstance={detailQ.data.workflowInstance}
         events={allEvents}
         executions={detailQ.data.executions}
         onCancel={isViewer ? undefined : () => actions.cancel.mutate()}
         onPause={isViewer ? undefined : () => actions.pause.mutate()}
         onResume={isViewer ? undefined : () => actions.resume.mutate()}
         onExport={isViewer ? undefined : actions.exportRun}
-        onRetryStep={isViewer ? undefined : (nodeId) => actions.retry.mutate(nodeId)}
+        onRetryStep={isViewer ? undefined : (nodeId: string) => actions.retry.mutate(nodeId)}
         onRerun={isViewer ? undefined : () => actions.rerun.mutate()}
         onFork={isViewer ? undefined : () => actions.fork.mutate()}
       />

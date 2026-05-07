@@ -15,12 +15,12 @@ export default defineConfig({
       },
       "/webhooks":     { target: API_TARGET, changeOrigin: true },
       "/healthz":      { target: API_TARGET, changeOrigin: true },
-      "/flow_versions":{ target: API_TARGET, changeOrigin: true },
-      "/runs": {
+      "/workflow_versions": { target: API_TARGET, changeOrigin: true },
+      "/workflow-instances": {
         target: API_TARGET, changeOrigin: true,
         bypass: (req) => req.headers.accept?.includes("text/html") ? "/index.html" : undefined,
       },
-      "/flows": {
+      "/workflows": {
         target: API_TARGET, changeOrigin: true,
         bypass: (req) => req.headers.accept?.includes("text/html") ? "/index.html" : undefined,
       },

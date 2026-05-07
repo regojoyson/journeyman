@@ -1,8 +1,8 @@
-import type { Run } from "@journeyman/core";
+import type { WorkflowInstance } from "@journeyman/core";
 
-export interface RunTopbarProps {
-  flowName: string;
-  run: Run;
+export interface WorkflowInstanceTopbarProps {
+  workflowName: string;
+  workflowInstance: WorkflowInstance;
   onRerun?: () => void;
   onCancel?: () => void;
   onPause?: () => void;
@@ -12,13 +12,13 @@ export interface RunTopbarProps {
   busy?: boolean;
 }
 
-export function RunTopbar(p: RunTopbarProps) {
-  const startedLabel = p.run.startedAt
-    ? `started ${new Date(p.run.startedAt).toLocaleTimeString()}`
+export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
+  const startedLabel = p.workflowInstance.startedAt
+    ? `started ${new Date(p.workflowInstance.startedAt).toLocaleTimeString()}`
     : "not started";
-  const isRunning = p.run.status === "running";
-  const isPaused = p.run.status === "paused";
-  const isTerminal = ["completed", "failed", "cancelled"].includes(p.run.status);
+  const isRunning = p.workflowInstance.status === "running";
+  const isPaused = p.workflowInstance.status === "paused";
+  const isTerminal = ["completed", "failed", "cancelled"].includes(p.workflowInstance.status);
 
   const btn: React.CSSProperties = {
     background: "#2a2a3e", border: "1px solid #444", color: "#ddd",
@@ -30,11 +30,11 @@ export function RunTopbar(p: RunTopbarProps) {
 
   return (
     <header className="je-runview__topbar">
-      <h1 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{p.flowName}</h1>
-      <span className={`je-runview__pill ${p.run.status}`}>{p.run.status}</span>
+      <h1 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{p.workflowName}</h1>
+      <span className={`je-runview__pill ${p.workflowInstance.status}`}>{p.workflowInstance.status}</span>
       <span style={{ color: "#888", fontSize: 11 }}>{startedLabel}</span>
-      {p.run.durationMs && (
-        <span style={{ color: "#888", fontSize: 11 }}>· {(p.run.durationMs / 1000).toFixed(1)}s</span>
+      {p.workflowInstance.durationMs && (
+        <span style={{ color: "#888", fontSize: 11 }}>· {(p.workflowInstance.durationMs / 1000).toFixed(1)}s</span>
       )}
       <div style={{ flex: 1 }} />
       {isRunning && p.onPause && (

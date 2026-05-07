@@ -1,50 +1,50 @@
-import type { AppendEventArgs, IEventBus, RunEvent } from "@journeyman/core";
+import type { AppendEventArgs, IEventBus, WorkflowInstanceEvent } from "@journeyman/core";
 
 export class MemoryEventBus implements IEventBus {
-  private rows: RunEvent[] = [];
+  private rows: WorkflowInstanceEvent[] = [];
   private nextId = 1;
-  private listeners = new Map<string, Array<(ev: RunEvent) => void>>();
+  private listeners = new Map<string, Array<(ev: WorkflowInstanceEvent) => void>>();
 
-  async append(args: AppendEventArgs): Promise<RunEvent> {
-    const ev: RunEvent = {
+  async append(args: AppendEventArgs): Promise<WorkflowInstanceEvent> {
+    const ev: WorkflowInstanceEvent = {
       id: this.nextId++,
-      runId: args.runId,
+      workflowInstanceId: args.workflowInstanceId,
       nodeId: args.nodeId ?? null,
       eventType: args.eventType,
       payload: args.payload,
       ts: new Date(),
     };
     this.rows.push(ev);
-    for (const fn of (this.listeners.get(args.runId) ?? [])) fn(ev);
+    for (const fn of (this.listeners.get(args.workflowInstanceId) ?? [])) fn(ev);
     return ev;
   }
 
-  async list(runId: string, opts: { sinceId?: number; limit?: number } = {}): Promise<RunEvent[]> {
-    let out = this.rows.filter(e => e.runId === runId);
+  async list(workflowInstanceId: string, opts: { sinceId?: number; limit?: number } = {}): Promise<WorkflowInstanceEvent[]> {
+    let out = this.rows.filter(e => e.workflowInstanceId === workflowInstanceId);
     if (opts.sinceId !== undefined) out = out.filter(e => e.id > opts.sinceId!);
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }
 
-  async *subscribe(runId: string, opts: { sinceId?: number } = {}): AsyncIterable<RunEvent> {
-    for (const ev of await this.list(runId, opts)) yield ev;
-    const queue: RunEvent[] = [];
+  async *subscribe(workflowInstanceId: string, opts: { sinceId?: number } = {}): AsyncIterable<WorkflowInstanceEvent> {
+    for (const ev of await this.list(workflowInstanceId, opts)) yield ev;
+    const queue: WorkflowInstanceEvent[] = [];
     let resolve: (() => void) | null = null;
-    const push = (ev: RunEvent) => {
+    const push = (ev: WorkflowInstanceEvent) => {
       queue.push(ev);
       if (resolve) { resolve(); resolve = null; }
     };
-    const list = this.listeners.get(runId) ?? [];
+    const list = this.listeners.get(workflowInstanceId) ?? [];
     list.push(push);
-    this.listeners.set(runId, list);
+    this.listeners.set(workflowInstanceId, list);
     try {
       while (true) {
         if (queue.length === 0) await new Promise<void>(r => { resolve = r; });
         while (queue.length) yield queue.shift()!;
       }
     } finally {
-      const arr = this.listeners.get(runId) ?? [];
-      this.listeners.set(runId, arr.filter(f => f !== push));
+      const arr = this.listeners.get(workflowInstanceId) ?? [];
+      this.listeners.set(workflowInstanceId, arr.filter(f => f !== push));
     }
   }
 }

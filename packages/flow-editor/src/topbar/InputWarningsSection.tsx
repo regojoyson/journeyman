@@ -1,7 +1,7 @@
-import type { FlowSaveWarning } from "@journeyman/core";
+import type { WorkflowSaveWarning } from "@journeyman/core";
 
 interface Props {
-  warnings: FlowSaveWarning[];
+  warnings: WorkflowSaveWarning[];
   onSelectNode?: (nodeId: string) => void;
 }
 

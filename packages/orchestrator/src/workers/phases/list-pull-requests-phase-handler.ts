@@ -17,7 +17,7 @@ export class ListPullRequestsPhaseHandler implements IPhaseHandler {
     }
     const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`List PRs ${owner}/${repo}`);
-    const result = await git.listPRs({ owner, repo, head, state, sessionId: ctx.runId });
+    const result = await git.listPRs({ owner, repo, head, state, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "list-prs failed");
       return { kind: "failure", failure: { errorClass: "ListPrsFailed", message: String(result.error), retryable: true } };

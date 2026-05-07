@@ -2,11 +2,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Composition } from "../composition.ts";
 import {
   effectiveRole, hasAtLeast,
-  type ActorContext, type RunGrantRole,
+  type ActorContext, type WorkflowInstanceGrantRole,
 } from "@journeyman/core";
 
-export function makeRequireRunRole(c: Composition) {
-  return function requireRunRole(required: RunGrantRole) {
+export function makeRequireWorkflowInstanceRole(c: Composition) {
+  return function requireWorkflowInstanceRole(required: WorkflowInstanceGrantRole) {
     return async (req: FastifyRequest, reply: FastifyReply) => {
       const ctx = req.runContext;
       if (!ctx) { reply.code(401).send({ error: "no_run_context" }); return; }
@@ -19,21 +19,21 @@ export function makeRequireRunRole(c: Composition) {
       };
 
       const { id } = req.params as { id: string };
-      const run = await c.runs.getById(id);
-      if (!run) { reply.code(404).send({ error: "not_found" }); return; }
+      const workflowInstance = await c.workflowInstances.getById(id);
+      if (!workflowInstance) { reply.code(404).send({ error: "not_found" }); return; }
 
       if (actor.isPlatformAdmin) {
-        (req as any).effectiveRunRole = "owner" as RunGrantRole;
+        (req as any).effectiveWorkflowInstanceRole = "owner" as WorkflowInstanceGrantRole;
         return;
       }
 
-      const grants = await c.runGrants.listByRun(id);
+      const grants = await c.workflowInstanceGrants.listByInstance(id);
       const role = effectiveRole(actor, grants);
       if (!hasAtLeast(role, required)) {
         reply.code(404).send({ error: "not_found" });
         return;
       }
-      (req as any).effectiveRunRole = role;
+      (req as any).effectiveWorkflowInstanceRole = role;
     };
   };
 }

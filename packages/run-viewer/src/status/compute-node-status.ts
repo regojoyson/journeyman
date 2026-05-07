@@ -1,18 +1,18 @@
 import type {
-  FlowGraph, NodeExecution, RunEvent, RunStatus,
+  WorkflowGraph, NodeExecution, WorkflowInstanceEvent, WorkflowInstanceStatus,
 } from "@journeyman/core";
 import type { ResolvedNodeStatus } from "../types.ts";
 
 export interface ComputeArgs {
-  flow: FlowGraph;
-  events: RunEvent[];
+  workflow: WorkflowGraph;
+  events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
-  runStatus: RunStatus;
+  workflowInstanceStatus: WorkflowInstanceStatus;
 }
 
 export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNodeStatus> {
   const out = new Map<string, ResolvedNodeStatus>();
-  for (const n of args.flow.nodes) {
+  for (const n of args.workflow.nodes) {
     out.set(n.id, { status: "pending", attempt: 0, visitCount: 0 });
   }
 
@@ -65,7 +65,7 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
     out.set(id, cur);
   }
 
-  if (args.runStatus === "cancelled") {
+  if (args.workflowInstanceStatus === "cancelled") {
     for (const [id, v] of out) {
       if (v.status === "pending" || v.status === "running" || v.status === "retry-backoff") {
         out.set(id, { ...v, status: "cancelled" });

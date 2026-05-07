@@ -1,31 +1,31 @@
-import type { FlowNode, FlowRetryPolicy, RunInputDef } from "@journeyman/core";
+import type { WorkflowNode, RetryPolicy, WorkflowInputDef } from "@journeyman/core";
 import { RunInputsEditor } from "./RunInputsEditor.tsx";
 
 export interface FlowSettingsViewProps {
-  startNode: FlowNode;
-  onChange: (next: FlowNode) => void;
+  startNode: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
-function getFlowRetry(node: FlowNode): FlowRetryPolicy {
-  const cfg = (node.config ?? {}) as { flowRetry?: FlowRetryPolicy };
+function getFlowRetry(node: WorkflowNode): RetryPolicy {
+  const cfg = (node.config ?? {}) as { flowRetry?: RetryPolicy };
   return cfg.flowRetry ?? {};
 }
-function setFlowRetry(node: FlowNode, p: FlowRetryPolicy): FlowNode {
+function setFlowRetry(node: WorkflowNode, p: RetryPolicy): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), flowRetry: p } };
 }
-function getCycleVisits(node: FlowNode): number {
+function getCycleVisits(node: WorkflowNode): number {
   const cfg = (node.config ?? {}) as { maxCycleVisits?: number };
   return cfg.maxCycleVisits ?? 100;
 }
-function setCycleVisits(node: FlowNode, n: number): FlowNode {
+function setCycleVisits(node: WorkflowNode, n: number): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), maxCycleVisits: n } };
 }
-function getRunInputs(node: FlowNode): RunInputDef[] {
-  const cfg = (node.config ?? {}) as { runInputs?: RunInputDef[] };
+function getRunInputs(node: WorkflowNode): WorkflowInputDef[] {
+  const cfg = (node.config ?? {}) as { runInputs?: WorkflowInputDef[] };
   return cfg.runInputs ?? [];
 }
-function setRunInputs(node: FlowNode, inputs: RunInputDef[]): FlowNode {
+function setRunInputs(node: WorkflowNode, inputs: WorkflowInputDef[]): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), runInputs: inputs } };
 }
 
@@ -72,7 +72,7 @@ export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettings
       <div className="je-props__field">
         <RunInputsEditor
           value={getRunInputs(startNode)}
-          onChange={(inputs: RunInputDef[]) => onChange(setRunInputs(startNode, inputs))}
+          onChange={(inputs: WorkflowInputDef[]) => onChange(setRunInputs(startNode, inputs))}
         />
       </div>
     </div>

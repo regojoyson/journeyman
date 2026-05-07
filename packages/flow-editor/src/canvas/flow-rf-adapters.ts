@@ -1,12 +1,12 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
-import type { FlowEdge, FlowEdgeType, FlowGraph, FlowNode, FlowNodeType } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 
 export const KNOWN_NODE_TYPES = new Set([
   "start", "end", "phase",
   "gateway-xor", "gateway-and", "loop", "subflow", "if", "timer",
 ]);
 
-export function toReactFlowEdges(flow: FlowGraph): Edge[] {
+export function toReactWorkflowEdges(flow: WorkflowGraph): Edge[] {
   return flow.edges.map(e => {
     const t = e.type ?? "default";
     const arrowColor =
@@ -27,7 +27,7 @@ export function toReactFlowEdges(flow: FlowGraph): Edge[] {
 
 let _structuralSigCalls = 0;
 let _structuralSigWindowStart = 0;
-export function structuralSig(flow: FlowGraph): string {
+export function structuralSig(flow: WorkflowGraph): string {
   const _t0 = performance.now();
   if (_t0 - _structuralSigWindowStart > 1000) {
     if (_structuralSigCalls > 30) {
@@ -62,31 +62,31 @@ export function structuralSig(flow: FlowGraph): string {
   return result;
 }
 
-/** Build a fresh FlowGraph from current internal RF state + previous flow's metadata. */
+/** Build a fresh WorkflowGraph from current internal RF state + previous flow's metadata. */
 export function buildFlowFromInternal(
-  prevFlow: FlowGraph,
+  prevFlow: WorkflowGraph,
   rfNodes: Node[],
   rfEdges: Edge[],
-): FlowGraph {
+): WorkflowGraph {
   const prevNodeById = new Map(prevFlow.nodes.map(n => [n.id, n]));
   const prevEdgeById = new Map(prevFlow.edges.map(e => [e.id, e]));
-  const nextNodes: FlowNode[] = rfNodes.map(rfn => {
+  const nextNodes: WorkflowNode[] = rfNodes.map(rfn => {
     const prev = prevNodeById.get(rfn.id);
     if (prev) return { ...prev, position: rfn.position };
     return {
       id: rfn.id,
-      type: (rfn.type ?? "phase") as FlowNodeType,
+      type: (rfn.type ?? "phase") as WorkflowNodeType,
       displayName: (rfn.data as { displayName?: string } | undefined)?.displayName,
       position: rfn.position,
       config: {},
     };
   });
-  const nextEdges: FlowEdge[] = rfEdges.map(rfe => {
+  const nextEdges: WorkflowEdge[] = rfEdges.map(rfe => {
     const prev = prevEdgeById.get(rfe.id);
     if (prev) return prev;
     return {
       id: rfe.id, source: rfe.source, target: rfe.target,
-      type: (rfe.type ?? "default") as FlowEdgeType,
+      type: (rfe.type ?? "default") as WorkflowEdgeType,
     };
   });
   return { ...prevFlow, nodes: nextNodes, edges: nextEdges };

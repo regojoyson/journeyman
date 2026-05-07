@@ -2,7 +2,7 @@ import type { Composition } from "../composition.ts";
 import type { HumanTaskConfig, HumanTaskOutputField } from "@journeyman/core";
 import { getByPath } from "./jsonpath.ts";
 import { resolveHumanTask } from "./resolve-human-task.ts";
-import { reconcileRun } from "./engine-reconciler.ts";
+import { reconcileWorkflowInstance } from "./engine-reconciler.ts";
 
 export interface WebhookEventInfo {
   id: string;
@@ -17,23 +17,23 @@ export interface MatchResult { matched: number; }
 export async function matchAndResolveHumanTasks(c: Composition, ev: WebhookEventInfo): Promise<MatchResult> {
   if (!ev.issueRef) return { matched: 0 };
 
-  // Reconcile any active run on this issueRef so the DB reflects current
+  // Reconcile any active workflow instance on this issueRef so the DB reflects current
   // Conductor state — Conductor may have entered a HUMAN task while our DB
   // still showed status='running'.
-  const candidates = await c.runs.findActiveRunsByIssueRef(ev.issueRef);
-  for (const run of candidates) {
-    await reconcileRun(c, run.id);
+  const candidates = await c.workflowInstances.findActiveInstancesByIssueRef(ev.issueRef);
+  for (const instance of candidates) {
+    await reconcileWorkflowInstance(c, instance.id);
   }
 
   // Re-read after reconciliation.
-  const paused = await c.runs.findPausedRunsByIssueRef(ev.issueRef);
+  const paused = await c.workflowInstances.findPausedInstancesByIssueRef(ev.issueRef);
   let matched = 0;
 
-  for (const run of paused) {
-    const exec = await c.nodeExecutions.latestWaitingForRun(run.id);
+  for (const instance of paused) {
+    const exec = await c.nodeExecutions.latestWaitingForInstance(instance.id);
     if (!exec) continue;
 
-    const node = run.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
+    const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
     if (!node || node.type !== "human-task") continue;
 
     const cfg = (node.config ?? {}) as unknown as HumanTaskConfig;
@@ -60,7 +60,7 @@ export async function matchAndResolveHumanTasks(c: Composition, ev: WebhookEvent
     const actor = pickActor(ev.rawPayload);
 
     await resolveHumanTask(c, {
-      runId: run.id,
+      workflowInstanceId: instance.id,
       nodeId: node.id,
       values,
       payload: (ev.rawPayload ?? {}) as Record<string, unknown>,

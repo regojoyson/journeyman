@@ -15,9 +15,9 @@ import { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
 import { OrgIdProvider } from "./state/org-context.tsx";
 import { ValidationProvider } from "./state/validation-context.tsx";
 import { useValidationCatalog } from "./properties-panel/use-validation-catalog.ts";
-import { validateFlowInputs } from "@journeyman/core";
+import { validateWorkflowInputs } from "@journeyman/core";
 import type { FlowEditorProps } from "./types.ts";
-import type { FlowGraph, FlowNode } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { isJsonLogicExpr } from "@journeyman/core";
 import "./styles.css";
 
@@ -25,7 +25,7 @@ const PROPS_WIDTH_KEY = "je-editor:propsWidth";
 const PALETTE_WIDTH_KEY = "je-editor:paletteWidth";
 
 /** Best-effort safety net for flows missing required start/end nodes (e.g. corrupted save). */
-function autoHeal(flow: FlowGraph): { healed: FlowGraph; restored: string[] } {
+function autoHeal(flow: WorkflowGraph): { healed: WorkflowGraph; restored: string[] } {
   const restored: string[] = [];
   let nodes = flow.nodes;
   if (!nodes.some(n => n.type === "start")) {
@@ -39,7 +39,7 @@ function autoHeal(flow: FlowGraph): { healed: FlowGraph; restored: string[] } {
   return restored.length ? { healed: { ...flow, nodes }, restored } : { healed: flow, restored };
 }
 
-function migrateLegacyMcpConfig(flow: FlowGraph): FlowGraph {
+function migrateLegacyMcpConfig(flow: WorkflowGraph): WorkflowGraph {
   let touched = false;
   const nodes = flow.nodes.map((n) => {
     const cfg = (n.config ?? {}) as Record<string, unknown>;
@@ -51,7 +51,7 @@ function migrateLegacyMcpConfig(flow: FlowGraph): FlowGraph {
   return touched ? { ...flow, nodes } : flow;
 }
 
-function stripUnparseableConditions(flow: FlowGraph): FlowGraph {
+function stripUnparseableConditions(flow: WorkflowGraph): WorkflowGraph {
   let touched = false;
   const edges = flow.edges.map((e) => {
     if (e.condition === undefined) return e;
@@ -165,18 +165,18 @@ export function FlowEditor(props: FlowEditorProps) {
     // null → server flipped to draft directly; host re-renders with new status.
   };
 
-  const onUpdateNode = (next: FlowNode) => {
+  const onUpdateNode = (next: WorkflowNode) => {
     s.update(f => ({ ...f, nodes: f.nodes.map(n => n.id === next.id ? next : n) }));
   };
 
   const validationCatalog = useValidationCatalog();
   const inputWarnings = useMemo(() => {
     const t0 = performance.now();
-    const result = validateFlowInputs(heal.healed, validationCatalog);
+    const result = validateWorkflowInputs(heal.healed, validationCatalog);
     const elapsed = performance.now() - t0;
     if (elapsed > 20) {
       // eslint-disable-next-line no-console
-      console.warn("[FlowEditor] validateFlowInputs slow", { ms: +elapsed.toFixed(2), nodes: heal.healed.nodes.length });
+      console.warn("[FlowEditor] validateWorkflowInputs slow", { ms: +elapsed.toFixed(2), nodes: heal.healed.nodes.length });
     }
     return result;
   }, [heal.healed, validationCatalog]);

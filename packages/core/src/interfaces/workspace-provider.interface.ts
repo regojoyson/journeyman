@@ -6,7 +6,7 @@ export interface IWorkspace {
 
 export interface IWorkspaceProvider {
   create(opts: {
-    runId: string;
+    workflowInstanceId: string;
     nodeId: string;
     /** Optional: lets the provider scope per-user (Docker user-id, k8s namespace, etc.). */
     userId?: string | null;

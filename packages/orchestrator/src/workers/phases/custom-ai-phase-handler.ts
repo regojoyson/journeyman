@@ -106,7 +106,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
       mcps,
       skills,
       tools: effectiveTools,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
       ...(model ? { model } : {}),
     });

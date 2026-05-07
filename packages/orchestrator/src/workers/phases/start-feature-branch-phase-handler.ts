@@ -61,7 +61,7 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
     const result = await coding.checkoutRepo({
       repos,
       issue,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
     });
     if (result?.error) {

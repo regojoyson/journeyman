@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { Flow } from "@journeyman/core";
+import type { Workflow } from "@journeyman/core";
 import { listFlows, updateFlowMeta } from "../api/flows.ts";
 import { cloneFlow, promoteFlow, deleteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
 function canEditFlow(
-  flow: Flow,
+  flow: Workflow,
   ctx: { userId: string; orgId: string; role: string; isPlatformAdmin: boolean },
 ): boolean {
   if (ctx.isPlatformAdmin) return true;
@@ -20,7 +20,7 @@ export function FlowsListPage() {
   const navigate = useNavigate();
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
 
-  const [flows, setFlows] = useState<Flow[]>([]);
+  const [flows, setFlows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scopeFilter, setScopeFilter] = useState<"all" | "user" | "org" | "global">("all");
@@ -49,16 +49,16 @@ export function FlowsListPage() {
     isPlatformAdmin,
   };
 
-  async function handleClone(flow: Flow) {
+  async function handleClone(flow: Workflow) {
     try {
       const { id } = await cloneFlow(flow.id);
-      navigate(`/flows/${id}/edit`);
+      navigate(`/workflows/${id}/edit`);
     } catch (e) {
       alert(`Clone failed: ${(e as Error).message}`);
     }
   }
 
-  async function handlePromote(flow: Flow, targetScope: "org" | "global") {
+  async function handlePromote(flow: Workflow, targetScope: "org" | "global") {
     try {
       await promoteFlow(flow.id, { targetScope });
       await fetchFlows(scopeFilter);
@@ -67,7 +67,7 @@ export function FlowsListPage() {
     }
   }
 
-  async function handleRename(flow: Flow) {
+  async function handleRename(flow: Workflow) {
     const next = window.prompt("Rename flow", flow.name);
     if (next === null) return;
     const trimmed = next.trim();
@@ -80,7 +80,7 @@ export function FlowsListPage() {
     }
   }
 
-  async function handleDelete(flow: Flow) {
+  async function handleDelete(flow: Workflow) {
     if (!window.confirm(`Delete flow "${flow.name}"? This cannot be undone.`)) return;
     try {
       await deleteFlow(flow.id);
@@ -93,7 +93,7 @@ export function FlowsListPage() {
   const filterLabel = (s: typeof scopeFilter) =>
     s === "user" ? "Mine" : s === "org" ? "Organization" : s === "global" ? "Global" : "All";
 
-  const scopeBadge = (scope: Flow["scope"]) => {
+  const scopeBadge = (scope: Workflow["scope"]) => {
     const cls =
       scope === "global"
         ? "bg-violet-900/40 text-violet-200 border-violet-800/60"
@@ -107,7 +107,7 @@ export function FlowsListPage() {
     );
   };
 
-  const statusBadge = (status: Flow["status"]) => {
+  const statusBadge = (status: Workflow["status"]) => {
     const cls = status === "ready"
       ? "bg-emerald-900/40 text-emerald-200 border-emerald-800/60"
       : "bg-amber-900/40 text-amber-200 border-amber-800/60";
@@ -127,7 +127,7 @@ export function FlowsListPage() {
             <h1 className="text-2xl font-semibold text-slate-100">Flows</h1>
             <p className="mt-1 text-sm text-slate-400">Browse, edit, clone and promote flows.</p>
           </div>
-          <Link to="/flows/new" className={btnPrimary}>+ New flow</Link>
+          <Link to="/workflows/new" className={btnPrimary}>+ New flow</Link>
         </header>
 
         <div className="flex flex-wrap gap-2">
@@ -189,7 +189,7 @@ export function FlowsListPage() {
                         <div className="flex flex-wrap gap-3 text-xs">
                           {editable ? (
                             <>
-                              <Link to={`/flows/${f.id}/edit`} className="text-indigo-300 hover:text-indigo-200">
+                              <Link to={`/workflows/${f.id}/edit`} className="text-indigo-300 hover:text-indigo-200">
                                 Edit
                               </Link>
                               <button
@@ -223,7 +223,7 @@ export function FlowsListPage() {
                                 onClick={() => handleClone(f)}
                                 className="text-indigo-300 hover:text-indigo-200"
                               >Clone to my flows</button>
-                              <Link to={`/flows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
+                              <Link to={`/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
                                 Open (read-only)
                               </Link>
                             </>

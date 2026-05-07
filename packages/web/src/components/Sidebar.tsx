@@ -3,8 +3,8 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../AuthContext.tsx";
 
 const NAV_ITEMS = [
-  { to: "/flows",       icon: "⚡", label: "Flows"      },
-  { to: "/runs",        icon: "▶",  label: "Runs"       },
+  { to: "/workflows",          icon: "⚡", label: "Workflows"          },
+  { to: "/workflow-instances", icon: "▶",  label: "Workflow Instances" },
   { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
@@ -18,7 +18,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
   { to: "/admin/custom-phases", icon: "🧩", label: "Org Custom Phases" },
   { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
-  { to: "/admin/flows",   icon: "📋", label: "Admin Flows" },
+  { to: "/admin/workflows", icon: "📋", label: "Admin Workflows" },
 ];
 
 function initials(label: string): string {

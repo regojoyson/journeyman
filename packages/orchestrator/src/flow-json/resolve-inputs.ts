@@ -1,7 +1,7 @@
-import type { FlowInputValue } from "@journeyman/core";
+import type { WorkflowInputValue } from "@journeyman/core";
 
 export function resolveInputs(
-  inputs: Record<string, FlowInputValue> | null | undefined,
+  inputs: Record<string, WorkflowInputValue> | null | undefined,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(inputs ?? {})) {

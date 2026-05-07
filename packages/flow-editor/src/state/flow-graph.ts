@@ -1,8 +1,8 @@
-import { FLOW_SCHEMA_VERSION, type FlowEdge, type FlowGraph, type FlowNode } from "@journeyman/core";
+import { WORKFLOW_SCHEMA_VERSION, type WorkflowEdge, type WorkflowGraph, type WorkflowNode } from "@journeyman/core";
 
-export function createBlankFlow(): FlowGraph {
+export function createBlankFlow(): WorkflowGraph {
   return {
-    schemaVersion: FLOW_SCHEMA_VERSION,
+    schemaVersion: WORKFLOW_SCHEMA_VERSION,
     // Horizontal layout: start on the left, end on the right.
     nodes: [
       { id: "start", type: "start", position: { x: 80,  y: 200 } },
@@ -18,7 +18,7 @@ export function newPhaseNode(args: {
   phaseType: string;
   displayName: string;
   position: { x: number; y: number };
-}): FlowNode {
+}): WorkflowNode {
   return {
     id: `step_${Math.random().toString(36).slice(2, 8)}`,
     type: "phase",
@@ -29,7 +29,7 @@ export function newPhaseNode(args: {
   };
 }
 
-export function newEdge(source: string, target: string): FlowEdge {
+export function newEdge(source: string, target: string): WorkflowEdge {
   return {
     id: `e_${source}_${target}_${Math.random().toString(36).slice(2, 6)}`,
     source,
@@ -41,7 +41,7 @@ export function newEdge(source: string, target: string): FlowEdge {
  * Phase 2 validity check: exactly one start, exactly one end, every node
  * connected, no cycles, every node has at most one outgoing edge.
  */
-export function isLinearAndComplete(flow: FlowGraph): { ok: boolean; reason?: string } {
+export function isLinearAndComplete(flow: WorkflowGraph): { ok: boolean; reason?: string } {
   const starts = flow.nodes.filter(n => n.type === "start");
   if (starts.length !== 1) return { ok: false, reason: "Flow must have exactly one start node" };
   const ends = flow.nodes.filter(n => n.type === "end");

@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLogger } from "@journeyman/core";
-import { RunSyncer } from "@journeyman/orchestrator";
+import { WorkflowInstanceSyncer } from "@journeyman/orchestrator";
 import { buildComposition } from "./composition.ts";
 import { buildServer } from "./server.ts";
 
@@ -44,8 +44,8 @@ const cfg = {
 
 const composition = buildComposition(cfg);
 
-const syncer = new RunSyncer({
-  runs: composition.runs,
+const syncer = new WorkflowInstanceSyncer({
+  workflowInstances: composition.workflowInstances,
   orchestrator: composition.orchestrator,
   events: composition.events,
   intervalMs: Number(process.env.RUN_SYNC_INTERVAL_MS ?? 1500),

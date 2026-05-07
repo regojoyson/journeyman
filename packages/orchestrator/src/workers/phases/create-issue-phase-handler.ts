@@ -18,7 +18,7 @@ export class CreateIssuePhaseHandler implements IPhaseHandler {
     const labels = Array.isArray(input.labels) && input.labels.every((l) => typeof l === "string") ? (input.labels as string[]) : undefined;
     const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Create issue "${title}"`);
-    const result = await issueProvider.createIssue({ title, description, assignee, projectId, labels, sessionId: ctx.runId });
+    const result = await issueProvider.createIssue({ title, description, assignee, projectId, labels, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.issue) {
       log.error({ result }, "create-issue failed");
       return { kind: "failure", failure: { errorClass: "CreateIssueFailed", message: String(result?.error ?? "no issue returned"), retryable: true } };

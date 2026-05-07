@@ -1,13 +1,13 @@
-import type { BackoffStrategy, FlowDefaults, FlowNode, RetryPolicy } from "@journeyman/core";
+import type { BackoffStrategy, WorkflowDefaults, WorkflowNode, RetryPolicy } from "@journeyman/core";
 import { useFieldInheritance, type FieldState } from "../hooks/use-field-inheritance.ts";
 import { InheritanceChip } from "./InheritanceChip.tsx";
 import { FieldInfo, FieldLabel } from "./field-info.tsx";
 
 export interface RetryTabProps {
-  node: FlowNode;
-  onChange: (next: FlowNode) => void;
+  node: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
-  flowDefaults?: FlowDefaults;
+  flowDefaults?: WorkflowDefaults;
 }
 
 const RETRY_SYSTEM_DEFAULTS = {
@@ -27,7 +27,7 @@ const BACKOFF_LABELS: Record<BackoffStrategy, string> = {
   exponential: "Delay multiplies by the backoff multiplier each attempt (recommended).",
 };
 
-function setRetry(node: FlowNode, retry: RetryPolicy): FlowNode {
+function setRetry(node: WorkflowNode, retry: RetryPolicy): WorkflowNode {
   return { ...node, retry };
 }
 

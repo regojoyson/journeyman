@@ -1,12 +1,12 @@
 import { Plus, Trash2 } from "lucide-react";
-import type { RunInputDef } from "@journeyman/core";
+import type { WorkflowInputDef } from "@journeyman/core";
 
-interface Props { value: RunInputDef[]; onChange: (next: RunInputDef[]) => void; }
+interface Props { value: WorkflowInputDef[]; onChange: (next: WorkflowInputDef[]) => void; }
 
-const TYPE_OPTIONS: RunInputDef["type"][] = ["string", "number", "boolean", "json"];
+const TYPE_OPTIONS: WorkflowInputDef["type"][] = ["string", "number", "boolean", "json"];
 
 export function RunInputsEditor({ value, onChange }: Props) {
-  const update = (i: number, patch: Partial<RunInputDef>) =>
+  const update = (i: number, patch: Partial<WorkflowInputDef>) =>
     onChange(value.map((r, idx) => idx === i ? { ...r, ...patch } : r));
   const add = () => onChange([...value, { name: "", type: "string" }]);
   const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
@@ -44,7 +44,7 @@ export function RunInputsEditor({ value, onChange }: Props) {
                   id={`run-input-type-${i}`}
                   className="je-run-inputs__input"
                   value={r.type}
-                  onChange={e => update(i, { type: e.target.value as RunInputDef["type"] })}
+                  onChange={e => update(i, { type: e.target.value as WorkflowInputDef["type"] })}
                 >
                   {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>

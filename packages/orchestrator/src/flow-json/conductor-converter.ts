@@ -1,11 +1,11 @@
-import type { FlowEdge, FlowGraph, FlowNode, IFlowJsonConverter, SecretBinding } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, SecretBinding } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
   SubWorkflowTask, TerminateTask, SimpleTask,
 } from "./conductor-types.ts";
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
-import { applyFlowDefaults } from "./apply-flow-defaults.ts";
+import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, type CatalogShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
@@ -15,7 +15,7 @@ import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
  * env-var names. Convert to all-`auto` bindings on read so we don't need a DB
  * migration. Newer flows already carry `secretBindings`.
  */
-function migrateLegacyBindings(node: FlowNode): FlowNode {
+function migrateLegacyBindings(node: WorkflowNode): WorkflowNode {
   if (node.secretBindings) return node;
   const legacy = (node as unknown as { requiredSecrets?: string[] }).requiredSecrets;
   if (!legacy || legacy.length === 0) return node;
@@ -24,7 +24,7 @@ function migrateLegacyBindings(node: FlowNode): FlowNode {
   return { ...node, secretBindings };
 }
 
-function normalizeFlow(flow: FlowGraph): FlowGraph {
+function normalizeFlow(flow: WorkflowGraph): WorkflowGraph {
   return { ...flow, nodes: flow.nodes.map(migrateLegacyBindings) };
 }
 
@@ -35,16 +35,16 @@ export class UnsupportedNodeTypeError extends Error {
   }
 }
 
-export class FlowValidationError extends Error {
-  constructor(message: string) { super(message); this.name = "FlowValidationError"; }
+export class WorkflowValidationError extends Error {
+  constructor(message: string) { super(message); this.name = "WorkflowValidationError"; }
 }
 
-export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkflowDef> {
-  static validateGraph(graph: FlowGraph, catalog?: Map<string, CatalogShapeEntry>): void {
+export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorWorkflowDef> {
+  static validateGraph(graph: WorkflowGraph, catalog?: Map<string, CatalogShapeEntry>): void {
     new ConvertCtx(normalizeFlow(graph), catalog).validate();
   }
 
-  toEngineJson(def: FlowGraph, opts: {
+  toEngineJson(def: WorkflowGraph, opts: {
     workflowName: string;
     workflowVersion: number;
   }): ConductorWorkflowDef {
@@ -53,7 +53,7 @@ export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkf
 
     const start = ctx.startNode();
     const tasks = ctx.buildSequence(ctx.successor(start.id));
-    const flowRetry = (start.config as { flowRetry?: { maxAttempts?: number; backoffSeconds?: number } } | undefined)?.flowRetry;
+    const workflowRetry = (start.config as { workflowRetry?: { maxAttempts?: number; backoffSeconds?: number } } | undefined)?.workflowRetry;
 
     return {
       name: opts.workflowName,
@@ -61,17 +61,17 @@ export class ConductorJsonConverter implements IFlowJsonConverter<ConductorWorkf
       schemaVersion: 2,
       tasks,
       cycleVisitLimit: def.maxCycleVisits ?? 100,
-      ...(flowRetry ? { flowRetry } : {}),
+      ...(workflowRetry ? { workflowRetry } : {}),
     };
   }
 }
 
 class ConvertCtx {
-  readonly nodes: Map<string, FlowNode>;
-  readonly outgoing: Map<string, FlowEdge[]>;
+  readonly nodes: Map<string, WorkflowNode>;
+  readonly outgoing: Map<string, WorkflowEdge[]>;
   emitted = new Set<string>();
 
-  constructor(public flow: FlowGraph, private catalog?: Map<string, CatalogShapeEntry>) {
+  constructor(public flow: WorkflowGraph, private catalog?: Map<string, CatalogShapeEntry>) {
     this.nodes = new Map(flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
     for (const e of flow.edges) {
@@ -83,9 +83,9 @@ class ConvertCtx {
 
   validate(): void {
     const starts = this.flow.nodes.filter(n => n.type === "start");
-    if (starts.length !== 1) throw new FlowValidationError("Flow must have exactly one start node");
+    if (starts.length !== 1) throw new WorkflowValidationError("Flow must have exactly one start node");
     const ends = this.flow.nodes.filter(n => n.type === "end");
-    if (ends.length === 0) throw new FlowValidationError("Flow must have at least one end node");
+    if (ends.length === 0) throw new WorkflowValidationError("Flow must have at least one end node");
 
     const nodeIds = new Set(this.flow.nodes.map(n => n.id));
     const startNode = this.flow.nodes.find(n => n.type === "start");
@@ -97,20 +97,20 @@ class ConvertCtx {
         if (val.kind !== "ref") continue;
         const parsed = parseRef(val.ref);
         if (!parsed) {
-          throw new FlowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${val.ref}'`);
+          throw new WorkflowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${val.ref}'`);
         }
         if (parsed.source === "workflow.input") {
           if (!runInputNames.has(parsed.field)) {
-            throw new FlowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
+            throw new WorkflowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
           }
           continue;
         }
         if (!nodeIds.has(parsed.source)) {
-          throw new FlowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
+          throw new WorkflowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
         }
         const doms = dominators(this.flow, node.id);
         if (!doms.has(parsed.source)) {
-          throw new FlowValidationError(
+          throw new WorkflowValidationError(
             `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
           );
         }
@@ -121,7 +121,7 @@ class ConvertCtx {
           if (expected) {
             const result = validateRefShapeAgainst(this.flow, val.ref, expected, this.catalog);
             if (!result.ok) {
-              throw new FlowValidationError(
+              throw new WorkflowValidationError(
                 `Node '${node.id}' input '${field}': ${result.error}`,
               );
             }
@@ -131,14 +131,14 @@ class ConvertCtx {
     }
   }
 
-  startNode(): FlowNode { return this.flow.nodes.find(n => n.type === "start")!; }
+  startNode(): WorkflowNode { return this.flow.nodes.find(n => n.type === "start")!; }
 
   successor(nodeId: string): string | null {
     const out = this.outgoing.get(nodeId) ?? [];
     return out[0]?.target ?? null;
   }
 
-  outsOf(nodeId: string): FlowEdge[] { return this.outgoing.get(nodeId) ?? []; }
+  outsOf(nodeId: string): WorkflowEdge[] { return this.outgoing.get(nodeId) ?? []; }
 
   buildSequence(startId: string | null, stopAt?: Set<string>): ConductorTaskDef[] {
     const tasks: ConductorTaskDef[] = [];
@@ -162,7 +162,7 @@ class ConvertCtx {
     return tasks;
   }
 
-  emitNode(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitNode(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     switch (node.type) {
       case "phase":        return this.emitPhase(node);
       case "gateway-xor":
@@ -178,9 +178,9 @@ class ConvertCtx {
     }
   }
 
-  emitPhase(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
-    if (!node.phaseType) throw new FlowValidationError(`Phase node '${node.id}' missing phaseType`);
-    const { resolved: resolvedNode, sources: defaultSources } = applyFlowDefaults(node, this.flow.defaults);
+  emitPhase(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    if (!node.phaseType) throw new WorkflowValidationError(`Phase node '${node.id}' missing phaseType`);
+    const { resolved: resolvedNode, sources: defaultSources } = applyWorkflowDefaults(node, this.flow.defaults);
     const r = resolvedNode.retry ?? {};
     const enabled = r.enabled === true;
 
@@ -213,10 +213,10 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: this.successor(resolvedNode.id) };
   }
 
-  emitSwitch(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitSwitch(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
     if (outs.length === 0) {
-      throw new FlowValidationError(`Switch '${node.id}' has no outgoing edges`);
+      throw new WorkflowValidationError(`Switch '${node.id}' has no outgoing edges`);
     }
 
     const conditional = outs.filter(e => e.type === "conditional");
@@ -225,13 +225,13 @@ class ConvertCtx {
     const seenLabels = new Set<string>();
     for (const e of conditional) {
       if (e.condition === undefined) {
-        throw new FlowValidationError(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
+        throw new WorkflowValidationError(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
       }
       if (!e.branchLabel) {
-        throw new FlowValidationError(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
+        throw new WorkflowValidationError(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
       }
       if (seenLabels.has(e.branchLabel)) {
-        throw new FlowValidationError(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
+        throw new WorkflowValidationError(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
       }
       seenLabels.add(e.branchLabel);
     }
@@ -251,7 +251,7 @@ class ConvertCtx {
     try {
       ({ expression, inputParameters } = compileSwitchExpression(conditional));
     } catch (err) {
-      throw new FlowValidationError(
+      throw new WorkflowValidationError(
         `Failed to compile conditions on gateway '${node.id}': ${(err as Error).message}`,
       );
     }
@@ -269,7 +269,7 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: convergence };
   }
 
-  emitHumanTask(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitHumanTask(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
 
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
@@ -277,17 +277,17 @@ class ConvertCtx {
     const seenNames = new Set<string>();
     for (const o of outputs) {
       if (!o.name || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(o.name)) {
-        throw new FlowValidationError(
+        throw new WorkflowValidationError(
           `Human-task '${node.id}' output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
         );
       }
       if (reserved.has(o.name)) {
-        throw new FlowValidationError(
+        throw new WorkflowValidationError(
           `Human-task '${node.id}' output name '${o.name}' collides with a reserved meta key`,
         );
       }
       if (seenNames.has(o.name)) {
-        throw new FlowValidationError(`Human-task '${node.id}' has duplicate output name '${o.name}'`);
+        throw new WorkflowValidationError(`Human-task '${node.id}' has duplicate output name '${o.name}'`);
       }
       seenNames.add(o.name);
     }
@@ -314,15 +314,15 @@ class ConvertCtx {
     return { tasks: [human], nextNodeId: this.successor(node.id) };
   }
 
-  emitForkJoin(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitForkJoin(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
     if (outs.length < 2) {
-      throw new FlowValidationError(`gateway-and '${node.id}' must have at least 2 outgoing edges`);
+      throw new WorkflowValidationError(`gateway-and '${node.id}' must have at least 2 outgoing edges`);
     }
     const branchTargets = outs.map(e => e.target);
     const convergence = findConvergence(branchTargets, this);
     if (!convergence) {
-      throw new FlowValidationError(`gateway-and '${node.id}' branches must converge on a single join node`);
+      throw new WorkflowValidationError(`gateway-and '${node.id}' branches must converge on a single join node`);
     }
     const stopAt = new Set([convergence]);
 
@@ -345,9 +345,9 @@ class ConvertCtx {
     return { tasks: [fork, join], nextNodeId: convergence };
   }
 
-  emitDoWhile(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitDoWhile(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
-    if (outs.length === 0) throw new FlowValidationError(`Loop '${node.id}' has no body edge`);
+    if (outs.length === 0) throw new WorkflowValidationError(`Loop '${node.id}' has no body edge`);
     const bodyHead = outs[0].target;
     const stopAt = new Set([node.id]);
 
@@ -372,7 +372,7 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: exit };
   }
 
-  emitWait(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitWait(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const cfg = (node.config ?? {}) as { duration?: string; until?: string };
     const task: WaitTask = {
       type: "WAIT",
@@ -383,10 +383,10 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: this.successor(node.id) };
   }
 
-  emitSubflow(node: FlowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+  emitSubflow(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const target = (node.config ?? {}) as { workflowName?: string; workflowVersion?: number };
     if (!target.workflowName) {
-      throw new FlowValidationError(`Subflow '${node.id}' must specify config.workflowName`);
+      throw new WorkflowValidationError(`Subflow '${node.id}' must specify config.workflowName`);
     }
     const task: SubWorkflowTask = {
       type: "SUB_WORKFLOW",
@@ -398,7 +398,7 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: this.successor(node.id) };
   }
 
-  terminateTask(endNode: FlowNode): TerminateTask {
+  terminateTask(endNode: WorkflowNode): TerminateTask {
     return {
       type: "TERMINATE",
       name: `terminate_${endNode.id}`,
@@ -446,7 +446,7 @@ function mapBackoff(b: "fixed" | "linear" | "exponential"): "FIXED" | "LINEAR_BA
 
 function parseDurationMs(input: string): number {
   const m = /^(\d+)\s*(ms|s|m|h|d)$/.exec(input.trim());
-  if (!m) throw new FlowValidationError(`Invalid duration '${input}' — expected e.g. '48h', '30m', '7d'`);
+  if (!m) throw new WorkflowValidationError(`Invalid duration '${input}' — expected e.g. '48h', '30m', '7d'`);
   const n = Number(m[1]);
   switch (m[2]) {
     case "ms": return n;
@@ -454,6 +454,6 @@ function parseDurationMs(input: string): number {
     case "m":  return n * 60_000;
     case "h":  return n * 3_600_000;
     case "d":  return n * 86_400_000;
-    default:   throw new FlowValidationError(`Invalid duration unit '${m[2]}'`);
+    default:   throw new WorkflowValidationError(`Invalid duration unit '${m[2]}'`);
   }
 }

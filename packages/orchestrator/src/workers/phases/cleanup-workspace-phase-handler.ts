@@ -14,14 +14,14 @@ export class CleanupWorkspacePhaseHandler implements IPhaseHandler {
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Scanning workspace ${workspaceDir} before cleanup`);
-    const scanResult = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.runId, signal: ctx.signal });
+    const scanResult = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
     if (scanResult?.error) {
       log.error({ scanResult }, "cleanup-workspace scan failed");
       return { kind: "failure", failure: { errorClass: "CleanupWorkspaceScanFailed", message: String(scanResult.error), retryable: true } };
     }
     const repos = scanResult.repos.map(r => r.repoDir);
     ctx.log(`Cleaning up ${repos.length} repo(s) in ${workspaceDir}`);
-    const result = await coding.cleanupRepos({ repos, sessionId: ctx.runId, signal: ctx.signal });
+    const result = await coding.cleanupRepos({ repos, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
     if (result?.error) {
       log.error({ result }, "cleanup-repos failed");
       return { kind: "failure", failure: { errorClass: "CleanupReposFailed", message: String(result.error), retryable: true } };

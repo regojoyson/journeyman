@@ -43,7 +43,7 @@ export class AnalyzeRepoPhaseHandler implements IPhaseHandler {
     const result = await coding.analyze({
       workspaceDir,
       issue,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
       ...(mcps ? { mcps } : {}),
       ...(skills ? { skills } : {}),

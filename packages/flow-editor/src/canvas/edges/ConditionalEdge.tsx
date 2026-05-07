@@ -1,4 +1,4 @@
-// TODO(T9): Edge condition (`FlowEdge.condition`, JSONLogic) is not yet
+// TODO(T9): Edge condition (`WorkflowEdge.condition`, JSONLogic) is not yet
 // editable from a properties surface. When an edge inspector is added,
 // reuse `ValuePicker` from `properties-panel/ValuePicker.tsx` with
 // `surface = "jsonlogic"` (see `insertRef` in

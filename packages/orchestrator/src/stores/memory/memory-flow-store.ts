@@ -1,24 +1,25 @@
 import { randomUUID } from "node:crypto";
 import type {
-  CreateFlowArgs, Flow, FlowGrant, FlowGraph, FlowListFilter, FlowStatus, FlowVersion,
-  IFlowGrantsStore, IFlowStore, IFlowVersionStore,
+  CreateWorkflowArgs, Workflow, WorkflowGrant, WorkflowGraph, WorkflowListFilter,
+  WorkflowStatus, WorkflowVersion,
+  IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore,
 } from "@journeyman/core";
 
-export class MemoryFlowVersionStore implements IFlowVersionStore {
-  private rows = new Map<string, FlowVersion>();
+export class MemoryWorkflowVersionStore implements IWorkflowVersionStore {
+  private rows = new Map<string, WorkflowVersion>();
 
   async appendVersion(args: {
-    flowId: string;
-    definition: FlowGraph;
+    workflowId: string;
+    definition: WorkflowGraph;
     createdByUserId: string | null;
-  }): Promise<FlowVersion> {
-    const existing = [...this.rows.values()].filter(v => v.flowId === args.flowId);
+  }): Promise<WorkflowVersion> {
+    const existing = [...this.rows.values()].filter(v => v.workflowId === args.workflowId);
     const next = existing.length === 0
       ? 1
       : Math.max(...existing.map(v => v.versionNumber)) + 1;
-    const v: FlowVersion = {
+    const v: WorkflowVersion = {
       id: randomUUID(),
-      flowId: args.flowId,
+      workflowId: args.workflowId,
       versionNumber: next,
       definition: args.definition,
       createdByUserId: args.createdByUserId,
@@ -28,31 +29,31 @@ export class MemoryFlowVersionStore implements IFlowVersionStore {
     return v;
   }
 
-  async getById(versionId: string): Promise<FlowVersion | null> {
+  async getById(versionId: string): Promise<WorkflowVersion | null> {
     return this.rows.get(versionId) ?? null;
   }
 
-  async listByFlow(flowId: string): Promise<FlowVersion[]> {
+  async listByWorkflow(workflowId: string): Promise<WorkflowVersion[]> {
     return [...this.rows.values()]
-      .filter(v => v.flowId === flowId)
+      .filter(v => v.workflowId === workflowId)
       .sort((a, b) => a.versionNumber - b.versionNumber);
   }
 }
 
-export class MemoryFlowStore implements IFlowStore {
+export class MemoryWorkflowStore implements IWorkflowStore {
   private rows = new Map<string, {
     id: string; name: string; description: string | null;
     currentVersionId: string | null; createdByUserId: string | null;
     createdAt: Date; updatedAt: Date;
-    status: FlowStatus;
+    status: WorkflowStatus;
   }>();
 
   constructor(
-    private versions: MemoryFlowVersionStore,
-    private grants: IFlowGrantsStore,
+    private versions: MemoryWorkflowVersionStore,
+    private grants: IWorkflowGrantsStore,
   ) {}
 
-  async create(args: CreateFlowArgs): Promise<{ flow: Flow; version: FlowVersion }> {
+  async create(args: CreateWorkflowArgs): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
     const id = randomUUID();
     const now = new Date();
     this.rows.set(id, {
@@ -62,7 +63,7 @@ export class MemoryFlowStore implements IFlowStore {
       status: "draft",
     });
     const version = await this.versions.appendVersion({
-      flowId: id, definition: args.initialDefinition, createdByUserId: args.createdByUserId,
+      workflowId: id, definition: args.initialDefinition, createdByUserId: args.createdByUserId,
     });
     const row = this.rows.get(id)!;
     row.currentVersionId = version.id;
@@ -72,36 +73,34 @@ export class MemoryFlowStore implements IFlowStore {
       args.scope === "org"   ? args.orgId       :
       null;
     await this.grants.create({
-      flowId: id, principalType: args.scope, principalId,
+      workflowId: id, principalType: args.scope, principalId,
       role: "owner", createdBy: args.createdByUserId,
     });
 
     const owner = await this.grants.getOwnerGrant(id);
-    return { flow: hydrate(row, owner, args.scope === "user" ? args.orgId : null), version };
+    return { workflow: hydrate(row, owner, args.scope === "user" ? args.orgId : null), version };
   }
 
-  async getById(flowId: string): Promise<Flow | null> {
-    const row = this.rows.get(flowId);
+  async getById(workflowId: string): Promise<Workflow | null> {
+    const row = this.rows.get(workflowId);
     if (!row) return null;
-    const owner = await this.grants.getOwnerGrant(flowId);
-    const flow = hydrate(row, owner, null);
-    flow.grants = await this.grants.listByFlow(flowId);
-    return flow;
+    const owner = await this.grants.getOwnerGrant(workflowId);
+    const workflow = hydrate(row, owner, null);
+    workflow.grants = await this.grants.listByWorkflow(workflowId);
+    return workflow;
   }
 
-  async list(filter: FlowListFilter): Promise<Flow[]> {
-    const out: Flow[] = [];
+  async list(filter: WorkflowListFilter): Promise<Workflow[]> {
+    const out: Workflow[] = [];
     for (const row of this.rows.values()) {
       const owner = await this.grants.getOwnerGrant(row.id);
       if (!owner) continue;
-      // Visibility check.
       let visible = filter.callerIsPlatformAdmin;
       if (!visible) {
         if (owner.principalType === "global") visible = true;
         else if (owner.principalType === "user" && owner.principalId === filter.callerUserId) visible = true;
         else if (owner.principalType === "org"  && owner.principalId === filter.callerOrgId) visible = true;
         else if (filter.callerIsOrgAdmin && owner.principalType === "user") {
-          // Approximate: not enforcing membership lookup in memory store. Allow if same orgId hint matches.
           visible = false;
         }
       }
@@ -112,32 +111,32 @@ export class MemoryFlowStore implements IFlowStore {
     return filter.limit ? out.slice(0, filter.limit) : out;
   }
 
-  async updateMeta(flowId: string, patch: { name?: string; description?: string | null }): Promise<Flow | null> {
-    const row = this.rows.get(flowId);
+  async updateMeta(workflowId: string, patch: { name?: string; description?: string | null }): Promise<Workflow | null> {
+    const row = this.rows.get(workflowId);
     if (!row) return null;
     if (patch.name !== undefined) row.name = patch.name;
     if (patch.description !== undefined) row.description = patch.description;
     row.updatedAt = new Date();
-    return this.getById(flowId);
+    return this.getById(workflowId);
   }
 
-  async setStatus(flowId: string, status: FlowStatus): Promise<Flow | null> {
-    const row = this.rows.get(flowId);
+  async setStatus(workflowId: string, status: WorkflowStatus): Promise<Workflow | null> {
+    const row = this.rows.get(workflowId);
     if (!row) return null;
     row.status = status;
     row.updatedAt = new Date();
-    return this.getById(flowId);
+    return this.getById(workflowId);
   }
 
-  async delete(flowId: string): Promise<void> { this.rows.delete(flowId); }
+  async delete(workflowId: string): Promise<void> { this.rows.delete(workflowId); }
 }
 
 function hydrate(
   row: { id: string; name: string; description: string | null; currentVersionId: string | null;
-         createdByUserId: string | null; createdAt: Date; updatedAt: Date; status: FlowStatus; },
-  owner: FlowGrant | null,
+         createdByUserId: string | null; createdAt: Date; updatedAt: Date; status: WorkflowStatus; },
+  owner: WorkflowGrant | null,
   orgHint: string | null,
-): Flow {
+): Workflow {
   const base = {
     id: row.id, name: row.name, description: row.description,
     currentVersionId: row.currentVersionId, createdByUserId: row.createdByUserId,

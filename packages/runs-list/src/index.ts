@@ -1,3 +1,4 @@
-export { RunsList } from "./RunsList.tsx";
+export { WorkflowInstancesList } from "./RunsList.tsx";
+export { WorkflowInstanceFilters } from "./RunFilters.tsx";
 export { ProviderBadge } from "./ProviderBadge.tsx";
-export type { RunsListProps, RunFilter } from "./types.ts";
+export type { WorkflowInstancesListProps, WorkflowInstanceFilter } from "./types.ts";

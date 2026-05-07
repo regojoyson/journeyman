@@ -1,4 +1,4 @@
-import type { FlowGraph, NodeExecution, Run, RunEvent } from "@journeyman/core";
+import type { WorkflowGraph, NodeExecution, WorkflowInstance, WorkflowInstanceEvent } from "@journeyman/core";
 
 export type NodeStatus =
   | "pending"
@@ -45,10 +45,10 @@ export interface HumanTaskHistoryEntry {
   resolvedAt: string;
 }
 
-export interface RunViewerProps {
-  flow: FlowGraph;
-  run: Run;
-  events: RunEvent[];
+export interface WorkflowInstanceViewerProps {
+  workflow: WorkflowGraph;
+  workflowInstance: WorkflowInstance;
+  events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
   pendingHumanTask?: PendingHumanTask | null;
   humanTaskHistory?: HumanTaskHistoryEntry[];

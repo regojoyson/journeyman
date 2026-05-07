@@ -1,13 +1,13 @@
 import { useMemo } from "react";
-import type { FlowEdge, FlowGraph, JsonLogicExpr } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr } from "@journeyman/core";
 import { ConditionBuilder } from "./ConditionBuilder.tsx";
 import { buildConditionSuggestions } from "./condition-suggestions.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 
 interface Props {
-  flow: FlowGraph;
-  edge: FlowEdge;
-  onChange: (next: FlowEdge) => void;
+  flow: WorkflowGraph;
+  edge: WorkflowEdge;
+  onChange: (next: WorkflowEdge) => void;
 }
 
 export function EdgeInspector({ flow, edge, onChange }: Props) {

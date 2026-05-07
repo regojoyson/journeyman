@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FlowDefaults, CoreExecutorKind } from "@journeyman/core";
+import type { WorkflowDefaults, CoreExecutorKind } from "@journeyman/core";
 import { PROVIDER_CATALOG } from "@journeyman/core";
 
 const KIND_LABELS: Record<CoreExecutorKind, string> = {
@@ -21,8 +21,8 @@ const CATALOG_BY_KIND = (() => {
 })();
 
 interface Props {
-  defaults: FlowDefaults;
-  onChange: (next: FlowDefaults) => void;
+  defaults: WorkflowDefaults;
+  onChange: (next: WorkflowDefaults) => void;
   readOnly?: boolean;
 }
 

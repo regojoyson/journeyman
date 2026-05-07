@@ -1,37 +1,38 @@
 import type {
-  FlowGraph,
+  WorkflowGraph,
   IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
-  IRunStore, IRunGrantsStore, Run, RunStatus, SubmitRunArgs,
+  IWorkflowInstanceStore, IWorkflowInstanceGrantsStore, WorkflowInstance, WorkflowInstanceStatus,
+  SubmitWorkflowInstanceArgs,
 } from "@journeyman/core";
 import { createLogger } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
-import type { IFlowJsonConverter } from "@journeyman/core";
+import type { IWorkflowJsonConverter } from "@journeyman/core";
 import type { ConductorWorkflowDef } from "../../flow-json/conductor-types.ts";
 
 const log = createLogger("orchestrator:conductor");
 
-interface FlowRetryPolicy { maxAttempts?: number; backoffSeconds?: number }
+interface WorkflowRetryPolicy { maxAttempts?: number; backoffSeconds?: number }
 
-function readFlowRetry(def: FlowGraph): FlowRetryPolicy | undefined {
+function readWorkflowRetry(def: WorkflowGraph): WorkflowRetryPolicy | undefined {
   const start = def.nodes.find((n) => n.type === "start");
-  return (start?.config as { flowRetry?: FlowRetryPolicy } | undefined)?.flowRetry;
+  return (start?.config as { workflowRetry?: WorkflowRetryPolicy } | undefined)?.workflowRetry;
 }
 
 export interface ConductorOrchestratorDeps {
   client: ConductorClient;
-  converter: IFlowJsonConverter<ConductorWorkflowDef>;
-  runs: IRunStore;
-  runGrants: IRunGrantsStore;
+  converter: IWorkflowJsonConverter<ConductorWorkflowDef>;
+  workflowInstances: IWorkflowInstanceStore;
+  workflowInstanceGrants: IWorkflowInstanceGrantsStore;
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
-  /** runIds with a pending flowRetry timer — guards against the syncer firing multiple retries. Transient by design. */
-  private flowRetryPending = new Set<string>();
+  /** workflowInstanceIds with a pending workflowRetry timer — guards against the syncer firing multiple retries. Transient by design. */
+  private workflowRetryPending = new Set<string>();
 
   constructor(private deps: ConductorOrchestratorDeps) {}
 
-  async submit(args: SubmitRunArgs): Promise<{ runId: string; engineWorkflowId: string }> {
-    const versionSuffix = args.flowVersionId ? args.flowVersionId.replace(/-/g, "_") : "unknown";
+  async submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+    const versionSuffix = args.workflowVersionId ? args.workflowVersionId.replace(/-/g, "_") : "unknown";
     const wfName = `journeyman_v${versionSuffix}`;
     const wfDef = this.deps.converter.toEngineJson(args.definitionSnapshot, {
       workflowName: wfName, workflowVersion: 1,
@@ -39,11 +40,11 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
 
     await this.deps.client.putWorkflowDef(wfDef);
 
-    const run = await this.deps.runs.create({
-      flowId: args.flowId,
-      flowVersionId: args.flowVersionId,
-      flowNameSnapshot: args.flowNameSnapshot,
-      flowScopeSnapshot: args.flowScopeSnapshot,
+    const instance = await this.deps.workflowInstances.create({
+      workflowId: args.workflowId,
+      workflowVersionId: args.workflowVersionId,
+      workflowNameSnapshot: args.workflowNameSnapshot,
+      workflowScopeSnapshot: args.workflowScopeSnapshot,
       definitionSnapshot: args.definitionSnapshot,
       triggerSource: "api",
       startedByUserId: args.startedByUserId,
@@ -51,7 +52,6 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       inputs: args.inputs,
     });
 
-    // Write run grants: ('user', starter, 'owner') always; ('org', org, 'viewer') when known.
     const grantsToWrite: Array<{
       principalType: "user" | "org" | "global";
       principalId: string | null;
@@ -70,7 +70,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
         role: "viewer", createdBy: args.startedByUserId,
       });
     }
-    if (grantsToWrite.length > 0) await this.deps.runGrants.createForRun(run.id, grantsToWrite);
+    if (grantsToWrite.length > 0) await this.deps.workflowInstanceGrants.createForInstance(instance.id, grantsToWrite);
 
     const engineWorkflowId = await this.deps.client.startWorkflow({
       name: wfName,
@@ -79,65 +79,65 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
         ...args.inputs,
         startedByUserId: args.startedByUserId ?? null,
         startedByOrgId: args.startedByOrgId ?? null,
-        flowId: args.flowId,
+        workflowId: args.workflowId,
       },
     });
 
-    await this.deps.runs.setEngineWorkflowId(run.id, engineWorkflowId);
-    await this.deps.runs.setStatus(run.id, "running");
+    await this.deps.workflowInstances.setEngineWorkflowId(instance.id, engineWorkflowId);
+    await this.deps.workflowInstances.setStatus(instance.id, "running");
 
-    return { runId: run.id, engineWorkflowId };
+    return { workflowInstanceId: instance.id, engineWorkflowId };
   }
 
-  async getRun(runId: string): Promise<Run | null> {
-    return await this.deps.runs.getById(runId);
+  async getWorkflowInstance(workflowInstanceId: string): Promise<WorkflowInstance | null> {
+    return await this.deps.workflowInstances.getById(workflowInstanceId);
   }
 
-  async cancel(runId: string, reason?: string): Promise<void> {
-    const r = await this.deps.runs.getById(runId);
-    if (!r?.engineWorkflowId) return;
-    await this.deps.client.terminate(r.engineWorkflowId, reason);
-    await this.deps.runs.setStatus(runId, "cancelled");
+  async cancel(workflowInstanceId: string, reason?: string): Promise<void> {
+    const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
+    if (!instance?.engineWorkflowId) return;
+    await this.deps.client.terminate(instance.engineWorkflowId, reason);
+    await this.deps.workflowInstances.setStatus(workflowInstanceId, "cancelled");
   }
 
-  async pause(runId: string): Promise<void> {
-    const r = await this.deps.runs.getById(runId);
-    if (!r?.engineWorkflowId) return;
-    await this.deps.client.pauseWorkflow(r.engineWorkflowId);
-    await this.deps.runs.setStatus(runId, "paused");
+  async pause(workflowInstanceId: string): Promise<void> {
+    const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
+    if (!instance?.engineWorkflowId) return;
+    await this.deps.client.pauseWorkflow(instance.engineWorkflowId);
+    await this.deps.workflowInstances.setStatus(workflowInstanceId, "paused");
   }
 
-  async resume(runId: string): Promise<void> {
-    const r = await this.deps.runs.getById(runId);
-    if (!r?.engineWorkflowId) return;
-    await this.deps.client.resumeWorkflow(r.engineWorkflowId);
-    await this.deps.runs.setStatus(runId, "running");
+  async resume(workflowInstanceId: string): Promise<void> {
+    const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
+    if (!instance?.engineWorkflowId) return;
+    await this.deps.client.resumeWorkflow(instance.engineWorkflowId);
+    await this.deps.workflowInstances.setStatus(workflowInstanceId, "running");
   }
 
-  async retryFromTask(runId: string, nodeId: string | undefined): Promise<void> {
-    const r = await this.deps.runs.getById(runId);
-    if (!r?.engineWorkflowId) throw new Error("Run has no engine workflow id");
-    await this.deps.client.retryWorkflow(r.engineWorkflowId, { taskId: nodeId });
-    await this.deps.runs.setStatus(runId, "running");
+  async retryFromTask(workflowInstanceId: string, nodeId: string | undefined): Promise<void> {
+    const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
+    if (!instance?.engineWorkflowId) throw new Error("WorkflowInstance has no engine workflow id");
+    await this.deps.client.retryWorkflow(instance.engineWorkflowId, { taskId: nodeId });
+    await this.deps.workflowInstances.setStatus(workflowInstanceId, "running");
   }
 
-  async syncStatus(runId: string): Promise<RunStatus> {
-    const r = await this.deps.runs.getById(runId);
-    if (!r?.engineWorkflowId) return r?.status ?? "pending";
-    const live = await this.deps.client.getWorkflow(r.engineWorkflowId);
+  async syncStatus(workflowInstanceId: string): Promise<WorkflowInstanceStatus> {
+    const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
+    if (!instance?.engineWorkflowId) return instance?.status ?? "pending";
+    const live = await this.deps.client.getWorkflow(instance.engineWorkflowId);
     const mapped = mapConductorStatus(live.status);
 
-    if (mapped === "failed" && this.shouldFlowRetry(r)) {
-      this.scheduleFlowRetry(r);
+    if (mapped === "failed" && this.shouldWorkflowRetry(instance)) {
+      this.scheduleWorkflowRetry(instance);
       return "running";
     }
 
-    if (mapped !== r.status) {
+    if (mapped !== instance.status) {
       const completedAt = ["completed", "failed", "cancelled"].includes(mapped)
         ? new Date() : undefined;
-      const durationMs = completedAt && r.startedAt
-        ? completedAt.getTime() - r.startedAt.getTime() : undefined;
-      await this.deps.runs.setStatus(runId, mapped, {
+      const durationMs = completedAt && instance.startedAt
+        ? completedAt.getTime() - instance.startedAt.getTime() : undefined;
+      await this.deps.workflowInstances.setStatus(workflowInstanceId, mapped, {
         completedAt, durationMs,
         outputs: live.output,
       });
@@ -145,38 +145,38 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     return mapped;
   }
 
-  private shouldFlowRetry(r: Run): boolean {
-    if (this.flowRetryPending.has(r.id)) return true;
-    const policy = readFlowRetry(r.definitionSnapshot);
+  private shouldWorkflowRetry(instance: WorkflowInstance): boolean {
+    if (this.workflowRetryPending.has(instance.id)) return true;
+    const policy = readWorkflowRetry(instance.definitionSnapshot);
     if (!policy) return false;
     const max = policy.maxAttempts ?? 1;
-    return r.attemptNumber < max;
+    return instance.attemptNumber < max;
   }
 
-  private scheduleFlowRetry(r: Run): void {
-    if (this.flowRetryPending.has(r.id)) return;
-    const policy = readFlowRetry(r.definitionSnapshot);
+  private scheduleWorkflowRetry(instance: WorkflowInstance): void {
+    if (this.workflowRetryPending.has(instance.id)) return;
+    const policy = readWorkflowRetry(instance.definitionSnapshot);
     if (!policy) return;
-    this.flowRetryPending.add(r.id);
+    this.workflowRetryPending.add(instance.id);
     const delayMs = (policy.backoffSeconds ?? 0) * 1000;
-    const nextAttempt = r.attemptNumber + 1;
-    log.info({ runId: r.id, attempt: nextAttempt, delayMs }, "flow-retry scheduled");
+    const nextAttempt = instance.attemptNumber + 1;
+    log.info({ workflowInstanceId: instance.id, attempt: nextAttempt, delayMs }, "workflow-retry scheduled");
     setTimeout(async () => {
       try {
-        if (!r.engineWorkflowId) return;
-        await this.deps.client.retryWorkflow(r.engineWorkflowId);
-        await this.deps.runs.setAttemptNumber(r.id, nextAttempt);
-        log.info({ runId: r.id, attempt: nextAttempt }, "flow-retry triggered");
+        if (!instance.engineWorkflowId) return;
+        await this.deps.client.retryWorkflow(instance.engineWorkflowId);
+        await this.deps.workflowInstances.setAttemptNumber(instance.id, nextAttempt);
+        log.info({ workflowInstanceId: instance.id, attempt: nextAttempt }, "workflow-retry triggered");
       } catch (err) {
-        log.error({ runId: r.id, err: (err as Error)?.message }, "flow-retry failed");
+        log.error({ workflowInstanceId: instance.id, err: (err as Error)?.message }, "workflow-retry failed");
       } finally {
-        this.flowRetryPending.delete(r.id);
+        this.workflowRetryPending.delete(instance.id);
       }
     }, delayMs);
   }
 }
 
-function mapConductorStatus(s: string): RunStatus {
+function mapConductorStatus(s: string): WorkflowInstanceStatus {
   switch (s) {
     case "RUNNING": return "running";
     case "COMPLETED": return "completed";

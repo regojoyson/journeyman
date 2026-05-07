@@ -1,4 +1,4 @@
-import type { JsonLogicExpr, FlowEdge } from "@journeyman/core";
+import type { JsonLogicExpr, WorkflowEdge } from "@journeyman/core";
 
 const PHASE_PATH    = /^([A-Za-z_][\w-]*)\.output(?:\.(.+))?$/;
 const WORKFLOW_PATH = /^workflow\.input(?:\.(.+))?$/;
@@ -76,7 +76,7 @@ function varargs(arg: unknown, roots: Set<string>, jsOp: string): string {
  * for Conductor's SWITCH `expression`, plus the `inputParameters` map
  * needed to make the referenced roots reachable as `$.<root>`.
  */
-export function compileSwitchExpression(edges: FlowEdge[]): {
+export function compileSwitchExpression(edges: WorkflowEdge[]): {
   expression: string;
   inputParameters: Record<string, string>;
 } {

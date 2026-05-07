@@ -4,7 +4,7 @@ import {
   type Edge, type Node, type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { FlowGraph } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 // Reuse flow-editor's node + edge components for the n8n look.
 import { nodeTypes as editorNodeTypes, edgeTypes as editorEdgeTypes } from "@journeyman/flow-editor";
 import { STATUS_CLASS, STATUS_LABEL } from "./status-styles.ts";
@@ -32,7 +32,7 @@ for (const [name, Comp] of Object.entries(editorNodeTypes)) {
 const edgeTypes = editorEdgeTypes;
 
 export interface ReadOnlyCanvasProps {
-  flow: FlowGraph;
+  workflow: WorkflowGraph;
   statuses: Map<string, ResolvedNodeStatus>;
   selectedNodeId: string | null;
   onSelect: (id: string | null) => void;
@@ -50,7 +50,7 @@ function isAnimatedEdge(
 }
 
 function CanvasInner(p: ReadOnlyCanvasProps) {
-  const rfNodes: Node[] = useMemo(() => p.flow.nodes.map(n => ({
+  const rfNodes: Node[] = useMemo(() => p.workflow.nodes.map(n => ({
     id: n.id,
     type: n.type === "phase" ? "phase" : (n.type === "start" ? "start" : (n.type === "end" ? "end" : "phase")),
     position: n.position ?? { x: 0, y: 0 },
@@ -62,12 +62,12 @@ function CanvasInner(p: ReadOnlyCanvasProps) {
     selected: n.id === p.selectedNodeId,
     selectable: true,
     draggable: false,
-  })), [p.flow.nodes, p.statuses, p.selectedNodeId]);
+  })), [p.workflow.nodes, p.statuses, p.selectedNodeId]);
 
-  const rfEdges: Edge[] = useMemo(() => p.flow.edges.map(e => ({
+  const rfEdges: Edge[] = useMemo(() => p.workflow.edges.map(e => ({
     id: e.id, source: e.source, target: e.target, type: "default",
     animated: isAnimatedEdge(e, p.statuses),
-  })), [p.flow.edges, p.statuses]);
+  })), [p.workflow.edges, p.statuses]);
 
   return (
     <div className="je-runview__canvas">

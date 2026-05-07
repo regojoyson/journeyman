@@ -53,7 +53,7 @@ export class PlanImplementationPhaseHandler implements IPhaseHandler {
       analyzeReportPath,
       focus,
       reviewComments,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
       ...(mcps ? { mcps } : {}),
       ...(skills ? { skills } : {}),

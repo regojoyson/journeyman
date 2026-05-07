@@ -61,7 +61,7 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
       extraRules,
       focus,
       reviewComments,
-      sessionId: ctx.runId,
+      sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
       ...(mcps ? { mcps } : {}),
       ...(skills ? { skills } : {}),

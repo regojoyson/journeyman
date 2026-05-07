@@ -1,9 +1,9 @@
-import type { FlowGraph, FlowNodeType, FlowSaveWarning, FlowStatus, McpTransport, PublishError } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNodeType, WorkflowSaveWarning, WorkflowStatus, McpTransport, PublishError } from "@journeyman/core";
 import type { PhaseDefinition, PhaseRunState } from "./phase-definition.ts";
 import type { UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 
 export interface ControlNodeCatalogEntry {
-  nodeType: FlowNodeType;
+  nodeType: WorkflowNodeType;
   label: string;
   category: string;
   description?: string;
@@ -29,7 +29,7 @@ export interface McpCatalogEntry {
 export type McpCatalog = McpCatalogEntry[];
 
 export interface FlowEditorProps {
-  flow: FlowGraph;
+  flow: WorkflowGraph;
   flowName: string;
   /** Active org id of the caller — used to scope visible-secret lookups. */
   orgId: string;
@@ -39,22 +39,22 @@ export interface FlowEditorProps {
   mcpCatalog?: McpCatalog;
   /** Optional runtime status keyed by node id. When undefined, no status badge is rendered. */
   phaseRunStates?: Record<string, PhaseRunState>;
-  onChange: (flow: FlowGraph) => void;
-  onSave?: (flow: FlowGraph) => void | Promise<void>;
-  onRun?: (flow: FlowGraph) => void | Promise<void>;
+  onChange: (flow: WorkflowGraph) => void;
+  onSave?: (flow: WorkflowGraph) => void | Promise<void>;
+  onRun?: (flow: WorkflowGraph) => void | Promise<void>;
   /** Non-destructive preflight check. Returns a structured report. */
-  onValidate?: (flow: FlowGraph) => Promise<{
+  onValidate?: (flow: WorkflowGraph) => Promise<{
     ok: boolean;
     errors: string[];
     missing: string[];
     warnings: string[];
-    secretWarnings?: FlowSaveWarning[];
+    secretWarnings?: WorkflowSaveWarning[];
   }>;
   readOnly?: boolean;
   busy?: boolean;
   onRename?: (newName: string) => void;
   /** Lifecycle status of the flow. When "ready", the editor renders read-only and the topbar shows "Move to Draft". */
-  status?: FlowStatus;
+  status?: WorkflowStatus;
   /** Called when the user confirms publish in the modal. Returns ok + any server-side errors. */
   onPublish?: () => Promise<{ ok: boolean; serverErrors?: PublishError[] }>;
   /**

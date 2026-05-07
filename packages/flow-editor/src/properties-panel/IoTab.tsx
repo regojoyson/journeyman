@@ -1,33 +1,33 @@
 import { useState } from "react";
-import type { FlowGraph, FlowNode, FlowInputValue } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { useUpstreamSources } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 import { sanitizeRef } from "./sanitize-ref.ts";
 
 export interface IoTabProps {
-  flow: FlowGraph;
-  node: FlowNode;
-  onChange: (next: FlowNode) => void;
+  flow: WorkflowGraph;
+  node: WorkflowNode;
+  onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
-function getInputs(node: FlowNode): Record<string, FlowInputValue> {
-  const cfg = (node.config ?? {}) as { inputs?: Record<string, FlowInputValue> };
+function getInputs(node: WorkflowNode): Record<string, WorkflowInputValue> {
+  const cfg = (node.config ?? {}) as { inputs?: Record<string, WorkflowInputValue> };
   return cfg.inputs ?? {};
 }
-function getOutputSchema(node: FlowNode): unknown {
+function getOutputSchema(node: WorkflowNode): unknown {
   const cfg = (node.config ?? {}) as { outputSchema?: unknown };
   return cfg.outputSchema ?? {};
 }
-function setInputs(node: FlowNode, inputs: Record<string, FlowInputValue>): FlowNode {
+function setInputs(node: WorkflowNode, inputs: Record<string, WorkflowInputValue>): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), inputs } };
 }
 
-function getRef(v: FlowInputValue): string {
+function getRef(v: WorkflowInputValue): string {
   return v.kind === "ref" ? v.ref : "";
 }
-function setOutputSchema(node: FlowNode, schema: unknown): FlowNode {
+function setOutputSchema(node: WorkflowNode, schema: unknown): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), outputSchema: schema } };
 }
 
@@ -39,7 +39,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
 
   const renameKey = (oldKey: string, newKey: string) => {
     if (oldKey === newKey) return;
-    const next: Record<string, FlowInputValue> = {};
+    const next: Record<string, WorkflowInputValue> = {};
     for (const [k, v] of Object.entries(inputs)) {
       next[k === oldKey ? newKey : k] = v;
     }
@@ -47,7 +47,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
   };
   const setRef = (key: string, ref: string) => {
     const clean = sanitizeRef(ref);
-    const next = { ...inputs, [key]: { kind: "ref", ref: clean } as FlowInputValue };
+    const next = { ...inputs, [key]: { kind: "ref", ref: clean } as WorkflowInputValue };
     onChange(setInputs(node, next));
   };
   const removeRow = (key: string) => {
