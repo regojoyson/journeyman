@@ -1,15 +1,15 @@
-import type { RunEvent, RunEventType } from "../types/run.types.ts";
+import type { WorkflowInstanceEvent, WorkflowInstanceEventType } from "../types/workflow-instance.types.ts";
 
 export interface AppendEventArgs {
-  runId: string;
+  workflowInstanceId: string;
   nodeId?: string | null;
-  eventType: RunEventType;
+  eventType: WorkflowInstanceEventType;
   payload: Record<string, unknown>;
 }
 
 export interface IEventBus {
-  append(args: AppendEventArgs): Promise<RunEvent>;
-  list(runId: string, opts?: { sinceId?: number; limit?: number }): Promise<RunEvent[]>;
+  append(args: AppendEventArgs): Promise<WorkflowInstanceEvent>;
+  list(workflowInstanceId: string, opts?: { sinceId?: number; limit?: number }): Promise<WorkflowInstanceEvent[]>;
   /** Async iterator that yields events as they're appended (Phase 3 SSE). */
-  subscribe(runId: string, opts?: { sinceId?: number }): AsyncIterable<RunEvent>;
+  subscribe(workflowInstanceId: string, opts?: { sinceId?: number }): AsyncIterable<WorkflowInstanceEvent>;
 }

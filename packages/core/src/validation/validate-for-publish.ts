@@ -1,4 +1,4 @@
-import type { FlowGraph, FlowNode } from "../types/flow.types.ts";
+import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
 
@@ -28,7 +28,7 @@ export interface PublishValidationContext {
 }
 
 export function validateForPublish(
-  flow: FlowGraph,
+  flow: WorkflowGraph,
   ctx: PublishValidationContext,
 ): PublishValidationResult {
   const errors: PublishError[] = [];
@@ -51,7 +51,7 @@ export function validateForPublish(
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
 
-function pushGraphErrors(flow: FlowGraph, errors: PublishError[]): void {
+function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
   const starts = flow.nodes.filter(n => n.type === "start");
   if (starts.length !== 1) {
     errors.push({ code: "graph_invalid", message: "Flow must have exactly one start node" });
@@ -70,7 +70,7 @@ function pushGraphErrors(flow: FlowGraph, errors: PublishError[]): void {
   }
 }
 
-function pushOrphanErrors(flow: FlowGraph, errors: PublishError[]): void {
+function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
   const start = flow.nodes.find(n => n.type === "start");
   if (!start) return;
   const reachable = new Set<string>([start.id]);
@@ -96,13 +96,13 @@ function pushOrphanErrors(flow: FlowGraph, errors: PublishError[]): void {
 }
 
 function pushNodeErrors(
-  flow: FlowGraph,
-  node: FlowNode,
+  flow: WorkflowGraph,
+  node: WorkflowNode,
   ctx: PublishValidationContext,
   errors: PublishError[],
 ): void {
   const upstream = collectUpstreamNodeIds(flow, node.id);
-  for (const [slot, val] of Object.entries(node.inputs ?? {})) {
+  for (const [slot, val] of Object.entries(node.inputs ?? {}) as [string, import("../types/flow.types.ts").WorkflowInputValue][]) {
     if (val && val.kind === "ref" && val.ref) {
       const referencedNodeId = parseRefNodeId(val.ref);
       if (referencedNodeId && !upstream.has(referencedNodeId)) {
@@ -177,7 +177,7 @@ function pushNodeErrors(
   }
 }
 
-function collectUpstreamNodeIds(flow: FlowGraph, target: string): Set<string> {
+function collectUpstreamNodeIds(flow: WorkflowGraph, target: string): Set<string> {
   const upstream = new Set<string>();
   const stack: string[] = [target];
   while (stack.length) {

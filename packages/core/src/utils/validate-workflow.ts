@@ -1,4 +1,4 @@
-import type { FlowGraph, FlowNode, FlowSaveWarning, FlowInputValue, RunInputDef } from "../types/flow.types.ts";
+import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef } from "../types/flow.types.ts";
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
 import { resolveShape, shapeAtPath, shapesEqual } from "../types/shapes.ts";
 
@@ -66,7 +66,7 @@ function parseRefForValidation(ref: string): ParsedRef | null {
 
 void resolveShape;
 
-function runInputShape(def: RunInputDef): Shape | undefined {
+function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
   switch (def.type) {
     case "string":  return { type: "string" };
     case "number":  return { type: "number" };
@@ -76,15 +76,15 @@ function runInputShape(def: RunInputDef): Shape | undefined {
   }
 }
 
-function findStartRunInputs(flow: FlowGraph): RunInputDef[] {
+function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
   const start = flow.nodes.find((n) => n.type === "start");
-  const cfg = (start?.config ?? {}) as { runInputs?: RunInputDef[] };
-  return cfg.runInputs ?? [];
+  const cfg = (start?.config ?? {}) as { workflowInputs?: WorkflowInputDef[] };
+  return cfg.workflowInputs ?? [];
 }
 
 /**
  * Walk every phase node in `flow`, check each input against its catalog
- * declaration, and collect non-blocking FlowSaveWarning entries describing:
+ * declaration, and collect non-blocking WorkflowSaveWarning entries describing:
  *   - shape-mismatch: a ref whose upstream shape doesn't match the input
  *   - missing-required: a required input with no Config value and no ref
  *   - dangling-ref-node: a ref pointing to a deleted upstream node
@@ -93,15 +93,15 @@ function findStartRunInputs(flow: FlowGraph): RunInputDef[] {
  *
  * Pure function. No I/O. Memoize at the caller if hot.
  */
-export function validateFlowInputs(
-  flow: FlowGraph,
+export function validateWorkflowInputs(
+  flow: WorkflowGraph,
   catalog: ValidationCatalog,
-): FlowSaveWarning[] {
-  const warnings: FlowSaveWarning[] = [];
-  const nodesById = new Map<string, FlowNode>();
+): WorkflowSaveWarning[] {
+  const warnings: WorkflowSaveWarning[] = [];
+  const nodesById = new Map<string, WorkflowNode>();
   for (const n of flow.nodes) nodesById.set(n.id, n);
-  const runInputs = findStartRunInputs(flow);
-  const runInputByName = new Map(runInputs.map((r) => [r.name, r] as const));
+  const workflowInputs = findStartWorkflowInputs(flow);
+  const workflowInputByName = new Map(workflowInputs.map((r) => [r.name, r] as const));
 
   for (const node of flow.nodes) {
     if (node.type !== "phase" || !node.phaseType) continue;
@@ -109,7 +109,7 @@ export function validateFlowInputs(
     if (!entry?.inputFields) continue;
 
     const config = (node.config ?? {}) as Record<string, unknown>;
-    const inputs = (node.inputs ?? {}) as Record<string, FlowInputValue>;
+    const inputs = (node.inputs ?? {}) as Record<string, WorkflowInputValue>;
 
     for (const [key, fieldDef] of Object.entries(entry.inputFields)) {
       const expected = fieldDef.shape;
@@ -159,7 +159,7 @@ export function validateFlowInputs(
 
       let actual: Shape | undefined;
       if (parsed.scope === "workflow.input") {
-        const def = runInputByName.get(parsed.fieldPath[0]);
+        const def = workflowInputByName.get(parsed.fieldPath[0]);
         if (!def) {
           warnings.push({
             code: "dangling-ref-path",
@@ -171,7 +171,7 @@ export function validateFlowInputs(
           });
           continue;
         }
-        const root = runInputShape(def);
+        const root = workflowInputShape(def);
         actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
       } else {
         const sourceNode = nodesById.get(parsed.source);

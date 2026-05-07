@@ -1,16 +1,16 @@
-import type { ActorContext, RunGrantRole } from "../types/run-grants.types.ts";
+import type { ActorContext, WorkflowInstanceGrantRole } from "../types/workflow-instance-grants.types.ts";
 
 export interface GrantLike {
   principalType: "user" | "org" | "global";
   principalId: string | null;
-  role: RunGrantRole;
+  role: WorkflowInstanceGrantRole;
 }
 
-const RANK: Record<RunGrantRole, number> = { viewer: 1, editor: 2, owner: 3 };
+const RANK: Record<WorkflowInstanceGrantRole, number> = { viewer: 1, editor: 2, owner: 3 };
 
 /**
  * Compute the highest effective role for an actor across a list of grants
- * attached to a single subject (a flow or a run).
+ * attached to a single subject (a workflow or a workflow instance).
  *
  *  - Platform admins always get "owner".
  *  - Otherwise: pick the highest-ranked matching grant.
@@ -20,12 +20,12 @@ const RANK: Record<RunGrantRole, number> = { viewer: 1, editor: 2, owner: 3 };
 export function effectiveRole(
   actor: ActorContext,
   grants: GrantLike[],
-): RunGrantRole | null {
+): WorkflowInstanceGrantRole | null {
   if (actor.isPlatformAdmin) return "owner";
 
-  let best: RunGrantRole | null = null;
+  let best: WorkflowInstanceGrantRole | null = null;
   for (const g of grants) {
-    let matched: RunGrantRole | null = null;
+    let matched: WorkflowInstanceGrantRole | null = null;
 
     if (g.principalType === "global") {
       matched = g.role;
@@ -42,8 +42,8 @@ export function effectiveRole(
 }
 
 export function hasAtLeast(
-  role: RunGrantRole | null,
-  required: RunGrantRole,
+  role: WorkflowInstanceGrantRole | null,
+  required: WorkflowInstanceGrantRole,
 ): boolean {
   if (!role) return false;
   return RANK[role] >= RANK[required];

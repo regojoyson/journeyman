@@ -35,7 +35,7 @@ export type {
 
 // === Phase 1 adapter surface ===
 export type {
-  IOrchestratorEngine, SubmitRunArgs,
+  IOrchestratorEngine, SubmitWorkflowInstanceArgs,
 } from "./interfaces/orchestrator-engine.interface.ts";
 export type {
   IPauseableEngine, IRetryableEngine,
@@ -44,13 +44,13 @@ export {
   isPauseableEngine, isRetryableEngine,
 } from "./interfaces/orchestrator-capabilities.interface.ts";
 export type {
-  IFlowStore, IFlowVersionStore, IFlowGrantsStore,
-  CreateFlowArgs, FlowListFilter, CreateGrantArgs,
-} from "./interfaces/flow-store.interface.ts";
+  IWorkflowStore, IWorkflowVersionStore, IWorkflowGrantsStore,
+  CreateWorkflowArgs, WorkflowListFilter, CreateWorkflowGrantArgs,
+} from "./interfaces/workflow-store.interface.ts";
 export type {
-  IRunStore, INodeExecutionStore, CreateRunArgs,
-} from "./interfaces/run-store.interface.ts";
-export type { IRunGrantsStore } from "./interfaces/run-grants-store.interface.ts";
+  IWorkflowInstanceStore, INodeExecutionStore, CreateWorkflowInstanceArgs,
+} from "./interfaces/workflow-instance-store.interface.ts";
+export type { IWorkflowInstanceGrantsStore } from "./interfaces/workflow-instance-grants-store.interface.ts";
 export type {
   IEventBus, AppendEventArgs,
 } from "./interfaces/event-bus.interface.ts";
@@ -62,7 +62,7 @@ export type {
 } from "./interfaces/workspace-provider.interface.ts";
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
-export type { IFlowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";
+export type { IWorkflowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";
 export type { ProviderResolver, ProviderFactory } from "./interfaces/provider-resolver.interface.ts";
 
 export {
@@ -79,15 +79,15 @@ export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-cat
 
 // === Phase 1 data types ===
 export type {
-  Flow, FlowGraph, FlowEdge, FlowEdgeType, FlowNode, FlowNodeType, FlowVersion,
-  FlowSchemaVersion,
-  RetryPolicy, FlowRetryPolicy, BackoffStrategy,
-  McpServerConfig, McpTransport, FlowInputValue, RunInputDef,
-  FlowSaveWarning,
+  Workflow, WorkflowGraph, WorkflowEdge, WorkflowEdgeType, WorkflowNode, WorkflowNodeType, WorkflowVersion,
+  WorkflowSchemaVersion,
+  RetryPolicy, WorkflowRetryPolicy, BackoffStrategy,
+  McpServerConfig, McpTransport, WorkflowInputValue, WorkflowInputDef,
+  WorkflowSaveWarning,
   SecretBinding,
-  FlowDefaults,
+  WorkflowDefaults,
 } from "./types/flow.types.ts";
-export { FLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
+export { WORKFLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
 export type {
   JsonLogicExpr, JsonLogicVar, JsonLogicLiteral,
 } from "./types/flow-condition.types.ts";
@@ -96,7 +96,7 @@ export {
   isJsonLogicExpr,
 } from "./types/flow-condition.types.ts";
 export type {
-  FlowScope, FlowGrantPrincipalType, FlowGrantRole, FlowGrant, FlowStatus,
+  WorkflowScope, WorkflowGrantPrincipalType, WorkflowGrantRole, WorkflowGrant, WorkflowStatus,
 } from "./types/flow.types.ts";
 export {
   validateForPublish,
@@ -105,13 +105,13 @@ export type {
   PublishError, PublishValidationResult, PublishValidationContext,
 } from "./validation/validate-for-publish.ts";
 export type {
-  RunGrant, RunGrantPrincipalType, RunGrantRole,
-  CreateRunGrantArgs, ActorContext, RunListScope,
-} from "./types/run-grants.types.ts";
+  WorkflowInstanceGrant, WorkflowInstanceGrantPrincipalType, WorkflowInstanceGrantRole,
+  CreateWorkflowInstanceGrantArgs, ActorContext, WorkflowInstanceListScope,
+} from "./types/workflow-instance-grants.types.ts";
 export type {
-  Run, RunEvent, RunEventType, RunStatus, TriggerSource,
+  WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceEventType, WorkflowInstanceStatus, TriggerSource,
   NodeExecution, NodeExecutionStatus,
-} from "./types/run.types.ts";
+} from "./types/workflow-instance.types.ts";
 export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
 export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
@@ -130,14 +130,14 @@ export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";
 export { formatIssueForPrompt, isIssueLike } from "./utils/format-issue.ts";
 export {
   validateInputBinding,
-  validateFlowInputs,
+  validateWorkflowInputs,
   shapeTag,
-} from "./utils/validate-flow.ts";
+} from "./utils/validate-workflow.ts";
 export type {
   BindingCheck,
   ValidationCatalog,
   ValidationCatalogEntry,
-} from "./utils/validate-flow.ts";
+} from "./utils/validate-workflow.ts";
 export type {
   WebhookEvent,
   WebhookEventStatus,
