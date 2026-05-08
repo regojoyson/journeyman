@@ -44,11 +44,6 @@ function buildSyntheticPhase(p: CustomAiPhase, color: string): PhaseDefinition<a
       customPhaseId: p.id,
       mcpInstanceIds: p.defaultMcpIds ?? [],
       skillIds: p.defaultSkillIds ?? [],
-      // Seed one ref-binding row per declared input field so the IoTab
-      // shows them ready to wire instead of an empty list.
-      inputs: Object.fromEntries(
-        (p.inputFields ?? []).map((f) => [f.name, { kind: "ref", ref: "" }]),
-      ),
     },
     configFields: {},
     tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },

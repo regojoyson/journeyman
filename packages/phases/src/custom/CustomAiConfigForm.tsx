@@ -8,10 +8,9 @@ interface CustomAiConfig {
   mcpInstanceIds?: string[];
   skillIds?: string[];
   tools?: CanonicalTool[];
-  inputs?: Record<string, WorkflowInputValue>;
 }
 
-export function CustomAiConfigForm({ config, onChange, readOnly, sources }: PhaseFormProps<CustomAiConfig>) {
+export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs: nodeInputs, onInputsChange }: PhaseFormProps<CustomAiConfig>) {
   const orgId = useOrgId();
   const [phase, setPhase] = useState<CustomAiPhase | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +30,8 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources }: Phas
     return () => { alive = false; };
   }, [orgId, config.customPhaseId]);
 
-  const inputs = useMemo(() => config.inputs ?? {}, [config.inputs]);
-  const setInputs = (next: Record<string, WorkflowInputValue>) => onChange({ ...config, inputs: next });
+  const inputs = useMemo(() => (nodeInputs ?? {}) as Record<string, WorkflowInputValue>, [nodeInputs]);
+  const setInputs = (next: Record<string, WorkflowInputValue>) => onInputsChange?.(next);
 
   if (!config.customPhaseId) {
     return <div className="je-props__field-help">No customPhaseId set on this node.</div>;

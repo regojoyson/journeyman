@@ -74,6 +74,10 @@ export interface PhaseFormProps<TConfig> {
   /** Upstream sources reachable from this node — used by ConfigForms that
    *  render binding pickers. Optional because not every form needs it. */
   sources?: import("./properties-panel/use-upstream-sources.ts").UpstreamSource[];
+  /** Top-level node.inputs — for ConfigForms (e.g. custom-ai) that own their
+   *  input bindings rather than letting IoTab/SchemaForm render them. */
+  inputs?: import("@journeyman/core").WorkflowNode["inputs"];
+  onInputsChange?: (next: import("@journeyman/core").WorkflowNode["inputs"]) => void;
 }
 
 export interface PhaseDefinition<TConfig = unknown> {

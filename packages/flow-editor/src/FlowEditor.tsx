@@ -50,6 +50,25 @@ function migrateLegacyMcpConfig(flow: WorkflowGraph): WorkflowGraph {
   return touched ? { ...flow, nodes } : flow;
 }
 
+/** Lift custom-ai `config.inputs` (legacy storage) up to top-level `node.inputs`
+ *  so validators and the runtime see the bindings. Existing top-level inputs win
+ *  on key conflicts. */
+function migrateCustomAiInputs(flow: WorkflowGraph): WorkflowGraph {
+  let touched = false;
+  const nodes = flow.nodes.map((n) => {
+    if (n.type !== "phase" || n.phaseType !== "custom-ai") return n;
+    const cfg = (n.config ?? {}) as Record<string, unknown>;
+    if (!cfg || typeof cfg !== "object" || !("inputs" in cfg)) return n;
+    const cfgInputs = cfg.inputs as WorkflowNode["inputs"] | undefined;
+    if (!cfgInputs) return n;
+    touched = true;
+    const { inputs: _drop, ...restCfg } = cfg;
+    const mergedInputs = { ...(cfgInputs as Record<string, unknown>), ...((n.inputs ?? {}) as Record<string, unknown>) };
+    return { ...n, config: restCfg, inputs: mergedInputs as WorkflowNode["inputs"] };
+  });
+  return touched ? { ...flow, nodes } : flow;
+}
+
 function stripUnparseableConditions(flow: WorkflowGraph): WorkflowGraph {
   let touched = false;
   const edges = flow.edges.map((e) => {
@@ -91,7 +110,7 @@ export function FlowEditor(props: FlowEditorProps) {
   }
 
   const heal = useMemo(() => {
-    const migrated = stripUnparseableConditions(migrateLegacyMcpConfig(props.flow));
+    const migrated = stripUnparseableConditions(migrateCustomAiInputs(migrateLegacyMcpConfig(props.flow)));
     const result = autoHeal(migrated);
     if (result.restored.length) {
       // eslint-disable-next-line no-console

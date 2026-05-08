@@ -200,6 +200,8 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           readOnly={readOnly}
           catalogs={{ mcp: mcpCatalog }}
           sources={sources}
+          inputs={node.inputs}
+          onInputsChange={next => onChange({ ...node, inputs: next })}
         />
       )}
 
