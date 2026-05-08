@@ -24,8 +24,36 @@ export function EditCustomPhaseModal(props: {
   const [outputSchema, setOutputSchema] = useState<CustomPhaseJsonSchema | undefined>(initial?.outputSchema);
   const [promptTemplate, setPromptTemplate] = useState(initial?.promptTemplate ?? "");
   const [defaultTools, setDefaultTools] = useState<CanonicalTool[]>(initial?.defaultTools ?? []);
+  const [pendingTools, setPendingTools] = useState<CanonicalTool[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleToolsChange = (next: CanonicalTool[]) => {
+    const becomingWorkspace = !toolsRequireWorkspace(defaultTools) && toolsRequireWorkspace(next);
+    const hasWorkspaceField = inputFields.some(
+      (f) => f.name === "workspaceId" || f.name === "workspaceDir",
+    );
+    if (becomingWorkspace && !hasWorkspaceField) {
+      setPendingTools(next);
+      return;
+    }
+    setDefaultTools(next);
+  };
+
+  const confirmAddWorkspaceInput = () => {
+    if (!pendingTools) return;
+    setInputFields((prev) => [
+      ...prev,
+      {
+        name: "workspaceId",
+        type: "workspaceId",
+        required: true,
+        description: "Working directory for shell/file tools",
+      },
+    ]);
+    setDefaultTools(pendingTools);
+    setPendingTools(null);
+  };
 
   const submit = async () => {
     setSubmitting(true);
@@ -98,7 +126,7 @@ export function EditCustomPhaseModal(props: {
 
         <section className="space-y-3">
           <h3 className="text-sm font-medium text-slate-200">Tools</h3>
-          <ToolsPicker value={defaultTools} onChange={setDefaultTools} />
+          <ToolsPicker value={defaultTools} onChange={handleToolsChange} />
           {toolsRequireWorkspace(defaultTools) && (
             <p className="text-[11px] text-slate-400">
               A workspace tool is selected — flows using this phase must wire a{" "}
@@ -129,6 +157,26 @@ export function EditCustomPhaseModal(props: {
           </button>
         </footer>
       </div>
+      {pendingTools !== null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
+          <div className={`${card} w-full max-w-md p-6 space-y-4`}>
+            <h3 className="text-base font-semibold text-slate-100">Add required workspaceId input?</h3>
+            <p className="text-sm text-slate-300">
+              These tools need a workspace (bash, read-file, write-file, edit-file, search).
+              Add a required <code>workspaceId</code> input to this phase? Flows using this phase
+              will then need to wire it from an upstream <em>Create Workspace</em> (or similar) node.
+            </p>
+            <footer className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button type="button" className={btnGhost} onClick={() => setPendingTools(null)}>
+                Cancel
+              </button>
+              <button type="button" className={btnPrimary} onClick={confirmAddWorkspaceInput}>
+                Add workspaceId input
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
