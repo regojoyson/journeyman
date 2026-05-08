@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const listPullRequestCommentsConfigSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  prNumber: z.union([z.number(), z.literal("")]),
+});
 
 export const LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE = "list-pull-request-comments";
 export const LIST_PULL_REQUEST_COMMENTS_LABEL = "List Pull Request Comments";

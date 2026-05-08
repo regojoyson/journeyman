@@ -1,4 +1,9 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const createWorkspaceConfigSchema = z.object({
+  issueRef: z.string().min(1),
+});
 
 export const CREATE_WORKSPACE_PHASE_TYPE = "create-workspace";
 export const CREATE_WORKSPACE_LABEL = "Create Workspace";

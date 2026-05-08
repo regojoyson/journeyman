@@ -1,5 +1,4 @@
 // packages/phases/src/issues/create-issue.tsx
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   CREATE_ISSUE_PHASE_TYPE,
@@ -7,6 +6,7 @@ import {
   CREATE_ISSUE_CATEGORY,
   CREATE_ISSUE_DESCRIPTION,
   createIssueOutputSchema,
+  createIssueConfigSchema,
 } from "./create-issue.meta.ts";
 
 interface CreateIssueConfig {
@@ -24,12 +24,7 @@ export const createIssuePhase: PhaseDefinition<CreateIssueConfig> = {
   color: "#a29bfe",
   icon: "🎫",
   defaultConfig: { project: "", title: "", description: "", labels: [] },
-  configSchema: z.object({
-    project: z.string().min(1),
-    title: z.string().min(1),
-    description: z.string(),
-    labels: z.array(z.string()),
-  }),
+  configSchema: createIssueConfigSchema,
   configFields: {
     project:     { label: "Project key", widget: "text" },
     title:       { label: "Title", widget: "text" },

@@ -1,4 +1,9 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const cleanupWorkspaceConfigSchema = z.object({
+  mode: z.enum(["soft", "hard"]),
+});
 
 export const CLEANUP_WORKSPACE_PHASE_TYPE = "cleanup-workspace";
 export const CLEANUP_WORKSPACE_LABEL = "Cleanup Workspace";

@@ -1,7 +1,7 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import type { CanonicalTool } from "@journeyman/core";
 import { CustomAiConfigForm } from "./CustomAiConfigForm.tsx";
+import { CUSTOM_AI_PHASE_TYPE, customAiConfigSchema } from "./custom-ai.meta.ts";
 
 interface CustomAiConfig {
   customPhaseId: string;
@@ -11,19 +11,14 @@ interface CustomAiConfig {
 }
 
 export const customAiPhase: PhaseDefinition<CustomAiConfig> = {
-  phaseType: "custom-ai",
+  phaseType: CUSTOM_AI_PHASE_TYPE,
   label: "Custom AI Phase",
   category: "Custom",
   description: "User-defined AI phase. Inputs/outputs and prompt are configured per definition.",
   color: "#a29bfe",
   icon: "🧩",
   defaultConfig: { customPhaseId: "" },
-  configSchema: z.object({
-    customPhaseId: z.string().min(1),
-    mcpInstanceIds: z.array(z.string()).optional(),
-    skillIds: z.array(z.string()).optional(),
-    tools: z.array(z.string()).optional(),
-  }),
+  configSchema: customAiConfigSchema,
   configFields: {},
   ConfigForm: CustomAiConfigForm,
   hiddenFromPalette: true,

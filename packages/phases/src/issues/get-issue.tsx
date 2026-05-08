@@ -1,5 +1,4 @@
 // packages/phases/src/issues/get-issue.tsx
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import { summaryValue } from "@journeyman/flow-editor";
 import {
@@ -8,6 +7,7 @@ import {
   GET_ISSUE_CATEGORY,
   GET_ISSUE_DESCRIPTION,
   getIssueOutputSchema,
+  getIssueConfigSchema,
 } from "./get-issue.meta.ts";
 
 interface GetIssueConfig {
@@ -22,9 +22,7 @@ export const getIssuePhase: PhaseDefinition<GetIssueConfig> = {
   color: "#a29bfe",
   icon: "📥",
   defaultConfig: { issueRef: "" },
-  configSchema: z.object({
-    issueRef: z.string().min(1),
-  }),
+  configSchema: getIssueConfigSchema,
   configFields: {
     issueRef: { label: "Issue ref", widget: "text", help: "e.g. jira:PROJ-123 (supports #{issue} placeholder)" },
   },

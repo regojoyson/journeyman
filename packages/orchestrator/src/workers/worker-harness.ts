@@ -86,14 +86,18 @@ export class WorkerHarness {
   async processOnce(phaseType: string): Promise<void> {
     const task = await this.deps.client.pollTask(phaseType, this.deps.workerId);
     if (!task) return;
-    const workflowInstanceId = task.workflowInstanceId;
+    // conductorWorkflowId is Conductor's execution UUID — used only for Conductor API calls (completeTask).
+    // workflowInstanceId is our DB UUID, propagated via workflow input → task inputData.
+    const conductorWorkflowId = task.workflowInstanceId;
+    const workflowInstanceId =
+      (task.inputData as { workflowInstanceId?: string }).workflowInstanceId ?? conductorWorkflowId;
     log.info({ workflowInstanceId, nodeId: task.taskDefName, phaseType, attempt: task.retryCount + 1 }, "task picked up");
 
     const handler = this.deps.registry.get(phaseType);
     if (!handler) {
       log.error({ workflowInstanceId, nodeId: task.taskDefName, phaseType }, "no handler registered for phase — failing task");
       await this.deps.client.completeTask({
-        workflowInstanceId,
+        workflowInstanceId: conductorWorkflowId,
         taskId: task.taskId,
         status: "FAILED_WITH_TERMINAL_ERROR",
         reasonForIncompletion: `No handler for phase '${phaseType}'`,
@@ -111,7 +115,7 @@ export class WorkerHarness {
         payload: { count: visit.count, limit: -1 },
       });
       await this.deps.client.completeTask({
-        workflowInstanceId,
+        workflowInstanceId: conductorWorkflowId,
         taskId: task.taskId,
         status: "FAILED_WITH_TERMINAL_ERROR",
         reasonForIncompletion: `CycleLimitExceeded: node '${task.taskDefName}' visited ${visit.count} times`,
@@ -170,7 +174,7 @@ export class WorkerHarness {
           payload: { reason: "missing_secrets", missing, message: String(err?.message ?? "") },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: `missing_secrets: ${missing.join(", ") || err?.message || "unknown"}`,
         });
@@ -199,7 +203,7 @@ export class WorkerHarness {
           payload: { reason: "mcp_resolution_failed", message: String(err?.message ?? "") },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: `MCP resolution failed: ${err?.message ?? String(err)}`,
         });
@@ -228,7 +232,7 @@ export class WorkerHarness {
           payload: { reason: "skills_resolution_failed", message: String(err?.message ?? "") },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: `Skills resolution failed: ${err?.message ?? String(err)}`,
         });
@@ -278,7 +282,7 @@ export class WorkerHarness {
           payload: { output: result.output },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "COMPLETED", outputData: result.output,
         });
       } else {
@@ -289,7 +293,7 @@ export class WorkerHarness {
           payload: { error: result.failure, classified: { retryable } },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: retryable ? "FAILED" : "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: result.failure.message,
         });
@@ -302,7 +306,7 @@ export class WorkerHarness {
           payload: { reason: "configuration_error", message: String(err?.message ?? "") },
         });
         await this.deps.client.completeTask({
-          workflowInstanceId, taskId: task.taskId,
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED_WITH_TERMINAL_ERROR",
           reasonForIncompletion: `configuration_error: ${err.message}`,
         });
@@ -314,7 +318,7 @@ export class WorkerHarness {
         payload: { error: { errorClass: "UnhandledError", message: String(err?.message ?? err) } },
       });
       await this.deps.client.completeTask({
-        workflowInstanceId, taskId: task.taskId,
+        workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
         status: "FAILED",
         reasonForIncompletion: String(err?.message ?? err),
       });

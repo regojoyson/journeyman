@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   COMMIT_AND_PUSH_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   COMMIT_AND_PUSH_CATEGORY,
   COMMIT_AND_PUSH_DESCRIPTION,
   commitAndPushOutputSchema,
+  commitAndPushConfigSchema,
 } from "./commit-and-push.meta.ts";
 
 interface CommitAndPushConfig {
@@ -21,10 +21,7 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
   color: "#fdcb6e",
   icon: "⬆",
   defaultConfig: { repos: "", message: "" },
-  configSchema: z.object({
-    repos: z.string().optional(),
-    message: z.string().optional(),
-  }),
+  configSchema: commitAndPushConfigSchema,
   configFields: {
     repos:   { label: "Repos", widget: "text", help: "Repo path. Leave blank to wire from IO (Repo[] from start-feature-branch)." },
     message: { label: "Commit message", widget: "textarea", help: "Optional. If set, used as the literal commit message (skips AI generation). Otherwise the agent writes a message from the issue + diff." },

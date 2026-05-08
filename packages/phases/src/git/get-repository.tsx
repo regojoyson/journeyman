@@ -1,10 +1,10 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   GET_REPOSITORY_PHASE_TYPE,
   GET_REPOSITORY_LABEL,
   GET_REPOSITORY_CATEGORY,
   GET_REPOSITORY_DESCRIPTION,
+  getRepositoryConfigSchema,
 } from "./get-repository.meta.ts";
 
 interface GetRepositoryConfig {
@@ -20,10 +20,7 @@ export const getRepositoryPhase: PhaseDefinition<GetRepositoryConfig> = {
   color: "#74b9ff",
   icon: "🗂",
   defaultConfig: { owner: "", repo: "" },
-  configSchema: z.object({
-    owner: z.string().min(1),
-    repo: z.string().min(1),
-  }),
+  configSchema: getRepositoryConfigSchema,
   configFields: {
     owner: { label: "Owner / org", widget: "text" },
     repo:  { label: "Repository",  widget: "text" },

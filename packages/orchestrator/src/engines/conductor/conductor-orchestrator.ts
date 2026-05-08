@@ -77,6 +77,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       version: 1,
       input: {
         ...args.inputs,
+        workflowInstanceId: instance.id,
         startedByUserId: args.startedByUserId ?? null,
         startedByOrgId: args.startedByOrgId ?? null,
         workflowId: args.workflowId,

@@ -46,7 +46,10 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const knownInputKeys = new Set(Object.keys(catalogEntry?.inputFields ?? {}));
     const staleInputKeys = Object.keys(currentInputs).filter(k => !knownInputKeys.has(k));
 
-    const knownConfigKeys = definition?.configFields ? new Set(Object.keys(definition.configFields)) : null;
+    const knownConfigKeys =
+      definition?.configFields && Object.keys(definition.configFields).length > 0
+        ? new Set(Object.keys(definition.configFields))
+        : null;
     const staleConfigKeys = knownConfigKeys
       ? Object.keys(currentConfig).filter(k => !knownConfigKeys.has(k))
       : [];

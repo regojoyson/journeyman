@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   SEND_MESSAGE_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   SEND_MESSAGE_CATEGORY,
   SEND_MESSAGE_DESCRIPTION,
   sendMessageOutputSchema,
+  sendMessageConfigSchema,
 } from "./send-message.meta.ts";
 
 interface SendMessageConfig {
@@ -22,11 +22,7 @@ export const sendMessagePhase: PhaseDefinition<SendMessageConfig> = {
   color: "#fd79a8",
   icon: "💬",
   defaultConfig: { channel: "", message: "", blocks: "" },
-  configSchema: z.object({
-    channel: z.string().min(1),
-    message: z.string().min(1),
-    blocks: z.string().optional(),
-  }),
+  configSchema: sendMessageConfigSchema,
   configFields: {
     channel: { label: "Channel / target", widget: "text", help: "e.g. #deploys (Slack)" },
     message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{issue}" },

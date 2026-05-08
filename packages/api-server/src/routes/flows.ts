@@ -7,7 +7,7 @@ import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { WorkflowGraph, WorkflowScope } from "@journeyman/core";
 import { ConductorJsonConverter } from "@journeyman/orchestrator";
-import { phaseCatalog } from "@journeyman/phases/catalog";
+import { phaseCatalog, buildPhaseConfigValidators } from "@journeyman/phases/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { getCustomAiPhase } from "@journeyman/custom-phases";
@@ -315,6 +315,47 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const report = computeValidationReport(body.definition, customPhaseInputs);
     const callerScope: WorkflowScope = "user";
     const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
+
+    // Run the same node-level checks publish runs, so the Validate button
+    // surfaces unresolved-binding / missing-config / orphan / gate errors
+    // without the user having to attempt a publish to see them.
+    const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
+    const visibleSecretNames = new Set(visible.map((v) => v.name));
+    const customAiPhaseDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
+    if (c.pool) {
+      const customPhaseIds = new Set<string>();
+      for (const node of body.definition.nodes) {
+        if (node.type === "phase" && node.phaseType === "custom-ai") {
+          const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+          if (typeof id === "string" && id) customPhaseIds.add(id);
+        }
+      }
+      for (const id of customPhaseIds) {
+        const phase = await getCustomAiPhase(c.pool, id);
+        if (phase) customAiPhaseDefaults.set(id, { defaultTools: phase.defaultTools });
+      }
+    }
+    const publishResult = validateForPublish(body.definition, {
+      hasTrigger: hasWorkflowTrigger(body.definition),
+      visibleSecretNames,
+      phaseConfigValidators: buildPhaseConfigValidators(phaseCatalog),
+      customAiPhaseDefaults,
+    });
+    const seenErrors = new Set(report.errors);
+    const seenMissing = new Set(report.missing);
+    const seenWarnings = new Set(report.warnings);
+    for (const e of publishResult.errors) {
+      const msg = e.nodeId ? `${e.message} (node ${e.nodeId})` : e.message;
+      if (e.severity === "warning") {
+        if (!seenWarnings.has(msg)) { report.warnings.push(msg); seenWarnings.add(msg); }
+      } else if (e.code === "missing_config" || e.code === "unresolved_binding") {
+        if (!seenMissing.has(msg)) { report.missing.push(msg); seenMissing.add(msg); }
+      } else {
+        if (!seenErrors.has(msg)) { report.errors.push(msg); seenErrors.add(msg); }
+      }
+    }
+    report.ok = report.errors.length === 0 && report.missing.length === 0;
+
     return { ...report, secretWarnings };
   });
 
@@ -453,15 +494,33 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
     const visibleSecretNames = new Set(visible.map(v => v.name));
 
+    const customAiPhaseDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
+    if (c.pool) {
+      const customPhaseIds = new Set<string>();
+      for (const node of version.definition.nodes) {
+        if (node.type === "phase" && node.phaseType === "custom-ai") {
+          const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+          if (typeof id === "string" && id) customPhaseIds.add(id);
+        }
+      }
+      for (const id of customPhaseIds) {
+        const phase = await getCustomAiPhase(c.pool, id);
+        if (phase) customAiPhaseDefaults.set(id, { defaultTools: phase.defaultTools });
+      }
+    }
+
     const result = validateForPublish(version.definition, {
       hasTrigger: hasWorkflowTrigger(version.definition),
       visibleSecretNames,
+      phaseConfigValidators: buildPhaseConfigValidators(phaseCatalog),
+      customAiPhaseDefaults,
     });
-    if (!result.ok) { reply.code(400); return { errors: result.errors }; }
+    if (!result.ok) { reply.code(400); return { errors: result.errors.filter(e => !e.severity || e.severity === "error") }; }
 
     const updated = await c.workflows.setStatus(id, "ready");
     if (!updated) { reply.code(500); return { error: "update_failed" }; }
-    return { workflow: updated };
+    const warnings = result.errors.filter(e => e.severity === "warning");
+    return { workflow: updated, warnings };
   });
 
   app.post("/workflows/:id/unpublish", { preHandler: requireAuth() }, async (req, reply) => {

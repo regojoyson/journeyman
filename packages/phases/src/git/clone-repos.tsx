@@ -1,11 +1,11 @@
 // packages/phases/src/git/clone-repos.tsx
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   CLONE_REPOS_PHASE_TYPE,
   CLONE_REPOS_LABEL,
   CLONE_REPOS_CATEGORY,
   CLONE_REPOS_DESCRIPTION,
+  cloneReposConfigSchema,
 } from "./clone-repos.meta.ts";
 
 interface CloneReposConfig {
@@ -21,10 +21,7 @@ export const cloneReposPhase: PhaseDefinition<CloneReposConfig> = {
   color: "#74b9ff",
   icon: "📦",
   defaultConfig: { repos: "", branch: "" },
-  configSchema: z.object({
-    repos: z.string().min(1),
-    branch: z.string().optional(),
-  }),
+  configSchema: cloneReposConfigSchema,
   configFields: {
     repos:  { label: "Repos",  widget: "textarea", help: "One owner/repo (or URL) per line" },
     branch: { label: "Branch", widget: "text",     help: "Optional — defaults to main" },

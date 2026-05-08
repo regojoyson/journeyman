@@ -1,5 +1,5 @@
 import type { WorkflowGraph, Shape } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesEqual } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export function validateRefShape(
@@ -18,8 +18,13 @@ export function validateRefShape(
   let root: Shape | undefined;
   if (source === "workflow") {
     const startNode = flow.nodes.find(n => n.type === "start");
-    const decls = ((startNode?.config as { runInputs?: { name: string; shape?: Shape }[] } | undefined)?.runInputs) ?? [];
-    root = decls.find(r => r.name === path[0])?.shape ?? ({ type: "string" } as Shape);
+    const decls = getStartWorkflowInputs(startNode?.config);
+    const decl = decls.find(r => r.name === path[0]);
+    root = decl
+      ? ((decl.type === "number" || decl.type === "boolean" || decl.type === "string"
+          ? { type: decl.type }
+          : { type: "string" }) as Shape)
+      : ({ type: "string" } as Shape);
     if (!root) return { ok: false, error: `workflow.input.${path[0]} not declared` };
     const leaf = shapeAtPath(root, path.slice(1));
     if (!leaf) return { ok: false, error: `Path '${ref}' not found` };

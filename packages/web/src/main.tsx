@@ -3,6 +3,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App.tsx";
 import { AuthGate } from "./AuthGate.tsx";
+import "@journeyman/flow-editor/styles.css";
 import "./styles.css";
 
 const queryClient = new QueryClient({

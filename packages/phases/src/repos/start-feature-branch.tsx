@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   START_FEATURE_BRANCH_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   START_FEATURE_BRANCH_CATEGORY,
   START_FEATURE_BRANCH_DESCRIPTION,
   startFeatureBranchOutputSchema,
+  startFeatureBranchConfigSchema,
 } from "./start-feature-branch.meta.ts";
 
 interface StartFeatureBranchConfig {
@@ -20,7 +20,7 @@ export const startFeatureBranchPhase: PhaseDefinition<StartFeatureBranchConfig> 
   color: "#fdcb6e",
   icon: "⬇",
   defaultConfig: {},
-  configSchema: z.object({}),
+  configSchema: startFeatureBranchConfigSchema,
   configFields: {},
   // No secret slots — git auth is reused from the embedded credential in the
   // already-cloned repo's `.git/config` (set by clone-repos). Hide the tab to

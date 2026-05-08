@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const listPullRequestsConfigSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  state: z.enum(["open", "closed", "all"]),
+});
 
 export const LIST_PULL_REQUESTS_PHASE_TYPE = "list-pull-requests";
 export const LIST_PULL_REQUESTS_LABEL = "List Pull Requests";

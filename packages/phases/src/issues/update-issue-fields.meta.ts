@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const updateIssueFieldsConfigSchema = z.object({
+  issueRef: z.string().min(1),
+  fields: z.record(z.string(), z.string()),
+});
 
 export const UPDATE_ISSUE_FIELDS_PHASE_TYPE = "update-issue-fields";
 export const UPDATE_ISSUE_FIELDS_LABEL = "Update Issue Fields";

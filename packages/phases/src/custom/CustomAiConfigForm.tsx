@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { PhaseFormProps } from "@journeyman/flow-editor";
 import { useOrgId, ValuePicker } from "@journeyman/flow-editor";
 import type { CustomAiPhase, CanonicalTool, WorkflowInputValue } from "@journeyman/core";
-import { CANONICAL_TOOLS, toolsRequireWorkspace } from "@journeyman/core";
 
 interface CustomAiConfig {
   customPhaseId: string;
@@ -42,21 +41,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources }: Phas
   if (!phase) return <div className="je-props__field-help">Loading custom phase…</div>;
 
   const editHref = phase.scope === "user" ? "/me/custom-phases" : "/admin/custom-phases";
-  const effectiveTools: CanonicalTool[] = config.tools ?? phase.defaultTools ?? [];
-  const overriding = config.tools !== undefined;
-  const needsWs = toolsRequireWorkspace(effectiveTools);
-
-  const setOverride = (next: CanonicalTool[]) => onChange({ ...config, tools: next });
-  const clearOverride = () => {
-    const { tools: _t, ...rest } = config;
-    onChange(rest as CustomAiConfig);
-  };
-  const toggleTool = (t: CanonicalTool) => {
-    const cur = new Set(effectiveTools);
-    if (cur.has(t)) cur.delete(t); else cur.add(t);
-    setOverride([...cur]);
-  };
-
   const setRef = (name: string, ref: string) => {
     setInputs({ ...inputs, [name]: { kind: "ref", ref } as WorkflowInputValue });
   };
@@ -153,60 +137,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources }: Phas
               onPick={(ref) => { setRef(pickerFor, ref); setPickerFor(null); }}
               onClose={() => setPickerFor(null)}
             />
-          </div>
-        )}
-      </div>
-
-      <div>
-        <label>
-          Tools{" "}
-          {overriding ? (
-            <span style={{ fontSize: 11, color: "#fdcb6e" }}>(overriding definition)</span>
-          ) : (
-            <span style={{ fontSize: 11, color: "#888" }}>(definition default)</span>
-          )}
-        </label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {CANONICAL_TOOLS.map((t) => {
-            const active = effectiveTools.includes(t);
-            return (
-              <label
-                key={t}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontSize: 12,
-                  padding: "2px 6px",
-                  border: "1px solid #444",
-                  borderRadius: 4,
-                  background: active ? "#4a9eff22" : "transparent",
-                  cursor: readOnly ? "default" : "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  disabled={readOnly}
-                  checked={active}
-                  onChange={() => toggleTool(t)}
-                />
-                {t}
-              </label>
-            );
-          })}
-        </div>
-        {overriding && !readOnly && (
-          <button
-            type="button"
-            onClick={clearOverride}
-            style={{ marginTop: 6, fontSize: 11 }}
-          >
-            Reset to definition default
-          </button>
-        )}
-        {needsWs && (
-          <div className="je-props__field-help" style={{ marginTop: 4 }}>
-            A workspace tool is selected — wire a <code>workspaceId</code> input on this node.
           </div>
         )}
       </div>

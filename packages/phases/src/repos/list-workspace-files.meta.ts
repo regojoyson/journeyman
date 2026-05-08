@@ -1,4 +1,9 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const listWorkspaceFilesConfigSchema = z.object({
+  pattern: z.string().min(1),
+});
 
 export const LIST_WORKSPACE_FILES_PHASE_TYPE = "list-workspace-files";
 export const LIST_WORKSPACE_FILES_LABEL = "List Workspace Files";

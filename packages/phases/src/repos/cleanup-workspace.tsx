@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   CLEANUP_WORKSPACE_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   CLEANUP_WORKSPACE_CATEGORY,
   CLEANUP_WORKSPACE_DESCRIPTION,
   cleanupWorkspaceOutputSchema,
+  cleanupWorkspaceConfigSchema,
 } from "./cleanup-workspace.meta.ts";
 
 interface CleanupWorkspaceConfig {
@@ -20,9 +20,7 @@ export const cleanupWorkspacePhase: PhaseDefinition<CleanupWorkspaceConfig> = {
   color: "#fdcb6e",
   icon: "🧹",
   defaultConfig: { mode: "soft" },
-  configSchema: z.object({
-    mode: z.enum(["soft", "hard"]),
-  }),
+  configSchema: cleanupWorkspaceConfigSchema,
   configFields: {
     mode: {
       label: "Mode", widget: "select",

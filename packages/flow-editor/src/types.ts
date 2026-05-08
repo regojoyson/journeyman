@@ -56,7 +56,7 @@ export interface FlowEditorProps {
   /** Lifecycle status of the flow. When "ready", the editor renders read-only and the topbar shows "Move to Draft". */
   status?: WorkflowStatus;
   /** Called when the user confirms publish in the modal. Returns ok + any server-side errors. */
-  onPublish?: () => Promise<{ ok: boolean; serverErrors?: PublishError[] }>;
+  onPublish?: () => Promise<{ ok: boolean; serverErrors?: PublishError[]; warnings?: PublishError[] }>;
   /**
    * Called when the user confirms unpublish (with confirm=true) or when the editor first attempts unpublish (confirm=false).
    * Returns the warning shape if the server demanded confirmation; null when the flip succeeded.

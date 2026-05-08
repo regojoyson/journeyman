@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const sendMessageConfigSchema = z.object({
+  channel: z.string().min(1),
+  message: z.string().min(1),
+  blocks: z.string().optional(),
+});
 
 export const SEND_MESSAGE_PHASE_TYPE = "send-message";
 export const SEND_MESSAGE_LABEL = "Send Message";

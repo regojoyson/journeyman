@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesEqual } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
@@ -30,10 +30,13 @@ export function resolveRefShape(
 
   if (parsed.scope === "workflow.input") {
     const startNode = flow.nodes.find(n => n.type === "start");
-    const workflowInputs = ((startNode?.config as { workflowInputs?: { name: string; shape?: Shape }[] } | undefined)?.workflowInputs) ?? [];
+    const workflowInputs = getStartWorkflowInputs(startNode?.config);
     const decl = workflowInputs.find(r => r.name === path[0]);
     if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
-    const root = decl.shape ?? ({ type: "string" } as Shape);
+    const root: Shape =
+      decl.type === "number" || decl.type === "boolean" || decl.type === "string"
+        ? { type: decl.type }
+        : { type: "string" };
     const leaf = shapeAtPath(root, path.slice(1));
     return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
   }

@@ -1,10 +1,10 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   OPEN_PULL_REQUEST_PHASE_TYPE,
   OPEN_PULL_REQUEST_LABEL,
   OPEN_PULL_REQUEST_CATEGORY,
   OPEN_PULL_REQUEST_DESCRIPTION,
+  openPullRequestConfigSchema,
 } from "./open-pull-request.meta.ts";
 
 interface OpenPullRequestConfig {
@@ -21,11 +21,7 @@ export const openPullRequestPhase: PhaseDefinition<OpenPullRequestConfig> = {
   color: "#74b9ff",
   icon: "🔀",
   defaultConfig: { title: "", body: "", sourceBranch: "" },
-  configSchema: z.object({
-    title: z.string().min(1),
-    body: z.string().optional(),
-    sourceBranch: z.string().optional(),
-  }),
+  configSchema: openPullRequestConfigSchema,
   configFields: {
     title:        { label: "Title",         widget: "text" },
     body:         { label: "Body",          widget: "textarea" },

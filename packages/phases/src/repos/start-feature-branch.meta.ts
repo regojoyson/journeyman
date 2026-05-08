@@ -1,4 +1,7 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const startFeatureBranchConfigSchema = z.object({});
 
 export const START_FEATURE_BRANCH_PHASE_TYPE = "start-feature-branch";
 export const START_FEATURE_BRANCH_LABEL = "Start Feature Branch";

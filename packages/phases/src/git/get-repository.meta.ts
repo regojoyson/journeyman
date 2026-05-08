@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const getRepositoryConfigSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+});
 
 export const GET_REPOSITORY_PHASE_TYPE = "get-repository";
 export const GET_REPOSITORY_LABEL = "Get Repository";

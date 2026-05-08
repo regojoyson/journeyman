@@ -1,6 +1,7 @@
 import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef } from "../types/flow.types.ts";
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
 import { resolveShape, shapeAtPath, shapesEqual } from "../types/shapes.ts";
+import { getStartWorkflowInputs } from "./start-node.ts";
 
 /**
  * Catalog entry the validator needs. The flow-editor and any future server-side
@@ -78,8 +79,7 @@ function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
 
 function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
   const start = flow.nodes.find((n) => n.type === "start");
-  const cfg = (start?.config ?? {}) as { workflowInputs?: WorkflowInputDef[] };
-  return cfg.workflowInputs ?? [];
+  return getStartWorkflowInputs(start?.config);
 }
 
 /**

@@ -1,10 +1,10 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   LIST_PULL_REQUESTS_PHASE_TYPE,
   LIST_PULL_REQUESTS_LABEL,
   LIST_PULL_REQUESTS_CATEGORY,
   LIST_PULL_REQUESTS_DESCRIPTION,
+  listPullRequestsConfigSchema,
 } from "./list-pull-requests.meta.ts";
 
 interface ListPullRequestsConfig {
@@ -21,11 +21,7 @@ export const listPullRequestsPhase: PhaseDefinition<ListPullRequestsConfig> = {
   color: "#74b9ff",
   icon: "📋",
   defaultConfig: { owner: "", repo: "", state: "open" },
-  configSchema: z.object({
-    owner: z.string().min(1),
-    repo: z.string().min(1),
-    state: z.enum(["open", "closed", "all"]),
-  }),
+  configSchema: listPullRequestsConfigSchema,
   configFields: {
     owner: { label: "Owner / org", widget: "text" },
     repo:  { label: "Repository", widget: "text" },

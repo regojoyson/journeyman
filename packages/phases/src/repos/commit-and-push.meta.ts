@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const commitAndPushConfigSchema = z.object({
+  repos: z.string().optional(),
+  message: z.string().optional(),
+});
 
 export const COMMIT_AND_PUSH_PHASE_TYPE = "commit-and-push";
 export const COMMIT_AND_PUSH_LABEL = "Commit & Push";

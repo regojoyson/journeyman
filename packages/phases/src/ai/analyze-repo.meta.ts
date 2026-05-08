@@ -1,4 +1,7 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const analyzeRepoConfigSchema = z.object({});
 
 export const ANALYZE_REPO_PHASE_TYPE = "analyze-repo";
 export const ANALYZE_REPO_LABEL = "Analyze Repo";

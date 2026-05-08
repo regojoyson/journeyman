@@ -1,4 +1,13 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const commentOnPullRequestConfigSchema = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  prNumber: z.union([z.number(), z.literal("")]),
+  template: z.string(),
+  body: z.string().optional(),
+});
 
 export const COMMENT_ON_PULL_REQUEST_PHASE_TYPE = "comment-on-pull-request";
 export const COMMENT_ON_PULL_REQUEST_LABEL = "Comment on Pull Request";

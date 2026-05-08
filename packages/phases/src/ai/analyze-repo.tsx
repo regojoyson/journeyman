@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import { summaryValue } from "@journeyman/flow-editor";
 import {
@@ -7,6 +6,7 @@ import {
   ANALYZE_REPO_CATEGORY,
   ANALYZE_REPO_DESCRIPTION,
   analyzeRepoOutputSchema,
+  analyzeRepoConfigSchema,
 } from "./analyze-repo.meta.ts";
 
 type AnalyzeRepoConfig = Record<string, never>;
@@ -19,7 +19,7 @@ export const analyzeRepoPhase: PhaseDefinition<AnalyzeRepoConfig> = {
   color: "#00b894",
   icon: "🤖",
   defaultConfig: {},
-  configSchema: z.object({}),
+  configSchema: analyzeRepoConfigSchema,
   configFields: {},
   tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
   supportsSkills: true,

@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const cloneReposConfigSchema = z.object({
+  repos: z.string().min(1),
+  branch: z.string().optional(),
+});
 
 export const CLONE_REPOS_PHASE_TYPE = "clone-repos";
 export const CLONE_REPOS_LABEL = "Clone Repos";

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { WorkflowGraph, Shape } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export interface UpstreamField {
@@ -28,7 +29,7 @@ export function useUpstreamSources(
   return useMemo(() => {
     const _t0 = performance.now();
     const startNode = graph.nodes.find(n => n.type === "start");
-    const runInputs = ((startNode?.config as { runInputs?: { name: string; description?: string; shape?: Shape }[] } | undefined)?.runInputs ?? []);
+    const runInputs = getStartWorkflowInputs(startNode?.config);
 
     const allIds = new Set(graph.nodes.map(n => n.id));
     const start = startNode?.id;
@@ -65,7 +66,9 @@ export function useUpstreamSources(
             name: r.name,
             description: r.description,
             scope: "run-input" as const,
-            shape: r.shape ?? ({ type: "string" } as Shape),
+            shape: (r.type === "number" || r.type === "boolean" || r.type === "string"
+              ? { type: r.type }
+              : { type: "string" }) as Shape,
           })),
         }],
       });

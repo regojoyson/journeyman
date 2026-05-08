@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const implementChangesConfigSchema = z.object({
+  planReportPath: z.string().min(1),
+  analyzeReportPath: z.string().optional(),
+});
 
 export const IMPLEMENT_CHANGES_PHASE_TYPE = "implement-changes";
 export const IMPLEMENT_CHANGES_LABEL = "Implement Changes";

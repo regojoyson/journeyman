@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { WorkflowNode } from "@journeyman/core";
+import type { WorkflowNode, CanonicalTool, CustomAiPhase } from "@journeyman/core";
+import { CANONICAL_TOOLS, toolsRequireWorkspace } from "@journeyman/core";
 
 interface VisibleMcp {
   id: string;
@@ -27,11 +28,45 @@ function setSelectedIds(node: WorkflowNode, ids: string[]): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), mcpInstanceIds: ids } };
 }
 
+function getCustomPhaseId(node: WorkflowNode): string | undefined {
+  const cfg = (node.config ?? {}) as { customPhaseId?: unknown };
+  return typeof cfg.customPhaseId === "string" ? cfg.customPhaseId : undefined;
+}
+
+function getToolsOverride(node: WorkflowNode): CanonicalTool[] | undefined {
+  const cfg = (node.config ?? {}) as { tools?: unknown };
+  return Array.isArray(cfg.tools) ? cfg.tools as CanonicalTool[] : undefined;
+}
+
+function setToolsOverride(node: WorkflowNode, tools: CanonicalTool[] | undefined): WorkflowNode {
+  if (tools === undefined) {
+    const { tools: _t, ...rest } = (node.config ?? {}) as { tools?: unknown };
+    return { ...node, config: rest };
+  }
+  return { ...node, config: { ...(node.config ?? {}), tools } };
+}
+
 export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProps) {
   const [available, setAvailable] = useState<VisibleMcp[]>([]);
   const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState<CustomAiPhase | null>(null);
   const selected = getSelectedIds(node);
   const enabledIds = new Set(selected);
+  const customPhaseId = getCustomPhaseId(node);
+
+  useEffect(() => {
+    if (!customPhaseId || !orgId) { setPhase(null); return; }
+    let alive = true;
+    fetch(`/api/orgs/${orgId}/users/me/custom-phases/${customPhaseId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .catch(() =>
+        fetch(`/api/orgs/${orgId}/custom-phases/${customPhaseId}`, { credentials: "include" })
+          .then((r) => (r.ok ? r.json() : Promise.reject(r))),
+      )
+      .then((p) => { if (alive) setPhase(p as CustomAiPhase); })
+      .catch(() => { if (alive) setPhase(null); });
+    return () => { alive = false; };
+  }, [orgId, customPhaseId]);
 
   useEffect(() => {
     let alive = true;
@@ -60,6 +95,18 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
       ? selected.filter((x) => x !== id)
       : [...selected, id];
     onChange(setSelectedIds(node, next));
+  };
+
+  const toolsOverride = getToolsOverride(node);
+  const effectiveTools: CanonicalTool[] = toolsOverride ?? phase?.defaultTools ?? [];
+  const overriding = toolsOverride !== undefined;
+  const needsWs = toolsRequireWorkspace(effectiveTools);
+
+  const toggleTool = (t: CanonicalTool) => {
+    if (readOnly) return;
+    const cur = new Set(effectiveTools);
+    if (cur.has(t)) cur.delete(t); else cur.add(t);
+    onChange(setToolsOverride(node, [...cur]));
   };
 
   return (
@@ -112,6 +159,62 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
           </div>
         )}
       </div>
+
+      {customPhaseId && (
+        <div className="je-props__field">
+          <label>
+            Tools{" "}
+            {overriding ? (
+              <span style={{ fontSize: 11, color: "#fdcb6e" }}>(overriding definition)</span>
+            ) : (
+              <span style={{ fontSize: 11, color: "#888" }}>(definition default)</span>
+            )}
+          </label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {CANONICAL_TOOLS.map((t) => {
+              const active = effectiveTools.includes(t);
+              return (
+                <label
+                  key={t}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 12,
+                    padding: "2px 6px",
+                    border: "1px solid #444",
+                    borderRadius: 4,
+                    background: active ? "#4a9eff22" : "transparent",
+                    cursor: readOnly ? "default" : "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={readOnly}
+                    checked={active}
+                    onChange={() => toggleTool(t)}
+                  />
+                  {t}
+                </label>
+              );
+            })}
+          </div>
+          {overriding && !readOnly && (
+            <button
+              type="button"
+              onClick={() => onChange(setToolsOverride(node, undefined))}
+              style={{ marginTop: 6, fontSize: 11 }}
+            >
+              Reset to definition default
+            </button>
+          )}
+          {needsWs && (
+            <div className="je-props__field-help" style={{ marginTop: 4 }}>
+              A workspace tool is selected — wire a <code>workspaceId</code> input on this node.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

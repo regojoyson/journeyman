@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   CREATE_WORKSPACE_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   CREATE_WORKSPACE_CATEGORY,
   CREATE_WORKSPACE_DESCRIPTION,
   createWorkspaceOutputSchema,
+  createWorkspaceConfigSchema,
 } from "./create-workspace.meta.ts";
 
 interface CreateWorkspaceConfig {
@@ -20,9 +20,7 @@ export const createWorkspacePhase: PhaseDefinition<CreateWorkspaceConfig> = {
   color: "#fdcb6e",
   icon: "📁",
   defaultConfig: { issueRef: "" },
-  configSchema: z.object({
-    issueRef: z.string().min(1),
-  }),
+  configSchema: createWorkspaceConfigSchema,
   configFields: {
     issueRef: { label: "Issue ref", widget: "text" },
   },

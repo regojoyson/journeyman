@@ -1,5 +1,4 @@
 // packages/phases/src/issues/update-issue-fields.tsx
-import { z } from "zod";
 import type { PhaseDefinition, PhaseFormProps } from "@journeyman/flow-editor";
 import { summaryValue } from "@journeyman/flow-editor";
 import {
@@ -8,6 +7,7 @@ import {
   UPDATE_ISSUE_FIELDS_CATEGORY,
   UPDATE_ISSUE_FIELDS_DESCRIPTION,
   updateIssueFieldsOutputSchema,
+  updateIssueFieldsConfigSchema,
 } from "./update-issue-fields.meta.ts";
 
 interface UpdateIssueFieldsConfig {
@@ -86,10 +86,7 @@ export const updateIssueFieldsPhase: PhaseDefinition<UpdateIssueFieldsConfig> = 
   color: "#a29bfe",
   icon: "✏️",
   defaultConfig: { issueRef: "", fields: {} },
-  configSchema: z.object({
-    issueRef: z.string().min(1),
-    fields: z.record(z.string(), z.string()),
-  }),
+  configSchema: updateIssueFieldsConfigSchema,
   ConfigForm: UpdateIssueFieldsConfigForm,
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
   summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",

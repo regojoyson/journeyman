@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import { summaryValue } from "@journeyman/flow-editor";
 import {
@@ -7,6 +6,7 @@ import {
   PLAN_IMPLEMENTATION_CATEGORY,
   PLAN_IMPLEMENTATION_DESCRIPTION,
   planImplementationOutputSchema,
+  planImplementationConfigSchema,
 } from "./plan-implementation.meta.ts";
 
 interface PlanImplementationConfig {
@@ -21,9 +21,7 @@ export const planImplementationPhase: PhaseDefinition<PlanImplementationConfig> 
   color: "#0984e3",
   icon: "📝",
   defaultConfig: { analyzeReportPath: "" },
-  configSchema: z.object({
-    analyzeReportPath: z.string().optional(),
-  }),
+  configSchema: planImplementationConfigSchema,
   configFields: {
     analyzeReportPath: { label: "Analyze report path", widget: "text", help: "Optional path to a prior analyze output" },
   },

@@ -1,4 +1,10 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const transitionIssueConfigSchema = z.object({
+  issueRef: z.string().min(1),
+  status: z.string().min(1),
+});
 
 export const TRANSITION_ISSUE_PHASE_TYPE = "transition-issue";
 export const TRANSITION_ISSUE_LABEL = "Transition Issue";

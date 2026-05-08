@@ -8,13 +8,13 @@ export interface UnpublishWarning {
 
 export async function publishFlow(
   workflowId: string,
-): Promise<{ ok: true; workflow: Workflow } | { ok: false; errors: PublishError[] }> {
+): Promise<{ ok: true; workflow: Workflow; warnings: PublishError[] } | { ok: false; errors: PublishError[] }> {
   try {
-    const res = await api<{ workflow: Workflow }>(
+    const res = await api<{ workflow: Workflow; warnings?: PublishError[] }>(
       `/workflows/${encodeURIComponent(workflowId)}/publish`,
       { method: "POST", body: "{}" },
     );
-    return { ok: true, workflow: res.workflow };
+    return { ok: true, workflow: res.workflow, warnings: res.warnings ?? [] };
   } catch (e) {
     if (e instanceof ApiError && e.status === 400) {
       const body = e.body as { errors?: PublishError[] } | null;

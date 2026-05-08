@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   COMMENT_ON_ISSUE_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   COMMENT_ON_ISSUE_CATEGORY,
   COMMENT_ON_ISSUE_DESCRIPTION,
   commentOnIssueOutputSchema,
+  commentOnIssueConfigSchema,
 } from "./comment-on-issue.meta.ts";
 
 interface CommentOnIssueConfig {
@@ -22,11 +22,7 @@ export const commentOnIssuePhase: PhaseDefinition<CommentOnIssueConfig> = {
   color: "#a29bfe",
   icon: "💭",
   defaultConfig: { issueRef: "", template: "", body: "" },
-  configSchema: z.object({
-    issueRef: z.string().min(1),
-    template: z.string(),
-    body: z.string().optional(),
-  }),
+  configSchema: commentOnIssueConfigSchema,
   configFields: {
     issueRef: { label: "Issue ref", widget: "text", help: "Supports #{issue} placeholder" },
     template:  { label: "Template id", widget: "text", help: "e.g. analysis-summary, completion-summary" },

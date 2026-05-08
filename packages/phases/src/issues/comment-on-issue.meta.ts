@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const commentOnIssueConfigSchema = z.object({
+  issueRef: z.string().min(1),
+  template: z.string(),
+  body: z.string().optional(),
+});
 
 export const COMMENT_ON_ISSUE_PHASE_TYPE = "comment-on-issue";
 export const COMMENT_ON_ISSUE_LABEL = "Comment on Issue";

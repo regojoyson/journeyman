@@ -19,7 +19,6 @@ import { validateWorkflowInputs } from "@journeyman/core";
 import type { FlowEditorProps } from "./types.ts";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { isJsonLogicExpr } from "@journeyman/core";
-import "./styles.css";
 
 const PROPS_WIDTH_KEY = "je-editor:propsWidth";
 const PALETTE_WIDTH_KEY = "je-editor:paletteWidth";
@@ -270,7 +269,7 @@ export function FlowEditor(props: FlowEditorProps) {
             onSelectNode={(id) => { s.setSelectedNodeId(id); }}
             onConfirm={async () => {
               const r = await props.onPublish!();
-              if (r.ok) setPublishOpen(false);
+              if (r.ok && !r.warnings?.length) setPublishOpen(false);
               return r;
             }}
           />

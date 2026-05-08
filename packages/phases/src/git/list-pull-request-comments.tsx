@@ -1,10 +1,10 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   LIST_PULL_REQUEST_COMMENTS_PHASE_TYPE,
   LIST_PULL_REQUEST_COMMENTS_LABEL,
   LIST_PULL_REQUEST_COMMENTS_CATEGORY,
   LIST_PULL_REQUEST_COMMENTS_DESCRIPTION,
+  listPullRequestCommentsConfigSchema,
 } from "./list-pull-request-comments.meta.ts";
 
 interface ListPullRequestCommentsConfig {
@@ -21,11 +21,7 @@ export const listPullRequestCommentsPhase: PhaseDefinition<ListPullRequestCommen
   color: "#74b9ff",
   icon: "📨",
   defaultConfig: { owner: "", repo: "", prNumber: "" },
-  configSchema: z.object({
-    owner: z.string().min(1),
-    repo: z.string().min(1),
-    prNumber: z.union([z.number(), z.literal("")]),
-  }),
+  configSchema: listPullRequestCommentsConfigSchema,
   configFields: {
     owner:    { label: "Owner / org", widget: "text" },
     repo:     { label: "Repository", widget: "text" },

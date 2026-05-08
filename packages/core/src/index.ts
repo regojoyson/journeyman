@@ -103,6 +103,7 @@ export {
 } from "./validation/validate-for-publish.ts";
 export type {
   PublishError, PublishValidationResult, PublishValidationContext,
+  PhaseConfigIssue, PhaseConfigValidator,
 } from "./validation/validate-for-publish.ts";
 export type {
   WorkflowInstanceGrant, WorkflowInstanceGrantPrincipalType, WorkflowInstanceGrantRole,
@@ -133,6 +134,7 @@ export {
   validateWorkflowInputs,
   shapeTag,
 } from "./utils/validate-workflow.ts";
+export { getStartWorkflowInputs } from "./utils/start-node.ts";
 export type {
   BindingCheck,
   ValidationCatalog,

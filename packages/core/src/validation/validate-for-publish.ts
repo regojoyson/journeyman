@@ -1,8 +1,10 @@
 import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
+import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
 
 export type PublishError = {
+  severity?: "error" | "warning"; // absent means "error"
   code:
     | "graph_invalid"
     | "no_trigger"
@@ -16,15 +18,27 @@ export type PublishError = {
   fieldPath?: string;
 };
 
-export type PublishValidationResult =
-  | { ok: true }
-  | { ok: false; errors: PublishError[] };
+export type PublishValidationResult = {
+  ok: boolean; // true when no error-severity items
+  errors: PublishError[];
+};
+
+export type PhaseConfigIssue = { path: (string | number)[]; message: string };
+export type PhaseConfigValidator = (config: unknown) => PhaseConfigIssue[];
 
 export interface PublishValidationContext {
   visibleSecretNames?: Set<string>;
   visibleMcpInstanceIds?: Set<string>;
   visibleSkillIds?: Set<string>;
   hasTrigger: boolean;
+  /** Per-phase config validators keyed by phaseType. Empty issues array means valid. */
+  phaseConfigValidators?: Map<string, PhaseConfigValidator>;
+  /**
+   * Defaults for custom-ai phases referenced by `custom-ai` nodes, keyed by phase id.
+   * Used to compute effective tools when a node hasn't overridden `config.tools`.
+   * Caller (api-server) pre-loads these from the DB before validating.
+   */
+  customAiPhaseDefaults?: Map<string, { defaultTools?: readonly CanonicalTool[] }>;
 }
 
 export function validateForPublish(
@@ -48,7 +62,8 @@ export function validateForPublish(
     pushNodeErrors(flow, node, ctx, errors);
   }
 
-  return errors.length === 0 ? { ok: true } : { ok: false, errors };
+  const hasError = errors.some(e => !e.severity || e.severity === "error");
+  return { ok: !hasError, errors };
 }
 
 function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
@@ -104,6 +119,10 @@ function pushNodeErrors(
   const upstream = collectUpstreamNodeIds(flow, node.id);
   for (const [slot, val] of Object.entries(node.inputs ?? {}) as [string, import("../types/flow.types.ts").WorkflowInputValue][]) {
     if (val && val.kind === "ref" && val.ref) {
+      // `workflow.input.*` is a pseudo-source for run inputs declared on the
+      // start node. validateWorkflowInputs handles the declaration check —
+      // skip the upstream-node check here.
+      if (val.ref.startsWith("workflow.input.")) continue;
       const referencedNodeId = parseRefNodeId(val.ref);
       if (referencedNodeId && !upstream.has(referencedNodeId)) {
         errors.push({
@@ -136,11 +155,65 @@ function pushNodeErrors(
     }
   }
 
+  if (node.type === "phase" && node.phaseType === "custom-ai") {
+    const cfg = (node.config ?? {}) as { tools?: unknown; customPhaseId?: unknown };
+    const nodeTools = Array.isArray(cfg.tools) ? (cfg.tools as CanonicalTool[]) : undefined;
+    let effectiveTools: readonly CanonicalTool[] | undefined = nodeTools;
+    if (!effectiveTools && typeof cfg.customPhaseId === "string" && ctx.customAiPhaseDefaults) {
+      effectiveTools = ctx.customAiPhaseDefaults.get(cfg.customPhaseId)?.defaultTools;
+    }
+    if (effectiveTools && toolsRequireWorkspace(effectiveTools)) {
+      const inputs = node.inputs ?? {};
+      if (inputs.workspaceId == null && inputs.workspaceDir == null) {
+        errors.push({
+          code: "missing_config",
+          message:
+            "Custom phase selected workspace tools (bash/read-file/write-file/edit-file/search) " +
+            "but no workspaceId/workspaceDir input is wired on this node",
+          nodeId: node.id,
+          fieldPath: "inputs.workspaceId",
+        });
+      }
+    }
+  }
+
+  if (node.type === "phase" && node.phaseType && ctx.phaseConfigValidators) {
+    const validator = ctx.phaseConfigValidators.get(node.phaseType);
+    if (validator) {
+      // Keys that are bound via node.inputs satisfy the runtime; their
+      // config slots may legitimately be empty. Don't surface schema issues
+      // whose root key is bound.
+      const boundInputKeys = new Set(
+        Object.entries(node.inputs ?? {})
+          .filter(([, v]) => {
+            const val = v as import("../types/flow.types.ts").WorkflowInputValue | undefined;
+            if (!val) return false;
+            if (val.kind === "ref") return typeof val.ref === "string" && val.ref.trim().length > 0;
+            if (val.kind === "literal") return val.value !== undefined;
+            return false;
+          })
+          .map(([k]) => k),
+      );
+      const issues = validator(node.config ?? {});
+      for (const issue of issues) {
+        if (issue.path.length > 0 && boundInputKeys.has(String(issue.path[0]))) continue;
+        const path = issue.path.join(".");
+        errors.push({
+          code: "missing_config",
+          message: `Node '${node.displayName ?? node.id}': ${issue.message}${path ? ` (config.${path})` : ""}`,
+          nodeId: node.id,
+          fieldPath: path ? `config.${path}` : "config",
+        });
+      }
+    }
+  }
+
   if (ctx.visibleSecretNames && node.secretBindings) {
     for (const [slot, binding] of Object.entries(node.secretBindings as Record<string, SecretBinding>)) {
       const name = binding.mode === "auto" ? slot : binding.name;
       if (!ctx.visibleSecretNames.has(name)) {
         errors.push({
+          severity: "warning",
           code: "dangling_reference",
           message: `Secret '${name}' (slot '${slot}') is not visible from this flow`,
           nodeId: node.id,
@@ -154,6 +227,7 @@ function pushNodeErrors(
     for (const id of ids) {
       if (!ctx.visibleMcpInstanceIds.has(id)) {
         errors.push({
+          severity: "warning",
           code: "dangling_reference",
           message: `MCP instance '${id}' is not visible from this flow`,
           nodeId: node.id,
@@ -167,6 +241,7 @@ function pushNodeErrors(
     for (const id of skills) {
       if (!ctx.visibleSkillIds.has(id)) {
         errors.push({
+          severity: "warning",
           code: "dangling_reference",
           message: `Skill '${id}' is not visible from this flow`,
           nodeId: node.id,

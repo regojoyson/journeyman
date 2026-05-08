@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const openPullRequestConfigSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().optional(),
+  sourceBranch: z.string().optional(),
+});
 
 export const OPEN_PULL_REQUEST_PHASE_TYPE = "open-pull-request";
 export const OPEN_PULL_REQUEST_LABEL = "Open Pull Request";

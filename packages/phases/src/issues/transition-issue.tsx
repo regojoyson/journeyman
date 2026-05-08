@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   TRANSITION_ISSUE_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   TRANSITION_ISSUE_CATEGORY,
   TRANSITION_ISSUE_DESCRIPTION,
   transitionIssueOutputSchema,
+  transitionIssueConfigSchema,
 } from "./transition-issue.meta.ts";
 
 interface TransitionIssueConfig {
@@ -21,10 +21,7 @@ export const transitionIssuePhase: PhaseDefinition<TransitionIssueConfig> = {
   color: "#a29bfe",
   icon: "🚦",
   defaultConfig: { issueRef: "", status: "" },
-  configSchema: z.object({
-    issueRef: z.string().min(1),
-    status: z.string().min(1),
-  }),
+  configSchema: transitionIssueConfigSchema,
   configFields: {
     issueRef: { label: "Issue ref", widget: "text", help: "Supports #{issue} placeholder" },
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },

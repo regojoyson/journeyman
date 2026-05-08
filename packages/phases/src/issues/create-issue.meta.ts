@@ -1,4 +1,12 @@
+import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
+
+export const createIssueConfigSchema = z.object({
+  project: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string(),
+  labels: z.array(z.string()),
+});
 
 export const CREATE_ISSUE_PHASE_TYPE = "create-issue";
 export const CREATE_ISSUE_LABEL = "Create Issue";

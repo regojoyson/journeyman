@@ -1,4 +1,5 @@
 import type { WorkflowNode, RetryPolicy, WorkflowInputDef } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
 import { RunInputsEditor } from "./RunInputsEditor.tsx";
 
 export interface FlowSettingsViewProps {
@@ -22,11 +23,11 @@ function setCycleVisits(node: WorkflowNode, n: number): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), maxCycleVisits: n } };
 }
 function getRunInputs(node: WorkflowNode): WorkflowInputDef[] {
-  const cfg = (node.config ?? {}) as { runInputs?: WorkflowInputDef[] };
-  return cfg.runInputs ?? [];
+  return getStartWorkflowInputs(node.config);
 }
 function setRunInputs(node: WorkflowNode, inputs: WorkflowInputDef[]): WorkflowNode {
-  return { ...node, config: { ...(node.config ?? {}), runInputs: inputs } };
+  const { runInputs: _legacy, ...rest } = (node.config ?? {}) as Record<string, unknown>;
+  return { ...node, config: { ...rest, workflowInputs: inputs } };
 }
 
 export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettingsViewProps) {

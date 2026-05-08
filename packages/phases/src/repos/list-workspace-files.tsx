@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 import {
   LIST_WORKSPACE_FILES_PHASE_TYPE,
@@ -6,6 +5,7 @@ import {
   LIST_WORKSPACE_FILES_CATEGORY,
   LIST_WORKSPACE_FILES_DESCRIPTION,
   listWorkspaceFilesOutputSchema,
+  listWorkspaceFilesConfigSchema,
 } from "./list-workspace-files.meta.ts";
 
 interface ListWorkspaceFilesConfig {
@@ -20,9 +20,7 @@ export const listWorkspaceFilesPhase: PhaseDefinition<ListWorkspaceFilesConfig> 
   color: "#fdcb6e",
   icon: "🔍",
   defaultConfig: { pattern: "*" },
-  configSchema: z.object({
-    pattern: z.string().min(1),
-  }),
+  configSchema: listWorkspaceFilesConfigSchema,
   configFields: {
     pattern:      { label: "Glob pattern",  widget: "text", help: "e.g. */api-*" },
   },

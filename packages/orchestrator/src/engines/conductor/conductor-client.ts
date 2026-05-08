@@ -2,6 +2,15 @@ import { createLogger } from "@journeyman/core";
 
 const log = createLogger("conductor:client");
 
+const isTransientSocketError = (e: unknown): boolean => {
+  const cause = (e as { cause?: { code?: string; message?: string } })?.cause;
+  const code = cause?.code ?? (e as { code?: string })?.code;
+  const msg = cause?.message ?? (e as { message?: string })?.message ?? "";
+  return code === "UND_ERR_SOCKET"
+      || code === "ECONNRESET"
+      || /other side closed|socket hang up/i.test(msg);
+};
+
 export interface ConductorClientConfig {
   baseUrl: string;     // e.g. "http://localhost:8080/api"
   fetchImpl?: typeof fetch;
@@ -33,23 +42,34 @@ export class ConductorClient {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const url = `${this.cfg.baseUrl}${path}`;
-    const res = await this.fetcher(url, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      log.error({ url, status: res.status, body }, "Conductor request failed");
-      throw new Error(`Conductor ${init.method ?? "GET"} ${path} → ${res.status}: ${body}`);
+    const headers = { "Content-Type": "application/json", ...(init.headers ?? {}) };
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await this.fetcher(url, { ...init, headers });
+        if (!res.ok) {
+          const body = await res.text();
+          log.error({ url, status: res.status, body }, "Conductor request failed");
+          throw new Error(`Conductor ${init.method ?? "GET"} ${path} → ${res.status}: ${body}`);
+        }
+        if (res.status === 204) return undefined as T;
+        const text = await res.text();
+        if (!text) return undefined as T;
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          return JSON.parse(text) as T;
+        }
+        return text as unknown as T;
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 0 && isTransientSocketError(err)) {
+          log.debug({ url, attempt }, "transient socket error, retrying");
+          continue;
+        }
+        throw err;
+      }
     }
-    if (res.status === 204) return undefined as T;
-    const text = await res.text();
-    if (!text) return undefined as T;
-    const contentType = res.headers.get("content-type") ?? "";
-    if (contentType.includes("application/json")) {
-      return JSON.parse(text) as T;
-    }
-    return text as unknown as T;
+    throw lastErr;
   }
 
   /** Register or update a workflow definition. */

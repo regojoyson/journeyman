@@ -1,4 +1,5 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, SecretBinding } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
@@ -89,7 +90,7 @@ class ConvertCtx {
 
     const nodeIds = new Set(this.flow.nodes.map(n => n.id));
     const startNode = this.flow.nodes.find(n => n.type === "start");
-    const runInputDefs = ((startNode?.config as { runInputs?: Array<{ name: string }> } | undefined)?.runInputs ?? []);
+    const runInputDefs = getStartWorkflowInputs(startNode?.config);
     const runInputNames = new Set(runInputDefs.map(d => d.name));
 
     for (const node of this.flow.nodes) {
@@ -198,9 +199,10 @@ class ConvertCtx {
           secretBindings: bindings,
           ...(resolvedNode.model ? { model: resolvedNode.model } : {}),
           _flowDefaultSources: defaultSources,
+          workflowInstanceId: "${workflow.input.workflowInstanceId}",
           startedByUserId: "${workflow.input.startedByUserId}",
           startedByOrgId: "${workflow.input.startedByOrgId}",
-          flowId: "${workflow.input.flowId}",
+          workflowId: "${workflow.input.workflowId}",
         };
       })(),
       retryCount: enabled ? (r.maxAttempts ?? 3) : 0,
