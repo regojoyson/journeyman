@@ -39,10 +39,16 @@ export function RunDetailPage() {
     return close;
   }, [id, detailQ.data]);
 
-  const allEvents = useMemo(() => [
-    ...(detailQ.data?.events ?? []),
-    ...liveEvents,
-  ], [detailQ.data?.events, liveEvents]);
+  // Dedupe by event id: detailQ refetches (or initial load after SSE has
+  // already pushed events) can return events that are also in liveEvents,
+  // causing the run-viewer to render duplicate log lines. Order is preserved
+  // by id ascending — events are append-only and ids are monotonic.
+  const allEvents = useMemo(() => {
+    const byId = new Map<number, WorkflowInstanceEvent>();
+    for (const e of detailQ.data?.events ?? []) byId.set(e.id, e);
+    for (const e of liveEvents) byId.set(e.id, e);
+    return Array.from(byId.values()).sort((a, b) => a.id - b.id);
+  }, [detailQ.data?.events, liveEvents]);
 
   if (!id) { navigate("/workflow-instances"); return null; }
   if (detailQ.isLoading) return <div style={{ padding: 24, color: "#888" }}>Loading run…</div>;

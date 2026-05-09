@@ -256,9 +256,10 @@ export class WorkerHarness {
       }
     }
 
+    const inputForEvent = redactPhaseInputForEvent(phaseInput);
     await this.deps.events.append({
       workflowInstanceId, nodeId, eventType: "phase.started",
-      payload: { attempt: task.retryCount + 1, inputSources },
+      payload: { attempt: task.retryCount + 1, inputSources, input: inputForEvent },
     });
 
     try {
@@ -326,4 +327,24 @@ export class WorkerHarness {
       await ws.destroy().catch(e => log.warn(e, "workspace destroy failed"));
     }
   }
+}
+
+/**
+ * Strip resolved/internal fields from phaseInput before emitting it on
+ * `phase.started`. The UI shows this as the phase's Input — keep only the
+ * user-meaningful fields, not server-resolved objects (mcps, skills,
+ * resolved secret values) or harness plumbing.
+ */
+function redactPhaseInputForEvent(phaseInput: Record<string, unknown>): Record<string, unknown> {
+  const REDACT = new Set([
+    "mcps", "skills", "secretBindings",
+    "__workflowInput", "_flowDefaultSources",
+    "startedByUserId", "startedByOrgId",
+  ]);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(phaseInput)) {
+    if (REDACT.has(k)) continue;
+    out[k] = v;
+  }
+  return out;
 }

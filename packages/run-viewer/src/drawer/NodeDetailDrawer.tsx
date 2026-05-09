@@ -31,6 +31,20 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
   }
   const lastExec = [...p.executions].sort((a, b) => b.attempt - a.attempt)[0] ?? null;
 
+  // Worker-harness phases do not write NodeExecution rows; their input/output
+  // live on phase.started / phase.completed events. Fall back to those when
+  // the execution row is missing or has empty fields.
+  const nodeEvents = p.events.filter(e => e.nodeId === p.nodeId);
+  const lastStarted = [...nodeEvents].reverse().find(e => e.eventType === "phase.started");
+  const lastCompleted = [...nodeEvents].reverse().find(e => e.eventType === "phase.completed");
+  const startedInput = (lastStarted?.payload as { input?: unknown } | undefined)?.input;
+  const completedOutput = (lastCompleted?.payload as { output?: unknown } | undefined)?.output;
+
+  const execInput = lastExec?.input;
+  const hasExecInput = execInput && typeof execInput === "object" && Object.keys(execInput as object).length > 0;
+  const inputToShow = hasExecInput ? execInput : (startedInput ?? execInput ?? {});
+  const outputToShow = lastExec?.output ?? completedOutput ?? null;
+
   return (
     <aside className="je-runview__drawer">
       <h2>{p.displayName ?? p.nodeId}</h2>
@@ -41,13 +55,13 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
 
       <div className="je-runview__section">
         <h3>Input</h3>
-        <pre className="je-runview__pre">{JSON.stringify(lastExec?.input ?? {}, null, 2)}</pre>
+        <pre className="je-runview__pre">{JSON.stringify(inputToShow, null, 2)}</pre>
       </div>
 
       <div className="je-runview__section">
         <h3>Output</h3>
         <pre className="je-runview__pre">
-          {lastExec?.output ? JSON.stringify(lastExec.output, null, 2) : "—"}
+          {outputToShow ? JSON.stringify(outputToShow, null, 2) : "—"}
         </pre>
       </div>
 

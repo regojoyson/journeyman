@@ -1172,3 +1172,146 @@ label.je-switch,
   white-space: nowrap;
 }
 .je-humantask__inline-check input { width: 14px; height: 14px; }
+
+/* Edge inspector (If/Else gateway branch config) */
+.je-edge-inspector {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px;
+  font-size: 12px;
+  color: #ddd;
+}
+.je-edge-inspector__header {
+  font-weight: 600; font-size: 12px;
+  color: #fff;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2a2a3a;
+  word-break: break-all;
+}
+.je-edge-inspector__hint { color: #888; font-style: italic; }
+.je-edge-inspector__field {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.je-edge-inspector__field > span {
+  font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.je-edge-inspector__field > input {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.je-edge-inspector__field > input:focus {
+  outline: none;
+  border-color: #6c8eff;
+}
+.je-edge-inspector__field > input:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+.je-edge-inspector__type {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 0;
+}
+.je-edge-inspector__type > legend {
+  font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0 4px;
+}
+.je-edge-inspector__type label {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+}
+.je-edge-inspector__type input[type="radio"] { margin: 0; }
+.je-edge-inspector__condition {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.je-edge-inspector__condition-header {
+  font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.je-edge-inspector__error {
+  color: #ff7675; font-size: 11px;
+  padding: 6px 8px;
+  background: rgba(255,118,117,0.08);
+  border: 1px solid rgba(255,118,117,0.3);
+  border-radius: 4px;
+}
+
+/* Condition builder (jsonlogic UI) */
+.je-condition-builder {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px;
+  background: #11111a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+}
+.je-condition-builder__connector {
+  display: flex; gap: 12px;
+  font-size: 11px;
+}
+.je-condition-builder__connector label {
+  display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer;
+}
+.je-condition-builder__connector input[type="radio"] { margin: 0; }
+.je-condition-builder__json {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #ccc;
+  white-space: pre-wrap;
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.je-condition-builder button {
+  background: #2a2a3e;
+  border: 1px solid #3a3a4e;
+  color: #ddd;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.je-condition-builder button:hover { background: #34344a; border-color: #4a4a5e; color: #fff; }
+.je-condition-builder__toggle { align-self: flex-end !important; }
+
+.je-condition-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.je-condition-row select,
+.je-condition-row input {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  color: #fff;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  min-width: 0;
+}
+.je-condition-row select:focus,
+.je-condition-row input:focus { outline: none; border-color: #6c8eff; }
+.je-condition-row button {
+  background: transparent;
+  border: 1px solid #3a3a4e;
+  color: #aaa;
+  width: 24px; height: 24px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.je-condition-row button:hover { background: rgba(255,118,117,0.15); border-color: #ff7675; color: #ff7675; }

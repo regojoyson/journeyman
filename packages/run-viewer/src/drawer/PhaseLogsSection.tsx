@@ -71,7 +71,10 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
   }, [logs]);
 
   const allKinds: LogKind[] = ["assistant", "tool", "tool_result", "result_ok", "result_err", "other"];
-  const [active, setActive] = useState<Set<LogKind>>(new Set(allKinds));
+  const [active, setActive] = useState<Record<LogKind, boolean>>({
+    assistant: true, tool: true, tool_result: true,
+    result_ok: true, result_err: true, other: true,
+  });
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
@@ -97,12 +100,7 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
   }, [logs.length, autoScroll]);
 
   const toggleKind = (k: LogKind) => {
-    setActive(prev => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k);
-      else next.add(k);
-      return next;
-    });
+    setActive(prev => ({ ...prev, [k]: !prev[k] }));
   };
 
   const toggleExpand = (id: number) => {
@@ -124,7 +122,10 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
     if (el) el.scrollTop = el.scrollHeight;
   };
 
-  const filtered = logs.filter(l => active.has(l.kind));
+  const filtered = useMemo(
+    () => logs.filter(l => active[l.kind]),
+    [logs, active],
+  );
 
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
@@ -192,7 +193,7 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
           {allKinds.map(k => {
             const n = counts[k] ?? 0;
             if (n === 0) return null;
-            const on = active.has(k);
+            const on = active[k];
             return (
               <button
                 key={k}

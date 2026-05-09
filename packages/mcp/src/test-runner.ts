@@ -93,6 +93,10 @@ function buildTransport(inst: ResolvedMcpInstance) {
   }
   const headers = buildHeaders(inst.env);
   if (inst.transport === "sse") {
+    // SSEClientTransport is deprecated by the SDK in favour of streamable HTTP,
+    // but our instance schema still allows `sse` and some servers only speak it.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    // @ts-ignore deprecated but intentionally supported
     return new SSEClientTransport(new URL(inst.url!), { requestInit: { headers } });
   }
   return new StreamableHTTPClientTransport(new URL(inst.url!), { requestInit: { headers } });
