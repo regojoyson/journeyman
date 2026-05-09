@@ -5,6 +5,7 @@ import { AddFromCatalogModal } from "../components/mcp/AddFromCatalogModal.tsx";
 import { AddCustomModal } from "../components/mcp/AddCustomModal.tsx";
 import { EditMcpModal } from "../components/mcp/EditMcpModal.tsx";
 import { PromoteMcpDialog } from "../components/mcp/PromoteMcpDialog.tsx";
+import { TestMcpModal } from "../components/mcp/TestMcpModal.tsx";
 
 export function AdminMcpsPage(props: { orgId: string }) {
   const [orgRows, setOrgRows] = useState<McpInstance[]>([]);
@@ -12,6 +13,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"catalog" | "custom" | null>(null);
   const [editing, setEditing] = useState<McpInstance | null>(null);
+  const [testing, setTesting] = useState<McpInstance | null>(null);
   const [promoting, setPromoting] = useState<PromotableRow | null>(null);
 
   async function refresh() {
@@ -83,6 +85,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
                     <td className="px-6 py-3 text-slate-400">{new Date(r.updatedAt).toLocaleString()}</td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        <button onClick={() => setTesting(r)} className={btnGhost}>Test</button>
                         <button onClick={() => setEditing(r)} className={btnGhost}>Edit</button>
                         <button onClick={() => remove(r)} className={btnDanger}>Delete</button>
                       </div>
@@ -141,6 +144,9 @@ export function AdminMcpsPage(props: { orgId: string }) {
       )}
       {editing && (
         <EditMcpModal orgId={props.orgId} scope="org" mcp={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+      )}
+      {testing && (
+        <TestMcpModal orgId={props.orgId} scope="org" mcp={testing} onClose={() => setTesting(null)} />
       )}
       {promoting && (
         <PromoteMcpDialog orgId={props.orgId} promotable={promoting} onClose={() => setPromoting(null)} onPromoted={refresh} />

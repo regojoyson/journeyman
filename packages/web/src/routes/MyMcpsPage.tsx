@@ -4,12 +4,14 @@ import { mcpApi, type McpInstance } from "../api/mcp.ts";
 import { AddFromCatalogModal } from "../components/mcp/AddFromCatalogModal.tsx";
 import { AddCustomModal } from "../components/mcp/AddCustomModal.tsx";
 import { EditMcpModal } from "../components/mcp/EditMcpModal.tsx";
+import { TestMcpModal } from "../components/mcp/TestMcpModal.tsx";
 
 export function MyMcpsPage(props: { orgId: string }) {
   const [rows, setRows] = useState<McpInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"catalog" | "custom" | null>(null);
   const [editing, setEditing] = useState<McpInstance | null>(null);
+  const [testing, setTesting] = useState<McpInstance | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -73,6 +75,7 @@ export function MyMcpsPage(props: { orgId: string }) {
                     <td className="px-6 py-3 text-slate-400">{new Date(r.updatedAt).toLocaleString()}</td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        <button onClick={() => setTesting(r)} className={btnGhost}>Test</button>
                         <button onClick={() => setEditing(r)} className={btnGhost}>Edit</button>
                         <button onClick={() => remove(r)} className={btnDanger}>Delete</button>
                       </div>
@@ -93,6 +96,9 @@ export function MyMcpsPage(props: { orgId: string }) {
       )}
       {editing && (
         <EditMcpModal orgId={props.orgId} scope="user" mcp={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+      )}
+      {testing && (
+        <TestMcpModal orgId={props.orgId} scope="user" mcp={testing} onClose={() => setTesting(null)} />
       )}
     </div>
   );

@@ -22,6 +22,24 @@ export function toMcpServerConfigs(
   return out;
 }
 
+/**
+ * Convert a resolved instance's env map into HTTP headers.
+ *
+ * Special-cases `AUTHORIZATION` → `Authorization: Bearer <value>`. Any other
+ * env key is copied to the headers verbatim. We deliberately do NOT also
+ * write the original `AUTHORIZATION` key — HTTP header names are
+ * case-insensitive, and writing both caused the raw token to overwrite the
+ * Bearer-formatted one in the underlying fetch Headers object.
+ */
+export function buildHeaders(env: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (k === "AUTHORIZATION") headers["Authorization"] = `Bearer ${v}`;
+    else headers[k] = v;
+  }
+  return headers;
+}
+
 function buildConfig(inst: ResolvedMcpInstance): McpServerConfig {
   if (inst.transport === "stdio") {
     return {
@@ -31,12 +49,7 @@ function buildConfig(inst: ResolvedMcpInstance): McpServerConfig {
       env: inst.env,
     };
   }
-  // http or sse
-  const headers: Record<string, string> = {};
-  for (const [k, v] of Object.entries(inst.env)) {
-    if (k === "AUTHORIZATION") headers["Authorization"] = `Bearer ${v}`;
-    headers[k] = v;
-  }
+  const headers = buildHeaders(inst.env);
   if (inst.transport === "sse") {
     return { type: "sse", url: inst.url!, headers };
   }

@@ -119,4 +119,38 @@ export const mcpApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<McpInstance>),
+
+  testList: (orgId: string, scope: "user" | "org", id: string) =>
+    fetch(testBase(orgId, scope, id), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list" }),
+    }).then(jsonOrThrow<TestOutcome>),
+
+  testInvoke: (orgId: string, scope: "user" | "org", id: string, tool: string, args: Record<string, unknown>) =>
+    fetch(testBase(orgId, scope, id), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "invoke", tool, args }),
+    }).then(jsonOrThrow<TestOutcome>),
 };
+
+// --- testing ---
+
+export interface ToolSummary {
+  name: string;
+  description?: string;
+  inputSchema?: unknown;
+}
+
+export type TestOutcome =
+  | { ok: true; tools: ToolSummary[] }
+  | { ok: true; result: unknown }
+  | { ok: false; error: string; phase: "resolve" | "connect" | "list" | "invoke" };
+
+const testBase = (orgId: string, scope: "user" | "org", id: string) =>
+  scope === "user"
+    ? `${userBase(orgId)}/${id}/test`
+    : `${orgBase(orgId)}/${id}/test`;
