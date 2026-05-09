@@ -15,10 +15,12 @@ export function setApiSessionManager(m: SessionManager | null): void {
 }
 
 async function doFetch(path: string, init: RequestInit): Promise<Response> {
+  const hasBody = init.body != null;
+  const baseHeaders: Record<string, string> = hasBody ? { "Content-Type": "application/json" } : {};
   return fetch(`${baseUrl}${path}`, {
     ...init,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+    headers: { ...baseHeaders, ...(init.headers ?? {}) },
   });
 }
 

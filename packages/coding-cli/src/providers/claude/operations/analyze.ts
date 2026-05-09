@@ -224,7 +224,7 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
       ...queryOption,
     },
   })) {
-    logSdkMessage(msg);
+    logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
         const error = (msg as any).errors?.[0] ?? msg.subtype;

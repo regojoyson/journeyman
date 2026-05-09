@@ -75,7 +75,7 @@ export async function runCustomPrompt(
   let out: RunCustomPromptResult = { sessionId };
 
   for await (const msg of query({ prompt: fullPrompt, options: queryOptions as any })) {
-    logSdkMessage(msg);
+    logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
     if ((msg as any).type === "result") {
       const m = msg as any;
       if (m.subtype !== "success") {

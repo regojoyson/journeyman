@@ -1,5 +1,6 @@
 import type {
   WorkflowGraph,
+  IEventBus,
   IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
   IWorkflowInstanceStore, IWorkflowInstanceGrantsStore, WorkflowInstance, WorkflowInstanceStatus,
   SubmitWorkflowInstanceArgs,
@@ -23,6 +24,7 @@ export interface ConductorOrchestratorDeps {
   converter: IWorkflowJsonConverter<ConductorWorkflowDef>;
   workflowInstances: IWorkflowInstanceStore;
   workflowInstanceGrants: IWorkflowInstanceGrantsStore;
+  events: IEventBus;
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
@@ -87,6 +89,26 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     await this.deps.workflowInstances.setEngineWorkflowId(instance.id, engineWorkflowId);
     await this.deps.workflowInstances.setStatus(instance.id, "running");
 
+    // Start nodes are graph markers, not phases — conductor-converter begins the task sequence at
+    // successor(start), so no worker ever runs for them. Emit node.resolved (the same family used
+    // for human tasks) so the UI doesn't show the start node stuck at "pending".
+    const startNode = args.definitionSnapshot.nodes.find((n) => n.type === "start");
+    if (startNode) {
+      try {
+        await this.deps.events.append({
+          workflowInstanceId: instance.id,
+          nodeId: startNode.id,
+          eventType: "node.resolved",
+          payload: {},
+        });
+      } catch (err) {
+        log.warn(
+          { workflowInstanceId: instance.id, err: (err as Error)?.message },
+          "failed to emit start-node resolved event",
+        );
+      }
+    }
+
     return { workflowInstanceId: instance.id, engineWorkflowId };
   }
 
@@ -134,6 +156,9 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     }
 
     if (mapped !== instance.status) {
+      if (mapped === "completed") {
+        await this.emitEndNodeCompleted(instance);
+      }
       const completedAt = ["completed", "failed", "cancelled"].includes(mapped)
         ? new Date() : undefined;
       const durationMs = completedAt && instance.startedAt
@@ -144,6 +169,34 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       });
     }
     return mapped;
+  }
+
+  /**
+   * End nodes are graph markers compiled to Conductor TERMINATE tasks (see
+   * conductor-converter#terminateTask) that run inside the engine, not through worker-harness —
+   * so no phase events fire for them. Emit node.resolved (the non-worker event family) for the
+   * TERMINATE task that actually executed, so the UI flips it from pending to completed.
+   */
+  private async emitEndNodeCompleted(instance: WorkflowInstance): Promise<void> {
+    if (!instance.engineWorkflowId) return;
+    try {
+      const exec = await this.deps.client.getWorkflowWithTasks(instance.engineWorkflowId);
+      const terminateTask = exec.tasks.find(
+        (t) => t.taskType === "TERMINATE" && t.status === "COMPLETED",
+      );
+      if (!terminateTask) return;
+      await this.deps.events.append({
+        workflowInstanceId: instance.id,
+        nodeId: terminateTask.referenceTaskName,
+        eventType: "node.resolved",
+        payload: { output: exec.output ?? {} },
+      });
+    } catch (err) {
+      log.warn(
+        { workflowInstanceId: instance.id, err: (err as Error)?.message },
+        "failed to emit end-node resolved event",
+      );
+    }
   }
 
   private shouldWorkflowRetry(instance: WorkflowInstance): boolean {

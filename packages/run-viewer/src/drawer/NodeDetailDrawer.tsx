@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NodeExecution, WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, ResolvedNodeStatus } from "../types.ts";
+import { PhaseLogsSection } from "./PhaseLogsSection.tsx";
 
 export interface NodeDetailDrawerProps {
   nodeId: string | null;
@@ -29,7 +30,6 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
     );
   }
   const lastExec = [...p.executions].sort((a, b) => b.attempt - a.attempt)[0] ?? null;
-  const logs = p.events.filter(e => e.eventType === "phase.log");
 
   return (
     <aside className="je-runview__drawer">
@@ -60,16 +60,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
         </div>
       )}
 
-      <div className="je-runview__section">
-        <h3>Logs ({logs.length})</h3>
-        <div className="je-runview__log">
-          {logs.length === 0 && <div style={{ color: "#666" }}>(no logs yet)</div>}
-          {logs.map(ev => {
-            const line = (ev.payload as { line?: string }).line ?? JSON.stringify(ev.payload);
-            return <div key={ev.id} className="je-runview__log-line">{line}</div>;
-          })}
-        </div>
-      </div>
+      <PhaseLogsSection events={p.events} />
 
       <div className="je-runview__section">
         <h3>Attempts</h3>

@@ -25,4 +25,5 @@ export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
 export { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
 export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
 export { ValuePicker } from "./properties-panel/ValuePicker.tsx";
+export { PanelResizer } from "./canvas/PanelResizer.tsx";
 export type { UpstreamSource, UpstreamField } from "./properties-panel/use-upstream-sources.ts";

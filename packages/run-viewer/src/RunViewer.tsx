@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { PanelResizer } from "@journeyman/flow-editor";
 import { ReadOnlyCanvas } from "./canvas/ReadOnlyCanvas.tsx";
 import { NodeDetailDrawer } from "./drawer/NodeDetailDrawer.tsx";
 import { WorkflowInstanceTopbar } from "./topbar/RunTopbar.tsx";
@@ -9,8 +10,22 @@ import type { WorkflowInstanceViewerProps } from "./types.ts";
 import "@journeyman/flow-editor/styles.css";
 import "./styles.css";
 
+const DRAWER_WIDTH_KEY = "je-runview:drawerWidth";
+const DRAWER_WIDTH_DEFAULT = 360;
+const DRAWER_WIDTH_MIN = 280;
+const DRAWER_WIDTH_MAX = 900;
+
 export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { workflowName?: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(props.initialSelectedNodeId ?? null);
+
+  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem(DRAWER_WIDTH_KEY) : null;
+    const n = stored ? Number(stored) : NaN;
+    return Number.isFinite(n) && n >= DRAWER_WIDTH_MIN && n <= DRAWER_WIDTH_MAX ? n : DRAWER_WIDTH_DEFAULT;
+  });
+  useEffect(() => {
+    try { localStorage.setItem(DRAWER_WIDTH_KEY, String(drawerWidth)); } catch { /* ignore */ }
+  }, [drawerWidth]);
 
   const statuses = useMemo(() => computeNodeStatuses({
     workflow: props.workflow, events: props.events, executions: props.executions, workflowInstanceStatus: props.workflowInstance.status,
@@ -40,12 +55,22 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
         onExport={props.onExport}
         onFork={props.onFork}
       />
-      <div className="je-runview__body">
+      <div
+        className="je-runview__body"
+        style={{ gridTemplateColumns: `1fr 6px ${drawerWidth}px` }}
+      >
         <ReadOnlyCanvas
           workflow={props.workflow}
           statuses={statuses}
           selectedNodeId={selectedNodeId}
           onSelect={setSelectedNodeId}
+        />
+        <PanelResizer
+          width={drawerWidth}
+          onResize={setDrawerWidth}
+          side="right"
+          min={DRAWER_WIDTH_MIN}
+          max={DRAWER_WIDTH_MAX}
         />
         <NodeDetailDrawer
           nodeId={selectedNodeId}

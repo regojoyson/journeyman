@@ -125,6 +125,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     converter: new ConductorJsonConverter(),
     workflowInstances,
     workflowInstanceGrants,
+    events,
   });
 
   const registry = new InMemoryPhaseRegistry();

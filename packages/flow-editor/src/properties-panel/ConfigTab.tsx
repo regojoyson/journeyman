@@ -43,8 +43,16 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const currentInputs = (node.inputs ?? {}) as Record<string, unknown>;
     const currentConfig = (node.config ?? {}) as Record<string, unknown>;
 
-    const knownInputKeys = new Set(Object.keys(catalogEntry?.inputFields ?? {}));
-    const staleInputKeys = Object.keys(currentInputs).filter(k => !knownInputKeys.has(k));
+    // Only sweep inputs when the catalog declares at least one input field.
+    // Phases like `custom-ai` have empty static inputFields (the real ones
+    // live per-instance in the DB) — for those, leave node.inputs alone.
+    const declaredInputFields = catalogEntry?.inputFields ?? {};
+    const knownInputKeys = Object.keys(declaredInputFields).length > 0
+      ? new Set(Object.keys(declaredInputFields))
+      : null;
+    const staleInputKeys = knownInputKeys
+      ? Object.keys(currentInputs).filter(k => !knownInputKeys.has(k))
+      : [];
 
     const knownConfigKeys =
       definition?.configFields && Object.keys(definition.configFields).length > 0
@@ -164,6 +172,31 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           readOnly={readOnly}
           flowDefaults={flowDefaults}
         />
+      )}
+
+      {definition?.executor.kind === "coding-cli"
+        && ["analyze", "plan", "implement", "runCustomPrompt"].includes(definition.executor.method) && (
+        <div className="je-props__field">
+          <label>Agent log level</label>
+          <select
+            value={(config.agentLogLevel as string | undefined) ?? "none"}
+            disabled={readOnly}
+            onChange={e => {
+              const next = { ...config };
+              if (e.target.value === "none") delete next.agentLogLevel;
+              else next.agentLogLevel = e.target.value;
+              onChange({ ...node, config: next });
+            }}
+          >
+            <option value="none">None — no agent SDK logs</option>
+            <option value="light">Light — only final result line</option>
+            <option value="medium">Medium — result + tool calls</option>
+            <option value="all">All — full transcript</option>
+          </select>
+          <div className="je-props__field-help">
+            Streams Claude SDK activity to the run viewer as it runs. Higher levels store more data per run.
+          </div>
+        </div>
       )}
 
       {definition?.supportsModelSelection && (() => {

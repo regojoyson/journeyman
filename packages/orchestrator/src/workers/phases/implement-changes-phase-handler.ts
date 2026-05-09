@@ -3,6 +3,7 @@ import type {
   ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
   ResolvedMcpInstance, ResolvedSkillPackage,
 } from "@journeyman/core";
+import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
 const log = createLogger("worker:implement");
 
@@ -53,6 +54,7 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     const skills = Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;
     const model = typeof input.model === "string" && input.model ? input.model : undefined;
+    const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const result = await coding.implement({
       workspaceDir,
       issue,
@@ -63,6 +65,7 @@ export class ImplementChangesPhaseHandler implements IPhaseHandler {
       reviewComments,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
+      ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
       ...(mcps ? { mcps } : {}),
       ...(skills ? { skills } : {}),
       ...(model ? { model } : {}),

@@ -9,7 +9,7 @@
 .je-runview__pill.cancelled { background: rgba(150,150,170,0.15); color: #aaa; }
 .je-runview__pill.paused    { background: rgba(253,203,110,0.15); color: #fdcb6e; }
 
-.je-runview__body { display: grid; grid-template-columns: 1fr 320px; min-height: 0; }
+.je-runview__body { display: grid; grid-template-columns: 1fr 6px 360px; min-height: 0; }
 .je-runview__canvas { position: relative; background: #1a1a24; }
 
 .je-runnode { position: relative; }
@@ -34,7 +34,20 @@
 .je-runview__section { margin-bottom: 12px; }
 .je-runview__section h3 { margin: 0 0 4px; font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.04em; }
 .je-runview__pre { background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 8px; font-family: ui-monospace, monospace; font-size: 11px; color: #ccc; white-space: pre-wrap; max-height: 200px; overflow: auto; }
-.je-runview__log { background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 8px; font-family: ui-monospace, monospace; font-size: 11px; color: #ccc; max-height: 240px; overflow: auto; }
-.je-runview__log-line { line-height: 1.5; }
+.je-runview__log { background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 8px; font-family: ui-monospace, monospace; font-size: 11px; color: #ccc; max-height: 320px; overflow: auto; }
+.je-runview__log-entry { line-height: 1.5; }
+.je-runview__log-line { display: flex; align-items: flex-start; gap: 6px; word-break: break-word; }
+.je-runview__log-time { color: #666; flex-shrink: 0; }
+.je-runview__log-caret { color: #888; width: 10px; flex-shrink: 0; }
+.je-runview__log-meta { background: #0e0e18; border: 1px solid #2a2a3a; border-radius: 3px; padding: 6px 8px; margin: 4px 0 6px 18px; font-size: 10px; color: #999; max-height: 240px; overflow: auto; white-space: pre-wrap; }
+.je-runview__log-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.je-runview__log-chip { font-size: 10px; padding: 2px 6px; border-radius: 10px; border: 1px solid; background: transparent; cursor: pointer; font-family: inherit; }
+.je-runview__log-chip--on { font-weight: 600; }
+.je-runview__log-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.je-runview__log-actions { display: flex; align-items: center; gap: 6px; }
+.je-runview__log-autoscroll { font-size: 10px; color: #aaa; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+.je-runview__log-autoscroll input { margin: 0; }
+.je-runview__log-scrollbtn { font-size: 10px; padding: 2px 6px; border-radius: 3px; border: 1px solid #2a2a3a; background: #1a1a2a; color: #ccc; cursor: pointer; font-family: inherit; }
+.je-runview__log-scrollbtn:hover { background: #22222e; }
 .je-runview__attempts { display: flex; flex-direction: column; gap: 4px; }
 .je-runview__attempt { background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 6px 8px; font-size: 11px; }

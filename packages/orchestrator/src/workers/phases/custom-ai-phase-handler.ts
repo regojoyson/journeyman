@@ -13,6 +13,7 @@ import {
 } from "@journeyman/core";
 import { getCustomAiPhase, renderPrompt } from "@journeyman/custom-phases";
 import { defaultProviderForKind } from "@journeyman/core";
+import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
 const log = createLogger("worker:custom-ai");
 
@@ -98,6 +99,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
 
     ctx.log(`Running custom phase "${phase.name}" (${phase.outputMode})`);
 
+    const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const result = await coding.runCustomPrompt({
       prompt,
       outputMode: phase.outputMode,
@@ -108,6 +110,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
       tools: effectiveTools,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
+      ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
       ...(model ? { model } : {}),
     });
 

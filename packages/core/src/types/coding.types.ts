@@ -4,6 +4,22 @@ import type { ResolvedMcpInstance } from "./mcp.types.ts";
 import type { ResolvedSkillPackage } from "./skills.types.ts";
 import type { CanonicalTool } from "./coding-tools.types.ts";
 
+/**
+ * Optional callback invoked for each AI provider SDK message during a coding-CLI
+ * operation. The phase handler typically wires this to `ctx.log` so SDK events
+ * are surfaced to the run-viewer UI as `phase.log` events.
+ */
+export type CodingCliLogFn = (line: string, meta?: Record<string, unknown>) => void;
+
+/**
+ * Verbosity of agent SDK logs streamed to the run-viewer / persisted as `phase.log` events.
+ *  - "none":   no agent SDK lines (handler's own start/end lines still fire). Default.
+ *  - "light":  only the final result line.
+ *  - "medium": result + tool calls (no assistant text, no tool result content).
+ *  - "all":    full transcript — assistant text, tool calls, tool results, result.
+ */
+export type AgentLogLevel = "none" | "light" | "medium" | "all";
+
 // ---------------------------------------------------------------------------
 // Provider config — shared across all coding-CLI providers
 // ---------------------------------------------------------------------------
@@ -42,6 +58,10 @@ export type AnalyzeOptions = SessionOptions & {
   mcps?: ResolvedMcpInstance[];
   /** Resolved skill packages to load as plugins for the SDK query. */
   skills?: ResolvedSkillPackage[];
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type AnalyzeIssueType = "bug" | "feature" | "enhancement" | "task" | "refactor" | "other";
@@ -101,6 +121,10 @@ export type PlanOptions = SessionOptions & {
   mcps?: ResolvedMcpInstance[];
   /** Resolved skill packages to load as plugins for the SDK query. */
   skills?: ResolvedSkillPackage[];
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type PlanStepKind =
@@ -163,6 +187,10 @@ export type ImplementOptions = SessionOptions & {
   mcps?: ResolvedMcpInstance[];
   /** Resolved skill packages to load as plugins for the SDK query. */
   skills?: ResolvedSkillPackage[];
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type ImplementChangeKind = "created" | "modified" | "deleted";
@@ -214,6 +242,10 @@ export interface RunCustomPromptOptions {
   sessionId?: string;
   signal?: AbortSignal;
   model?: string;
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 }
 
 export interface RunCustomPromptResult {
