@@ -459,8 +459,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     let newVersion = null;
     let warnings: WorkflowSaveWarning[] = [];
     if (body.definition) {
-      const _customPhaseInputsUpd = await loadCustomPhaseInputs(c, body.definition as WorkflowGraph);
-      const _v = validateAndWarnDefinition(body.definition as WorkflowGraph, reply, _customPhaseInputsUpd);
+      const _v = validateGraphStructure(body.definition as WorkflowGraph, reply);
       if (!_v.ok) return;
       warnings = await computeSaveWarnings(c, ctx, workflow.scope, body.definition as WorkflowGraph);
       newVersion = await c.workflowVersions.appendVersion({
