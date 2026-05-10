@@ -282,6 +282,28 @@ function validateAndWarnDefinition(
   if (report.warnings.length) console.warn("[workflow save warnings]", report.warnings);
   return { ok: true };
 }
+
+/** Save-path structural check: rejects only graphs that cannot round-trip
+ *  through ConductorJsonConverter. Content-level validation (missing inputs,
+ *  dangling refs, shape mismatches) is intentionally skipped on save and
+ *  enforced only on publish via validateForPublish. */
+function validateGraphStructure(
+  definition: WorkflowGraph,
+  reply: import("fastify").FastifyReply,
+): { ok: true } | { ok: false } {
+  try {
+    ConductorJsonConverter.validateGraph(definition);
+    return { ok: true };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    reply.code(400).send({
+      error: "WorkflowValidationError",
+      message,
+      errors: [message],
+    });
+    return { ok: false };
+  }
+}
 import {
   canCreateAtScope, canDelete, canEdit, canPromoteTo, canRead,
   type Caller,
