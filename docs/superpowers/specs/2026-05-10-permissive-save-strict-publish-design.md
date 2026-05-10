@@ -109,17 +109,10 @@ unchanged validate and publish endpoints.
 | Publish a draft with content validation errors              | Rejected with 400 (unchanged from today)               |
 | Save attempt against a published (`status === "ready"`)     | Rejected with 409 — existing guard unchanged           |
 
-## Test plan
+## Verification
 
-- Unit/integration tests for `PUT /workflows/:id`:
-  - graph with missing required inputs → 200, definition persisted
-  - graph with dangling ref → 200, definition persisted
-  - structurally invalid graph (e.g. orphan edge) → 400
-  - published workflow → 409 (regression check)
-- Unit/integration tests for `POST /workflows/:id/publish`:
-  - draft with missing required inputs → 400 with errors (regression check)
-  - valid draft → 200, transitions to ready
-- Manual smoke test in the flow editor:
-  - Add a phase node, leave a required input empty, click Save → succeeds.
-  - Click Validate → shows the missing input.
-  - Click Publish → blocked with the same error.
+Manual smoke test in the flow editor:
+- Add a phase node, leave a required input empty, click Save → succeeds.
+- Click Validate → shows the missing input.
+- Click Publish → blocked with the same error.
+- Save a structurally broken graph (e.g. orphan edge via import) → 400.
