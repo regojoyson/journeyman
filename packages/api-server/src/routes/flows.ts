@@ -401,8 +401,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const ownerUserId = body.scope === "user" ? caller.userId : null;
 
-    const _customPhaseInputsCreate = await loadCustomPhaseInputs(c, body.definition as WorkflowGraph);
-    const _v = validateAndWarnDefinition(body.definition as WorkflowGraph, reply, _customPhaseInputsCreate);
+    const _v = validateGraphStructure(body.definition as WorkflowGraph, reply);
     if (!_v.ok) return;
 
     const warnings = await computeSaveWarnings(c, ctx, body.scope as WorkflowScope, body.definition as WorkflowGraph);
