@@ -6,7 +6,6 @@ import { PhaseRegistryProvider } from "@journeyman/flow-editor";
 import { builtInPhases } from "@journeyman/phases";
 import type { WorkflowInstanceEvent } from "@journeyman/core";
 import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
-import { getWorkflowVersionById } from "../api/flow-versions.ts";
 import { useRunActions } from "../hooks/useRunActions.ts";
 
 export function RunDetailPage() {
@@ -21,13 +20,7 @@ export function RunDetailPage() {
     enabled: !!id,
   });
 
-  const versionId = detailQ.data?.workflowInstance.workflowVersionId;
   const isViewer = detailQ.data?.workflowInstance.effectiveRole === "viewer";
-  const versionQ = useQuery({
-    queryKey: ["flow-version-by-id", versionId],
-    queryFn: () => getWorkflowVersionById(versionId!),
-    enabled: !!versionId,
-  });
 
   useEffect(() => {
     if (!id || !detailQ.data) return;
@@ -53,9 +46,6 @@ export function RunDetailPage() {
   if (!id) { navigate("/workflow-instances"); return null; }
   if (detailQ.isLoading) return <div style={{ padding: 24, color: "#888" }}>Loading run…</div>;
   if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "#ff7675" }}>Run not found.</div>;
-  if (versionQ.isLoading || !versionQ.data) {
-    return <div style={{ padding: 24, color: "#888" }}>Loading flow definition…</div>;
-  }
 
   const busy = actions.cancel.isPending || actions.pause.isPending || actions.resume.isPending
     || actions.retry.isPending || actions.rerun.isPending || actions.fork.isPending;
@@ -114,8 +104,11 @@ export function RunDetailPage() {
       )}
       <PhaseRegistryProvider phases={builtInPhases}>
       <RunViewer
-        workflow={versionQ.data.definition}
-        workflowName={`Workflow v${versionQ.data.versionNumber}`}
+        workflow={detailQ.data.workflowInstance.definitionSnapshot}
+        workflowName={
+          detailQ.data.workflowInstance.workflowNameSnapshot
+          + (detailQ.data.workflowInstance.workflowVersionId ? "" : " (workflow deleted)")
+        }
         workflowInstance={detailQ.data.workflowInstance}
         events={allEvents}
         executions={detailQ.data.executions}
