@@ -144,14 +144,9 @@ export class OpenPullRequestPhaseHandler implements IPhaseHandler {
       };
     }
 
-    const firstSuccess = pullRequests.find((p) => !p.error) ?? pullRequests[0];
     return {
       kind: "success",
-      output: {
-        pullRequests,
-        // Backward-compat single-PR convenience field (first successful):
-        pullRequest: { id: firstSuccess.id, url: firstSuccess.url, number: firstSuccess.number },
-      },
+      output: { pullRequests },
     };
   }
 }

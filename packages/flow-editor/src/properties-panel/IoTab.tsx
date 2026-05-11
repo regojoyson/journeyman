@@ -13,15 +13,14 @@ export interface IoTabProps {
 }
 
 function getInputs(node: WorkflowNode): Record<string, WorkflowInputValue> {
-  const cfg = (node.config ?? {}) as { inputs?: Record<string, WorkflowInputValue> };
-  return cfg.inputs ?? {};
+  return (node.inputs ?? {}) as Record<string, WorkflowInputValue>;
 }
 function getOutputSchema(node: WorkflowNode): unknown {
   const cfg = (node.config ?? {}) as { outputSchema?: unknown };
   return cfg.outputSchema ?? {};
 }
 function setInputs(node: WorkflowNode, inputs: Record<string, WorkflowInputValue>): WorkflowNode {
-  return { ...node, config: { ...(node.config ?? {}), inputs } };
+  return { ...node, inputs };
 }
 
 function getRef(v: WorkflowInputValue): string {

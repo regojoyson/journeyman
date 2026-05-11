@@ -26,6 +26,8 @@
 .je-runnode--completed .je-runnode__badge { color: #00b894; border-color: #00b894; }
 .je-runnode--failed .je-runnode__badge    { color: #ff7675; border-color: #ff7675; }
 .je-runnode--cancelled .je-runnode__badge { color: #aaa; }
+.je-runnode--skipped   { opacity: 0.4; filter: grayscale(0.6); }
+.je-runnode--skipped .je-runnode__badge { color: #888; border-color: #444; border-style: dashed; }
 
 @keyframes jePulse { 0%,100% { box-shadow: 0 0 0 3px rgba(74,158,255,0.15);} 50% { box-shadow: 0 0 0 5px rgba(74,158,255,0.30);} }
 

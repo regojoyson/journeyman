@@ -31,8 +31,3 @@ export async function fetchVisibleSecrets(orgId: string): Promise<VisibleSecrets
     return EMPTY;
   }
 }
-
-/** Legacy flat-name fetcher, kept for compatibility. */
-export async function fetchVisibleSecretNames(orgId: string): Promise<string[]> {
-  return (await fetchVisibleSecrets(orgId)).names;
-}

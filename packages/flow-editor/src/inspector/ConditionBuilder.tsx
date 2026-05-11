@@ -97,9 +97,18 @@ function RowEditor(p: {
   onRemove: () => void;
 }) {
   const grouped = useMemo(() => {
-    const g: Record<string, ConditionSuggestion[]> = {};
-    for (const s of p.suggestions) (g[s.group] ??= []).push(s);
-    return g;
+    const order: string[] = [];
+    const labelByGroup = new Map<string, string>();
+    const itemsByGroup = new Map<string, ConditionSuggestion[]>();
+    for (const s of p.suggestions) {
+      if (!itemsByGroup.has(s.group)) {
+        order.push(s.group);
+        labelByGroup.set(s.group, s.groupLabel);
+        itemsByGroup.set(s.group, []);
+      }
+      itemsByGroup.get(s.group)!.push(s);
+    }
+    return { order, labelByGroup, itemsByGroup };
   }, [p.suggestions]);
 
   const selected = p.suggestions.find(s => s.path === p.row.varPath);
@@ -111,10 +120,10 @@ function RowEditor(p: {
         onChange={(e) => p.onChange({ ...p.row, varPath: e.target.value })}
       >
         <option value="">— pick a value —</option>
-        {Object.entries(grouped).map(([group, items]) => (
-          <optgroup key={group} label={group}>
-            {items.map(s => (
-              <option key={s.path} value={s.path}>{s.path}</option>
+        {grouped.order.map(group => (
+          <optgroup key={group} label={grouped.labelByGroup.get(group) ?? group}>
+            {grouped.itemsByGroup.get(group)!.map(s => (
+              <option key={s.path} value={s.path}>{s.fieldLabel}</option>
             ))}
           </optgroup>
         ))}

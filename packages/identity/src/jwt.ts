@@ -34,8 +34,6 @@ export function signAccessToken(input: {
 export function verifyAccessToken(token: string): AccessTokenClaims {
   const claims = jwt.verify(token, secret(), { algorithms: ["HS256"] }) as AccessTokenClaims;
   if (claims.kind !== "access") throw new Error("Wrong token kind");
-  // Backwards-compat: tokens issued before pa-claim default to false.
-  if (typeof claims.pa !== "boolean") (claims as any).pa = false;
   return claims;
 }
 

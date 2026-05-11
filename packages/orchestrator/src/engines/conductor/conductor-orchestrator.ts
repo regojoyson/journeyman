@@ -157,7 +157,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
 
     if (mapped !== instance.status) {
       if (mapped === "completed") {
-        await this.emitEndNodeCompleted(instance);
+        await this.emitEngineNodeResolveds(instance);
       }
       const completedAt = ["completed", "failed", "cancelled"].includes(mapped)
         ? new Date() : undefined;
@@ -172,29 +172,33 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
   }
 
   /**
-   * End nodes are graph markers compiled to Conductor TERMINATE tasks (see
-   * conductor-converter#terminateTask) that run inside the engine, not through worker-harness —
-   * so no phase events fire for them. Emit node.resolved (the non-worker event family) for the
-   * TERMINATE task that actually executed, so the UI flips it from pending to completed.
+   * Several node types compile to engine-internal Conductor tasks that have no worker
+   * (see conductor-converter#emitNode): SWITCH (if, gateway-xor), FORK_JOIN (gateway-and),
+   * DO_WHILE (loop), WAIT (timer), SUB_WORKFLOW (subflow), TERMINATE (end). They never emit
+   * phase.* events and would otherwise stay `pending` in the run viewer forever.
+   *
+   * On terminal sync, scan completed engine tasks and emit `node.resolved` for each. SIMPLE
+   * tasks are skipped because worker-harness already emits phase.* for them; HUMAN tasks are
+   * skipped because they emit their own node.waiting/node.resolved.
    */
-  private async emitEndNodeCompleted(instance: WorkflowInstance): Promise<void> {
+  private async emitEngineNodeResolveds(instance: WorkflowInstance): Promise<void> {
     if (!instance.engineWorkflowId) return;
     try {
       const exec = await this.deps.client.getWorkflowWithTasks(instance.engineWorkflowId);
-      const terminateTask = exec.tasks.find(
-        (t) => t.taskType === "TERMINATE" && t.status === "COMPLETED",
-      );
-      if (!terminateTask) return;
-      await this.deps.events.append({
-        workflowInstanceId: instance.id,
-        nodeId: terminateTask.referenceTaskName,
-        eventType: "node.resolved",
-        payload: { output: exec.output ?? {} },
-      });
+      for (const t of exec.tasks) {
+        if (t.status !== "COMPLETED") continue;
+        if (t.taskType === "SIMPLE" || t.taskType === "HUMAN") continue;
+        await this.deps.events.append({
+          workflowInstanceId: instance.id,
+          nodeId: t.referenceTaskName,
+          eventType: "node.resolved",
+          payload: { taskType: t.taskType, output: t.outputData ?? {} },
+        });
+      }
     } catch (err) {
       log.warn(
         { workflowInstanceId: instance.id, err: (err as Error)?.message },
-        "failed to emit end-node resolved event",
+        "failed to emit engine node resolved events",
       );
     }
   }

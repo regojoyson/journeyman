@@ -11,18 +11,12 @@ interface RawMePayload {
   activeOrg?: { id: string; slug?: string; name?: string } | null;
   role?: string;
   isPlatformAdmin?: boolean;
-  exp?: number;       // preferred (unix sec)
-  expiresAt?: string; // legacy ISO
+  exp?: number; // unix sec
 }
 
 function adapt(payload: RawMePayload): Session | null {
   if (!payload.user) return null;
-  const exp =
-    typeof payload.exp === "number"
-      ? payload.exp
-      : payload.expiresAt
-        ? Math.floor(new Date(payload.expiresAt).getTime() / 1000)
-        : 0;
+  const exp = typeof payload.exp === "number" ? payload.exp : 0;
   return {
     user: {
       sub: payload.user.id,

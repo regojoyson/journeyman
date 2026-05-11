@@ -1,7 +1,7 @@
 import type {
   WorkflowGraph, NodeExecution, WorkflowInstanceEvent, WorkflowInstanceStatus,
 } from "@journeyman/core";
-import type { ResolvedNodeStatus } from "../types.ts";
+import type { NodeStatus, ResolvedNodeStatus } from "../types.ts";
 
 export interface ComputeArgs {
   workflow: WorkflowGraph;
@@ -65,10 +65,19 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
     out.set(id, cur);
   }
 
-  if (args.workflowInstanceStatus === "cancelled") {
+  const terminal =
+    args.workflowInstanceStatus === "completed" ||
+    args.workflowInstanceStatus === "failed" ||
+    args.workflowInstanceStatus === "cancelled";
+
+  if (terminal) {
     for (const [id, v] of out) {
       if (v.status === "pending" || v.status === "running" || v.status === "retry-backoff") {
-        out.set(id, { ...v, status: "cancelled" });
+        const next: NodeStatus =
+          args.workflowInstanceStatus === "cancelled" ? "cancelled" :
+          v.status === "pending" ? "skipped" :
+          v.status;
+        if (next !== v.status) out.set(id, { ...v, status: next });
       }
     }
   }

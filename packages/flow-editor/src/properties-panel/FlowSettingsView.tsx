@@ -26,8 +26,7 @@ function getRunInputs(node: WorkflowNode): WorkflowInputDef[] {
   return getStartWorkflowInputs(node.config);
 }
 function setRunInputs(node: WorkflowNode, inputs: WorkflowInputDef[]): WorkflowNode {
-  const { runInputs: _legacy, ...rest } = (node.config ?? {}) as Record<string, unknown>;
-  return { ...node, config: { ...rest, workflowInputs: inputs } };
+  return { ...node, config: { ...(node.config ?? {}), workflowInputs: inputs } };
 }
 
 export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettingsViewProps) {

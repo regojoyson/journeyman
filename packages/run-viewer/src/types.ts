@@ -7,7 +7,8 @@ export type NodeStatus =
   | "waiting"
   | "completed"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "skipped";
 
 export interface ResolvedNodeStatus {
   status: NodeStatus;

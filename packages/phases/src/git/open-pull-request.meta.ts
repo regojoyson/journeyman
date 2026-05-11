@@ -15,7 +15,6 @@ export const OPEN_PULL_REQUEST_DESCRIPTION =
 
 export const openPullRequestOutputSchema: OutputSchema = {
   pullRequests: { type: "array", items: { type: "ref", name: "PullRequest" }, description: "All PRs opened (one per repo when `repos` input is wired)" },
-  pullRequest:  { type: "ref", name: "PullRequest", description: "Convenience: the first PR (matches single-repo flows)" },
 };
 
 export const openPullRequestInputFields: InputFields = {

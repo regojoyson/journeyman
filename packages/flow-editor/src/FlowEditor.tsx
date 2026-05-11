@@ -18,7 +18,6 @@ import { useValidationCatalog } from "./properties-panel/use-validation-catalog.
 import { validateWorkflowInputs } from "@journeyman/core";
 import type { FlowEditorProps } from "./types.ts";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
-import { isJsonLogicExpr } from "@journeyman/core";
 
 const PROPS_WIDTH_KEY = "je-editor:propsWidth";
 const PALETTE_WIDTH_KEY = "je-editor:paletteWidth";
@@ -36,49 +35,6 @@ function autoHeal(flow: WorkflowGraph): { healed: WorkflowGraph; restored: strin
     restored.push("end");
   }
   return restored.length ? { healed: { ...flow, nodes }, restored } : { healed: flow, restored };
-}
-
-function migrateLegacyMcpConfig(flow: WorkflowGraph): WorkflowGraph {
-  let touched = false;
-  const nodes = flow.nodes.map((n) => {
-    const cfg = (n.config ?? {}) as Record<string, unknown>;
-    if (!("mcp" in cfg) && !("allowedTools" in cfg)) return n;
-    touched = true;
-    const { mcp: _mcp, allowedTools: _at, ...rest } = cfg;
-    return { ...n, config: rest };
-  });
-  return touched ? { ...flow, nodes } : flow;
-}
-
-/** Lift custom-ai `config.inputs` (legacy storage) up to top-level `node.inputs`
- *  so validators and the runtime see the bindings. Existing top-level inputs win
- *  on key conflicts. */
-function migrateCustomAiInputs(flow: WorkflowGraph): WorkflowGraph {
-  let touched = false;
-  const nodes = flow.nodes.map((n) => {
-    if (n.type !== "phase" || n.phaseType !== "custom-ai") return n;
-    const cfg = (n.config ?? {}) as Record<string, unknown>;
-    if (!cfg || typeof cfg !== "object" || !("inputs" in cfg)) return n;
-    const cfgInputs = cfg.inputs as WorkflowNode["inputs"] | undefined;
-    if (!cfgInputs) return n;
-    touched = true;
-    const { inputs: _drop, ...restCfg } = cfg;
-    const mergedInputs = { ...(cfgInputs as Record<string, unknown>), ...((n.inputs ?? {}) as Record<string, unknown>) };
-    return { ...n, config: restCfg, inputs: mergedInputs as WorkflowNode["inputs"] };
-  });
-  return touched ? { ...flow, nodes } : flow;
-}
-
-function stripUnparseableConditions(flow: WorkflowGraph): WorkflowGraph {
-  let touched = false;
-  const edges = flow.edges.map((e) => {
-    if (e.condition === undefined) return e;
-    if (isJsonLogicExpr(e.condition)) return e;
-    touched = true;
-    const { condition: _c, ...rest } = e;
-    return rest;
-  });
-  return touched ? { ...flow, edges } : flow;
 }
 
 export function FlowEditor(props: FlowEditorProps) {
@@ -110,8 +66,7 @@ export function FlowEditor(props: FlowEditorProps) {
   }
 
   const heal = useMemo(() => {
-    const migrated = stripUnparseableConditions(migrateCustomAiInputs(migrateLegacyMcpConfig(props.flow)));
-    const result = autoHeal(migrated);
+    const result = autoHeal(props.flow);
     if (result.restored.length) {
       // eslint-disable-next-line no-console
       console.warn("[FlowEditor] autoHeal restored nodes", result.restored);

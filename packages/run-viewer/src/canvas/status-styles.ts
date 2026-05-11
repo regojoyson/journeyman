@@ -8,6 +8,7 @@ export const STATUS_CLASS: Record<NodeStatus, string> = {
   "completed":     "je-runnode--completed",
   "failed":        "je-runnode--failed",
   "cancelled":     "je-runnode--cancelled",
+  "skipped":       "je-runnode--skipped",
 };
 
 export const STATUS_LABEL: Record<NodeStatus, string> = {
@@ -18,4 +19,5 @@ export const STATUS_LABEL: Record<NodeStatus, string> = {
   "completed":     "✓",
   "failed":        "✗",
   "cancelled":     "cancelled",
+  "skipped":       "skipped",
 };

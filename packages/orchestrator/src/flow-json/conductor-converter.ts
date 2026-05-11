@@ -1,4 +1,4 @@
-import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, SecretBinding } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
@@ -10,24 +10,6 @@ import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, type CatalogShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
-
-/**
- * Read-side migration: legacy nodes used `requiredSecrets: string[]` to declare
- * env-var names. Convert to all-`auto` bindings on read so we don't need a DB
- * migration. Newer flows already carry `secretBindings`.
- */
-function migrateLegacyBindings(node: WorkflowNode): WorkflowNode {
-  if (node.secretBindings) return node;
-  const legacy = (node as unknown as { requiredSecrets?: string[] }).requiredSecrets;
-  if (!legacy || legacy.length === 0) return node;
-  const secretBindings: Record<string, SecretBinding> = {};
-  for (const name of legacy) secretBindings[name] = { mode: "auto" };
-  return { ...node, secretBindings };
-}
-
-function normalizeFlow(flow: WorkflowGraph): WorkflowGraph {
-  return { ...flow, nodes: flow.nodes.map(migrateLegacyBindings) };
-}
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -42,14 +24,14 @@ export class WorkflowValidationError extends Error {
 
 export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorWorkflowDef> {
   static validateGraph(graph: WorkflowGraph, catalog?: Map<string, CatalogShapeEntry>): void {
-    new ConvertCtx(normalizeFlow(graph), catalog).validate();
+    new ConvertCtx(graph, catalog).validate();
   }
 
   toEngineJson(def: WorkflowGraph, opts: {
     workflowName: string;
     workflowVersion: number;
   }): ConductorWorkflowDef {
-    const ctx = new ConvertCtx(normalizeFlow(def));
+    const ctx = new ConvertCtx(def);
     ctx.validate();
 
     const start = ctx.startNode();
