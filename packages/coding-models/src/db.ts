@@ -25,8 +25,6 @@ function rowToModel(r: any): CodingModel {
     isDefault: r.is_default,
     supportsThinking: r.supports_thinking,
     contextWindow: r.context_window ?? undefined,
-    inputCostPer1M: r.input_cost_per_1m == null ? undefined : Number(r.input_cost_per_1m),
-    outputCostPer1M: r.output_cost_per_1m == null ? undefined : Number(r.output_cost_per_1m),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -56,9 +54,8 @@ export async function insertCodingModel(
       ({ rows } = await client.query(
         `INSERT INTO jm_coding_models
            (id, provider, model_id, label, description, sort_order, enabled,
-            deprecated, is_default, supports_thinking, context_window,
-            input_cost_per_1m, output_cost_per_1m)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            deprecated, is_default, supports_thinking, context_window)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          RETURNING *`,
         [
           id,
@@ -72,8 +69,6 @@ export async function insertCodingModel(
           input.isDefault ?? false,
           input.supportsThinking ?? false,
           input.contextWindow ?? null,
-          input.inputCostPer1M ?? null,
-          input.outputCostPer1M ?? null,
         ],
       ));
     } catch (err: any) {
@@ -169,8 +164,6 @@ export async function updateCodingModel(
            is_default = $9,
            supports_thinking = $10,
            context_window = $11,
-           input_cost_per_1m = $12,
-           output_cost_per_1m = $13,
            updated_at = now()
          WHERE id = $1
          RETURNING *`,
@@ -186,8 +179,6 @@ export async function updateCodingModel(
           next.isDefault,
           next.supportsThinking,
           next.contextWindow ?? null,
-          next.inputCostPer1M ?? null,
-          next.outputCostPer1M ?? null,
         ],
       ));
     } catch (err: any) {

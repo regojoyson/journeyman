@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Workflow } from "@journeyman/core";
-import { listFlows, updateFlowMeta } from "../api/flows.ts";
+import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
 import { cloneFlow, promoteFlow, deleteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
+import { Pagination } from "@journeyman/runs-list";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
 function canEditFlow(
@@ -21,16 +22,24 @@ export function FlowsListPage() {
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
 
   const [flows, setFlows] = useState<Workflow[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scopeFilter, setScopeFilter] = useState<"all" | "user" | "org" | "global">("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
-  async function fetchFlows(scope: typeof scopeFilter) {
+  async function fetchFlows(scope: typeof scopeFilter, p: number, ps: number) {
     setLoading(true);
     setError(null);
     try {
-      const data = await listFlows(scope === "all" ? undefined : { scope });
-      setFlows(data);
+      const data = await listFlowsPaged({
+        scope: scope === "all" ? undefined : scope,
+        page: p,
+        pageSize: ps,
+      });
+      setFlows(data.workflows);
+      setTotal(data.total);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -39,8 +48,11 @@ export function FlowsListPage() {
   }
 
   useEffect(() => {
-    void fetchFlows(scopeFilter);
-  }, [scopeFilter]);
+    void fetchFlows(scopeFilter, page, pageSize);
+  }, [scopeFilter, page, pageSize]);
+
+  const handleScopeChange = (s: typeof scopeFilter) => { setScopeFilter(s); setPage(1); };
+  const handlePageSizeChange = (n: number) => { setPageSize(n); setPage(1); };
 
   const ctx = {
     userId: user?.id ?? "",
@@ -61,7 +73,7 @@ export function FlowsListPage() {
   async function handlePromote(flow: Workflow, targetScope: "org" | "global") {
     try {
       await promoteFlow(flow.id, { targetScope });
-      await fetchFlows(scopeFilter);
+      await fetchFlows(scopeFilter, page, pageSize);
     } catch (e) {
       alert(`Promote failed: ${(e as Error).message}`);
     }
@@ -74,7 +86,7 @@ export function FlowsListPage() {
     if (!trimmed || trimmed === flow.name) return;
     try {
       await updateFlowMeta(flow.id, { name: trimmed });
-      await fetchFlows(scopeFilter);
+      await fetchFlows(scopeFilter, page, pageSize);
     } catch (e) {
       alert(`Rename failed: ${(e as Error).message}`);
     }
@@ -84,7 +96,7 @@ export function FlowsListPage() {
     if (!window.confirm(`Delete flow "${flow.name}"? This cannot be undone.`)) return;
     try {
       await deleteFlow(flow.id);
-      await fetchFlows(scopeFilter);
+      await fetchFlows(scopeFilter, page, pageSize);
     } catch (e) {
       alert(`Delete failed: ${(e as Error).message}`);
     }
@@ -136,7 +148,7 @@ export function FlowsListPage() {
             return (
               <button
                 key={s}
-                onClick={() => setScopeFilter(s)}
+                onClick={() => handleScopeChange(s)}
                 className={
                   active
                     ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-3 py-1.5 text-xs font-medium text-indigo-200 transition"
@@ -237,6 +249,15 @@ export function FlowsListPage() {
             </table>
           )}
         </section>
+        {!loading && !error && total > 0 && (
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
       </div>
     </div>
   );

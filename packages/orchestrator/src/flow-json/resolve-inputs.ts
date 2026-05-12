@@ -1,4 +1,5 @@
 import type { WorkflowInputValue } from "@journeyman/core";
+import { replaceTemplateRefs } from "@journeyman/core";
 
 export function resolveInputs(
   inputs: Record<string, WorkflowInputValue> | null | undefined,
@@ -7,6 +8,9 @@ export function resolveInputs(
   for (const [k, v] of Object.entries(inputs ?? {})) {
     if (v.kind === "literal") out[k] = v.value;
     else if (v.kind === "ref") out[k] = "${" + sanitizeRef(v.ref) + "}";
+    else if (v.kind === "template") {
+      out[k] = replaceTemplateRefs(v.template, (ref) => "${" + sanitizeRef(ref) + "}");
+    }
   }
   return out;
 }

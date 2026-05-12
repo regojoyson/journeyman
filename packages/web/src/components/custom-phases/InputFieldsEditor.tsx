@@ -4,7 +4,8 @@ import { btnGhost, inputCls, selectCls } from "../../routes/admin-styles.ts";
 const TYPES: CustomPhaseInputType[] = [
   "string", "number", "boolean", "string[]",
   "object", "array",
-  "workspaceId", "repoRef", "issueRef",
+  "workspaceDir", "repoRef", "issueRef",
+  "template",
 ];
 
 export function InputFieldsEditor(props: {

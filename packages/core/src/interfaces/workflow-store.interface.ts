@@ -24,12 +24,14 @@ export interface WorkflowListFilter {
   /** Restrict to a specific org (admin moderation view). */
   orgId?: string;
   limit?: number;
+  offset?: number;
 }
 
 export interface IWorkflowStore {
   create(args: CreateWorkflowArgs): Promise<{ workflow: Workflow; version: WorkflowVersion }>;
   getById(workflowId: string): Promise<Workflow | null>;
   list(filter: WorkflowListFilter): Promise<Workflow[]>;
+  count(filter: Omit<WorkflowListFilter, "limit" | "offset">): Promise<number>;
   /** Update name/description metadata. Does NOT touch versions or grants. */
   updateMeta(workflowId: string, patch: { name?: string; description?: string | null }): Promise<Workflow | null>;
   /** Lifecycle status flip. Returns the updated workflow, or null if not found. */

@@ -9,18 +9,10 @@ export interface CodingModelSelectProps {
   disabled?: boolean;
 }
 
-function fmtCost(n: number | undefined): string {
-  return n == null ? "—" : `$${n.toFixed(2)}`;
-}
-
 function describeModel(m: CodingModel): string {
   const ctx = m.contextWindow ? `${Math.round(m.contextWindow / 1000)}K ctx` : "";
-  const cost =
-    m.inputCostPer1M != null || m.outputCostPer1M != null
-      ? `${fmtCost(m.inputCostPer1M)}/${fmtCost(m.outputCostPer1M)} per 1M`
-      : "";
   const dep = m.deprecated ? " [deprecated]" : "";
-  const parts = [m.label, ctx, cost].filter(Boolean).join(" · ");
+  const parts = [m.label, ctx].filter(Boolean).join(" · ");
   return `${parts}${dep}`;
 }
 

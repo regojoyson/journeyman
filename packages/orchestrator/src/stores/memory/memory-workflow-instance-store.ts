@@ -72,17 +72,37 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     limit?: number;
+    offset?: number;
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
     issueRef?: string;
   } = {}): Promise<WorkflowInstance[]> {
+    let out = this.filtered(opts);
+    const offset = opts.offset ?? 0;
+    if (offset) out = out.slice(offset);
+    if (opts.limit) out = out.slice(0, opts.limit);
+    return out;
+  }
+
+  async count(opts: {
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
+    actor?: ActorContext;
+    scope?: WorkflowInstanceListScope;
+    provider?: string;
+    issueRef?: string;
+  } = {}): Promise<number> {
+    return this.filtered(opts).length;
+  }
+
+  private filtered(opts: {
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
+  }): WorkflowInstance[] {
     let out = [...this.rows.values()];
     if (opts.workflowId) out = out.filter(r => r.workflowId === opts.workflowId);
     if (opts.status) out = out.filter(r => r.status === opts.status);
-    // Memory backend trusts the API layer to apply actor/scope filtering via
-    // workflowInstanceGrants.matchForActor when needed; the postgres backend joins in SQL.
-    if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }
 

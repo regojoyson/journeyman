@@ -15,6 +15,44 @@ function isHardError(e: PublishError): boolean {
   return !e.severity || e.severity === "error";
 }
 
+function IssueRow({
+  kind,
+  issue,
+  onSelectNode,
+  onCancel,
+}: {
+  kind: "error" | "warning";
+  issue: PublishError;
+  onSelectNode: (nodeId: string) => void;
+  onCancel: () => void;
+}): JSX.Element {
+  const icon = kind === "error" ? "✗" : "⚠";
+  const className = kind === "error" ? "fe-publish-fail" : "fe-publish-warn";
+  const chipLabel = issue.nodeLabel ?? "Flow";
+  const clickable = Boolean(issue.nodeId);
+  return (
+    <li className={className}>
+      <span className="fe-publish-row">
+        <span className="fe-publish-icon">{icon}</span>
+        <button
+          type="button"
+          className="fe-publish-chip"
+          disabled={!clickable}
+          onClick={() => {
+            if (issue.nodeId) {
+              onSelectNode(issue.nodeId);
+              onCancel();
+            }
+          }}
+        >
+          {chipLabel}
+        </button>
+        <span className="fe-publish-message">{issue.message}</span>
+      </span>
+    </li>
+  );
+}
+
 export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigger }: Props): JSX.Element {
   const [issues, setIssues] = useState<PublishError[]>([]);
   const [busy, setBusy] = useState(false);
@@ -83,12 +121,7 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
                 </p>
                 <ul className="fe-publish-checklist">
                   {issues.map((e, i) => (
-                    <li key={i} className="fe-publish-warn">
-                      <span>⚠ {e.message}</span>
-                      {e.nodeId
-                        ? <button onClick={() => { onSelectNode(e.nodeId!); onCancel(); }}>Show node</button>
-                        : null}
-                    </li>
+                    <IssueRow key={i} kind="warning" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
                   ))}
                 </ul>
               </>
@@ -102,24 +135,34 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
             {hardErrors.length === 0 && warnings.length === 0
               ? <p>All checks passed. Ready to publish.</p>
               : (
-                <ul className="fe-publish-checklist">
-                  {hardErrors.map((e, i) => (
-                    <li key={`e-${i}`} className="fe-publish-fail">
-                      <span>✗ {e.message}</span>
-                      {e.nodeId
-                        ? <button onClick={() => { onSelectNode(e.nodeId!); onCancel(); }}>Show node</button>
-                        : null}
-                    </li>
-                  ))}
-                  {warnings.map((e, i) => (
-                    <li key={`w-${i}`} className="fe-publish-warn">
-                      <span>⚠ {e.message}</span>
-                      {e.nodeId
-                        ? <button onClick={() => { onSelectNode(e.nodeId!); onCancel(); }}>Show node</button>
-                        : null}
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {hardErrors.length > 0 && (
+                    <section className="fe-publish-section">
+                      <h3 className="fe-publish-section-heading fe-publish-section-heading--error">
+                        Errors ({hardErrors.length})
+                        <span className="fe-publish-section-subline">must fix before publish</span>
+                      </h3>
+                      <ul className="fe-publish-checklist">
+                        {hardErrors.map((e, i) => (
+                          <IssueRow key={`e-${i}`} kind="error" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  {warnings.length > 0 && (
+                    <section className="fe-publish-section">
+                      <h3 className="fe-publish-section-heading fe-publish-section-heading--warn">
+                        Warnings ({warnings.length})
+                        <span className="fe-publish-section-subline">publish allowed; review before running</span>
+                      </h3>
+                      <ul className="fe-publish-checklist">
+                        {warnings.map((e, i) => (
+                          <IssueRow key={`w-${i}`} kind="warning" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </>
               )}
             {serverError ? <p className="fe-error">{serverError}</p> : null}
             <div className="fe-modal-actions">

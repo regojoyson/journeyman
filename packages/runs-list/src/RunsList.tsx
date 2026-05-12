@@ -3,6 +3,7 @@ import React from "react";
 import type { WorkflowInstancesListProps } from "./types.ts";
 import { WorkflowInstanceFilters } from "./RunFilters.tsx";
 import { ProviderBadge } from "./ProviderBadge.tsx";
+import { Pagination } from "./Pagination.tsx";
 
 function rawIssueId(issueRef: string | null | undefined): string {
   if (!issueRef) return "";
@@ -141,6 +142,15 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
             })}
           </tbody>
         </table>
+      )}
+      {p.pagination && (
+        <Pagination
+          page={p.pagination.page}
+          pageSize={p.pagination.pageSize}
+          total={p.pagination.total}
+          onPageChange={p.pagination.onPageChange}
+          onPageSizeChange={p.pagination.onPageSizeChange}
+        />
       )}
     </div>
   );

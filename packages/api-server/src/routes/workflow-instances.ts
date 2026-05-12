@@ -27,7 +27,7 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
   const requireWorkflowInstanceRole = makeRequireWorkflowInstanceRole(c);
 
   app.get("/workflow-instances", { preHandler: requireAuth() }, async (req, reply) => {
-    const q = req.query as { workflow_id?: string; status?: string; limit?: string; scope?: string; provider?: string; issue_ref?: string };
+    const q = req.query as { workflow_id?: string; status?: string; limit?: string; page?: string; page_size?: string; scope?: string; provider?: string; issue_ref?: string };
     const scope = q.scope as WorkflowInstanceListScope | undefined;
     const actor = actorFrom(req);
 
@@ -36,16 +36,36 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
       return { error: "platform_admin_required" };
     }
 
-    const workflowInstances = await c.workflowInstances.list({
+    const paginated = q.page !== undefined || q.page_size !== undefined;
+    const filterOpts = {
       workflowId: q.workflow_id,
       status: q.status as WorkflowInstanceStatus | undefined,
-      limit: q.limit ? Number(q.limit) : undefined,
       actor,
       scope,
       provider: q.provider,
       issueRef: q.issue_ref,
-    });
+    };
 
+    if (paginated) {
+      const page = Math.max(1, Number(q.page ?? 1) || 1);
+      const requestedSize = Number(q.page_size ?? 25) || 25;
+      const pageSize = Math.min(100, Math.max(1, requestedSize));
+      const offset = (page - 1) * pageSize;
+
+      const [workflowInstances, total] = await Promise.all([
+        c.workflowInstances.list({ ...filterOpts, limit: pageSize, offset }),
+        c.workflowInstances.count(filterOpts),
+      ]);
+
+      const roleMap = await c.workflowInstanceGrants.matchForActor(actor, workflowInstances.map(r => r.id));
+      const hydrated = workflowInstances.map(r => ({ ...r, effectiveRole: roleMap.get(r.id) ?? null }));
+      return { workflowInstances: hydrated, total, page, pageSize };
+    }
+
+    const workflowInstances = await c.workflowInstances.list({
+      ...filterOpts,
+      limit: q.limit ? Number(q.limit) : undefined,
+    });
     const roleMap = await c.workflowInstanceGrants.matchForActor(actor, workflowInstances.map(r => r.id));
     const hydrated = workflowInstances.map(r => ({ ...r, effectiveRole: roleMap.get(r.id) ?? null }));
     return { workflowInstances: hydrated };

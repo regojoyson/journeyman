@@ -21,6 +21,33 @@ export async function listRuns(filter: {
   return res.workflowInstances;
 }
 
+export interface PagedRuns {
+  workflowInstances: WorkflowInstance[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function listRunsPaged(args: {
+  status?: WorkflowInstance["status"];
+  workflowId?: string;
+  provider?: string;
+  issueRef?: string;
+  scope?: WorkflowInstanceListScope;
+  page: number;
+  pageSize: number;
+}): Promise<PagedRuns> {
+  const qs = new URLSearchParams();
+  if (args.status)     qs.set("status",       args.status);
+  if (args.workflowId) qs.set("workflow_id",  args.workflowId);
+  if (args.provider)   qs.set("provider",     args.provider);
+  if (args.issueRef)   qs.set("issue_ref",    args.issueRef);
+  if (args.scope)      qs.set("scope",        args.scope);
+  qs.set("page",       String(args.page));
+  qs.set("page_size",  String(args.pageSize));
+  return await api<PagedRuns>(`/workflow-instances?${qs.toString()}`);
+}
+
 export type WebhookEventSummary = {
   id: string;
   provider: string;

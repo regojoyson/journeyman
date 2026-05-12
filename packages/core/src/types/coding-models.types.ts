@@ -10,8 +10,6 @@ export type CodingModel = {
   isDefault: boolean;
   supportsThinking: boolean;
   contextWindow?: number;
-  inputCostPer1M?: number;
-  outputCostPer1M?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,8 +25,6 @@ export type CodingModelCreateInput = {
   isDefault?: boolean;
   supportsThinking?: boolean;
   contextWindow?: number;
-  inputCostPer1M?: number;
-  outputCostPer1M?: number;
 };
 
 export type CodingModelUpdateInput = Partial<CodingModelCreateInput>;

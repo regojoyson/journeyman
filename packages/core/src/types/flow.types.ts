@@ -27,7 +27,8 @@ export type WorkflowNodeType =
 
 export type WorkflowInputValue =
   | { kind: "literal"; value: unknown }
-  | { kind: "ref"; ref: string };
+  | { kind: "ref"; ref: string }
+  | { kind: "template"; template: string };
 
 export interface WorkflowInputDef {
   name: string;

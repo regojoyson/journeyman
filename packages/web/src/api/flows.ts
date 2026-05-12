@@ -54,6 +54,27 @@ export async function listFlows(
   return res.workflows;
 }
 
+export interface PagedFlows {
+  workflows: Workflow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function listFlowsPaged(args: {
+  scope?: "user" | "org" | "global";
+  orgId?: string;
+  page: number;
+  pageSize: number;
+}): Promise<PagedFlows> {
+  const params = new URLSearchParams();
+  if (args.scope) params.set("scope", args.scope);
+  if (args.orgId) params.set("orgId", args.orgId);
+  params.set("page", String(args.page));
+  params.set("page_size", String(args.pageSize));
+  return await api<PagedFlows>(`/workflows?${params.toString()}`);
+}
+
 export async function getFlow(id: string): Promise<Workflow | null> {
   try {
     const res = await api<{ workflow: Workflow }>(`/workflows/${encodeURIComponent(id)}`);

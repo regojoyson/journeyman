@@ -2,6 +2,7 @@ import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
 import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
+import { extractTemplateRefs } from "../utils/template-refs.ts";
 
 export type PublishError = {
   severity?: "error" | "warning"; // absent means "error"
@@ -15,6 +16,9 @@ export type PublishError = {
     | "dangling_reference";
   message: string;
   nodeId?: string;
+  /** Human-readable label for the offending node — UI chip text. Resolved from
+   *  `displayName` ?? prettified `phaseType` ?? capitalized `type`. */
+  nodeLabel?: string;
   fieldPath?: string;
 };
 
@@ -78,8 +82,9 @@ function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
     if (node.type === "phase" && !node.phaseType) {
       errors.push({
         code: "graph_invalid",
-        message: `Phase node '${node.id}' is missing a phase type`,
+        message: `Phase node is missing a phase type`,
         nodeId: node.id,
+        nodeLabel: nodeLabelFor(node),
       });
     }
   }
@@ -103,8 +108,9 @@ function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
     if (!reachable.has(n.id)) {
       errors.push({
         code: "orphan_node",
-        message: `Node '${n.displayName ?? n.id}' is unreachable from start`,
+        message: `Node is unreachable from start`,
         nodeId: n.id,
+        nodeLabel: nodeLabelFor(n),
       });
     }
   }
@@ -118,17 +124,23 @@ function pushNodeErrors(
 ): void {
   const upstream = collectUpstreamNodeIds(flow, node.id);
   for (const [slot, val] of Object.entries(node.inputs ?? {}) as [string, import("../types/flow.types.ts").WorkflowInputValue][]) {
-    if (val && val.kind === "ref" && val.ref) {
+    const refs: string[] = [];
+    if (val && val.kind === "ref" && val.ref) refs.push(val.ref);
+    if (val && val.kind === "template" && val.template) {
+      for (const seg of extractTemplateRefs(val.template)) refs.push(seg.ref);
+    }
+    for (const ref of refs) {
       // `workflow.input.*` is a pseudo-source for run inputs declared on the
       // start node. validateWorkflowInputs handles the declaration check —
       // skip the upstream-node check here.
-      if (val.ref.startsWith("workflow.input.")) continue;
-      const referencedNodeId = parseRefNodeId(val.ref);
+      if (ref.startsWith("workflow.input.")) continue;
+      const referencedNodeId = parseRefNodeId(ref);
       if (referencedNodeId && !upstream.has(referencedNodeId)) {
         errors.push({
           code: "unresolved_binding",
-          message: `Input '${slot}' references node '${referencedNodeId}' which is not upstream of '${node.id}'`,
+          message: `Input '${slot}' references node '${referencedNodeId}' which is not upstream`,
           nodeId: node.id,
+          nodeLabel: nodeLabelFor(node),
           fieldPath: `inputs.${slot}`,
         });
       }
@@ -141,14 +153,16 @@ function pushNodeErrors(
         if (e.condition === undefined) {
           errors.push({
             code: "invalid_gate",
-            message: `Edge ${e.id} on gate '${node.id}' is conditional but has no condition`,
+            message: `Edge ${e.id} is conditional but has no condition`,
             nodeId: node.id,
+            nodeLabel: nodeLabelFor(node),
           });
         } else if (!isJsonLogicExpr(e.condition)) {
           errors.push({
             code: "invalid_gate",
-            message: `Edge ${e.id} on gate '${node.id}' has an invalid condition shape`,
+            message: `Edge ${e.id} has an invalid condition shape`,
             nodeId: node.id,
+            nodeLabel: nodeLabelFor(node),
           });
         }
       }
@@ -164,14 +178,15 @@ function pushNodeErrors(
     }
     if (effectiveTools && toolsRequireWorkspace(effectiveTools)) {
       const inputs = node.inputs ?? {};
-      if (inputs.workspaceId == null && inputs.workspaceDir == null) {
+      if (inputs.workspaceDir == null) {
         errors.push({
           code: "missing_config",
           message:
             "Custom phase selected workspace tools (bash/read-file/write-file/edit-file/search) " +
-            "but no workspaceId/workspaceDir input is wired on this node",
+            "but no workspaceDir input is wired on this node",
           nodeId: node.id,
-          fieldPath: "inputs.workspaceId",
+          nodeLabel: nodeLabelFor(node),
+          fieldPath: "inputs.workspaceDir",
         });
       }
     }
@@ -190,6 +205,7 @@ function pushNodeErrors(
             if (!val) return false;
             if (val.kind === "ref") return typeof val.ref === "string" && val.ref.trim().length > 0;
             if (val.kind === "literal") return val.value !== undefined;
+            if (val.kind === "template") return typeof val.template === "string" && val.template.trim().length > 0;
             return false;
           })
           .map(([k]) => k),
@@ -200,8 +216,9 @@ function pushNodeErrors(
         const path = issue.path.join(".");
         errors.push({
           code: "missing_config",
-          message: `Node '${node.displayName ?? node.id}': ${issue.message}${path ? ` (config.${path})` : ""}`,
+          message: `${issue.message}${path ? ` (config.${path})` : ""}`,
           nodeId: node.id,
+          nodeLabel: nodeLabelFor(node),
           fieldPath: path ? `config.${path}` : "config",
         });
       }
@@ -217,6 +234,7 @@ function pushNodeErrors(
           code: "dangling_reference",
           message: `Secret '${name}' (slot '${slot}') is not visible from this flow`,
           nodeId: node.id,
+          nodeLabel: nodeLabelFor(node),
           fieldPath: `secretBindings.${slot}`,
         });
       }
@@ -231,6 +249,7 @@ function pushNodeErrors(
           code: "dangling_reference",
           message: `MCP instance '${id}' is not visible from this flow`,
           nodeId: node.id,
+          nodeLabel: nodeLabelFor(node),
           fieldPath: "config.mcpInstanceIds",
         });
       }
@@ -245,6 +264,7 @@ function pushNodeErrors(
           code: "dangling_reference",
           message: `Skill '${id}' is not visible from this flow`,
           nodeId: node.id,
+          nodeLabel: nodeLabelFor(node),
           fieldPath: "config.skillIds",
         });
       }
@@ -270,4 +290,23 @@ function collectUpstreamNodeIds(flow: WorkflowGraph, target: string): Set<string
 function parseRefNodeId(ref: string): string | null {
   const idx = ref.indexOf(".");
   return idx === -1 ? ref : ref.slice(0, idx);
+}
+
+function nodeLabelFor(node: WorkflowNode): string {
+  if (node.displayName && node.displayName.trim().length > 0) return node.displayName;
+  if (node.type === "phase" && node.phaseType) return prettifyPhaseType(node.phaseType);
+  return capitalize(node.type);
+}
+
+function prettifyPhaseType(phaseType: string): string {
+  return phaseType
+    .split(/[-_]/)
+    .filter(s => s.length > 0)
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ");
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

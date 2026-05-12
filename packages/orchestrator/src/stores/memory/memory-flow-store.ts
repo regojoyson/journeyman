@@ -91,6 +91,18 @@ export class MemoryWorkflowStore implements IWorkflowStore {
   }
 
   async list(filter: WorkflowListFilter): Promise<Workflow[]> {
+    let out = await this.filtered(filter);
+    const offset = filter.offset ?? 0;
+    if (offset) out = out.slice(offset);
+    if (filter.limit) out = out.slice(0, filter.limit);
+    return out;
+  }
+
+  async count(filter: Omit<WorkflowListFilter, "limit" | "offset">): Promise<number> {
+    return (await this.filtered(filter)).length;
+  }
+
+  private async filtered(filter: Omit<WorkflowListFilter, "limit" | "offset">): Promise<Workflow[]> {
     const out: Workflow[] = [];
     for (const row of this.rows.values()) {
       const owner = await this.grants.getOwnerGrant(row.id);
@@ -108,7 +120,7 @@ export class MemoryWorkflowStore implements IWorkflowStore {
       if (filter.scope && owner.principalType !== filter.scope) continue;
       out.push(hydrate(row, owner, null));
     }
-    return filter.limit ? out.slice(0, filter.limit) : out;
+    return out;
   }
 
   async updateMeta(workflowId: string, patch: { name?: string; description?: string | null }): Promise<Workflow | null> {

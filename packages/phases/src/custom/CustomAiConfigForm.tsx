@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PhaseFormProps } from "@journeyman/flow-editor";
 import { useOrgId, ValuePicker } from "@journeyman/flow-editor";
 import type { CustomAiPhase, CanonicalTool, WorkflowInputValue } from "@journeyman/core";
@@ -15,6 +15,8 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
   const [phase, setPhase] = useState<CustomAiPhase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [templateInsertFor, setTemplateInsertFor] = useState<string | null>(null);
+  const cursorByField = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!config.customPhaseId || !orgId) return;
@@ -47,6 +49,13 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
     const v = inputs[name];
     return v && v.kind === "ref" ? v.ref : "";
   };
+  const setTemplate = (name: string, template: string) => {
+    setInputs({ ...inputs, [name]: { kind: "template", template } as WorkflowInputValue });
+  };
+  const getTemplate = (name: string): string => {
+    const v = inputs[name];
+    return v && v.kind === "template" ? v.template : "";
+  };
 
   return (
     <div className="je-props__field" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -76,6 +85,76 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {phase.inputFields.map((f) => {
+            if (f.type === "template") {
+              const tpl = getTemplate(f.name);
+              const empty = tpl.trim().length === 0;
+              const showError = f.required && empty;
+              return (
+                <div key={f.name} style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+                  <span style={{ fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
+                    {f.name}
+                    {f.required && <span style={{ color: "#ff7675", marginLeft: 3 }}>*</span>}
+                    <span style={{ color: "#888", marginLeft: 6, fontSize: 10 }}>template</span>
+                  </span>
+                  {f.description && <span style={{ fontSize: 10, color: "#666" }}>{f.description}</span>}
+                  <textarea
+                    value={tpl}
+                    disabled={readOnly}
+                    rows={4}
+                    onChange={(e) => {
+                      cursorByField.current[f.name] = e.target.selectionStart;
+                      setTemplate(f.name, e.target.value);
+                    }}
+                    onSelect={(e) => {
+                      cursorByField.current[f.name] = (e.target as HTMLTextAreaElement).selectionStart;
+                    }}
+                    style={{
+                      background: "#1a1a2a",
+                      border: showError ? "1px solid #ff7675" : "1px solid #444",
+                      color: "#ddd",
+                      padding: "6px 8px",
+                      borderRadius: 4,
+                      fontFamily: "ui-monospace, monospace",
+                      fontSize: 12,
+                      resize: "vertical",
+                    }}
+                  />
+                  <div>
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => setTemplateInsertFor(templateInsertFor === f.name ? null : f.name)}
+                      style={{
+                        background: "#2a2a3e",
+                        border: "1px solid #444",
+                        color: "#ddd",
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {`{x} Insert ref`}
+                    </button>
+                  </div>
+                  {templateInsertFor === f.name && (
+                    <div className="je-props__picker-popover">
+                      <ValuePicker
+                        sources={sources ?? []}
+                        onPick={(ref) => {
+                          const pos = cursorByField.current[f.name] ?? tpl.length;
+                          const next = tpl.slice(0, pos) + `{{${ref}}}` + tpl.slice(pos);
+                          setTemplate(f.name, next);
+                          setTemplateInsertFor(null);
+                        }}
+                        onClose={() => setTemplateInsertFor(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             const ref = getRef(f.name);
             const isPicking = pickerFor === f.name;
             const empty = !ref;

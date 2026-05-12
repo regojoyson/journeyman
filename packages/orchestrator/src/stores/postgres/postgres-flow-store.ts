@@ -151,7 +151,7 @@ export class PostgresWorkflowStore implements IWorkflowStore {
     return workflow;
   }
 
-  async list(filter: WorkflowListFilter): Promise<Workflow[]> {
+  private buildWhereClause(filter: Omit<WorkflowListFilter, "limit" | "offset">): { where: string; params: any[] } {
     const params: any[] = [];
     const push = (v: any) => { params.push(v); return `$${params.length}`; };
 
@@ -197,8 +197,14 @@ export class PostgresWorkflowStore implements IWorkflowStore {
     }
 
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+    return { where, params };
+  }
+
+  async list(filter: WorkflowListFilter): Promise<Workflow[]> {
+    const { where, params } = this.buildWhereClause(filter);
     const limit = filter.limit ? `LIMIT ${Number(filter.limit)}` : "LIMIT 200";
-    const sql = `SELECT f.* FROM jm_workflows f ${where} ORDER BY f.created_at DESC ${limit}`;
+    const offset = filter.offset ? `OFFSET ${Number(filter.offset)}` : "";
+    const sql = `SELECT f.* FROM jm_workflows f ${where} ORDER BY f.created_at DESC ${limit} ${offset}`;
     const { rows } = await this.pool.query(sql, params);
 
     const out: Workflow[] = [];
@@ -209,6 +215,13 @@ export class PostgresWorkflowStore implements IWorkflowStore {
       out.push(hydrateFromOwnerGrant(base, owner, orgHint));
     }
     return out;
+  }
+
+  async count(filter: Omit<WorkflowListFilter, "limit" | "offset">): Promise<number> {
+    const { where, params } = this.buildWhereClause(filter);
+    const sql = `SELECT COUNT(*)::int AS n FROM jm_workflows f ${where}`;
+    const { rows } = await this.pool.query(sql, params);
+    return rows[0]?.n ?? 0;
   }
 
   async updateMeta(workflowId: string, patch: { name?: string; description?: string | null }): Promise<Workflow | null> {

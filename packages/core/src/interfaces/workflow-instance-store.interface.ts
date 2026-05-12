@@ -32,11 +32,20 @@ export interface IWorkflowInstanceStore {
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     limit?: number;
+    offset?: number;
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
     issueRef?: string;
   }): Promise<WorkflowInstance[]>;
+  count(opts?: {
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
+    actor?: ActorContext;
+    scope?: WorkflowInstanceListScope;
+    provider?: string;
+    issueRef?: string;
+  }): Promise<number>;
   findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]>;
   findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]>;
 }

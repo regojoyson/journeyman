@@ -30,9 +30,7 @@ export function EditCustomPhaseModal(props: {
 
   const handleToolsChange = (next: CanonicalTool[]) => {
     const becomingWorkspace = !toolsRequireWorkspace(defaultTools) && toolsRequireWorkspace(next);
-    const hasWorkspaceField = inputFields.some(
-      (f) => f.name === "workspaceId" || f.name === "workspaceDir",
-    );
+    const hasWorkspaceField = inputFields.some((f) => f.name === "workspaceDir");
     if (becomingWorkspace && !hasWorkspaceField) {
       setPendingTools(next);
       return;
@@ -45,8 +43,8 @@ export function EditCustomPhaseModal(props: {
     setInputFields((prev) => [
       ...prev,
       {
-        name: "workspaceId",
-        type: "workspaceId",
+        name: "workspaceDir",
+        type: "workspaceDir",
         required: true,
         description: "Working directory for shell/file tools",
       },
@@ -130,7 +128,7 @@ export function EditCustomPhaseModal(props: {
           {toolsRequireWorkspace(defaultTools) && (
             <p className="text-[11px] text-slate-400">
               A workspace tool is selected — flows using this phase must wire a{" "}
-              <code>workspaceId</code> input.
+              <code>workspaceDir</code> input.
             </p>
           )}
         </section>
@@ -160,10 +158,10 @@ export function EditCustomPhaseModal(props: {
       {pendingTools !== null && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
           <div className={`${card} w-full max-w-md p-6 space-y-4`}>
-            <h3 className="text-base font-semibold text-slate-100">Add required workspaceId input?</h3>
+            <h3 className="text-base font-semibold text-slate-100">Add required workspaceDir input?</h3>
             <p className="text-sm text-slate-300">
               These tools need a workspace (bash, read-file, write-file, edit-file, search).
-              Add a required <code>workspaceId</code> input to this phase? Flows using this phase
+              Add a required <code>workspaceDir</code> input to this phase? Flows using this phase
               will then need to wire it from an upstream <em>Create Workspace</em> (or similar) node.
             </p>
             <footer className="flex justify-end gap-2 pt-2 border-t border-slate-800">
@@ -171,7 +169,7 @@ export function EditCustomPhaseModal(props: {
                 Cancel
               </button>
               <button type="button" className={btnPrimary} onClick={confirmAddWorkspaceInput}>
-                Add workspaceId input
+                Add workspaceDir input
               </button>
             </footer>
           </div>

@@ -1315,3 +1315,42 @@ label.je-switch,
   line-height: 1;
 }
 .je-condition-row button:hover { background: rgba(255,118,117,0.15); border-color: #ff7675; color: #ff7675; }
+
+.fe-publish-section { margin-top: 12px; }
+.fe-publish-section:first-of-type { margin-top: 0; }
+.fe-publish-section-heading {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fe-publish-section-heading--error { color: #ff7675; }
+.fe-publish-section-heading--warn { color: #fdcb6e; }
+.fe-publish-section-subline {
+  font-size: 11px;
+  font-weight: 400;
+  color: #888;
+}
+.fe-publish-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fe-publish-icon { width: 14px; display: inline-block; text-align: center; }
+.fe-publish-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fe-publish-chip:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+.fe-publish-chip:disabled { cursor: default; opacity: 0.7; }
+.fe-publish-message { flex: 1 1 auto; }

@@ -257,7 +257,7 @@ function customTypeToShape(t: string): string {
     case "string[]": return "array";
     case "object": return "object";
     case "array": return "array";
-    case "workspaceId": return "string";
+    case "workspaceDir": return "string";
     case "repoRef": return "ref";
     case "issueRef": return "ref";
     default: return "string";
@@ -367,7 +367,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const seenMissing = new Set(report.missing);
     const seenWarnings = new Set(report.warnings);
     for (const e of publishResult.errors) {
-      const msg = e.nodeId ? `${e.message} (node ${e.nodeId})` : e.message;
+      const label = e.nodeLabel ?? (e.nodeId ? "Unknown step" : "Flow");
+      const msg = `[${label}] ${e.message}`;
       if (e.severity === "warning") {
         if (!seenWarnings.has(msg)) { report.warnings.push(msg); seenWarnings.add(msg); }
       } else if (e.code === "missing_config" || e.code === "unresolved_binding") {
@@ -421,14 +422,31 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
   app.get("/workflows", { preHandler: requireAuth() }, async (req) => {
     const ctx = req.runContext!;
-    const q = req.query as { scope?: string; orgId?: string; limit?: string };
-    const workflows = await c.workflows.list({
+    const q = req.query as { scope?: string; orgId?: string; limit?: string; page?: string; page_size?: string };
+    const baseFilter = {
       callerUserId: ctx.user.id,
       callerOrgId: ctx.org.id,
       callerIsPlatformAdmin: ctx.isPlatformAdmin,
       callerIsOrgAdmin: ctx.role === "admin",
       scope: q.scope as WorkflowScope | undefined,
       orgId: q.orgId,
+    };
+
+    const paginated = q.page !== undefined || q.page_size !== undefined;
+    if (paginated) {
+      const page = Math.max(1, Number(q.page ?? 1) || 1);
+      const requestedSize = Number(q.page_size ?? 25) || 25;
+      const pageSize = Math.min(100, Math.max(1, requestedSize));
+      const offset = (page - 1) * pageSize;
+      const [workflows, total] = await Promise.all([
+        c.workflows.list({ ...baseFilter, limit: pageSize, offset }),
+        c.workflows.count(baseFilter),
+      ]);
+      return { workflows, total, page, pageSize };
+    }
+
+    const workflows = await c.workflows.list({
+      ...baseFilter,
       limit: q.limit ? Number(q.limit) : undefined,
     });
     return { workflows };

@@ -5,6 +5,7 @@ import { z } from "zod";
 const flowInputValueSchema = z.union([
   z.object({ kind: z.literal("literal"), value: z.unknown() }),
   z.object({ kind: z.literal("ref"), ref: z.string() }),
+  z.object({ kind: z.literal("template"), template: z.string() }),
 ]);
 
 const secretBindingSchema = z.discriminatedUnion("mode", [

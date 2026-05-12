@@ -20,4 +20,11 @@ export interface WorkflowInstancesListProps {
   onScopeChange?: (scope: "mine" | "org" | "all") => void;
   showOrgChip?: boolean;
   showAllChip?: boolean;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange?: (pageSize: number) => void;
+  };
 }

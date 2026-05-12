@@ -6,7 +6,8 @@ export type CustomPhaseOutputMode = "none" | "text" | "structured";
 export type CustomPhaseInputType =
   | "string" | "number" | "boolean" | "string[]"
   | "object" | "array"
-  | "workspaceId" | "repoRef" | "issueRef";
+  | "workspaceDir" | "repoRef" | "issueRef"
+  | "template";
 
 export interface CustomPhaseInputField {
   name: string;

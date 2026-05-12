@@ -51,8 +51,6 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
           isDefault: b.isDefault,
           supportsThinking: b.supportsThinking,
           contextWindow: b.contextWindow,
-          inputCostPer1M: b.inputCostPer1M,
-          outputCostPer1M: b.outputCostPer1M,
         });
         reply.code(201);
         return rec;

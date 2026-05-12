@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
 import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope, IssueRefProvider } from "@journeyman/core";
 import { buildIssueRef } from "@journeyman/core";
-import { listRuns, rerunRun } from "../api/runs.ts";
+import { listRunsPaged, rerunRun } from "../api/runs.ts";
 import { getCurrentWorkflowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
@@ -214,15 +214,24 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 export function RunsListPage() {
   const [filter, setFilter] = useState<WorkflowInstanceFilter>({});
   const [scope, setScope] = useState<WorkflowInstanceListScope>("mine");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showDialog, setShowDialog] = useState(false);
   const [runToast, setRunToast] = useState<{ workflowInstanceId: string; engineWorkflowId: string } | null>(null);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const auth = useAuth();
 
+  const handleFilterChange = (next: WorkflowInstanceFilter) => { setFilter(next); setPage(1); };
+  const handleScopeChange = (s: WorkflowInstanceListScope) => { setScope(s); setPage(1); };
+  const handlePageSizeChange = (n: number) => { setPageSize(n); setPage(1); };
+
   const q = useQuery({
-    queryKey: ["runs", filter, scope],
-    queryFn: () => listRuns({ status: filter.status, workflowId: filter.workflowId, provider: filter.provider, issueRef: filter.issueRef, scope }),
+    queryKey: ["runs", filter, scope, page, pageSize],
+    queryFn: () => listRunsPaged({
+      status: filter.status, workflowId: filter.workflowId, provider: filter.provider, issueRef: filter.issueRef,
+      scope, page, pageSize,
+    }),
     refetchInterval: 4000,
   });
 
@@ -237,17 +246,24 @@ export function RunsListPage() {
   return (
     <>
       <WorkflowInstancesList
-        workflowInstances={q.data ?? []}
+        workflowInstances={q.data?.workflowInstances ?? []}
         isLoading={q.isLoading}
         filter={filter}
-        onFilterChange={setFilter}
+        onFilterChange={handleFilterChange}
         onSelectWorkflowInstance={(id) => navigate(`/workflow-instances/${id}`)}
         onRerun={(r) => rerunM.mutate(r)}
         onNewWorkflowInstance={() => setShowDialog(true)}
         scope={scope}
-        onScopeChange={setScope}
+        onScopeChange={handleScopeChange}
         showOrgChip={!!auth.activeOrgId}
         showAllChip={auth.isPlatformAdmin}
+        pagination={{
+          page,
+          pageSize,
+          total: q.data?.total ?? 0,
+          onPageChange: setPage,
+          onPageSizeChange: handlePageSizeChange,
+        }}
       />
       {showDialog && (
         <NewRunDialog

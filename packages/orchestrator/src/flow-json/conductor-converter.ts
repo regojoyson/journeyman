@@ -1,5 +1,6 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
+import { extractTemplateRefs } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
@@ -77,36 +78,45 @@ class ConvertCtx {
 
     for (const node of this.flow.nodes) {
       for (const [field, val] of Object.entries(node.inputs ?? {})) {
-        if (val.kind !== "ref") continue;
-        const parsed = parseRef(val.ref);
-        if (!parsed) {
-          throw new WorkflowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${val.ref}'`);
-        }
-        if (parsed.source === "workflow.input") {
-          if (!runInputNames.has(parsed.field)) {
-            throw new WorkflowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
+        const refs: Array<{ ref: string; enforceShape: boolean }> = [];
+        if (val.kind === "ref") refs.push({ ref: val.ref, enforceShape: true });
+        else if (val.kind === "template") {
+          for (const seg of extractTemplateRefs(val.template)) {
+            refs.push({ ref: seg.ref, enforceShape: false });
           }
-          continue;
-        }
-        if (!nodeIds.has(parsed.source)) {
-          throw new WorkflowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
-        }
-        const doms = dominators(this.flow, node.id);
-        if (!doms.has(parsed.source)) {
-          throw new WorkflowValidationError(
-            `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
-          );
-        }
-        // Shape compatibility (only when a catalog is supplied).
-        if (this.catalog && node.type === "phase" && node.phaseType) {
-          const entry = this.catalog.get(node.phaseType);
-          const expected = entry?.inputFields?.[field]?.shape;
-          if (expected) {
-            const result = validateRefShapeAgainst(this.flow, val.ref, expected, this.catalog);
-            if (!result.ok) {
-              throw new WorkflowValidationError(
-                `Node '${node.id}' input '${field}': ${result.error}`,
-              );
+        } else continue;
+
+        for (const { ref, enforceShape } of refs) {
+          const parsed = parseRef(ref);
+          if (!parsed) {
+            throw new WorkflowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${ref}'`);
+          }
+          if (parsed.source === "workflow.input") {
+            if (!runInputNames.has(parsed.field)) {
+              throw new WorkflowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
+            }
+            continue;
+          }
+          if (!nodeIds.has(parsed.source)) {
+            throw new WorkflowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
+          }
+          const doms = dominators(this.flow, node.id);
+          if (!doms.has(parsed.source)) {
+            throw new WorkflowValidationError(
+              `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
+            );
+          }
+          // Shape compatibility (only when a catalog is supplied).
+          if (enforceShape && this.catalog && node.type === "phase" && node.phaseType) {
+            const entry = this.catalog.get(node.phaseType);
+            const expected = entry?.inputFields?.[field]?.shape;
+            if (expected) {
+              const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog);
+              if (!result.ok) {
+                throw new WorkflowValidationError(
+                  `Node '${node.id}' input '${field}': ${result.error}`,
+                );
+              }
             }
           }
         }

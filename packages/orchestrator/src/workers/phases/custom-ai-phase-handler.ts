@@ -71,9 +71,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
     const needsWorkspace = toolsRequireWorkspace(effectiveTools);
 
     const cwd = needsWorkspace
-      ? (typeof input.workspaceId === "string"
-          ? input.workspaceId
-          : (typeof input.workspaceDir === "string" ? input.workspaceDir : undefined))
+      ? (typeof input.workspaceDir === "string" ? input.workspaceDir : undefined)
       : undefined;
     if (needsWorkspace && !cwd) {
       return {
@@ -82,7 +80,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
           errorClass: "InvalidInput",
           message:
             "Custom phase selected workspace tools (bash/read-file/write-file/edit-file/search) " +
-            "but no workspaceId/workspaceDir input was wired",
+            "but no workspaceDir input was wired",
           retryable: false,
         },
       };

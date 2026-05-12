@@ -210,7 +210,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
           )}
           {needsWs && (
             <div className="je-props__field-help" style={{ marginTop: 4 }}>
-              A workspace tool is selected — wire a <code>workspaceId</code> input on this node.
+              A workspace tool is selected — wire a <code>workspaceDir</code> input on this node.
             </div>
           )}
         </div>

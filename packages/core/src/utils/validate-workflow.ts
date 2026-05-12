@@ -2,6 +2,7 @@ import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputVal
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
 import { resolveShape, shapeAtPath, shapesEqual } from "../types/shapes.ts";
 import { getStartWorkflowInputs } from "./start-node.ts";
+import { extractTemplateRefs } from "./template-refs.ts";
 
 /**
  * Catalog entry the validator needs. The flow-editor and any future server-side
@@ -129,8 +130,12 @@ export function validateWorkflowInputs(
       const hasConfigValue = configValue !== undefined && configValue !== "" && configValue !== null;
       const hasRef = inputValue?.kind === "ref" && typeof inputValue.ref === "string" && inputValue.ref.trim().length > 0;
       const hasLiteral = inputValue?.kind === "literal" && inputValue.value !== undefined;
+      const hasTemplate =
+        inputValue?.kind === "template" &&
+        typeof inputValue.template === "string" &&
+        inputValue.template.trim().length > 0;
 
-      if (!hasConfigValue && !hasRef && !hasLiteral) {
+      if (!hasConfigValue && !hasRef && !hasLiteral && !hasTemplate) {
         if (fieldDef.required) {
           warnings.push({
             code: "missing-required",
@@ -142,92 +147,103 @@ export function validateWorkflowInputs(
         continue;
       }
 
-      if (!hasRef) continue;
-      const ref = inputValue!.kind === "ref" ? inputValue!.ref : "";
-      const parsed = parseRefForValidation(ref);
-      if (!parsed) {
-        warnings.push({
-          code: "dangling-ref-path",
-          message: `${node.id}.${key}: ref '${ref}' is malformed`,
-          nodeId: node.id,
-          inputKey: key,
-          ref,
-          missingPath: ref,
-        });
-        continue;
+      const refsToCheck: Array<{ ref: string; enforceShape: boolean }> = [];
+      if (hasRef) {
+        refsToCheck.push({ ref: (inputValue!.kind === "ref" ? inputValue!.ref : ""), enforceShape: true });
       }
-
-      let actual: Shape | undefined;
-      if (parsed.scope === "workflow.input") {
-        const def = workflowInputByName.get(parsed.fieldPath[0]);
-        if (!def) {
-          warnings.push({
-            code: "dangling-ref-path",
-            message: `${node.id}.${key}: ref '${ref}' points to undeclared run input '${parsed.fieldPath[0]}'`,
-            nodeId: node.id,
-            inputKey: key,
-            ref,
-            missingPath: parsed.fieldPath.join("."),
-          });
-          continue;
-        }
-        const root = workflowInputShape(def);
-        actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
-      } else {
-        const sourceNode = nodesById.get(parsed.source);
-        if (!sourceNode) {
-          warnings.push({
-            code: "dangling-ref-node",
-            message: `${node.id}.${key}: ref '${ref}' points to unknown node '${parsed.source}'`,
-            nodeId: node.id,
-            inputKey: key,
-            ref,
-            missingNodeId: parsed.source,
-          });
-          continue;
-        }
-        if (parsed.scope === "input") continue;
-        if (sourceNode.type !== "phase" || !sourceNode.phaseType) continue;
-        const sourceEntry = catalog[sourceNode.phaseType];
-        const outputSchema = sourceEntry?.outputSchema;
-        if (!outputSchema) continue;
-        const root = outputSchema[parsed.fieldPath[0]];
-        if (!root) {
-          warnings.push({
-            code: "dangling-ref-path",
-            message: `${node.id}.${key}: ref '${ref}' points to '${parsed.fieldPath[0]}' which is not in the source's output schema`,
-            nodeId: node.id,
-            inputKey: key,
-            ref,
-            missingPath: parsed.fieldPath.join("."),
-          });
-          continue;
-        }
-        actual = shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined;
-        if (!actual) {
-          warnings.push({
-            code: "dangling-ref-path",
-            message: `${node.id}.${key}: ref '${ref}' path does not resolve on the source's output`,
-            nodeId: node.id,
-            inputKey: key,
-            ref,
-            missingPath: parsed.fieldPath.join("."),
-          });
-          continue;
-        }
+      if (hasTemplate) {
+        const tpl = inputValue!.kind === "template" ? inputValue!.template : "";
+        for (const seg of extractTemplateRefs(tpl)) refsToCheck.push({ ref: seg.ref, enforceShape: false });
       }
+      if (refsToCheck.length === 0) continue;
 
-      const check = validateInputBinding(expected, actual);
-      if (!check.ok && check.reason === "shape-mismatch") {
-        warnings.push({
-          code: "shape-mismatch",
-          message: `${node.id}.${key}: expected ${shapeTag(expected)}, got ${shapeTag(actual!)} from ${ref}`,
-          nodeId: node.id,
-          inputKey: key,
-          ref,
-          expected: shapeTag(expected),
-          actual: shapeTag(actual!),
-        });
+      for (const { ref, enforceShape } of refsToCheck) {
+        const parsed = parseRefForValidation(ref);
+        if (!parsed) {
+          warnings.push({
+            code: "dangling-ref-path",
+            message: `${node.id}.${key}: ref '${ref}' is malformed`,
+            nodeId: node.id,
+            inputKey: key,
+            ref,
+            missingPath: ref,
+          });
+          continue;
+        }
+
+        let actual: Shape | undefined;
+        if (parsed.scope === "workflow.input") {
+          const def = workflowInputByName.get(parsed.fieldPath[0]);
+          if (!def) {
+            warnings.push({
+              code: "dangling-ref-path",
+              message: `${node.id}.${key}: ref '${ref}' points to undeclared run input '${parsed.fieldPath[0]}'`,
+              nodeId: node.id,
+              inputKey: key,
+              ref,
+              missingPath: parsed.fieldPath.join("."),
+            });
+            continue;
+          }
+          const root = workflowInputShape(def);
+          actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
+        } else {
+          const sourceNode = nodesById.get(parsed.source);
+          if (!sourceNode) {
+            warnings.push({
+              code: "dangling-ref-node",
+              message: `${node.id}.${key}: ref '${ref}' points to unknown node '${parsed.source}'`,
+              nodeId: node.id,
+              inputKey: key,
+              ref,
+              missingNodeId: parsed.source,
+            });
+            continue;
+          }
+          if (parsed.scope === "input") continue;
+          if (sourceNode.type !== "phase" || !sourceNode.phaseType) continue;
+          const sourceEntry = catalog[sourceNode.phaseType];
+          const outputSchema = sourceEntry?.outputSchema;
+          if (!outputSchema) continue;
+          const root = outputSchema[parsed.fieldPath[0]];
+          if (!root) {
+            warnings.push({
+              code: "dangling-ref-path",
+              message: `${node.id}.${key}: ref '${ref}' points to '${parsed.fieldPath[0]}' which is not in the source's output schema`,
+              nodeId: node.id,
+              inputKey: key,
+              ref,
+              missingPath: parsed.fieldPath.join("."),
+            });
+            continue;
+          }
+          actual = shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined;
+          if (!actual) {
+            warnings.push({
+              code: "dangling-ref-path",
+              message: `${node.id}.${key}: ref '${ref}' path does not resolve on the source's output`,
+              nodeId: node.id,
+              inputKey: key,
+              ref,
+              missingPath: parsed.fieldPath.join("."),
+            });
+            continue;
+          }
+        }
+
+        if (!enforceShape) continue;
+        const check = validateInputBinding(expected, actual);
+        if (!check.ok && check.reason === "shape-mismatch") {
+          warnings.push({
+            code: "shape-mismatch",
+            message: `${node.id}.${key}: expected ${shapeTag(expected)}, got ${shapeTag(actual!)} from ${ref}`,
+            nodeId: node.id,
+            inputKey: key,
+            ref,
+            expected: shapeTag(expected),
+            actual: shapeTag(actual!),
+          });
+        }
       }
     }
   }

@@ -80,8 +80,6 @@ export function AdminCodingModelsPage() {
                   <th className="px-4 py-3 text-left font-medium">Enabled</th>
                   <th className="px-4 py-3 text-left font-medium">Deprecated</th>
                   <th className="px-4 py-3 text-left font-medium">Context</th>
-                  <th className="px-4 py-3 text-left font-medium">$/1M in</th>
-                  <th className="px-4 py-3 text-left font-medium">$/1M out</th>
                   <th className="px-4 py-3 text-right font-medium"></th>
                 </tr>
               </thead>
@@ -95,8 +93,6 @@ export function AdminCodingModelsPage() {
                     <td className="px-4 py-3">{m.enabled ? <span className="text-emerald-400">yes</span> : <span className="text-slate-500">no</span>}</td>
                     <td className="px-4 py-3">{m.deprecated ? <span className="text-rose-400">yes</span> : <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3 text-slate-300">{m.contextWindow ?? <span className="text-slate-600">—</span>}</td>
-                    <td className="px-4 py-3 text-slate-300">{m.inputCostPer1M ?? <span className="text-slate-600">—</span>}</td>
-                    <td className="px-4 py-3 text-slate-300">{m.outputCostPer1M ?? <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button className={btnGhost} onClick={() => setEditing(m)}>Edit</button>
                       <button
@@ -112,7 +108,7 @@ export function AdminCodingModelsPage() {
                 ))}
                 {(data ?? []).length === 0 && (
                   <tr>
-                    <td className="px-4 py-8 text-center text-slate-500" colSpan={10}>
+                    <td className="px-4 py-8 text-center text-slate-500" colSpan={8}>
                       No models yet — click “New model” to add one.
                     </td>
                   </tr>
@@ -185,7 +181,7 @@ function ModelForm(props: {
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-200">Capabilities & cost</h3>
+          <h3 className="text-sm font-medium text-slate-200">Capabilities</h3>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Sort order">
               <input className={inputCls} type="number" value={v.sortOrder ?? 0} onChange={(e) => set("sortOrder", Number(e.target.value))} />
@@ -197,26 +193,6 @@ function ModelForm(props: {
                 value={v.contextWindow ?? ""}
                 onChange={(e) => set("contextWindow", e.target.value === "" ? undefined : Number(e.target.value))}
                 placeholder="200000"
-              />
-            </Field>
-            <Field label="$/1M input tokens">
-              <input
-                className={inputCls}
-                type="number"
-                step="0.01"
-                value={v.inputCostPer1M ?? ""}
-                onChange={(e) => set("inputCostPer1M", e.target.value === "" ? undefined : Number(e.target.value))}
-                placeholder="15.00"
-              />
-            </Field>
-            <Field label="$/1M output tokens">
-              <input
-                className={inputCls}
-                type="number"
-                step="0.01"
-                value={v.outputCostPer1M ?? ""}
-                onChange={(e) => set("outputCostPer1M", e.target.value === "" ? undefined : Number(e.target.value))}
-                placeholder="75.00"
               />
             </Field>
           </div>

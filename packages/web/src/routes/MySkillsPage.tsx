@@ -59,7 +59,7 @@ export function MySkillsPage(props: { orgId: string }) {
           </div>
         </header>
 
-        <section className={`${card} overflow-hidden`}>
+        <section className={card}>
           <div className="px-6 py-4 border-b border-slate-800">
             <h2 className="text-base font-medium text-slate-100">
               Your packages <span className="text-slate-500 font-normal">({rows.length})</span>
@@ -72,7 +72,14 @@ export function MySkillsPage(props: { orgId: string }) {
               No personal skill packages yet. Add from the catalog or provide a custom git URL.
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col style={{ width: "30%" }} />
+                <col style={{ width: "90px" }} />
+                <col style={{ width: "auto" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "290px" }} />
+              </colgroup>
               <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
@@ -85,29 +92,53 @@ export function MySkillsPage(props: { orgId: string }) {
               <tbody className="divide-y divide-slate-800">
                 {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-800/30">
-                    <td className="px-6 py-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <code className={codePill}>{r.name}</code>
+                    <td className="px-6 py-3 align-middle">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <code className={`${codePill} truncate`}>{r.name}</code>
                           {r.localPath && (sharedPathCounts[r.localPath] ?? 0) > 1 && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300">
                               shared ({sharedPathCounts[r.localPath]})
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 text-xs text-slate-500 truncate max-w-xs">{r.gitUrl}</div>
+                        <div className="mt-0.5 text-xs text-slate-500 truncate" title={r.gitUrl}>{r.gitUrl}</div>
                       </div>
                     </td>
                     <td className="px-6 py-3">
                       <span className={statusColor(r.installStatus)}>{r.installStatus}</span>
                     </td>
-                    <td className="px-6 py-3 text-slate-300">
-                      {r.enabledSkills.length === 0
-                        ? <span className="text-slate-500">all</span>
-                        : r.enabledSkills.join(", ")}
+                    <td className="px-6 py-3 text-slate-300 align-middle">
+                      {r.enabledSkills.length === 0 ? (
+                        <span className="text-slate-500">all</span>
+                      ) : (
+                        <div className="relative group inline-block max-w-full">
+                          <div className="truncate cursor-help">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 mr-2">
+                              {r.enabledSkills.length}
+                            </span>
+                            <span className="text-slate-400">
+                              {r.enabledSkills.slice(0, 3).join(", ")}
+                              {r.enabledSkills.length > 3 ? ` +${r.enabledSkills.length - 3} more` : ""}
+                            </span>
+                          </div>
+                          <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity absolute left-0 top-full mt-1 z-20 w-80 max-h-72 overflow-y-auto rounded-md border border-slate-700 bg-slate-900 shadow-xl p-3">
+                            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-2">
+                              {r.enabledSkills.length} enabled
+                            </div>
+                            <ul className="space-y-1">
+                              {r.enabledSkills.map((s) => (
+                                <li key={s} className="text-xs text-slate-300 font-mono">
+                                  {s}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-3 text-slate-400">{new Date(r.updatedAt).toLocaleString()}</td>
-                    <td className="px-6 py-3 text-right">
+                    <td className="px-6 py-3 text-slate-400 whitespace-nowrap text-xs">{new Date(r.updatedAt).toLocaleString()}</td>
+                    <td className="px-6 py-3 text-right align-middle whitespace-nowrap">
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => pull(r)}

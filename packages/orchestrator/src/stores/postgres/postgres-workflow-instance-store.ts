@@ -134,11 +134,44 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     limit?: number;
+    offset?: number;
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
     issueRef?: string;
   } = {}): Promise<WorkflowInstance[]> {
+    const { sql: baseSql, params } = this.buildListQuery(opts);
+    const limitOffset: string[] = [];
+    let idx = params.length;
+    if (opts.limit) { params.push(opts.limit); limitOffset.push(`LIMIT $${++idx}`); }
+    if (opts.offset) { params.push(opts.offset); limitOffset.push(`OFFSET $${++idx}`); }
+    const sql = `${baseSql} ORDER BY r.started_at DESC NULLS LAST ${limitOffset.join(" ")}`;
+    const { rows } = await this.pool.query(sql, params);
+    return rows.map(rowToWorkflowInstance);
+  }
+
+  async count(opts: {
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
+    actor?: ActorContext;
+    scope?: WorkflowInstanceListScope;
+    provider?: string;
+    issueRef?: string;
+  } = {}): Promise<number> {
+    const { sql: baseSql, params } = this.buildListQuery(opts);
+    const sql = `SELECT COUNT(*)::int AS n FROM (${baseSql}) sub`;
+    const { rows } = await this.pool.query(sql, params);
+    return rows[0]?.n ?? 0;
+  }
+
+  private buildListQuery(opts: {
+    workflowId?: string;
+    status?: WorkflowInstanceStatus;
+    actor?: ActorContext;
+    scope?: WorkflowInstanceListScope;
+    provider?: string;
+    issueRef?: string;
+  }): { sql: string; params: any[] } {
     const conds: string[] = [];
     const params: any[] = [];
     let i = 1;
@@ -166,19 +199,13 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     }
 
     const whereSql = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-    const limitSql = opts.limit ? `LIMIT $${nextIdx()}` : "";
-    if (opts.limit) params.push(opts.limit);
-
     const sql = `
     SELECT DISTINCT r.* FROM jm_workflow_instances r
     ${webhookJoin}
     ${joinClause}
     ${whereSql}
-    ORDER BY r.started_at DESC NULLS LAST
-    ${limitSql}
   `;
-    const { rows } = await this.pool.query(sql, params);
-    return rows.map(rowToWorkflowInstance);
+    return { sql, params };
   }
 
   async findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
