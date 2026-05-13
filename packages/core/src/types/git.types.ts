@@ -1,4 +1,5 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
+import type { AgentLogLevel, CodingCliLogFn } from "./coding.types.ts";
 
 // ---------------------------------------------------------------------------
 // Git CLI operation types (used by coding-cli providers)
@@ -56,6 +57,10 @@ export type CheckoutRepoOptions = SessionOptions & {
   issue?: { id: string; title: string };
   signal?: AbortSignal;
   model?: string;
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type CheckoutResult = {
@@ -178,6 +183,10 @@ export type CommitPushReposOptions = SessionOptions & {
   prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
   signal?: AbortSignal;
   model?: string;
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type CommitPushResult = {

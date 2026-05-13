@@ -2,6 +2,7 @@ import { createLogger } from "@journeyman/core";
 import type {
   ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput, PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
+import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
 const log = createLogger("worker:checkout-repo");
 
@@ -58,11 +59,13 @@ export class StartFeatureBranchPhaseHandler implements IPhaseHandler {
 
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Checking out ${repos.length} repo(s)`);
+    const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const result = await coding.checkoutRepo({
       repos,
       issue,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
+      ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
     });
     if (result?.error) {
       log.error({ result }, "checkout-repo failed");

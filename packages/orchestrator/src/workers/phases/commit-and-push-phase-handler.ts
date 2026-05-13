@@ -3,6 +3,7 @@ import type {
   CommitPushEntry, ICodingCLI, IPhaseHandler, PhaseContext, PhaseInput,
   PhaseRunResult, ProviderFactory,
 } from "@journeyman/core";
+import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
 const log = createLogger("worker:commit-push");
 
@@ -65,7 +66,15 @@ export class CommitAndPushPhaseHandler implements IPhaseHandler {
       : entries;
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Commit + push ${repos.length} repo(s)${overrideMessage ? " (literal message)" : ""}`);
-    const result = await coding.commitPushRepos({ repos, issue, pattern, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
+    const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
+    const result = await coding.commitPushRepos({
+      repos,
+      issue,
+      pattern,
+      sessionId: ctx.workflowInstanceId,
+      signal: ctx.signal,
+      ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
+    });
     if (result?.error) {
       log.error({ result }, "commit-push failed");
       return { kind: "failure", failure: { errorClass: "CommitPushFailed", message: String(result.error), retryable: true } };

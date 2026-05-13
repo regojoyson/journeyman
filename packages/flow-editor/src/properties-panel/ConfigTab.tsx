@@ -9,8 +9,9 @@ import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
-import { useUpstreamSources } from "./use-upstream-sources.ts";
+import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
 import { useNodeWarningsByKey } from "../state/validation-context.tsx";
 
 export interface ConfigTabProps {
@@ -29,7 +30,8 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const executorConfig = node.executorConfig ?? {};
 
   const catalog = usePhaseCatalog();
-  const sources = useUpstreamSources(flow, node.id, catalog);
+  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(flow));
+  const sources = useUpstreamSources(flow, node.id, catalog, customPhaseDefs);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const nodeWarningsByKey = useNodeWarningsByKey(node.id);
 
@@ -175,7 +177,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
       )}
 
       {definition?.executor.kind === "coding-cli"
-        && ["analyze", "plan", "implement", "runCustomPrompt"].includes(definition.executor.method) && (
+        && ["analyze", "plan", "implement", "runCustomPrompt", "checkoutRepo", "commitPushRepos"].includes(definition.executor.method) && (
         <div className="je-props__field">
           <label>Agent log level</label>
           <select

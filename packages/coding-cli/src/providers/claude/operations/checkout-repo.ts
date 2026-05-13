@@ -151,7 +151,7 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
       ...queryOption,
     },
   })) {
-    logSdkMessage(msg);
+    logSdkMessage(msg, opts.onLog, opts.agentLogLevel ?? "all");
     if (msg.type === "result") {
       if (msg.subtype !== "success") {
         const error = (msg as any).errors?.[0] ?? msg.subtype;

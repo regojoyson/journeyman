@@ -5,12 +5,13 @@ import { createRunBody } from "../schemas/run.ts";
 import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
-import type { WorkflowGraph, WorkflowScope } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowScope, WorkflowInputValue } from "@journeyman/core";
 import { ConductorJsonConverter } from "@journeyman/orchestrator";
 import { phaseCatalog, buildPhaseConfigValidators } from "@journeyman/phases/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { getCustomAiPhase } from "@journeyman/custom-phases";
+import { customPhaseToShape, type CustomPhaseShape } from "@journeyman/custom-phases/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { WorkflowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
@@ -283,16 +284,38 @@ function validateAndWarnDefinition(
   return { ok: true };
 }
 
+async function loadCustomPhaseShapes(
+  c: Composition,
+  graph: WorkflowGraph,
+): Promise<Map<string, CustomPhaseShape>> {
+  const map = new Map<string, CustomPhaseShape>();
+  if (!c.pool) return map;
+  const ids = new Set<string>();
+  for (const n of graph.nodes) {
+    if (n.type === "phase" && n.phaseType === "custom-ai") {
+      const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      if (typeof id === "string" && id) ids.add(id);
+    }
+  }
+  for (const id of ids) {
+    const phase = await getCustomAiPhase(c.pool, id);
+    if (phase) map.set(id, customPhaseToShape(phase));
+  }
+  return map;
+}
+
 /** Save-path structural check: rejects only graphs that cannot round-trip
  *  through ConductorJsonConverter. Content-level validation (missing inputs,
  *  dangling refs, shape mismatches) is intentionally skipped on save and
  *  enforced only on publish via validateForPublish. */
-function validateGraphStructure(
+async function validateGraphStructure(
+  c: Composition,
   definition: WorkflowGraph,
   reply: import("fastify").FastifyReply,
-): { ok: true } | { ok: false } {
+): Promise<{ ok: true } | { ok: false }> {
   try {
-    ConductorJsonConverter.validateGraph(definition);
+    const customPhaseDefs = await loadCustomPhaseShapes(c, definition);
+    ConductorJsonConverter.validateGraph(definition, undefined, customPhaseDefs);
     return { ok: true };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -377,6 +400,20 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
         if (!seenErrors.has(msg)) { report.errors.push(msg); seenErrors.add(msg); }
       }
     }
+    const customPhaseDefs = await loadCustomPhaseShapes(c, body.definition);
+    const catalogMap = new Map(phaseCatalog.map(p => [
+      p.phaseType,
+      { phaseType: p.phaseType, inputFields: p.inputFields, outputSchema: p.outputSchema },
+    ]));
+    try {
+      ConductorJsonConverter.validateGraph(body.definition, catalogMap, customPhaseDefs);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!seenErrors.has(msg)) {
+        report.errors.push(msg);
+        seenErrors.add(msg);
+      }
+    }
     report.ok = report.errors.length === 0 && report.missing.length === 0;
 
     return { ...report, secretWarnings };
@@ -402,7 +439,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const ownerUserId = body.scope === "user" ? caller.userId : null;
 
-    const _v = validateGraphStructure(body.definition as WorkflowGraph, reply);
+    const _v = await validateGraphStructure(c, body.definition as WorkflowGraph, reply);
     if (!_v.ok) return;
 
     const warnings = await computeSaveWarnings(c, ctx, body.scope as WorkflowScope, body.definition as WorkflowGraph);
@@ -477,7 +514,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     let newVersion = null;
     let warnings: WorkflowSaveWarning[] = [];
     if (body.definition) {
-      const _v = validateGraphStructure(body.definition as WorkflowGraph, reply);
+      const _v = await validateGraphStructure(c, body.definition as WorkflowGraph, reply);
       if (!_v.ok) return;
       warnings = await computeSaveWarnings(c, ctx, workflow.scope, body.definition as WorkflowGraph);
       newVersion = await c.workflowVersions.appendVersion({
@@ -545,6 +582,18 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
         const phase = await getCustomAiPhase(c.pool, id);
         if (phase) customAiPhaseDefaults.set(id, { defaultTools: phase.defaultTools });
       }
+    }
+
+    try {
+      const customPhaseDefs = await loadCustomPhaseShapes(c, version.definition);
+      const catalogMap = new Map(phaseCatalog.map(p => [
+        p.phaseType,
+        { phaseType: p.phaseType, inputFields: p.inputFields, outputSchema: p.outputSchema },
+      ]));
+      ConductorJsonConverter.validateGraph(version.definition, catalogMap, customPhaseDefs);
+    } catch (e) {
+      reply.code(400);
+      return { errors: [{ code: "shape_mismatch", message: e instanceof Error ? e.message : String(e) }] };
     }
 
     const result = validateForPublish(version.definition, {

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import type { WorkflowGraph, Shape } from "@journeyman/core";
+import type { WorkflowGraph, Shape, CustomAiPhase } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
+import { customPhaseToShape } from "@journeyman/custom-phases/shape-adapter";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
 export interface UpstreamField {
@@ -25,6 +26,7 @@ export function useUpstreamSources(
   graph: WorkflowGraph,
   nodeId: string,
   catalog: Record<string, PhaseCatalogEntry>,
+  customPhaseDefs?: Record<string, CustomAiPhase | null>,
 ): UpstreamSource[] {
   return useMemo(() => {
     const _t0 = performance.now();
@@ -76,9 +78,23 @@ export function useUpstreamSources(
     for (const id of upstream) {
       const n = graph.nodes.find(x => x.id === id);
       if (!n || n.type !== "phase" || !n.phaseType) continue;
-      const entry = catalog[n.phaseType];
-      const inputFields = entry?.inputFields ?? {};
-      const outputSchema = entry?.outputSchema ?? {};
+
+      let inputFields: PhaseCatalogEntry["inputFields"] = {};
+      let outputSchema: PhaseCatalogEntry["outputSchema"] = {};
+
+      if (n.phaseType === "custom-ai") {
+        const customId = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+        if (typeof customId !== "string" || !customId) continue;
+        const def = customPhaseDefs?.[customId];
+        if (!def) continue;
+        const shape = customPhaseToShape(def);
+        inputFields = shape.inputFields;
+        outputSchema = shape.outputSchema ?? {};
+      } else {
+        const entry = catalog[n.phaseType];
+        inputFields = entry?.inputFields ?? {};
+        outputSchema = entry?.outputSchema ?? {};
+      }
 
       const groups: UpstreamSource["groups"] = [];
       const inputEntries = Object.entries(inputFields);
@@ -124,5 +140,15 @@ export function useUpstreamSources(
       );
     }
     return sources;
-  }, [graph, nodeId, catalog]);
+  }, [graph, nodeId, catalog, customPhaseDefs]);
+}
+
+export function collectCustomPhaseIds(graph: WorkflowGraph): string[] {
+  const set = new Set<string>();
+  for (const n of graph.nodes) {
+    if (n.type !== "phase" || n.phaseType !== "custom-ai") continue;
+    const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (typeof id === "string" && id) set.add(id);
+  }
+  return [...set];
 }

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
-import { useUpstreamSources } from "./use-upstream-sources.ts";
+import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
 import { sanitizeRef } from "./sanitize-ref.ts";
 
 export interface IoTabProps {
@@ -33,7 +34,8 @@ function setOutputSchema(node: WorkflowNode, schema: unknown): WorkflowNode {
 export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
   const inputs = getInputs(node);
   const catalog = usePhaseCatalog();
-  const sources = useUpstreamSources(flow, node.id, catalog);
+  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(flow));
+  const sources = useUpstreamSources(flow, node.id, catalog, customPhaseDefs);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const renameKey = (oldKey: string, newKey: string) => {

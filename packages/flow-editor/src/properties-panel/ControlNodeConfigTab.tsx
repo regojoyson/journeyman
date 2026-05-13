@@ -16,8 +16,9 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
-import { useUpstreamSources } from "./use-upstream-sources.ts";
+import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
 
 interface Props {
   flow: WorkflowGraph;
@@ -81,7 +82,8 @@ function ExprField({ label, value, onChange, readOnly, sources }: ExprFieldProps
 
 export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) {
   const catalog = usePhaseCatalog();
-  const sources = useUpstreamSources(flow, node.id, catalog);
+  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(flow));
+  const sources = useUpstreamSources(flow, node.id, catalog, customPhaseDefs);
   const cfg = (node.config ?? {}) as Record<string, unknown>;
 
   const setCfg = (patch: Record<string, unknown>) => {

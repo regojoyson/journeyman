@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./catalog": "./src/catalog.ts"
+    "./catalog": "./src/catalog.ts",
+    "./shape-adapter": "./src/shape-adapter.ts"
   },
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {

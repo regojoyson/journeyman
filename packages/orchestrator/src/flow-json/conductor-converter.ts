@@ -1,4 +1,4 @@
-import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
@@ -10,7 +10,7 @@ import type {
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
-import { validateRefShapeAgainst, type CatalogShapeEntry } from "./validate-ref-shape.ts";
+import { validateRefShapeAgainst, type CatalogShapeEntry, type CustomPhaseShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
 
 export class UnsupportedNodeTypeError extends Error {
@@ -25,8 +25,12 @@ export class WorkflowValidationError extends Error {
 }
 
 export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorWorkflowDef> {
-  static validateGraph(graph: WorkflowGraph, catalog?: Map<string, CatalogShapeEntry>): void {
-    new ConvertCtx(graph, catalog).validate();
+  static validateGraph(
+    graph: WorkflowGraph,
+    catalog?: Map<string, CatalogShapeEntry>,
+    customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+  ): void {
+    new ConvertCtx(graph, catalog, customPhaseDefs).validate();
   }
 
   toEngineJson(def: WorkflowGraph, opts: {
@@ -56,7 +60,11 @@ class ConvertCtx {
   readonly outgoing: Map<string, WorkflowEdge[]>;
   emitted = new Set<string>();
 
-  constructor(public flow: WorkflowGraph, private catalog?: Map<string, CatalogShapeEntry>) {
+  constructor(
+    public flow: WorkflowGraph,
+    private catalog?: Map<string, CatalogShapeEntry>,
+    private customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+  ) {
     this.nodes = new Map(flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
     for (const e of flow.edges) {
@@ -109,10 +117,16 @@ class ConvertCtx {
           }
           // Shape compatibility (only when a catalog is supplied).
           if (enforceShape && this.catalog && node.type === "phase" && node.phaseType) {
-            const entry = this.catalog.get(node.phaseType);
-            const expected = entry?.inputFields?.[field]?.shape;
+            let expected: Shape | undefined;
+            if (node.phaseType === "custom-ai") {
+              const customId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+              const def = typeof customId === "string" && customId ? this.customPhaseDefs?.get(customId) : undefined;
+              expected = def?.inputFields?.[field]?.shape;
+            } else {
+              expected = this.catalog.get(node.phaseType)?.inputFields?.[field]?.shape;
+            }
             if (expected) {
-              const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog);
+              const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog, this.customPhaseDefs);
               if (!result.ok) {
                 throw new WorkflowValidationError(
                   `Node '${node.id}' input '${field}': ${result.error}`,

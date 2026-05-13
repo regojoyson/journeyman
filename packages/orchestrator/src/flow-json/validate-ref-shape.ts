@@ -12,6 +12,12 @@ export interface CatalogShapeEntry {
   outputSchema: OutputSchema | null;
 }
 
+/** Shape view of a saved custom phase (built via `customPhaseToShape`). */
+export interface CustomPhaseShapeEntry {
+  inputFields: InputFields;
+  outputSchema: OutputSchema | null;
+}
+
 interface RefShapeResult {
   ok: boolean;
   shape?: Shape;
@@ -22,6 +28,7 @@ export function resolveRefShape(
   flow: WorkflowGraph,
   ref: string,
   catalog: Map<string, CatalogShapeEntry>,
+  customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
 ): RefShapeResult {
   const parsed = parseRef(ref);
   if (!parsed) return { ok: false, error: `Unparseable ref '${ref}'` };
@@ -44,13 +51,32 @@ export function resolveRefShape(
   const node = flow.nodes.find(n => n.id === parsed.source);
   if (!node) return { ok: false, error: `Node '${parsed.source}' not found` };
   if (node.type !== "phase" || !node.phaseType) return { ok: false, error: `Node '${parsed.source}' is not a phase` };
-  const entry = catalog.get(node.phaseType);
-  if (!entry) return { ok: false, error: `Unknown phase type '${node.phaseType}'` };
+
+  let inputFields: InputFields | undefined;
+  let outputSchema: OutputSchema | null | undefined;
+
+  if (node.phaseType === "custom-ai") {
+    const customId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (typeof customId !== "string" || !customId) {
+      return { ok: false, error: `Node '${parsed.source}' has no customPhaseId` };
+    }
+    const def = customPhaseDefs?.get(customId);
+    if (!def) {
+      return { ok: false, error: `Custom phase definition not loaded for node '${parsed.source}'` };
+    }
+    inputFields = def.inputFields;
+    outputSchema = def.outputSchema;
+  } else {
+    const entry = catalog.get(node.phaseType);
+    if (!entry) return { ok: false, error: `Unknown phase type '${node.phaseType}'` };
+    inputFields = entry.inputFields;
+    outputSchema = entry.outputSchema;
+  }
 
   const root: Shape | undefined =
     parsed.scope === "output"
-      ? entry.outputSchema?.[path[0]]
-      : entry.inputFields?.[path[0]]?.shape;
+      ? outputSchema?.[path[0]]
+      : inputFields?.[path[0]]?.shape;
   if (!root) return { ok: false, error: `Field '${parsed.scope}.${path[0]}' not declared on '${parsed.source}'` };
 
   const leaf = shapeAtPath(root, path.slice(1));
@@ -62,8 +88,9 @@ export function validateRefShapeAgainst(
   ref: string,
   expected: Shape,
   catalog: Map<string, CatalogShapeEntry>,
+  customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
 ): { ok: boolean; error?: string } {
-  const r = resolveRefShape(flow, ref, catalog);
+  const r = resolveRefShape(flow, ref, catalog, customPhaseDefs);
   if (!r.ok || !r.shape) return { ok: false, error: r.error };
   let ok = false;
   try {
