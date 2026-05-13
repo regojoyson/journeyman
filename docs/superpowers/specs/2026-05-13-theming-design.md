@@ -187,10 +187,11 @@ The script is duplicated across entry HTMLs (acceptable; ~10 lines, never change
 
 ---
 
-## Testing
+## Verification
 
+- Run `npm run typecheck` at the end of implementation; must pass clean across all packages.
 - Manual walkthrough of all four packages in both themes: sidebar, all main routes, flow editor canvas + properties panel, run-viewer, runs-list, modals, toasts.
-- Vitest unit test in `packages/web` (or `packages/theme` if simpler) asserting `<ThemeProvider>` writes `data-theme` and `localStorage` on toggle, and respects existing localStorage on mount.
+- No unit tests added in v1.
 - No visual-regression infrastructure added in v1.
 
 ---

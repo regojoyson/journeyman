@@ -1,5 +1,5 @@
 /* @journeyman/run-viewer */
-.je-runview { display: grid; grid-template-rows: 44px 1fr; height: 100%; background: #1a1a24; color: #fff; font-family: system-ui, sans-serif; }
+.je-runview { display: grid; grid-template-rows: 44px 1fr; height: 100%; background: rgb(var(--color-bg) / 1); color: rgb(var(--color-text) / 1); font-family: system-ui, sans-serif; }
 .je-runview__topbar { display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #11111a; border-bottom: 1px solid #2a2a3a; font-size: 13px; }
 .je-runview__pill { font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
 .je-runview__pill.pending   { background: rgba(150,150,170,0.15); color: #aaa; }

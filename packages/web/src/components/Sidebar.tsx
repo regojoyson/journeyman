@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { ThemeToggle } from "@journeyman/theme";
 import { useAuth } from "../AuthContext.tsx";
 
 const NAV_ITEMS = [
@@ -247,6 +248,16 @@ export default function Sidebar() {
             </button>
           </div>
         )}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: expanded ? "flex-start" : "center",
+            padding: expanded ? "4px 4px 8px" : "0 0 8px",
+          }}
+        >
+          <ThemeToggle />
+        </div>
 
         <button
           type="button"

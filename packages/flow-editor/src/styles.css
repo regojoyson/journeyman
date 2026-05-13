@@ -1,5 +1,5 @@
 /* @journeyman/flow-editor — scoped utility styles */
-.je-editor { display: grid; grid-template-rows: auto 1fr; height: 100%; background: #1a1a24; color: #fff; font-family: system-ui, -apple-system, sans-serif; }
+.je-editor { display: grid; grid-template-rows: auto 1fr; height: 100%; background: rgb(var(--color-bg) / 1); color: rgb(var(--color-text) / 1); font-family: system-ui, -apple-system, sans-serif; }
 .je-editor__topbar {
   display: flex;
   align-items: center;

@@ -17,6 +17,7 @@
     "@journeyman/phases": "*",
     "@journeyman/run-viewer": "*",
     "@journeyman/runs-list": "*",
+    "@journeyman/theme": "*",
     "@tanstack/react-query": "^5.50.0",
     "@xyflow/react": "^12.3.5",
     "lucide-react": "^0.400.0",

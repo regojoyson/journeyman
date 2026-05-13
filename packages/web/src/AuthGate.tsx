@@ -34,7 +34,24 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     (async () => {
-      const status = await fetch("/api/bootstrap/status").then((r) => r.json()).catch(() => null);
+      // Retry with backoff so a cold-start backend (proxy ECONNREFUSED) is not
+      // mistaken for "system not bootstrapped" — that would wrongly surface the
+      // setup wizard on the first request after `npm run dev`.
+      let delay = 200;
+      let status: { bootstrapped?: boolean } | null = null;
+      while (!cancelled) {
+        try {
+          const r = await fetch("/api/bootstrap/status");
+          if (r.ok) {
+            status = await r.json();
+            break;
+          }
+        } catch {
+          // network/proxy error — fall through to retry
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * 2, 3000);
+      }
       if (cancelled) return;
       if (!status?.bootstrapped) { setPhase("setup"); return; }
       await manager.start();

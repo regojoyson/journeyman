@@ -1,4 +1,4 @@
-.je-runslist { padding: 24px; height: 100%; overflow: auto; color: #fff; }
+.je-runslist { padding: 24px; height: 100%; overflow: auto; color: rgb(var(--color-text) / 1); }
 .je-runslist__header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .je-runslist__header h2 { margin: 0; font-size: 18px; }
 .je-runslist__filters { display: flex; gap: 8px; align-items: center; }

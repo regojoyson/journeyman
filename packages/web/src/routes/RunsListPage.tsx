@@ -65,8 +65,8 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     onError: (err: unknown) => setError(err instanceof Error ? err.message : "Failed to start run."),
   });
 
-  const flows: Workflow[] =(flowsQ.data ?? []).filter(
-    f => isPlatformAdmin || f.scope !== "global",
+  const flows: Workflow[] = (flowsQ.data ?? []).filter(
+    f => f.status === "ready" && (isPlatformAdmin || f.scope !== "global"),
   );
 
   const grouped = {
