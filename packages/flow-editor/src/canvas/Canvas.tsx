@@ -21,6 +21,10 @@ import {
 import { HelpPanel } from "./HelpPanel.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
+import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
+import { collectCustomPhaseIds } from "../properties-panel/use-upstream-sources.ts";
+import { customPhaseToShape } from "@journeyman/custom-phases/shape-adapter";
+import type { CustomAiPhase, InputFields } from "@journeyman/core";
 
 /**
  * Best-effort: for each required input field on `newNode`, scan existing phase
@@ -31,9 +35,30 @@ function autoBindNewNode(
   newNode: WorkflowNode,
   existingNodes: WorkflowNode[],
   catalog: ReturnType<typeof usePhaseCatalog>,
+  customPhaseDefs?: Record<string, CustomAiPhase | null>,
 ): WorkflowNode {
   if (newNode.type !== "phase" || !newNode.phaseType) return newNode;
-  const required = catalog[newNode.phaseType]?.inputFields ?? {};
+
+  let required: InputFields = {};
+  const outputSchemaForCandidate = (n: WorkflowNode): Record<string, unknown> => {
+    if (n.type !== "phase" || !n.phaseType) return {};
+    if (n.phaseType === "custom-ai") {
+      const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      const def = typeof id === "string" && id ? customPhaseDefs?.[id] : undefined;
+      return def ? (customPhaseToShape(def).outputSchema ?? {}) : {};
+    }
+    return catalog[n.phaseType]?.outputSchema ?? {};
+  };
+
+  if (newNode.phaseType === "custom-ai") {
+    const customId = (newNode.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    const def = typeof customId === "string" && customId ? customPhaseDefs?.[customId] : undefined;
+    if (!def) return newNode; // def not loaded yet — skip auto-bind, user can connect manually
+    required = customPhaseToShape(def).inputFields;
+  } else {
+    required = catalog[newNode.phaseType]?.inputFields ?? {};
+  }
+
   const inputs: Record<string, { kind: "ref"; ref: string }> = {
     ...((newNode.inputs ?? {}) as Record<string, { kind: "ref"; ref: string }>),
   };
@@ -41,10 +66,8 @@ function autoBindNewNode(
   for (const [fieldName, meta] of Object.entries(required)) {
     if (!(meta as { required?: boolean }).required) continue;
     if (inputs[fieldName]) continue; // already bound
-    // Find candidate upstream nodes whose output declares fieldName.
-    const candidates = existingNodes.filter(n => {
-      if (n.type !== "phase" || !n.phaseType) return false;
-      const out = catalog[n.phaseType]?.outputSchema ?? {};
+    const candidates = existingNodes.filter((n) => {
+      const out = outputSchemaForCandidate(n);
       return out && fieldName in out;
     });
     if (candidates.length === 1) {
@@ -94,6 +117,7 @@ function toReactWorkflowNodes(
 
 function CanvasInner(p: CanvasProps) {
   const catalog = usePhaseCatalog();
+  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(p.flow));
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = usePhaseRegistry();
   const { screenToFlowPosition } = useReactFlow();
@@ -337,7 +361,7 @@ function CanvasInner(p: CanvasProps) {
 
     const flow = flowRef.current;
     const t0 = performance.now();
-    newNode = autoBindNewNode(newNode, flow.nodes, catalog);
+    newNode = autoBindNewNode(newNode, flow.nodes, catalog, customPhaseDefs);
     const tBind = performance.now();
     // eslint-disable-next-line no-console
     console.log("[flow-editor] add node", {

@@ -49,8 +49,8 @@ export function resolveRefShape(
   }
 
   const node = flow.nodes.find(n => n.id === parsed.source);
-  if (!node) return { ok: false, error: `Node '${parsed.source}' not found` };
-  if (node.type !== "phase" || !node.phaseType) return { ok: false, error: `Node '${parsed.source}' is not a phase` };
+  if (!node) return { ok: false, error: `Node ${labelNode(undefined, parsed.source)} not found` };
+  if (node.type !== "phase" || !node.phaseType) return { ok: false, error: `Node ${labelNode(node, parsed.source)} is not a phase` };
 
   let inputFields: InputFields | undefined;
   let outputSchema: OutputSchema | null | undefined;
@@ -58,11 +58,11 @@ export function resolveRefShape(
   if (node.phaseType === "custom-ai") {
     const customId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
     if (typeof customId !== "string" || !customId) {
-      return { ok: false, error: `Node '${parsed.source}' has no customPhaseId` };
+      return { ok: false, error: `Node ${labelNode(node, parsed.source)} has no customPhaseId` };
     }
     const def = customPhaseDefs?.get(customId);
     if (!def) {
-      return { ok: false, error: `Custom phase definition not loaded for node '${parsed.source}'` };
+      return { ok: false, error: `Custom phase definition not loaded for node ${labelNode(node, parsed.source)}` };
     }
     inputFields = def.inputFields;
     outputSchema = def.outputSchema;
@@ -77,7 +77,7 @@ export function resolveRefShape(
     parsed.scope === "output"
       ? outputSchema?.[path[0]]
       : inputFields?.[path[0]]?.shape;
-  if (!root) return { ok: false, error: `Field '${parsed.scope}.${path[0]}' not declared on '${parsed.source}'` };
+  if (!root) return { ok: false, error: `Field '${parsed.scope}.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
 
   const leaf = shapeAtPath(root, path.slice(1));
   return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
@@ -124,4 +124,14 @@ function describeShape(s: Shape): string {
 
 export function isPhaseNode(n: WorkflowNode): n is WorkflowNode & { type: "phase"; phaseType: string } {
   return n.type === "phase" && !!n.phaseType;
+}
+
+/**
+ * Human-friendly label for a node in error messages.
+ * Returns `"'Display Name' (node_id)"` when the node has a displayName,
+ * `"'node_id'"` when it doesn't (or when the node is missing from the flow).
+ */
+export function labelNode(n: WorkflowNode | undefined, fallbackId: string): string {
+  const name = n?.displayName?.trim();
+  return name ? `'${name}' (${fallbackId})` : `'${fallbackId}'`;
 }

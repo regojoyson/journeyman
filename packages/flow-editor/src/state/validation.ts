@@ -1,7 +1,13 @@
-import type { WorkflowGraph } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { isJsonLogicExpr } from "@journeyman/core";
 
 export interface ValidationResult { ok: boolean; errors: string[]; }
+
+/** Friendly label: `'Display Name' (node_id)` when displayName exists, else `'node_id'`. */
+function nodeLabel(n: WorkflowNode): string {
+  const name = n.displayName?.trim();
+  return name ? `'${name}' (${n.id})` : `'${n.id}'`;
+}
 
 export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
   const _t0 = performance.now();
@@ -20,19 +26,19 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
   }
   for (const n of flow.nodes) {
     if (n.type === "end") {
-      if ((out.get(n.id) ?? 0) > 0) errors.push(`End '${n.id}' has outgoing edges`);
+      if ((out.get(n.id) ?? 0) > 0) errors.push(`End ${nodeLabel(n)} has outgoing edges`);
     }
     if (n.type === "gateway-xor" || n.type === "if") {
-      if ((out.get(n.id) ?? 0) < 2) errors.push(`Gateway/If '${n.id}' needs at least 2 branches`);
+      if ((out.get(n.id) ?? 0) < 2) errors.push(`Gateway/If ${nodeLabel(n)} needs at least 2 branches`);
     }
     if (n.type === "gateway-and") {
-      if ((out.get(n.id) ?? 0) < 2) errors.push(`gateway-and '${n.id}' needs at least 2 branches`);
+      if ((out.get(n.id) ?? 0) < 2) errors.push(`gateway-and ${nodeLabel(n)} needs at least 2 branches`);
     }
     if (n.type === "phase" && !n.phaseType) {
-      errors.push(`Phase node '${n.id}' is missing a phase type`);
+      errors.push(`Phase node ${nodeLabel(n)} is missing a phase type`);
     }
     if (n.type === "subflow" && !(n.config as { workflowName?: string } | undefined)?.workflowName) {
-      errors.push(`Subflow '${n.id}' is missing config.workflowName`);
+      errors.push(`Subflow ${nodeLabel(n)} is missing config.workflowName`);
     }
   }
 
@@ -43,16 +49,16 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
     for (const e of outs) {
       if (e.type !== "conditional") continue;
       if (!e.branchLabel) {
-        errors.push(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
+        errors.push(`Edge ${e.id} on gateway ${nodeLabel(node)} requires a branchLabel`);
       } else if (labels.has(e.branchLabel)) {
-        errors.push(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
+        errors.push(`Duplicate branchLabel '${e.branchLabel}' on gateway ${nodeLabel(node)}`);
       } else {
         labels.add(e.branchLabel);
       }
       if (e.condition === undefined) {
-        errors.push(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
+        errors.push(`Edge ${e.id} on gateway ${nodeLabel(node)} is conditional but has no condition`);
       } else if (!isJsonLogicExpr(e.condition)) {
-        errors.push(`Edge ${e.id} on gateway '${node.id}' has an invalid condition shape`);
+        errors.push(`Edge ${e.id} on gateway ${nodeLabel(node)} has an invalid condition shape`);
       }
     }
   }
@@ -67,7 +73,7 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
       for (const e of flow.edges) if (e.source === cur && !reachable.has(e.target)) stack.push(e.target);
     }
     for (const n of flow.nodes) {
-      if (!reachable.has(n.id)) errors.push(`Node '${n.id}' is unreachable from start`);
+      if (!reachable.has(n.id)) errors.push(`Node ${nodeLabel(n)} is unreachable from start`);
     }
   }
 

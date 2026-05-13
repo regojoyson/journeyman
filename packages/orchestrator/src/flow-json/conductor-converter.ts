@@ -10,7 +10,7 @@ import type {
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
-import { validateRefShapeAgainst, type CatalogShapeEntry, type CustomPhaseShapeEntry } from "./validate-ref-shape.ts";
+import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomPhaseShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
 
 export class UnsupportedNodeTypeError extends Error {
@@ -74,6 +74,16 @@ class ConvertCtx {
     }
   }
 
+  /** Format `node` as it should appear in validation error messages. */
+  private label(n: WorkflowNode): string {
+    return labelNode(n, n.id);
+  }
+
+  /** Look up a node by id and format it for error messages. */
+  private labelById(id: string): string {
+    return labelNode(this.nodes.get(id), id);
+  }
+
   validate(): void {
     const starts = this.flow.nodes.filter(n => n.type === "start");
     if (starts.length !== 1) throw new WorkflowValidationError("Flow must have exactly one start node");
@@ -87,6 +97,14 @@ class ConvertCtx {
 
     for (const node of this.flow.nodes) {
       for (const [field, val] of Object.entries(node.inputs ?? {})) {
+        // Friendly short-circuit: ref-kind input with empty value means the user
+        // never connected it, not that the ref string is malformed.
+        if (val.kind === "ref" && val.ref.trim() === "") {
+          throw new WorkflowValidationError(
+            `Node ${this.label(node)} input '${field}' is not connected`,
+          );
+        }
+
         const refs: Array<{ ref: string; enforceShape: boolean }> = [];
         if (val.kind === "ref") refs.push({ ref: val.ref, enforceShape: true });
         else if (val.kind === "template") {
@@ -98,21 +116,21 @@ class ConvertCtx {
         for (const { ref, enforceShape } of refs) {
           const parsed = parseRef(ref);
           if (!parsed) {
-            throw new WorkflowValidationError(`Node '${node.id}' input '${field}' has unparseable ref '${ref}'`);
+            throw new WorkflowValidationError(`Node ${this.label(node)} input '${field}' has unparseable ref '${ref}'`);
           }
           if (parsed.source === "workflow.input") {
             if (!runInputNames.has(parsed.field)) {
-              throw new WorkflowValidationError(`Node '${node.id}' references undeclared run input '${parsed.field}'`);
+              throw new WorkflowValidationError(`Node ${this.label(node)} references undeclared run input '${parsed.field}'`);
             }
             continue;
           }
           if (!nodeIds.has(parsed.source)) {
-            throw new WorkflowValidationError(`Node '${node.id}' references missing node '${parsed.source}'`);
+            throw new WorkflowValidationError(`Node ${this.label(node)} references missing node '${parsed.source}'`);
           }
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
             throw new WorkflowValidationError(
-              `Node '${node.id}' references '${parsed.source}' which does not execute on every path to '${node.id}'`
+              `Node ${this.label(node)} references ${this.labelById(parsed.source)} which does not execute on every path to ${this.label(node)}`,
             );
           }
           // Shape compatibility (only when a catalog is supplied).
@@ -129,7 +147,7 @@ class ConvertCtx {
               const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog, this.customPhaseDefs);
               if (!result.ok) {
                 throw new WorkflowValidationError(
-                  `Node '${node.id}' input '${field}': ${result.error}`,
+                  `Node ${this.label(node)} input '${field}': ${result.error}`,
                 );
               }
             }
@@ -187,7 +205,7 @@ class ConvertCtx {
   }
 
   emitPhase(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
-    if (!node.phaseType) throw new WorkflowValidationError(`Phase node '${node.id}' missing phaseType`);
+    if (!node.phaseType) throw new WorkflowValidationError(`Phase node ${this.label(node)} missing phaseType`);
     const { resolved: resolvedNode, sources: defaultSources } = applyWorkflowDefaults(node, this.flow.defaults);
     const r = resolvedNode.retry ?? {};
     const enabled = r.enabled === true;
@@ -225,7 +243,7 @@ class ConvertCtx {
   emitSwitch(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
     if (outs.length === 0) {
-      throw new WorkflowValidationError(`Switch '${node.id}' has no outgoing edges`);
+      throw new WorkflowValidationError(`Switch ${this.label(node)} has no outgoing edges`);
     }
 
     const conditional = outs.filter(e => e.type === "conditional");
@@ -234,13 +252,13 @@ class ConvertCtx {
     const seenLabels = new Set<string>();
     for (const e of conditional) {
       if (e.condition === undefined) {
-        throw new WorkflowValidationError(`Edge ${e.id} on gateway '${node.id}' is conditional but has no condition`);
+        throw new WorkflowValidationError(`Edge ${e.id} on gateway ${this.label(node)} is conditional but has no condition`);
       }
       if (!e.branchLabel) {
-        throw new WorkflowValidationError(`Edge ${e.id} on gateway '${node.id}' requires a branchLabel`);
+        throw new WorkflowValidationError(`Edge ${e.id} on gateway ${this.label(node)} requires a branchLabel`);
       }
       if (seenLabels.has(e.branchLabel)) {
-        throw new WorkflowValidationError(`Duplicate branchLabel '${e.branchLabel}' on gateway '${node.id}'`);
+        throw new WorkflowValidationError(`Duplicate branchLabel '${e.branchLabel}' on gateway ${this.label(node)}`);
       }
       seenLabels.add(e.branchLabel);
     }
@@ -261,7 +279,7 @@ class ConvertCtx {
       ({ expression, inputParameters } = compileSwitchExpression(conditional));
     } catch (err) {
       throw new WorkflowValidationError(
-        `Failed to compile conditions on gateway '${node.id}': ${(err as Error).message}`,
+        `Failed to compile conditions on gateway ${this.label(node)}: ${(err as Error).message}`,
       );
     }
 
@@ -287,16 +305,16 @@ class ConvertCtx {
     for (const o of outputs) {
       if (!o.name || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(o.name)) {
         throw new WorkflowValidationError(
-          `Human-task '${node.id}' output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
+          `Human-task ${this.label(node)} output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
         );
       }
       if (reserved.has(o.name)) {
         throw new WorkflowValidationError(
-          `Human-task '${node.id}' output name '${o.name}' collides with a reserved meta key`,
+          `Human-task ${this.label(node)} output name '${o.name}' collides with a reserved meta key`,
         );
       }
       if (seenNames.has(o.name)) {
-        throw new WorkflowValidationError(`Human-task '${node.id}' has duplicate output name '${o.name}'`);
+        throw new WorkflowValidationError(`Human-task ${this.label(node)} has duplicate output name '${o.name}'`);
       }
       seenNames.add(o.name);
     }
@@ -326,12 +344,12 @@ class ConvertCtx {
   emitForkJoin(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
     if (outs.length < 2) {
-      throw new WorkflowValidationError(`gateway-and '${node.id}' must have at least 2 outgoing edges`);
+      throw new WorkflowValidationError(`gateway-and ${this.label(node)} must have at least 2 outgoing edges`);
     }
     const branchTargets = outs.map(e => e.target);
     const convergence = coreFindConvergence(branchTargets, this.outgoing);
     if (!convergence) {
-      throw new WorkflowValidationError(`gateway-and '${node.id}' branches must converge on a single join node`);
+      throw new WorkflowValidationError(`gateway-and ${this.label(node)} branches must converge on a single join node`);
     }
     const stopAt = new Set([convergence]);
 
@@ -356,7 +374,7 @@ class ConvertCtx {
 
   emitDoWhile(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
-    if (outs.length === 0) throw new WorkflowValidationError(`Loop '${node.id}' has no body edge`);
+    if (outs.length === 0) throw new WorkflowValidationError(`Loop ${this.label(node)} has no body edge`);
     const bodyHead = outs[0].target;
     const stopAt = new Set([node.id]);
 
@@ -395,7 +413,7 @@ class ConvertCtx {
   emitSubflow(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const target = (node.config ?? {}) as { workflowName?: string; workflowVersion?: number };
     if (!target.workflowName) {
-      throw new WorkflowValidationError(`Subflow '${node.id}' must specify config.workflowName`);
+      throw new WorkflowValidationError(`Subflow ${this.label(node)} must specify config.workflowName`);
     }
     const task: SubWorkflowTask = {
       type: "SUB_WORKFLOW",
