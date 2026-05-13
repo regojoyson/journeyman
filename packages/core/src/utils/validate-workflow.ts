@@ -40,11 +40,22 @@ export function shapeTag(s: Shape): string {
 export function validateInputBinding(expected: Shape, actual: Shape | undefined): BindingCheck {
   if (!actual) return { ok: false, reason: "unknown-shape" };
   try {
+    if (isWildcardObjectMatch(actual, expected)) return { ok: true };
     if (shapesEqual(actual, expected)) return { ok: true };
   } catch {
     return { ok: false, reason: "unknown-shape" };
   }
   return { ok: false, reason: "shape-mismatch", expected, actual };
+}
+
+/**
+ * Wildcard: when `expected` is an object with no declared fields (custom-phase
+ * input typed as plain `object`), accept any object as actual.
+ */
+function isWildcardObjectMatch(actual: Shape, expected: Shape): boolean {
+  const ra = resolveShape(actual);
+  const re = resolveShape(expected);
+  return re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object";
 }
 
 type RefScope = "workflow.input" | "input" | "output";

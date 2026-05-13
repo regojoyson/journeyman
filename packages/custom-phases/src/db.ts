@@ -27,6 +27,7 @@ function rowToPhase(r: any): CustomAiPhase {
     defaultTools: Array.isArray(r.default_tools) ? r.default_tools : [],
     defaultMcpIds: r.default_mcp_ids ?? [],
     defaultSkillIds: r.default_skill_ids ?? [],
+    slots: Array.isArray(r.slots) ? r.slots : [],
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -44,8 +45,9 @@ export async function insertCustomAiPhase(
           input_fields, output_mode, output_schema,
           prompt_template, default_tools,
           default_mcp_ids, default_skill_ids,
+          slots,
           created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
         input.scope,
@@ -60,6 +62,7 @@ export async function insertCustomAiPhase(
         JSON.stringify(input.defaultTools ?? []),
         JSON.stringify(input.defaultMcpIds ?? []),
         JSON.stringify(input.defaultSkillIds ?? []),
+        JSON.stringify(input.slots ?? []),
         input.createdBy,
       ],
     );
@@ -128,6 +131,7 @@ export async function updateCustomAiPhase(
   if (patch.defaultTools !== undefined)    push("default_tools", JSON.stringify(patch.defaultTools));
   if (patch.defaultMcpIds !== undefined)   push("default_mcp_ids", JSON.stringify(patch.defaultMcpIds));
   if (patch.defaultSkillIds !== undefined) push("default_skill_ids", JSON.stringify(patch.defaultSkillIds));
+  if (patch.slots !== undefined)           push("slots", JSON.stringify(patch.slots));
   if (sets.length === 0) return getCustomAiPhase(pool, id);
   sets.push(`updated_at = now()`);
   vals.push(id);

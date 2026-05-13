@@ -62,6 +62,7 @@ export async function runCustomPrompt(
     ...(plugins?.length ? { plugins } : {}),
     ...(opts.cwd ? { cwd: opts.cwd } : {}),
     ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.env && Object.keys(opts.env).length ? { env: opts.env } : {}),
     ...(controller !== undefined ? { abortController: controller } : {}),
     ...queryOption,
   };

@@ -10,6 +10,7 @@ import {
   type PhaseRunResult,
   type ResolvedMcpInstance,
   type ResolvedSkillPackage,
+  type SecretBinding,
 } from "@journeyman/core";
 import { getCustomAiPhase, renderPrompt } from "@journeyman/custom-phases";
 import { defaultProviderForKind } from "@journeyman/core";
@@ -19,10 +20,16 @@ const log = createLogger("worker:custom-ai");
 
 type CodingFactory = (key: string | undefined, env: Record<string, string>) => ICodingCLI;
 
+type BindingResolver = (input: {
+  ctx: { userId: string | null; orgId: string | null; workflowId: string | null };
+  slots: Array<{ name: string; optional?: boolean }>;
+  bindings: Record<string, SecretBinding>;
+}) => Promise<Record<string, string>>;
+
 export class CustomAiPhaseHandler implements IPhaseHandler {
   readonly phaseType = "custom-ai";
 
-  constructor(private deps: { coding: CodingFactory; pool: Pool }) {}
+  constructor(private deps: { coding: CodingFactory; pool: Pool; bindingResolver: BindingResolver }) {}
 
   async run(input: PhaseInput, ctx: PhaseContext): Promise<PhaseRunResult> {
     const customPhaseId = typeof input.customPhaseId === "string" ? input.customPhaseId : undefined;
@@ -89,6 +96,48 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
     const provider = typeof input.provider === "string"
       ? input.provider
       : defaultProviderForKind("coding-cli")?.value;
+
+    const declaredBindings =
+      (input.secretBindings as Record<string, SecretBinding> | undefined) ?? {};
+    const userId =
+      typeof input.startedByUserId === "string" ? input.startedByUserId : null;
+    const orgId =
+      typeof input.startedByOrgId === "string" ? input.startedByOrgId : null;
+    const workflowId =
+      typeof input.workflowId === "string" ? input.workflowId : null;
+
+    let env: Record<string, string>;
+    try {
+      env = await this.deps.bindingResolver({
+        ctx: { userId, orgId, workflowId },
+        slots: phase.slots ?? [],
+        bindings: declaredBindings,
+      });
+    } catch (err: any) {
+      const missing: string[] = err?.missing ?? [];
+      log.error({ phaseId: phase.id, missing }, "custom-ai secret resolution failed");
+      return {
+        kind: "failure",
+        failure: {
+          errorClass: err?.name === "MissingSecretsError" ? "MissingSecrets" : "SecretResolutionFailed",
+          message: err?.message ?? String(err),
+          retryable: false,
+        },
+      };
+    }
+
+    ctx.log(
+      `Resolved ${Object.keys(env).length} secret slot(s): ` +
+        ((phase.slots ?? [])
+          .map(s => {
+            const b = declaredBindings[s.name];
+            const mode = b?.mode ?? "auto";
+            const scope = b?.mode === "pinned" ? `:${b.scope}` : "";
+            return `${s.name}=${mode}${scope}`;
+          })
+          .join(", ") || "(none)"),
+    );
+
     const coding = this.deps.coding(provider, ctx.env);
 
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
@@ -106,6 +155,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
       mcps,
       skills,
       tools: effectiveTools,
+      env,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
       ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),

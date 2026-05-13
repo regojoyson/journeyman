@@ -212,6 +212,14 @@ export type WorkflowSaveWarning =
       }>;
     }
   | {
+      code: "orphan_secret_binding";
+      message: string;
+      entries: Array<{
+        nodeId: string;
+        slot: string;
+      }>;
+    }
+  | {
       code: "shape-mismatch";
       message: string;
       nodeId: string;

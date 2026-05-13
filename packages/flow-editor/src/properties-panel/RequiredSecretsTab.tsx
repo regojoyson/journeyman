@@ -6,6 +6,7 @@ import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import type { SecretSlotDef } from "../phase-definition.ts";
+import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
 
 export interface RequiredSecretsTabProps {
   flow: WorkflowGraph;
@@ -74,7 +75,32 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
       : undefined) ??
     (kind ? defaultProviderFor(kind) : undefined);
   const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
-  const slots: SecretSlotDef[] = phaseDef?.slots?.length ? phaseDef.slots : providerSlots;
+
+  // Custom-AI nodes carry their slots on the DB-backed phase definition, not
+  // the static registry entry. Fetch the def and prefer its slots when present.
+  const customPhaseId =
+    node.phaseType === "custom-ai"
+      ? ((node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId as string | undefined)
+      : undefined;
+  const customPhaseIds = useMemo(() => (customPhaseId ? [customPhaseId] : []), [customPhaseId]);
+  const customDefs = useCustomPhaseDefs(customPhaseIds);
+  const customSlots: SecretSlotDef[] = customPhaseId ? (customDefs[customPhaseId]?.slots ?? []) : [];
+
+  // For custom-ai nodes: union of the static phase def's slots (e.g. ANTHROPIC_API_KEY)
+  // and the user-declared slots on the DB-backed definition, with user slots winning
+  // on name collisions.
+  const slots: SecretSlotDef[] = (() => {
+    if (node.phaseType === "custom-ai") {
+      const base = phaseDef?.slots ?? [];
+      const overrides = new Map(customSlots.map(s => [s.name, s]));
+      const merged: SecretSlotDef[] = base.map(s => overrides.get(s.name) ?? s);
+      for (const s of customSlots) {
+        if (!base.some(b => b.name === s.name)) merged.push(s);
+      }
+      return merged;
+    }
+    return phaseDef?.slots?.length ? phaseDef.slots : providerSlots;
+  })();
 
   const [visible, setVisible] = useState<VisibleSecret[]>([]);
   const [loaded, setLoaded] = useState(false);

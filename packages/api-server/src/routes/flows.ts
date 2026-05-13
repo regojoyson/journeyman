@@ -14,7 +14,7 @@ import { getCustomAiPhase } from "@journeyman/custom-phases";
 import { customPhaseToShape, type CustomPhaseShape } from "@journeyman/custom-phases/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
-import type { WorkflowSaveWarning, SecretBinding, SecretScope } from "@journeyman/core";
+import type { WorkflowSaveWarning, SecretBinding, SecretScope, SecretSlotDef } from "@journeyman/core";
 import { assertWorkflowReady } from "../services/assert-flow-ready.ts";
 
 /**
@@ -38,10 +38,47 @@ async function computeSaveWarnings(
 
   const inaccessible = new Set<string>();
   const crossScope: Array<{ nodeId: string; slot: string; pinnedScope: SecretScope; workflowScope: WorkflowScope }> = [];
+  const orphans: Array<{ nodeId: string; slot: string }> = [];
+
+  // Pre-load slot definitions for any custom-ai phases referenced by the workflow.
+  const customSlotsById = new Map<string, SecretSlotDef[]>();
+  const customIds = new Set<string>();
+  for (const node of definition.nodes) {
+    if (node.phaseType === "custom-ai") {
+      const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      if (typeof id === "string" && id) customIds.add(id);
+    }
+  }
+  for (const id of customIds) {
+    const phase = await getCustomAiPhase(c.pool, id);
+    if (phase) customSlotsById.set(id, phase.slots ?? []);
+  }
 
   for (const node of definition.nodes) {
     const bindings = (node.secretBindings ?? {}) as Record<string, SecretBinding>;
+
+    // Build the declared-slot name set for orphan detection on custom-ai nodes.
+    let declaredSlotNames: Set<string> | null = null;
+    if (node.phaseType === "custom-ai") {
+      const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      const slots = typeof id === "string" ? customSlotsById.get(id) ?? [] : [];
+      declaredSlotNames = new Set(slots.map(s => s.name));
+      // Required-slot accessibility check for declared slots with NO binding entry yet.
+      for (const slot of slots) {
+        if (slot.optional) continue;
+        if (bindings[slot.name] === undefined && !visibleNames.has(slot.name)) {
+          inaccessible.add(slot.name);
+        }
+      }
+    }
+
     for (const [slotName, binding] of Object.entries(bindings)) {
+      // Orphan binding (custom-ai only): slot exists in node config but
+      // is no longer declared on the phase definition.
+      if (declaredSlotNames && !declaredSlotNames.has(slotName)) {
+        orphans.push({ nodeId: node.id, slot: slotName });
+        continue;
+      }
       if (binding.mode === "auto") {
         if (!visibleNames.has(slotName)) inaccessible.add(slotName);
         continue;
@@ -74,6 +111,13 @@ async function computeSaveWarnings(
       code: "cross_scope_pin",
       message: "Some slots are pinned to a narrower scope than the workflow itself. Other runners won't see them.",
       entries: crossScope,
+    });
+  }
+  if (orphans.length > 0) {
+    warnings.push({
+      code: "orphan_secret_binding",
+      message: `${orphans.length} secret binding(s) reference slots that are no longer declared on the custom phase.`,
+      entries: orphans,
     });
   }
 

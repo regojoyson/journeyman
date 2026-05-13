@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { CustomAiPhase, CanonicalTool } from "@journeyman/core";
+import type { CustomAiPhase, CanonicalTool, SecretSlotDef } from "@journeyman/core";
 import { listVisibleCustomAiPhases } from "./db.ts";
 
 export interface CustomPhaseCatalogEntry {
@@ -15,6 +15,7 @@ export interface CustomPhaseCatalogEntry {
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
   defaultSkillIds: string[];
+  slots: SecretSlotDef[];
 }
 
 export async function buildCustomPhaseCatalog(
@@ -35,5 +36,6 @@ export async function buildCustomPhaseCatalog(
     defaultTools: p.defaultTools,
     defaultMcpIds: p.defaultMcpIds,
     defaultSkillIds: p.defaultSkillIds,
+    slots: p.slots,
   }));
 }

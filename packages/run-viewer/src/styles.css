@@ -53,3 +53,34 @@
 .je-runview__log-scrollbtn:hover { background: #22222e; }
 .je-runview__attempts { display: flex; flex-direction: column; gap: 4px; }
 .je-runview__attempt { background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 6px 8px; font-size: 11px; }
+
+/* Human-task form controls (scoped to the drawer so default browser styling doesn't break the dark theme) */
+.je-runview__drawer input[type="text"],
+.je-runview__drawer input[type="number"],
+.je-runview__drawer input[type="date"],
+.je-runview__drawer select,
+.je-runview__drawer textarea {
+  box-sizing: border-box;
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  color: #e6e6f0;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+.je-runview__drawer input[type="text"]:focus,
+.je-runview__drawer input[type="number"]:focus,
+.je-runview__drawer input[type="date"]:focus,
+.je-runview__drawer select:focus,
+.je-runview__drawer textarea:focus { border-color: #4a9eff; box-shadow: 0 0 0 2px rgba(74,158,255,0.15); }
+.je-runview__drawer textarea { resize: vertical; min-height: 60px; }
+.je-runview__drawer label { color: #ccc; }
+
+/* Structured output rendering */
+.je-runview__kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; background: #1a1a2a; border: 1px solid #2a2a3a; border-radius: 4px; padding: 8px; font-size: 11px; }
+.je-runview__kv-key { color: #888; font-family: ui-monospace, monospace; }
+.je-runview__kv-val { color: #e6e6f0; font-family: ui-monospace, monospace; word-break: break-word; white-space: pre-wrap; }
+.je-runview__kv-val--muted { color: #666; font-style: italic; }
+.je-runview__kv-meta { grid-column: 1 / -1; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #2a2a3a; display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; }

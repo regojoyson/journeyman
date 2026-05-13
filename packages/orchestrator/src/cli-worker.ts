@@ -87,7 +87,13 @@ registry.register(new ListWorkspaceFilesPhaseHandler({ coding }));
 registry.register(new CommitAndPushPhaseHandler({ coding }));
 registry.register(new CleanupWorkspacePhaseHandler({ coding }));
 if (pool) {
-  registry.register(new CustomAiPhaseHandler({ coding, pool }));
+  // cliBindingResolver is declared later in this file; wrap in a thunk so the
+  // reference is captured lazily and avoids the temporal dead zone.
+  registry.register(new CustomAiPhaseHandler({
+    coding,
+    pool,
+    bindingResolver: (input) => cliBindingResolver(input),
+  }));
 }
 
 const git: ProviderFactory<IGitProvider> = (key, env) => {

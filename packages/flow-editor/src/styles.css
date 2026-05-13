@@ -1185,6 +1185,11 @@ label.je-switch,
 .je-humantask__output-row {
   display: flex; align-items: center; gap: 6px;
 }
+.je-humantask__output-row > input[type="text"],
+.je-humantask__output-row > select {
+  width: auto;
+  min-width: 0;
+}
 .je-humantask__inline-check {
   display: inline-flex; align-items: center; gap: 4px;
   color: #c8c8d4; font-size: 11px;

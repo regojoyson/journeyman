@@ -1,4 +1,5 @@
 import type { CanonicalTool } from "./coding-tools.types.ts";
+import type { SecretSlotDef } from "./secret-slot.types.ts";
 
 export type CustomPhaseScope = "user" | "org";
 export type CustomPhaseOutputMode = "none" | "text" | "structured";
@@ -35,6 +36,8 @@ export interface CustomAiPhase {
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
   defaultSkillIds: string[];
+  /** Credential slots this phase needs at run time. Each slot becomes a $SLOT_NAME env var in the Bash tool when bound at the node level. */
+  slots: SecretSlotDef[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +54,7 @@ export interface CustomAiPhaseCreateInput {
   defaultTools?: CanonicalTool[];
   defaultMcpIds?: string[];
   defaultSkillIds?: string[];
+  slots?: SecretSlotDef[];
 }
 
 export type CustomAiPhaseUpdateInput = Partial<Omit<CustomAiPhaseCreateInput, "scope">>;

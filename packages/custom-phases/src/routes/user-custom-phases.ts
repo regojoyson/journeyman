@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
-import { CANONICAL_TOOLS, isCanonicalTool, type CanonicalTool } from "@journeyman/core";
+import { CANONICAL_TOOLS, isCanonicalTool, type CanonicalTool, type SecretSlotDef } from "@journeyman/core";
 import {
   DuplicateCustomPhaseError,
   deleteCustomAiPhase,
@@ -11,6 +11,41 @@ import {
   promoteCustomAiPhaseToOrg,
   updateCustomAiPhase,
 } from "../db.ts";
+
+const SLOT_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
+const RESERVED_SLOT_NAMES = new Set(["PATH", "HOME", "USER", "SHELL", "PWD"]);
+
+function parseSlots(raw: unknown): SecretSlotDef[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) throw new Error("slots must be an array");
+  const seen = new Set<string>();
+  const out: SecretSlotDef[] = [];
+  for (const s of raw) {
+    if (!s || typeof s !== "object") throw new Error("slots[].entry must be an object");
+    const name = (s as any).name;
+    const description = (s as any).description;
+    const optional = (s as any).optional;
+    if (typeof name !== "string" || !SLOT_NAME_REGEX.test(name)) {
+      throw new Error(`slots[].name must match SCREAMING_SNAKE_CASE: '${String(name)}'`);
+    }
+    if (name.startsWith("JM_")) {
+      throw new Error(`slots[].name must not start with 'JM_': '${name}'`);
+    }
+    if (RESERVED_SLOT_NAMES.has(name)) {
+      throw new Error(`slots[].name shadows a reserved env variable: '${name}'`);
+    }
+    if (seen.has(name)) throw new Error(`slots contains duplicate name '${name}'`);
+    seen.add(name);
+    if (typeof description !== "string" || description.trim() === "") {
+      throw new Error(`slots[${name}].description is required`);
+    }
+    if (optional !== undefined && typeof optional !== "boolean") {
+      throw new Error(`slots[${name}].optional must be a boolean`);
+    }
+    out.push(optional ? { name, description, optional: true } : { name, description });
+  }
+  return out;
+}
 
 function parseDefaultTools(raw: unknown): CanonicalTool[] {
   if (raw === undefined || raw === null) return [];
@@ -67,6 +102,7 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
           defaultTools: parseDefaultTools(body.defaultTools),
           defaultMcpIds: body.defaultMcpIds,
           defaultSkillIds: body.defaultSkillIds,
+          slots: parseSlots(body.slots),
         });
         reply.code(201);
         return rec;
@@ -109,6 +145,9 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
           ...patchBody,
           ...(patchBody?.defaultTools !== undefined
             ? { defaultTools: parseDefaultTools(patchBody.defaultTools) }
+            : {}),
+          ...(patchBody?.slots !== undefined
+            ? { slots: parseSlots(patchBody.slots) }
             : {}),
         };
         return await updateCustomAiPhase(pool, id, patch);

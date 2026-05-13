@@ -239,6 +239,13 @@ export interface RunCustomPromptOptions {
    * tool names. Empty/undefined means a pure-prompt phase (no tools).
    */
   tools?: CanonicalTool[];
+  /**
+   * Slot-keyed env values to inject into shell-tool child processes.
+   * Resolved from FlowNode.secretBindings against the phase's declared slots.
+   * Provider passes this to its Bash-equivalent tool only; never substituted
+   * into the prompt text.
+   */
+  env?: Record<string, string>;
   sessionId?: string;
   signal?: AbortSignal;
   model?: string;

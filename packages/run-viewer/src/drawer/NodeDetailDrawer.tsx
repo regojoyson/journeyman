@@ -60,9 +60,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
 
       <div className="je-runview__section">
         <h3>Output</h3>
-        <pre className="je-runview__pre">
-          {outputToShow ? JSON.stringify(outputToShow, null, 2) : "—"}
-        </pre>
+        {renderOutput(outputToShow)}
       </div>
 
       {p.status?.errorClass && (
@@ -243,6 +241,55 @@ function HumanTaskResolveForm({
         }}
       >{submitting ? "Resolving…" : "Resolve"}</button>
     </div>
+  );
+}
+
+const HUMAN_TASK_META_KEYS = new Set(["source", "actor", "resolvedAt", "payload", "comment"]);
+
+function renderOutput(output: unknown) {
+  if (output === null || output === undefined) {
+    return <pre className="je-runview__pre">—</pre>;
+  }
+  if (typeof output !== "object" || Array.isArray(output)) {
+    return <pre className="je-runview__pre">{JSON.stringify(output, null, 2)}</pre>;
+  }
+  const entries = Object.entries(output as Record<string, unknown>);
+  if (entries.length === 0) {
+    return <pre className="je-runview__pre">—</pre>;
+  }
+  const fields = entries.filter(([k]) => !HUMAN_TASK_META_KEYS.has(k));
+  const meta = entries.filter(([k]) => HUMAN_TASK_META_KEYS.has(k));
+  return (
+    <div className="je-runview__kv">
+      {fields.map(([k, v]) => (
+        <KvRow key={k} k={k} v={v} />
+      ))}
+      {fields.length === 0 && (
+        <div className="je-runview__kv-val je-runview__kv-val--muted" style={{ gridColumn: "1 / -1" }}>
+          (no fields)
+        </div>
+      )}
+      {meta.length > 0 && (
+        <div className="je-runview__kv-meta">
+          {meta.map(([k, v]) => <KvRow key={k} k={k} v={v} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KvRow({ k, v }: { k: string; v: unknown }) {
+  let display: string;
+  if (v === null || v === undefined) display = "—";
+  else if (typeof v === "string") display = v;
+  else if (typeof v === "number" || typeof v === "boolean") display = String(v);
+  else display = JSON.stringify(v, null, 2);
+  const muted = v === null || v === undefined;
+  return (
+    <>
+      <div className="je-runview__kv-key">{k}</div>
+      <div className={"je-runview__kv-val" + (muted ? " je-runview__kv-val--muted" : "")}>{display}</div>
+    </>
   );
 }
 

@@ -2,6 +2,20 @@ import type { WorkflowGraph, Shape } from "@journeyman/core";
 import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
 import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
 
+/**
+ * When the *expected* input shape is `object` with no declared fields (custom
+ * phases that declare a plain `object` input), accept any object as actual.
+ */
+function isWildcardMatch(actual: Shape, expected: Shape): boolean {
+  const ra = resolveShape(actual);
+  const re = resolveShape(expected);
+  return re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object";
+}
+
+function shapeMatches(actual: Shape, expected: Shape): boolean {
+  return isWildcardMatch(actual, expected) || shapesEqual(actual, expected);
+}
+
 export function validateRefShape(
   flow: WorkflowGraph,
   ref: string,
@@ -29,7 +43,7 @@ export function validateRefShape(
     const leaf = shapeAtPath(root, path.slice(1));
     if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
     try {
-      return shapesEqual(leaf, expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
+      return shapeMatches(leaf, expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
     } catch (e) {
       return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
     }
@@ -44,7 +58,7 @@ export function validateRefShape(
   const leaf = shapeAtPath(root, path.slice(1));
   if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
   try {
-    return shapesEqual(resolveShape(leaf), expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
+    return shapeMatches(resolveShape(leaf), expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
   } catch (e) {
     return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
   }

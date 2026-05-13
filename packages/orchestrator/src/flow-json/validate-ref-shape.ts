@@ -94,7 +94,7 @@ export function validateRefShapeAgainst(
   if (!r.ok || !r.shape) return { ok: false, error: r.error };
   let ok = false;
   try {
-    ok = shapesEqual(r.shape, expected);
+    ok = isWildcardMatch(r.shape, expected) || shapesEqual(r.shape, expected);
   } catch (e) {
     return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
   }
@@ -105,6 +105,21 @@ export function validateRefShapeAgainst(
     };
   }
   return { ok: true };
+}
+
+/**
+ * Wildcard match: when the *expected* shape is an object with no declared
+ * fields (e.g. a custom-phase input typed as plain `object`), accept any
+ * object as the actual shape. Lets custom phases declare generic object
+ * inputs without naming every nested field.
+ */
+function isWildcardMatch(actual: Shape, expected: Shape): boolean {
+  const ra = resolveShape(actual);
+  const re = resolveShape(expected);
+  if (re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object") {
+    return true;
+  }
+  return false;
 }
 
 function describeShape(s: Shape): string {
