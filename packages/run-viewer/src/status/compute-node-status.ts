@@ -1,6 +1,7 @@
 import type {
   WorkflowGraph, NodeExecution, WorkflowInstanceEvent, WorkflowInstanceStatus,
 } from "@journeyman/core";
+import { buildOutgoingEdgeMap, findConvergence, walkReachable } from "@journeyman/core";
 import type { NodeStatus, ResolvedNodeStatus } from "../types.ts";
 
 export interface ComputeArgs {
@@ -63,6 +64,52 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
         break;
     }
     out.set(id, cur);
+  }
+
+  // Live gateway-decision pass: once any branch of an `if` / `gateway-xor`
+  // has started, the gate itself is "completed" and sibling un-taken
+  // branches are "skipped". Runs mid-instance, not only at terminal state.
+  const outgoing = buildOutgoingEdgeMap(args.workflow);
+  for (const gate of args.workflow.nodes) {
+    if (gate.type !== "if" && gate.type !== "gateway-xor") continue;
+    const outs = outgoing.get(gate.id) ?? [];
+    if (outs.length < 2) continue;
+    const branchTargets = outs.map(e => e.target);
+    const convergence = findConvergence(branchTargets, outgoing);
+    const stop = convergence ? new Set([convergence]) : new Set<string>();
+
+    const branchSets = branchTargets.map(t => {
+      const reachable = walkReachable(t, outgoing);
+      if (convergence) reachable.delete(convergence);
+      return reachable;
+    });
+
+    const branchActive = branchSets.map(set => {
+      for (const id of set) {
+        const v = out.get(id);
+        if (v && v.status !== "pending") return true;
+      }
+      return false;
+    });
+
+    const activeCount = branchActive.filter(Boolean).length;
+    if (activeCount === 0) continue;
+
+    const gateCur = out.get(gate.id);
+    if (gateCur && gateCur.status === "pending") {
+      out.set(gate.id, { ...gateCur, status: "completed" });
+    }
+
+    for (let i = 0; i < branchSets.length; i++) {
+      if (branchActive[i]) continue;
+      for (const id of branchSets[i]!) {
+        if (stop.has(id)) continue;
+        const v = out.get(id);
+        if (v && v.status === "pending") {
+          out.set(id, { ...v, status: "skipped" });
+        }
+      }
+    }
   }
 
   const terminal =

@@ -60,6 +60,7 @@ export interface WorkflowInstanceViewerProps {
   onExport?: () => void;
   onRetryStep?: (nodeId: string) => void;
   onFork?: () => void;
+  onRefresh?: () => void;
   /** Caller resolves a pending human task (POSTs to the manual-resolve API). */
   onResolveHumanTask?: (input: {
     nodeId: string;

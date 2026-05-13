@@ -1,6 +1,7 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
+import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
   ConductorTaskDef, ConductorWorkflowDef,
   ForkJoinTask, JoinTask, SwitchTask, DoWhileTask, WaitTask,
@@ -231,7 +232,7 @@ class ConvertCtx {
     }
 
     const branchTargets = outs.map(e => e.target);
-    const convergence   = findConvergence(branchTargets, this);
+    const convergence   = coreFindConvergence(branchTargets, this.outgoing);
     const stopAt        = convergence ? new Set([convergence]) : undefined;
 
     const cases: Record<string, ConductorTaskDef[]> = {};
@@ -314,7 +315,7 @@ class ConvertCtx {
       throw new WorkflowValidationError(`gateway-and '${node.id}' must have at least 2 outgoing edges`);
     }
     const branchTargets = outs.map(e => e.target);
-    const convergence = findConvergence(branchTargets, this);
+    const convergence = coreFindConvergence(branchTargets, this.outgoing);
     if (!convergence) {
       throw new WorkflowValidationError(`gateway-and '${node.id}' branches must converge on a single join node`);
     }
@@ -403,31 +404,6 @@ class ConvertCtx {
       },
     };
   }
-}
-
-function findConvergence(branchHeads: string[], ctx: ConvertCtx): string | null {
-  if (branchHeads.length === 0) return null;
-  const visitedPerBranch: Set<string>[] = branchHeads.map(h => walkReachable(h, ctx));
-  const intersection = [...visitedPerBranch[0]].filter(id =>
-    visitedPerBranch.every(s => s.has(id)),
-  );
-  if (intersection.length === 0) return null;
-  intersection.sort();
-  return intersection[0] ?? null;
-}
-
-function walkReachable(start: string, ctx: ConvertCtx): Set<string> {
-  const seen = new Set<string>();
-  const stack = [start];
-  while (stack.length) {
-    const cur = stack.pop()!;
-    if (seen.has(cur)) continue;
-    seen.add(cur);
-    for (const e of ctx.outsOf(cur)) {
-      if (!seen.has(e.target)) stack.push(e.target);
-    }
-  }
-  return seen;
 }
 
 function mapBackoff(b: "fixed" | "linear" | "exponential"): "FIXED" | "LINEAR_BACKOFF" | "EXPONENTIAL_BACKOFF" {

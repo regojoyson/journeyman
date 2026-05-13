@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTheme } from "./useTheme.js";
 
 const SunIcon = () => (
@@ -15,24 +16,29 @@ const MoonIcon = () => (
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const [hovered, setHovered] = useState(false);
   const isDark = theme === "dark";
   return (
     <button
       type="button"
       onClick={toggleTheme}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       title={isDark ? "Switch to light theme" : "Switch to dark theme"}
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 30,
-        height: 30,
-        border: "1px solid rgb(var(--color-border) / 1)",
-        background: "rgb(var(--color-surface-raised) / 1)",
-        color: "rgb(var(--color-text) / 1)",
+        width: 28,
+        height: 28,
+        border: "none",
+        background: hovered ? "rgb(var(--color-surface-hover) / 1)" : "transparent",
+        color: hovered ? "rgb(var(--color-text) / 1)" : "rgb(var(--color-text-muted) / 1)",
         borderRadius: 6,
         cursor: "pointer",
+        padding: 0,
+        transition: "color 0.15s, background 0.15s",
       }}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}

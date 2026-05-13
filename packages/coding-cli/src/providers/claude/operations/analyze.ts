@@ -204,13 +204,14 @@ export async function analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
   const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
   const plugins = opts.skills?.length ? toSdkPluginConfigs(opts.skills) : undefined;
   const skillPromptSuffix = opts.skills?.length ? buildSkillSystemPrompt(opts.skills) : "";
+  const skillToolNames = plugins?.length ? ["Skill"] : [];
   let output: AnalyzeResult = { ...EMPTY_RESULT, sessionId };
 
   for await (const msg of query({
     prompt: [buildPrompt(opts), mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n"),
     options: {
-      tools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames],
-      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames],
+      tools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames, ...skillToolNames],
+      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", ...mcpToolNames, ...skillToolNames],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns: 40,

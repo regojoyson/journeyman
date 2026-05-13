@@ -54,6 +54,7 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
         onResume={props.onResume}
         onExport={props.onExport}
         onFork={props.onFork}
+        onRefresh={props.onRefresh}
       />
       <div
         className="je-runview__body"

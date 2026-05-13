@@ -34,7 +34,6 @@ function mergeModel(
   defaultModel: string | undefined,
   sources: FieldSources,
 ): string | null | undefined {
-  if (nodeModel === null) return undefined;
   if (nodeModel) { sources["model"] = "node"; return nodeModel; }
   if (defaultModel) { sources["model"] = "workflow-default"; return defaultModel; }
   return undefined;

@@ -56,7 +56,7 @@ export function UnpublishDialog({ initialWarning, onCancel, onConfirm }: Props):
           : <p>You'll be able to edit again. Existing in-flight runs continue normally.</p>}
         <div className="fe-modal-actions">
           <button onClick={onCancel} disabled={busy}>Cancel</button>
-          <button onClick={handleConfirm} disabled={busy}>Move to Draft</button>
+          <button onClick={handleConfirm} disabled={busy} className="fe-btn-primary">Move to Draft</button>
         </div>
       </div>
     </div>

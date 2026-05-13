@@ -252,13 +252,12 @@ export default function Sidebar() {
         <div
           style={{
             display: "flex",
-            justifyContent: expanded ? "flex-start" : "center",
-            padding: expanded ? "4px 4px 8px" : "0 0 8px",
+            flexDirection: expanded ? "row" : "column-reverse",
+            alignItems: "center",
+            justifyContent: expanded ? "space-between" : "center",
+            gap: expanded ? 8 : 6,
           }}
         >
-          <ThemeToggle />
-        </div>
-
         <button
           type="button"
           onClick={() => setMenuOpen(o => !o)}
@@ -270,7 +269,8 @@ export default function Sidebar() {
             background: "none",
             border: "none",
             cursor: "pointer",
-            width: expanded ? "100%" : "auto",
+            flex: expanded ? 1 : "0 0 auto",
+            minWidth: 0,
             borderRadius: 6,
           }}
         >
@@ -296,6 +296,8 @@ export default function Sidebar() {
             </div>
           )}
         </button>
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   );

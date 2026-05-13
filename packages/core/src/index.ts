@@ -137,6 +137,12 @@ export {
   shapeTag,
 } from "./utils/validate-workflow.ts";
 export { getStartWorkflowInputs } from "./utils/start-node.ts";
+export {
+  buildOutgoingEdgeMap,
+  walkReachable,
+  findConvergence,
+} from "./utils/find-convergence.ts";
+export type { OutgoingEdgeMap } from "./utils/find-convergence.ts";
 export type {
   BindingCheck,
   ValidationCatalog,

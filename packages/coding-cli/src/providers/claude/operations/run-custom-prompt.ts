@@ -44,10 +44,11 @@ export async function runCustomPrompt(
   const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
   const plugins = opts.skills?.length ? toSdkPluginConfigs(opts.skills) : undefined;
   const skillPromptSuffix = opts.skills?.length ? buildSkillSystemPrompt(opts.skills) : "";
+  const skillToolNames = plugins?.length ? ["Skill"] : [];
 
   const canonicalTools = opts.tools ?? [];
   const baseTools = claudeNativeTools(canonicalTools);
-  const tools = [...baseTools, ...mcpToolNames];
+  const tools = [...baseTools, ...mcpToolNames, ...skillToolNames];
 
   const fullPrompt = [opts.prompt, mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n");
 

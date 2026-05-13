@@ -213,13 +213,14 @@ export async function implement(opts: ImplementOptions): Promise<ImplementResult
   const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
   const plugins = opts.skills?.length ? toSdkPluginConfigs(opts.skills) : undefined;
   const skillPromptSuffix = opts.skills?.length ? buildSkillSystemPrompt(opts.skills) : "";
+  const skillToolNames = plugins?.length ? ["Skill"] : [];
   let output: ImplementResult = { ...EMPTY_RESULT, sessionId };
 
   for await (const msg of query({
     prompt: [buildPrompt(opts), mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n"),
     options: {
-      tools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames],
-      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames],
+      tools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames, ...skillToolNames],
+      allowedTools: ["Bash", "Read", "Glob", "Grep", "Write", "Edit", ...mcpToolNames, ...skillToolNames],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns: 120,

@@ -1064,6 +1064,25 @@ label.je-switch,
 .fe-publish-fail { color: #f87171; display: flex; justify-content: space-between; align-items: center; margin: 6px 0; gap: 8px; font-size: 13px; }
 .fe-publish-warn { color: #fbbf24; display: flex; justify-content: space-between; align-items: center; margin: 6px 0; gap: 8px; font-size: 13px; }
 .fe-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.fe-modal-actions button {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #2a2a3e;
+  background: #2a2a3e;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fe-modal-actions button:hover:not(:disabled) { background: #353548; border-color: #3a3a4e; }
+.fe-modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.fe-modal-actions button.fe-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+.fe-modal-actions button.fe-btn-primary:hover:not(:disabled) { background: #4338ca; border-color: #4338ca; }
 .fe-error { color: #f87171; font-size: 13px; margin-top: 8px; }
 
 .fe-readonly-banner {

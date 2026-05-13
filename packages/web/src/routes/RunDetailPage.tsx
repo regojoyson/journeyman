@@ -119,6 +119,7 @@ export function RunDetailPage() {
         onRetryStep={isViewer ? undefined : (nodeId: string) => actions.retry.mutate(nodeId)}
         onRerun={isViewer ? undefined : () => actions.rerun.mutate()}
         onFork={isViewer ? undefined : () => actions.fork.mutate()}
+        onRefresh={() => { setLiveEvents([]); detailQ.refetch(); }}
       />
       </PhaseRegistryProvider>
       {busy && (

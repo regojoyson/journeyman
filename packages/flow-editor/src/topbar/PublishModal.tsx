@@ -167,7 +167,7 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
             {serverError ? <p className="fe-error">{serverError}</p> : null}
             <div className="fe-modal-actions">
               <button onClick={onCancel} disabled={busy}>Cancel</button>
-              <button onClick={handleConfirm} disabled={!canPublish}>Publish</button>
+              <button onClick={handleConfirm} disabled={!canPublish} className="fe-btn-primary">Publish</button>
             </div>
           </>
         )}
