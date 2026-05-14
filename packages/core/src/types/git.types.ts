@@ -187,6 +187,14 @@ export type CommitPushReposOptions = SessionOptions & {
   onLog?: CodingCliLogFn;
   /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
   agentLogLevel?: AgentLogLevel;
+  /** Resolved slot-keyed env values. Passed to the Claude SDK's top-level
+   *  `env` option so the Bash tool inherits them when running `git push`. */
+  env?: Record<string, string>;
+  /** The workflow's configured git provider (e.g. "github"). Lets the
+   *  operation pick the right token env-var name to reference in the
+   *  prompt's credential.helper snippet. Unset → falls back to plain
+   *  `git push` (today's behavior). */
+  gitProvider?: string;
 };
 
 export type CommitPushResult = {

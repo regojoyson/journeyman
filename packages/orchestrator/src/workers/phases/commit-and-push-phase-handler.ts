@@ -67,12 +67,18 @@ export class CommitAndPushPhaseHandler implements IPhaseHandler {
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Commit + push ${repos.length} repo(s)${overrideMessage ? " (literal message)" : ""}`);
     const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
+    const kindProviders =
+      (input as { _kindProviders?: Record<string, string> })._kindProviders ?? {};
+    const gitProvider = kindProviders["git-provider"];
+
     const result = await coding.commitPushRepos({
       repos,
       issue,
       pattern,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,
+      env: ctx.env,
+      ...(gitProvider ? { gitProvider } : {}),
       ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
     });
     if (result?.error) {

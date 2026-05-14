@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { createLogger } from "@journeyman/core";
+import { createLogger, PROVIDER_CATALOG } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import type {
@@ -9,6 +9,16 @@ import type {
 } from "@journeyman/core";
 
 const log = createLogger("claude:commit-push-repos");
+
+/** Convention: the first slot in a git-provider's catalog entry is the
+ *  push-auth token slot. Adequate for github (single slot). When other
+ *  providers land, confirm their push token is also slot index 0 — otherwise
+ *  introduce an explicit `pushAuthSlot` field on ProviderEntry. */
+function pushTokenEnvName(gitProvider: string | undefined): string | undefined {
+  if (!gitProvider) return undefined;
+  const entry = PROVIDER_CATALOG.find(p => p.kind === "git-provider" && p.value === gitProvider);
+  return entry?.slots?.[0]?.name;
+}
 
 export type { CommitPushEntry, CommitPushReposOptions, CommitPushReposResult };
 
@@ -75,7 +85,8 @@ function normalizeEntries(opts: CommitPushReposOptions): NormalizedEntry[] {
 function buildPrompt(
   entries: NormalizedEntry[],
   pattern: string,
-  prSummaryStyle: "brief" | "detailed"
+  prSummaryStyle: "brief" | "detailed",
+  tokenEnvName: string | undefined,
 ): string {
   const entriesJson = JSON.stringify(entries, null, 2);
 
@@ -154,11 +165,26 @@ function buildPrompt(
     "    Do NOT retry with --no-verify under any circumstance.",
     "9. `git -C <repoDir> rev-parse HEAD` → commitSha.",
     "10. Push the branch, handling the case where it has no upstream yet:",
-    "    - First try `git -C <repoDir> push origin <branch>`.",
+    ...(tokenEnvName
+      ? [
+          `    - First try push using the host token from env. The token is`,
+          `      consumed only inside the credential.helper invocation; it never`,
+          `      lands in .git/config or in process listings:`,
+          `        git -C <repoDir> -c credential.helper='!f() { echo username=x-access-token; echo "password=$${tokenEnvName}"; }; f' push origin <branch>`,
+        ]
+      : [
+          "    - First try `git -C <repoDir> push origin <branch>`.",
+        ]),
     "    - If it fails because the branch has no upstream / does not exist on",
     "      remote (stderr mentions 'has no upstream branch', 'set-upstream',",
     "      'src refspec ... does not match any', or similar), retry with",
-    "      `git -C <repoDir> push -u origin <branch>` to create and track it.",
+    ...(tokenEnvName
+      ? [
+          `      \`git -C <repoDir> -c credential.helper='!f() { echo username=x-access-token; echo "password=$${tokenEnvName}"; }; f' push -u origin <branch>\` to create and track it.`,
+        ]
+      : [
+          "      `git -C <repoDir> push -u origin <branch>` to create and track it.",
+        ]),
     "    - If push is rejected as non-fast-forward (stderr mentions",
     "      'non-fast-forward', 'fetch first', or '[rejected]'), do NOT force-push",
     "      and do NOT auto-rebase. Record pushed: false with error:",
@@ -206,9 +232,10 @@ export async function commitPushRepos(
       })()
     : undefined;
   let output: CommitPushReposResult = { repos: [], sessionId };
+  const tokenEnvName = pushTokenEnvName(opts.gitProvider);
 
   for await (const msg of query({
-    prompt: buildPrompt(entries, pattern, prSummaryStyle),
+    prompt: buildPrompt(entries, pattern, prSummaryStyle, tokenEnvName),
     options: {
       tools: ["Bash"],
       allowedTools: ["Bash"],
@@ -218,6 +245,7 @@ export async function commitPushRepos(
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      ...(opts.env && Object.keys(opts.env).length ? { env: opts.env } : {}),
       ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,

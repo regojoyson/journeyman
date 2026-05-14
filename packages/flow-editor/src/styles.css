@@ -1185,6 +1185,17 @@ label.je-switch,
 .je-humantask__output-row {
   display: flex; align-items: center; gap: 6px;
 }
+.je-humantask__output-header {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: #888;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0 4px;
+  margin-bottom: 2px;
+}
+.je-humantask__output-header > span { white-space: nowrap; cursor: help; }
+.je-humantask__output-header > span.spacer-name { flex: 1; }
+.je-humantask__output-header > span.spacer-payload { flex: 2; }
+.je-humantask__output-header > span.spacer-x { width: 16px; cursor: default; }
 .je-humantask__output-row > input[type="text"],
 .je-humantask__output-row > select {
   width: auto;
@@ -1378,3 +1389,33 @@ label.je-switch,
 .fe-publish-chip:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
 .fe-publish-chip:disabled { cursor: default; opacity: 0.7; }
 .fe-publish-message { flex: 1 1 auto; }
+
+/* Accept-If builder */
+.je-acceptif { display: flex; flex-direction: column; gap: 8px; }
+.je-acceptif__header { display: flex; justify-content: flex-end; }
+.je-acceptif__mode { display: inline-flex; border: 1px solid #2a2a3e; border-radius: 4px; overflow: hidden; }
+.je-acceptif__modebtn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: #c8c8d4;
+  cursor: pointer;
+  font-family: inherit;
+}
+.je-acceptif__modebtn--on { background: #2a2a3e; color: #fff; }
+.je-acceptif__modebtn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.je-acceptif__combinator { color: #c8c8d4; font-size: 12px; display: flex; align-items: center; }
+.je-acceptif__combinator select { width: auto; padding: 2px 6px; }
+.je-acceptif__rule {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px; border: 1px solid #2a2a3e; border-radius: 4px; background: #0f0f1e;
+}
+.je-acceptif__rule--invalid { border-color: #ff7675; }
+.je-acceptif__rule > input[type="text"],
+.je-acceptif__rule > select {
+  width: auto;
+  min-width: 0;
+}
+.je-acceptif__rule-err { color: #ff7675; font-size: 11px; flex-basis: 100%; }
+.je-acceptif__advanced textarea { width: 100%; min-height: 100px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; }

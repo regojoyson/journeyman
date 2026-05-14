@@ -26,10 +26,13 @@ export const commitAndPushPhase: PhaseDefinition<CommitAndPushConfig> = {
     repos:   { label: "Repos", widget: "text", help: "Repo path. Leave blank to wire from IO (Repo[] from start-feature-branch)." },
     message: { label: "Commit message", widget: "textarea", help: "Optional. If set, used as the literal commit message (skips AI generation). Otherwise the agent writes a message from the issue + diff." },
   },
-  // No secret slots — git push uses the embedded credential in the
-  // already-cloned repo's `.git/config` (set by clone-repos).
-  tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
+  // Slot list comes from the workflow's git-provider entry in PROVIDER_CATALOG
+  // (e.g. GITHUB_ACCESS_TOKEN for github). The resolved token is injected as
+  // env to the Claude bash tool and consumed by `git push` via an inline
+  // credential.helper.
+  tabs: { io: "shown", requiredSecrets: "shown", mcp: "hidden", retry: "shown" },
   slots: [],
+  slotsFromKind: "git-provider",
   summary: (c) => (c.message ? `"${c.message.slice(0, 40)}"` : c.repos) || "(unwired)",
   executor: { kind: "coding-cli", method: "commitPushRepos" },
   outputSchema: commitAndPushOutputSchema,

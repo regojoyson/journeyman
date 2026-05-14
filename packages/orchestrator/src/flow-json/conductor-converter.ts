@@ -216,6 +216,13 @@ class ConvertCtx {
       taskReferenceName: resolvedNode.id,
       inputParameters: (() => {
         const bindings = resolvedNode.secretBindings ?? {};
+        const kindProviders: Record<string, string> = {};
+        const ec = this.flow.defaults?.executorConfig;
+        if (ec) {
+          for (const [kind, cfg] of Object.entries(ec)) {
+            if (cfg?.provider) kindProviders[kind] = cfg.provider;
+          }
+        }
         return {
           ...(resolvedNode.config ?? {}),
           ...resolveInputs(resolvedNode.inputs),
@@ -224,6 +231,7 @@ class ConvertCtx {
           secretBindings: bindings,
           ...(resolvedNode.model ? { model: resolvedNode.model } : {}),
           _flowDefaultSources: defaultSources,
+          _kindProviders: kindProviders,
           workflowInstanceId: "${workflow.input.workflowInstanceId}",
           startedByUserId: "${workflow.input.startedByUserId}",
           startedByOrgId: "${workflow.input.startedByOrgId}",

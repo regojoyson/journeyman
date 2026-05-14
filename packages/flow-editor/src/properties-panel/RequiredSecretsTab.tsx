@@ -76,6 +76,19 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     (kind ? defaultProviderFor(kind) : undefined);
   const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
 
+  // Kind-override slots: when the phase declares `slotsFromKind`, look up the
+  // slot list from the workflow's catalog entry for that kind (e.g. the
+  // git-provider). Lets a coding-cli phase borrow credentials from a different
+  // provider kind without hardcoding slot names.
+  const slotsFromKind = phaseDef?.slotsFromKind;
+  const executorConfig = flow.defaults?.executorConfig as
+    | Record<string, { provider?: string } | undefined>
+    | undefined;
+  const kindProvider = slotsFromKind ? executorConfig?.[slotsFromKind]?.provider : undefined;
+  const kindOverrideSlots: SecretSlotDef[] = slotsFromKind && kindProvider
+    ? (PROVIDER_CATALOG.find(p => p.kind === slotsFromKind && p.value === kindProvider)?.slots ?? [])
+    : [];
+
   // Custom-AI nodes carry their slots on the DB-backed phase definition, not
   // the static registry entry. Fetch the def and prefer its slots when present.
   const customPhaseId =
@@ -99,6 +112,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
       }
       return merged;
     }
+    if (kindOverrideSlots.length > 0) return kindOverrideSlots;
     return phaseDef?.slots?.length ? phaseDef.slots : providerSlots;
   })();
 
@@ -138,6 +152,16 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
   const fScope = workflowScope(flow);
 
   if (slots.length === 0) {
+    if (slotsFromKind && !kindProvider) {
+      return (
+        <div className="je-props__field">
+          <div style={{ color: "#f0c97a", fontSize: 11 }}>
+            This phase needs the workflow's <code>{slotsFromKind}</code> credentials.
+            Pick a {slotsFromKind} in Workflow settings to see the required slot.
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="je-props__field">
         <div style={{ color: "#888", fontSize: 11, fontStyle: "italic" }}>

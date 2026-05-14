@@ -147,10 +147,26 @@ export class WorkerHarness {
         ? (PROVIDER_CATALOG.find(p => p.value === provider && p.kind === phaseKind)?.slots ?? [])
         : [];
       const phaseSlots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
-      const slots = phaseSlots.length > 0 ? phaseSlots : providerSlots;
+
+      // Kind-override: when the phase declares `slotsFromKind`, look up the
+      // slot list from the workflow's catalog entry for that kind, not the
+      // phase's executor provider. The conductor-converter passes the
+      // workflow's per-kind providers as `_kindProviders`.
+      const slotsFromKind = (phaseDef as unknown as { slotsFromKind?: string }).slotsFromKind;
+      const kindProviders =
+        (phaseInput as { _kindProviders?: Record<string, string> })._kindProviders ?? {};
+      const kindOverrideSlots = slotsFromKind && kindProviders[slotsFromKind]
+        ? (PROVIDER_CATALOG.find(p => p.kind === slotsFromKind && p.value === kindProviders[slotsFromKind])?.slots ?? [])
+        : [];
+
+      const slots = kindOverrideSlots.length > 0
+        ? kindOverrideSlots
+        : (phaseSlots.length > 0 ? phaseSlots : providerSlots);
 
       log.info({
         workflowInstanceId, nodeId, phaseKind, provider,
+        slotsFromKind: slotsFromKind ?? null,
+        kindProvider: slotsFromKind ? (kindProviders[slotsFromKind] ?? null) : null,
         slots: slots.map(s => s.name),
         bindings: Object.fromEntries(Object.entries(declaredBindings).map(([k, v]) => [k, v.mode])),
         userId: userId ?? "(null)",

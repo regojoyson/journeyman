@@ -16,6 +16,7 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
+import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
@@ -162,11 +163,6 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
   };
   const outputs = cfg.outputs ?? [];
 
-  const [acceptIfDraft, setAcceptIfDraft] = useState<string>(
-    cfg.acceptIf ? JSON.stringify(cfg.acceptIf, null, 2) : "",
-  );
-  const [acceptIfError, setAcceptIfError] = useState<string | null>(null);
-
   const [defaultsDraft, setDefaultsDraft] = useState<string>(
     cfg.timeout?.defaults ? JSON.stringify(cfg.timeout.defaults, null, 2) : "",
   );
@@ -197,22 +193,38 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
   return (
     <div className="je-tab je-tab--config je-humantask">
       <div className="je-field">
-        <label className="je-field__label">Message to reviewer</label>
+        <label className="je-field__label">Instructions</label>
         <textarea
           rows={3}
           value={cfg.prompt ?? ""}
           disabled={readOnly}
-          placeholder="e.g. Review the implementation and approve, or request changes with specifics."
+          placeholder="e.g. Approve this change, or request edits with specifics."
           onChange={e => update({ prompt: e.target.value })}
         />
+        <p className="je-hint">Shown to the person resolving this task. Plain text — no formatting.</p>
       </div>
 
       <div className="je-field">
         <label className="je-field__label">Outputs</label>
         <p className="je-hint">
-          Fields this human-task produces. Each becomes <code>{node.id}.&lt;name&gt;</code> for downstream nodes.
+          What the human (or an incoming webhook) supplies to resolve this task. Each row is one value that later steps in this workflow can use.
         </p>
         <div className="je-humantask__outputs">
+          {outputs.length > 0 && (
+            <div className="je-humantask__output-header" aria-hidden="true">
+              <span
+                className="spacer-name"
+                title="How downstream nodes will reference this output (e.g. human-task_X.<name>)."
+              >Name</span>
+              <span title="Value type — controls how the form input renders and how the value is coerced.">Type</span>
+              <span title="If checked, manual resolution must fill this field.">Req</span>
+              <span
+                className="spacer-payload"
+                title="Optional dot-path into the incoming webhook payload. When a webhook resolves this task, the value at this path becomes the output's value."
+              >Payload source</span>
+              <span className="spacer-x" />
+            </div>
+          )}
           {outputs.length === 0 && (
             <div className="je-humantask__empty">No outputs declared. Resolving will only emit meta keys.</div>
           )}
@@ -250,10 +262,10 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
                 type="text"
                 value={o.fromPath ?? ""}
                 disabled={readOnly}
-                placeholder="webhook path (optional)"
+                placeholder="e.g. issue.fields.status.name"
                 onChange={e => updateOutput(i, { fromPath: e.target.value || undefined })}
                 style={{ flex: 2 }}
-                title="Dot-path into the webhook payload to auto-fill this field"
+                title="Dot-path into the incoming webhook payload. The matcher reads this to fill the output automatically."
               />
               {!readOnly && (
                 <button
@@ -277,45 +289,51 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
         <label className="je-field__label">Listens for</label>
         <input
           type="text"
-          placeholder="jira:issue_updated, github.pull_request.review"
+          list={`listensfor-${node.id}`}
+          placeholder="e.g. jira:issue_updated, pull_request_review"
           value={(cfg.listensFor ?? []).join(", ")}
           disabled={readOnly}
+          title="Comma-separated. The webhook's event type must be in this list (or the list must be empty)."
           onChange={e => update({
             listensFor: e.target.value.split(",").map(s => s.trim()).filter(Boolean),
           })}
         />
-        <p className="je-hint">Comma-separated webhook event types this gate accepts. Empty = accept any.</p>
+        <datalist id={`listensfor-${node.id}`}>
+          <option value="jira:issue_updated">Jira — issue updated</option>
+          <option value="jira:issue_created">Jira — issue created</option>
+          <option value="jira:issue_deleted">Jira — issue deleted</option>
+          <option value="pull_request">GitHub — pull request</option>
+          <option value="pull_request_review">GitHub — PR review submitted</option>
+          <option value="issues">GitHub — issue activity</option>
+          <option value="issue_comment">GitHub — issue/PR comment</option>
+          <option value="create">Linear — created</option>
+          <option value="update">Linear — updated</option>
+          <option value="remove">Linear — removed</option>
+        </datalist>
+        <p className="je-hint">
+          Which webhook event types will resolve this task. Empty means any event type is accepted.
+          Type the exact value the provider sends — pick from the list as a starting point.
+        </p>
       </div>
 
       <div className="je-field">
-        <label className="je-field__label">Accept if (JSONLogic, optional)</label>
-        <textarea
-          rows={6}
-          className="je-humantask__code"
-          value={acceptIfDraft}
-          disabled={readOnly}
-          placeholder='{"==": [{"var": "issue.fields.status.name"}, "Done"]}'
-          onChange={e => {
-            const text = e.target.value;
-            setAcceptIfDraft(text);
-            if (text.trim() === "") {
-              setAcceptIfError(null);
-              update({ acceptIf: undefined });
-              return;
-            }
-            try {
-              const parsed = JSON.parse(text);
-              setAcceptIfError(null);
-              update({ acceptIf: parsed });
-            } catch (err) {
-              setAcceptIfError(err instanceof Error ? err.message : "invalid JSON");
-            }
-          }}
+        <label className="je-field__label">Accept if (optional)</label>
+        <AcceptIfBuilder
+          value={cfg.acceptIf}
+          knownPaths={Array.from(new Set(
+            outputs.map(o => o.fromPath?.trim()).filter((p): p is string => !!p)
+          ))}
+          readOnly={readOnly}
+          datalistId={`acceptif-paths-${node.id}`}
+          onChange={next => update({ acceptIf: next })}
         />
-        {acceptIfError && <p className="je-hint je-hint--error">{acceptIfError}</p>}
+        <datalist id={`acceptif-paths-${node.id}`}>
+          {Array.from(new Set(
+            outputs.map(o => o.fromPath?.trim()).filter((p): p is string => !!p)
+          )).map(p => <option key={p} value={p} />)}
+        </datalist>
         <p className="je-hint">
-          Filter incoming webhooks by payload values. Supports <code>and</code>/<code>or</code>/<code>==</code>/<code>in</code>/etc.
-          Example: <code>{`{"in": [{"var": "issue.fields.status.name"}, ["Review", "Done"]]}`}</code>.
+          Filter incoming webhooks by payload values. Use the visual builder or switch to JSON for advanced expressions.
         </p>
       </div>
 
