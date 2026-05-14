@@ -177,7 +177,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
       )}
 
       {definition?.executor.kind === "coding-cli"
-        && ["analyze", "plan", "implement", "runCustomPrompt", "checkoutRepo", "commitPushRepos"].includes(definition.executor.method) && (
+        && ["runCustomPrompt", "checkoutRepo"].includes(definition.executor.method) && (
         <div className="je-props__field">
           <label>Agent log level</label>
           <select

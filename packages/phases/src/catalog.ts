@@ -5,21 +5,6 @@
 import type { OutputSchema, InputFields } from "@journeyman/core";
 
 import {
-  ANALYZE_REPO_PHASE_TYPE, ANALYZE_REPO_LABEL, ANALYZE_REPO_CATEGORY, ANALYZE_REPO_DESCRIPTION,
-  analyzeRepoOutputSchema, analyzeRepoInputFields, analyzeRepoConfigSchema,
-} from "./ai/analyze-repo.meta.ts";
-import {
-  PLAN_IMPLEMENTATION_PHASE_TYPE, PLAN_IMPLEMENTATION_LABEL, PLAN_IMPLEMENTATION_CATEGORY,
-  PLAN_IMPLEMENTATION_DESCRIPTION,
-  planImplementationOutputSchema, planImplementationInputFields, planImplementationConfigSchema,
-} from "./ai/plan-implementation.meta.ts";
-import {
-  IMPLEMENT_CHANGES_PHASE_TYPE, IMPLEMENT_CHANGES_LABEL, IMPLEMENT_CHANGES_CATEGORY,
-  IMPLEMENT_CHANGES_DESCRIPTION,
-  implementChangesOutputSchema, implementChangesInputFields, implementChangesConfigSchema,
-} from "./ai/implement-changes.meta.ts";
-
-import {
   LIST_WORKSPACE_FILES_PHASE_TYPE, LIST_WORKSPACE_FILES_LABEL, LIST_WORKSPACE_FILES_CATEGORY,
   LIST_WORKSPACE_FILES_DESCRIPTION,
   listWorkspaceFilesOutputSchema, listWorkspaceFilesInputFields, listWorkspaceFilesConfigSchema,
@@ -29,11 +14,6 @@ import {
   START_FEATURE_BRANCH_DESCRIPTION,
   startFeatureBranchOutputSchema, startFeatureBranchInputFields, startFeatureBranchConfigSchema,
 } from "./repos/start-feature-branch.meta.ts";
-import {
-  COMMIT_AND_PUSH_PHASE_TYPE, COMMIT_AND_PUSH_LABEL, COMMIT_AND_PUSH_CATEGORY,
-  COMMIT_AND_PUSH_DESCRIPTION,
-  commitAndPushOutputSchema, commitAndPushInputFields, commitAndPushConfigSchema,
-} from "./repos/commit-and-push.meta.ts";
 import {
   CLEANUP_WORKSPACE_PHASE_TYPE, CLEANUP_WORKSPACE_LABEL, CLEANUP_WORKSPACE_CATEGORY,
   CLEANUP_WORKSPACE_DESCRIPTION,
@@ -121,15 +101,9 @@ export interface PhaseCatalogEntry {
 }
 
 export const phaseCatalog: PhaseCatalogEntry[] = [
-  // Coding Agent
-  { phaseType: ANALYZE_REPO_PHASE_TYPE,        label: ANALYZE_REPO_LABEL,        category: ANALYZE_REPO_CATEGORY,        description: ANALYZE_REPO_DESCRIPTION,        inputFields: analyzeRepoInputFields,        outputSchema: analyzeRepoOutputSchema,        configSchema: analyzeRepoConfigSchema },
-  { phaseType: PLAN_IMPLEMENTATION_PHASE_TYPE, label: PLAN_IMPLEMENTATION_LABEL, category: PLAN_IMPLEMENTATION_CATEGORY, description: PLAN_IMPLEMENTATION_DESCRIPTION, inputFields: planImplementationInputFields, outputSchema: planImplementationOutputSchema, configSchema: planImplementationConfigSchema },
-  { phaseType: IMPLEMENT_CHANGES_PHASE_TYPE,   label: IMPLEMENT_CHANGES_LABEL,   category: IMPLEMENT_CHANGES_CATEGORY,   description: IMPLEMENT_CHANGES_DESCRIPTION,   inputFields: implementChangesInputFields,   outputSchema: implementChangesOutputSchema,   configSchema: implementChangesConfigSchema },
-
   // Workspace
   { phaseType: LIST_WORKSPACE_FILES_PHASE_TYPE, label: LIST_WORKSPACE_FILES_LABEL, category: LIST_WORKSPACE_FILES_CATEGORY, description: LIST_WORKSPACE_FILES_DESCRIPTION, inputFields: listWorkspaceFilesInputFields, outputSchema: listWorkspaceFilesOutputSchema, configSchema: listWorkspaceFilesConfigSchema },
   { phaseType: START_FEATURE_BRANCH_PHASE_TYPE, label: START_FEATURE_BRANCH_LABEL, category: START_FEATURE_BRANCH_CATEGORY, description: START_FEATURE_BRANCH_DESCRIPTION, inputFields: startFeatureBranchInputFields, outputSchema: startFeatureBranchOutputSchema, configSchema: startFeatureBranchConfigSchema },
-  { phaseType: COMMIT_AND_PUSH_PHASE_TYPE,      label: COMMIT_AND_PUSH_LABEL,      category: COMMIT_AND_PUSH_CATEGORY,      description: COMMIT_AND_PUSH_DESCRIPTION,      inputFields: commitAndPushInputFields,      outputSchema: commitAndPushOutputSchema,      configSchema: commitAndPushConfigSchema },
   { phaseType: CLEANUP_WORKSPACE_PHASE_TYPE,    label: CLEANUP_WORKSPACE_LABEL,    category: CLEANUP_WORKSPACE_CATEGORY,    description: CLEANUP_WORKSPACE_DESCRIPTION,    inputFields: cleanupWorkspaceInputFields,    outputSchema: cleanupWorkspaceOutputSchema,    configSchema: cleanupWorkspaceConfigSchema },
   { phaseType: CREATE_WORKSPACE_PHASE_TYPE,     label: CREATE_WORKSPACE_LABEL,     category: CREATE_WORKSPACE_CATEGORY,     description: CREATE_WORKSPACE_DESCRIPTION,     inputFields: createWorkspaceInputFields,     outputSchema: createWorkspaceOutputSchema,     configSchema: createWorkspaceConfigSchema },
 

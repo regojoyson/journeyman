@@ -2,7 +2,6 @@ import type { ICodingCLI } from "../../interface.ts";
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
-  CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
   IProviderMeta,
@@ -10,18 +9,12 @@ import type {
   CodingCLIProviderConfig,
 } from "@journeyman/core";
 import type {
-  AnalyzeOptions, AnalyzeResult, PlanOptions, PlanResult,
-  ImplementOptions, ImplementResult,
   RunCustomPromptOptions, RunCustomPromptResult,
 } from "@journeyman/core";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { checkoutRepo } from "./operations/checkout-repo.ts";
-import { commitPushRepos } from "./operations/commit-push-repos.ts";
 import { cleanupRepos } from "./operations/cleanup-repos.ts";
 import { createWorkspace } from "./operations/create-workspace.ts";
-import { analyze } from "./operations/analyze.ts";
-import { plan } from "./operations/plan.ts";
-import { implement } from "./operations/implement.ts";
 import { runCustomPrompt } from "./operations/run-custom-prompt.ts";
 
 export class ClaudeProvider implements ICodingCLI {
@@ -46,28 +39,12 @@ export class ClaudeProvider implements ICodingCLI {
     return checkoutRepo({ ...opts, model: this.resolveModel("checkoutRepo") });
   }
 
-  commitPushRepos(opts: CommitPushReposOptions): Promise<CommitPushReposResult> {
-    return commitPushRepos({ ...opts, model: this.resolveModel("commitPushRepos") });
-  }
-
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
     return cleanupRepos({ ...opts, model: this.resolveModel("cleanupRepos") });
   }
 
   createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
     return createWorkspace({ ...opts, model: this.resolveModel("createWorkspace") });
-  }
-
-  analyze(opts: AnalyzeOptions): Promise<AnalyzeResult> {
-    return analyze({ ...opts, model: this.resolveModel("analyze") });
-  }
-
-  plan(opts: PlanOptions): Promise<PlanResult> {
-    return plan({ ...opts, model: this.resolveModel("plan") });
-  }
-
-  implement(opts: ImplementOptions): Promise<ImplementResult> {
-    return implement({ ...opts, model: this.resolveModel("implement") });
   }
 
   runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {

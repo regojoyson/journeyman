@@ -99,12 +99,15 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
   const customDefs = useCustomPhaseDefs(customPhaseIds);
   const customSlots: SecretSlotDef[] = customPhaseId ? (customDefs[customPhaseId]?.slots ?? []) : [];
 
-  // For custom-ai nodes: union of the static phase def's slots (e.g. ANTHROPIC_API_KEY)
-  // and the user-declared slots on the DB-backed definition, with user slots winning
-  // on name collisions.
+  // For custom-ai nodes: union of
+  //   - provider-level slots (e.g. ANTHROPIC_API_KEY for coding-cli/claude)
+  //   - the static phase-definition slots
+  //   - the user-declared slots on the DB-backed custom phase
+  // Later sources win on name collisions, so a custom-phase slot can override
+  // a provider-level default if the phase author wants different metadata.
   const slots: SecretSlotDef[] = (() => {
     if (node.phaseType === "custom-ai") {
-      const base = phaseDef?.slots ?? [];
+      const base = [...providerSlots, ...(phaseDef?.slots ?? [])];
       const overrides = new Map(customSlots.map(s => [s.name, s]));
       const merged: SecretSlotDef[] = base.map(s => overrides.get(s.name) ?? s);
       for (const s of customSlots) {

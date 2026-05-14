@@ -13,7 +13,7 @@ import {
   type SecretBinding,
 } from "@journeyman/core";
 import { getCustomAiPhase, renderPrompt } from "@journeyman/custom-phases";
-import { defaultProviderForKind } from "@journeyman/core";
+import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
 const log = createLogger("worker:custom-ai");
@@ -106,11 +106,22 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
     const workflowId =
       typeof input.workflowId === "string" ? input.workflowId : null;
 
+    // Union DB-phase slots with the executor provider's framework slots
+    // (e.g. ANTHROPIC_API_KEY for coding-cli/claude). Custom-phase slots win
+    // on name collisions so a phase author can override metadata.
+    const providerSlots =
+      PROVIDER_CATALOG.find(p => p.kind === "coding-cli" && p.value === provider)?.slots ?? [];
+    const dbSlots = phase.slots ?? [];
+    const slotsByName = new Map<string, { name: string; optional?: boolean }>();
+    for (const s of providerSlots) slotsByName.set(s.name, s);
+    for (const s of dbSlots)       slotsByName.set(s.name, s);
+    const effectiveSlots = Array.from(slotsByName.values());
+
     let env: Record<string, string>;
     try {
       env = await this.deps.bindingResolver({
         ctx: { userId, orgId, workflowId },
-        slots: phase.slots ?? [],
+        slots: effectiveSlots,
         bindings: declaredBindings,
       });
     } catch (err: any) {
@@ -128,7 +139,7 @@ export class CustomAiPhaseHandler implements IPhaseHandler {
 
     ctx.log(
       `Resolved ${Object.keys(env).length} secret slot(s): ` +
-        ((phase.slots ?? [])
+        (effectiveSlots
           .map(s => {
             const b = declaredBindings[s.name];
             const mode = b?.mode ?? "auto";

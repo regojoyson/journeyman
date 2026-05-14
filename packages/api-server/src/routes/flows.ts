@@ -15,6 +15,7 @@ import { customPhaseToShape, type CustomPhaseShape } from "@journeyman/custom-ph
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { WorkflowSaveWarning, SecretBinding, SecretScope, SecretSlotDef } from "@journeyman/core";
+import { PROVIDER_CATALOG, defaultProviderForKind } from "@journeyman/core";
 import { assertWorkflowReady } from "../services/assert-flow-ready.ts";
 
 /**
@@ -58,13 +59,26 @@ async function computeSaveWarnings(
     const bindings = (node.secretBindings ?? {}) as Record<string, SecretBinding>;
 
     // Build the declared-slot name set for orphan detection on custom-ai nodes.
+    // Union of:
+    //   1. DB custom phase slots (per-definition, e.g. user-declared)
+    //   2. Provider catalog slots (executor-level, e.g. ANTHROPIC_API_KEY for coding-cli/claude)
     let declaredSlotNames: Set<string> | null = null;
     if (node.phaseType === "custom-ai") {
       const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-      const slots = typeof id === "string" ? customSlotsById.get(id) ?? [] : [];
-      declaredSlotNames = new Set(slots.map(s => s.name));
+      const dbSlots = typeof id === "string" ? customSlotsById.get(id) ?? [] : [];
+      const providerValue =
+        node.executorConfig?.provider ??
+        definition.defaults?.executorConfig?.["coding-cli"]?.provider ??
+        defaultProviderForKind("coding-cli")?.value;
+      const providerSlots = providerValue
+        ? PROVIDER_CATALOG.find(p => p.kind === "coding-cli" && p.value === providerValue)?.slots ?? []
+        : [];
+      declaredSlotNames = new Set([
+        ...dbSlots.map(s => s.name),
+        ...providerSlots.map(s => s.name),
+      ]);
       // Required-slot accessibility check for declared slots with NO binding entry yet.
-      for (const slot of slots) {
+      for (const slot of [...dbSlots, ...providerSlots]) {
         if (slot.optional) continue;
         if (bindings[slot.name] === undefined && !visibleNames.has(slot.name)) {
           inaccessible.add(slot.name);

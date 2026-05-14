@@ -43,16 +43,12 @@ export { MapProviderResolver, ProviderNotImplementedError } from "./registry/map
 export { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";
 export { JsonLogicEvaluator } from "./conditions/jsonlogic-evaluator.ts";
 export { WorkerHarness } from "./workers/worker-harness.ts";
-export { AnalyzeRepoPhaseHandler } from "./workers/phases/analyze-repo-phase-handler.ts";
-export { PlanImplementationPhaseHandler } from "./workers/phases/plan-implementation-phase-handler.ts";
-export { ImplementChangesPhaseHandler } from "./workers/phases/implement-changes-phase-handler.ts";
 export { CreateWorkspacePhaseHandler } from "./workers/phases/create-workspace-phase-handler.ts";
 export { StartFeatureBranchPhaseHandler } from "./workers/phases/start-feature-branch-phase-handler.ts";
 export { CloneReposPhaseHandler } from "./workers/phases/clone-repos-phase-handler.ts";
 export { GetIssuePhaseHandler } from "./workers/phases/get-issue-phase-handler.ts";
 export { TransitionIssuePhaseHandler } from "./workers/phases/transition-issue-phase-handler.ts";
 export { ListWorkspaceFilesPhaseHandler } from "./workers/phases/list-workspace-files-phase-handler.ts";
-export { CommitAndPushPhaseHandler } from "./workers/phases/commit-and-push-phase-handler.ts";
 export { CleanupWorkspacePhaseHandler } from "./workers/phases/cleanup-workspace-phase-handler.ts";
 export { GetRepositoryPhaseHandler } from "./workers/phases/get-repository-phase-handler.ts";
 export { OpenPullRequestPhaseHandler } from "./workers/phases/open-pull-request-phase-handler.ts";

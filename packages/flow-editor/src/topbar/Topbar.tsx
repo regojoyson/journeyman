@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { WorkflowGraph, WorkflowSaveWarning, WorkflowStatus } from "@journeyman/core";
 import { validateWorkflowInputs } from "@journeyman/core";
 import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
@@ -62,7 +62,7 @@ export function Topbar(p: TopbarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const validationCatalog = useValidationCatalog();
+  const validationCatalog = useValidationCatalog(p.flow);
   const inputWarnings = useMemo(
     () => (p.flow ? validateWorkflowInputs(p.flow, validationCatalog) : []),
     [p.flow, validationCatalog],
@@ -489,29 +489,73 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
           <div className="je-validate-panel__ok">No errors, no missing inputs, no warnings.</div>
         )}
         {report.errors.length > 0 && (
-          <Section title="Errors" tone="error" items={report.errors} />
+          <CollapsibleSection title="Errors" tone="error" count={report.errors.length} defaultOpen>
+            <SectionBody items={report.errors} />
+          </CollapsibleSection>
         )}
         {report.missing.length > 0 && (
-          <Section title="Missing required inputs" tone="error" items={report.missing} />
+          <CollapsibleSection title="Missing required inputs" tone="error" count={report.missing.length} defaultOpen>
+            <SectionBody items={report.missing} />
+          </CollapsibleSection>
         )}
         {report.warnings.length > 0 && (
-          <Section title="Warnings" tone="warn" items={report.warnings} />
+          <CollapsibleSection title="Warnings" tone="warn" count={report.warnings.length} defaultOpen={false}>
+            <SectionBody items={report.warnings} />
+          </CollapsibleSection>
         )}
         {secretWarnings.length > 0 && (
-          <SecretWarningsSection warnings={secretWarnings} />
+          <CollapsibleSection title="Secret warnings" tone="warn" count={secretWarnings.length} defaultOpen={false}>
+            <SecretWarningsBody warnings={secretWarnings} />
+          </CollapsibleSection>
         )}
         {inputWarnings.length > 0 && (
-          <InputWarningsSection warnings={inputWarnings} />
+          <CollapsibleSection title="Input warnings" tone="warn" count={inputWarnings.length} defaultOpen={false}>
+            <InputWarningsSection warnings={inputWarnings} />
+          </CollapsibleSection>
         )}
       </div>
     </div>
   );
 }
 
-function SecretWarningsSection({ warnings }: { warnings: WorkflowSaveWarning[] }) {
+function CollapsibleSection({
+  title, tone, count, defaultOpen, children,
+}: {
+  title: string;
+  tone: "error" | "warn";
+  count: number;
+  defaultOpen: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="je-validate-section je-validate-section--warn">
-      <div className="je-validate-section__title">Secret warnings ({warnings.length})</div>
+    <div className={`je-validate-section je-validate-section--${tone}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="je-validate-section__title"
+        style={{
+          display: "flex", alignItems: "center", gap: 6, width: "100%",
+          background: "transparent", border: 0, padding: 0, cursor: "pointer",
+          color: "inherit", font: "inherit", textAlign: "left",
+        }}
+        aria-expanded={open}
+      >
+        <span aria-hidden style={{ display: "inline-block", width: 10, transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+        <span>{title} ({count})</span>
+      </button>
+      {open && <div style={{ marginTop: 6 }}>{children}</div>}
+    </div>
+  );
+}
+
+function SectionBody({ items }: { items: string[] }) {
+  return <ul>{items.map((m, i) => <li key={i}>{m}</li>)}</ul>;
+}
+
+function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
+  return (
+    <>
       {warnings.map((w, i) => {
         if (w.code === "inaccessible_secrets") {
           return (
@@ -550,18 +594,37 @@ function SecretWarningsSection({ warnings }: { warnings: WorkflowSaveWarning[] }
             </div>
           );
         }
+        if (w.code === "orphan_secret_binding") {
+          return (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+                {w.entries.map((e, j) => (
+                  <li key={j}>
+                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> — no longer declared on the phase
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        if (w.code === "unknown_models" || w.code === "deprecated_models") {
+          return (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+                {w.entries.map((e, j) => (
+                  <li key={j}>
+                    <code>{e.modelId}</code> ({e.provider}) — {e.location === "workflow-default" ? "workflow default" : `node ${e.nodeId ?? "?"}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
         // Other codes (input-validation variants) handled by InputWarningsSection — skip here.
         return null;
       })}
-    </div>
-  );
-}
-
-function Section({ title, tone, items }: { title: string; tone: "error" | "warn"; items: string[] }) {
-  return (
-    <div className={`je-validate-section je-validate-section--${tone}`}>
-      <div className="je-validate-section__title">{title} ({items.length})</div>
-      <ul>{items.map((m, i) => <li key={i}>{m}</li>)}</ul>
-    </div>
+    </>
   );
 }

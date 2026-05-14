@@ -25,9 +25,7 @@ export const customAiPhase: PhaseDefinition<CustomAiConfig> = {
   tabs: { io: "hidden", mcp: "shown", skills: "shown", retry: "shown" },
   supportsSkills: true,
   supportsModelSelection: true,
-  slots: [
-    { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
-  ],
+  slots: [],
   summary: (c) => c.customPhaseId ? `custom:${c.customPhaseId.slice(0, 8)}` : "(no phase)",
   executor: { kind: "coding-cli", method: "runCustomPrompt" },
   outputSchema: {},

@@ -142,7 +142,7 @@ export function FlowEditor(props: FlowEditorProps) {
     s.update(f => ({ ...f, nodes: f.nodes.map(n => n.id === next.id ? next : n) }));
   };
 
-  const validationCatalog = useValidationCatalog();
+  const validationCatalog = useValidationCatalog(heal.healed);
   const inputWarnings = useMemo(() => {
     const t0 = performance.now();
     const result = validateWorkflowInputs(heal.healed, validationCatalog);

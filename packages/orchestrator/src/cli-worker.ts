@@ -27,16 +27,12 @@ import { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-prov
 import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
-import { AnalyzeRepoPhaseHandler } from "./workers/phases/analyze-repo-phase-handler.ts";
-import { PlanImplementationPhaseHandler } from "./workers/phases/plan-implementation-phase-handler.ts";
-import { ImplementChangesPhaseHandler } from "./workers/phases/implement-changes-phase-handler.ts";
 import { CreateWorkspacePhaseHandler } from "./workers/phases/create-workspace-phase-handler.ts";
 import { StartFeatureBranchPhaseHandler } from "./workers/phases/start-feature-branch-phase-handler.ts";
 import { CloneReposPhaseHandler } from "./workers/phases/clone-repos-phase-handler.ts";
 import { GetIssuePhaseHandler } from "./workers/phases/get-issue-phase-handler.ts";
 import { TransitionIssuePhaseHandler } from "./workers/phases/transition-issue-phase-handler.ts";
 import { ListWorkspaceFilesPhaseHandler } from "./workers/phases/list-workspace-files-phase-handler.ts";
-import { CommitAndPushPhaseHandler } from "./workers/phases/commit-and-push-phase-handler.ts";
 import { CleanupWorkspacePhaseHandler } from "./workers/phases/cleanup-workspace-phase-handler.ts";
 import { GetRepositoryPhaseHandler } from "./workers/phases/get-repository-phase-handler.ts";
 import { OpenPullRequestPhaseHandler } from "./workers/phases/open-pull-request-phase-handler.ts";
@@ -77,14 +73,10 @@ const coding: ProviderFactory<ICodingCLI> = (key, env) => {
     }
   }
 };
-registry.register(new AnalyzeRepoPhaseHandler({ coding }));
-registry.register(new PlanImplementationPhaseHandler({ coding }));
-registry.register(new ImplementChangesPhaseHandler({ coding }));
 const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
 registry.register(new CreateWorkspacePhaseHandler({ coding, baseDir: workspaceBaseDir }));
 registry.register(new StartFeatureBranchPhaseHandler({ coding }));
 registry.register(new ListWorkspaceFilesPhaseHandler({ coding }));
-registry.register(new CommitAndPushPhaseHandler({ coding }));
 registry.register(new CleanupWorkspacePhaseHandler({ coding }));
 if (pool) {
   // cliBindingResolver is declared later in this file; wrap in a thunk so the

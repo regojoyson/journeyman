@@ -112,8 +112,8 @@ export interface PhaseDefinition<TConfig = unknown> {
    *  PROVIDER_CATALOG keyed by the workflow's configured provider for the
    *  named ExecutorKind, rather than from `slots` or the phase's executor
    *  provider. Used for phases that run on one executor but need credentials
-   *  from a different kind (e.g. commit-and-push runs via coding-cli but
-   *  needs the workflow's git-provider credentials to push). */
+   *  from a different kind (e.g. a coding-cli phase that needs the
+   *  workflow's git-provider credentials to push). */
   slotsFromKind?: ExecutorKind;
 
   // canvas display

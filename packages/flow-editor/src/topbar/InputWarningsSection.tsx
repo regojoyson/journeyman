@@ -17,8 +17,7 @@ export function InputWarningsSection({ warnings, onSelectNode }: Props) {
   const filtered = warnings.filter((w) => INPUT_CODES.has(w.code));
   if (filtered.length === 0) return null;
   return (
-    <div className="je-validate-section je-validate-section--warn">
-      <div className="je-validate-section__title">Input warnings ({filtered.length})</div>
+    <>
       {filtered.map((w, i) => {
         const nodeId = "nodeId" in w ? w.nodeId : undefined;
         return (
@@ -34,6 +33,6 @@ export function InputWarningsSection({ warnings, onSelectNode }: Props) {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }

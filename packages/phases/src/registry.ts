@@ -1,13 +1,8 @@
 // packages/phases/src/registry.ts
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 
-import { analyzeRepoPhase } from "./ai/analyze-repo.tsx";
-import { planImplementationPhase } from "./ai/plan-implementation.tsx";
-import { implementChangesPhase } from "./ai/implement-changes.tsx";
-
 import { listWorkspaceFilesPhase } from "./repos/list-workspace-files.tsx";
 import { startFeatureBranchPhase } from "./repos/start-feature-branch.tsx";
-import { commitAndPushPhase } from "./repos/commit-and-push.tsx";
 import { cleanupWorkspacePhase } from "./repos/cleanup-workspace.tsx";
 import { createWorkspacePhase } from "./repos/create-workspace.tsx";
 
@@ -34,10 +29,8 @@ import { customAiPhase } from "./custom/custom-ai.tsx";
 // The registry stores them as `PhaseDefinition<any>[]` and consumers treat
 // each entry's `TConfig` opaquely.
 export const builtInPhases: PhaseDefinition<any>[] = [
-  // Coding Agent
-  analyzeRepoPhase, planImplementationPhase, implementChangesPhase,
   // Workspace
-  listWorkspaceFilesPhase, startFeatureBranchPhase, commitAndPushPhase, cleanupWorkspacePhase, createWorkspacePhase,
+  listWorkspaceFilesPhase, startFeatureBranchPhase, cleanupWorkspacePhase, createWorkspacePhase,
   // Code Host
   getRepositoryPhase, cloneReposPhase, openPullRequestPhase, listPullRequestsPhase, commentOnPullRequestPhase, listPullRequestCommentsPhase,
   // Issue Tracker

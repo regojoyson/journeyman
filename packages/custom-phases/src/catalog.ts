@@ -16,6 +16,8 @@ export interface CustomPhaseCatalogEntry {
   defaultMcpIds: string[];
   defaultSkillIds: string[];
   slots: SecretSlotDef[];
+  requiresSkills: boolean;
+  requiresMcp: boolean;
 }
 
 export async function buildCustomPhaseCatalog(
@@ -37,5 +39,7 @@ export async function buildCustomPhaseCatalog(
     defaultMcpIds: p.defaultMcpIds,
     defaultSkillIds: p.defaultSkillIds,
     slots: p.slots,
+    requiresSkills: p.requiresSkills,
+    requiresMcp: p.requiresMcp,
   }));
 }

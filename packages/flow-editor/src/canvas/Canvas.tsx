@@ -10,6 +10,7 @@ import "@xyflow/react/dist/style.css";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
 import { newPhaseNode, newEdge } from "../state/flow-graph.ts";
+import { autoPopulateCustomAiDefaults } from "./auto-populate-defaults.ts";
 import type { PhaseRunState } from "../phase-definition.ts";
 import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
 import {
@@ -362,6 +363,11 @@ function CanvasInner(p: CanvasProps) {
     const flow = flowRef.current;
     const t0 = performance.now();
     newNode = autoBindNewNode(newNode, flow.nodes, catalog, customPhaseDefs);
+    if (newNode && newNode.phaseType === "custom-ai") {
+      const cpId = (newNode.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      const cpDef = typeof cpId === "string" ? customPhaseDefs[cpId] ?? null : null;
+      newNode = autoPopulateCustomAiDefaults(newNode, cpDef);
+    }
     const tBind = performance.now();
     // eslint-disable-next-line no-console
     console.log("[flow-editor] add node", {

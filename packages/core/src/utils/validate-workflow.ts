@@ -8,9 +8,19 @@ import { extractTemplateRefs } from "./template-refs.ts";
  * Catalog entry the validator needs. The flow-editor and any future server-side
  * caller is responsible for constructing this from whatever source they have.
  */
+export interface CustomPhaseValidationEntry {
+  name: string;
+  requiresSkills: boolean;
+  defaultSkillIds: string[];
+  requiresMcp: boolean;
+  defaultMcpIds: string[];
+}
+
 export interface ValidationCatalogEntry {
   inputFields?: Record<string, { shape: Shape; required?: boolean }>;
   outputSchema?: OutputSchema | null;
+  /** Only meaningful on the "custom-ai" entry: per-definition rules keyed by customPhaseId. */
+  customPhases?: Record<string, CustomPhaseValidationEntry>;
 }
 export type ValidationCatalog = Record<string /* phaseType */, ValidationCatalogEntry>;
 
@@ -118,6 +128,42 @@ export function validateWorkflowInputs(
   for (const node of flow.nodes) {
     if (node.type !== "phase" || !node.phaseType) continue;
     const entry = catalog[node.phaseType];
+
+    if (node.phaseType === "custom-ai") {
+      const cpId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      const cpDef = typeof cpId === "string" ? entry?.customPhases?.[cpId] : undefined;
+      if (cpDef?.requiresSkills) {
+        const skillIds = (node.config as { skillPackageIds?: unknown } | undefined)?.skillPackageIds;
+        const count = Array.isArray(skillIds) ? skillIds.length : 0;
+        if (count === 0) {
+          const suggested = cpDef.defaultSkillIds.length > 0
+            ? ` Suggested: ${cpDef.defaultSkillIds.join(", ")}.`
+            : "";
+          warnings.push({
+            code: "missing-required",
+            message: `${cpDef.name}: this phase requires at least one skill.${suggested} Add a skill in the Skills tab.`,
+            nodeId: node.id,
+            inputKey: "skillPackageIds",
+          });
+        }
+      }
+      if (cpDef?.requiresMcp) {
+        const mcpIds = (node.config as { mcpInstanceIds?: unknown } | undefined)?.mcpInstanceIds;
+        const count = Array.isArray(mcpIds) ? mcpIds.length : 0;
+        if (count === 0) {
+          const suggested = cpDef.defaultMcpIds.length > 0
+            ? ` Suggested: ${cpDef.defaultMcpIds.join(", ")}.`
+            : "";
+          warnings.push({
+            code: "missing-required",
+            message: `${cpDef.name}: this phase requires at least one MCP.${suggested} Add an MCP in the MCP tab.`,
+            nodeId: node.id,
+            inputKey: "mcpInstanceIds",
+          });
+        }
+      }
+    }
+
     if (!entry?.inputFields) continue;
 
     const config = (node.config ?? {}) as Record<string, unknown>;

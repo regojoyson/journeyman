@@ -167,56 +167,6 @@ export type ListPRResult = SessionResult & {
 };
 
 // ---------------------------------------------------------------------------
-// Commit + push operation types (used by coding-cli providers)
-// ---------------------------------------------------------------------------
-
-export type CommitPushEntry = {
-  repoDir: string;
-  issue?: string;   // per-repo override of top-level issue
-  message?: string;  // full commit message; if set, skips AI generation
-};
-
-export type CommitPushReposOptions = SessionOptions & {
-  repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  issue?: string;                            // default issue applied to all entries
-  pattern?: string;                           // default: "{issue} : {summary}"
-  prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
-  signal?: AbortSignal;
-  model?: string;
-  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
-  onLog?: CodingCliLogFn;
-  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
-  agentLogLevel?: AgentLogLevel;
-  /** Resolved slot-keyed env values. Passed to the Claude SDK's top-level
-   *  `env` option so the Bash tool inherits them when running `git push`. */
-  env?: Record<string, string>;
-  /** The workflow's configured git provider (e.g. "github"). Lets the
-   *  operation pick the right token env-var name to reference in the
-   *  prompt's credential.helper snippet. Unset → falls back to plain
-   *  `git push` (today's behavior). */
-  gitProvider?: string;
-};
-
-export type CommitPushResult = {
-  folderName: string;
-  repoDir: string;
-  branch: string;        // current branch (committed + pushed to)
-  commitSha: string;     // new HEAD SHA
-  commitMessage: string; // final message used for git commit
-  title: string;         // PR/MR title — e.g. "EV-123: Fix header alignment"
-  description: string;   // PR/MR body — summary of code changes (markdown)
-  filesChanged: string[];
-  pushed: boolean;
-  remoteUrl?: string;    // origin URL — useful for owner/repo parsing
-  error?: string;
-};
-
-export type CommitPushReposResult = SessionResult & {
-  repos: CommitPushResult[];
-  error?: string;
-};
-
-// ---------------------------------------------------------------------------
 // PR review comment listing (used by reviewLoop rework flows)
 // ---------------------------------------------------------------------------
 

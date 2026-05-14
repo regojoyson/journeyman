@@ -49,9 +49,7 @@ function buildSyntheticPhase(p: CustomAiPhase, color: string): PhaseDefinition<a
     configFields: {},
     tabs: { io: "shown", mcp: "shown", skills: "shown", retry: "shown" },
     supportsSkills: true,
-    slots: [
-      { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
-    ],
+    slots: [],
     summary: () => p.name,
     executor: { kind: "coding-cli", method: "runCustomPrompt" },
     outputSchema: outputSchemaFor(p),

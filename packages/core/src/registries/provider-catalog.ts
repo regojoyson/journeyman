@@ -23,7 +23,9 @@ export interface ProviderEntry {
 
 export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   // coding-cli
-  { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true },
+  { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true, slots: [
+    { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
+  ]},
   { kind: "coding-cli", value: "gemini", label: "Gemini", implemented: false },
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 
@@ -73,14 +75,10 @@ export function defaultProviderForKind(kind: ExecutorKind): ProviderEntry | unde
  */
 export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   // coding-cli
-  "analyze-repo":         "coding-cli",
   "cleanup-workspace":    "coding-cli",
-  "commit-and-push":      "coding-cli",
   "create-workspace":     "coding-cli",
   "custom-ai":            "coding-cli",
-  "implement-changes":    "coding-cli",
   "list-workspace-files": "coding-cli",
-  "plan-implementation":  "coding-cli",
   "start-feature-branch": "coding-cli",
   // git-provider
   "clone-repos":                "git-provider",

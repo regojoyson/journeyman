@@ -42,7 +42,7 @@ export interface WorkflowNode {
   type: WorkflowNodeType;
   /** Human-readable label shown on the canvas tile. */
   displayName?: string;
-  /** Phase type ("analyze-repo", "clone-repos", …) — required when type === "phase". */
+  /** Phase type ("clone-repos", "custom-ai", …) — required when type === "phase". */
   phaseType?: string;
   /** Free-form configuration consumed by the phase handler. */
   config?: Record<string, unknown>;
