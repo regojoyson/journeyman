@@ -20,6 +20,7 @@ function rowToPhase(r: any): CustomAiPhase {
     orgId: r.org_id,
     name: r.name,
     description: r.description ?? "",
+    icon: r.icon ?? null,
     inputFields: r.input_fields ?? [],
     outputMode: r.output_mode,
     outputSchema: r.output_schema ?? undefined,
@@ -27,6 +28,8 @@ function rowToPhase(r: any): CustomAiPhase {
     defaultTools: Array.isArray(r.default_tools) ? r.default_tools : [],
     defaultMcpIds: r.default_mcp_ids ?? [],
     defaultSkillIds: r.default_skill_ids ?? [],
+    requiresSkills: r.requires_skills ?? false,
+    requiresMcp: r.requires_mcp ?? false,
     slots: Array.isArray(r.slots) ? r.slots : [],
     createdBy: r.created_by,
     createdAt: r.created_at,
@@ -41,13 +44,15 @@ export async function insertCustomAiPhase(
   try {
     const { rows } = await pool.query(
       `INSERT INTO jm_custom_ai_phases
-         (scope, user_id, org_id, name, description,
+         (scope, user_id, org_id, name, description, icon,
           input_fields, output_mode, output_schema,
           prompt_template, default_tools,
           default_mcp_ids, default_skill_ids,
           slots,
+          requires_skills,
+          requires_mcp,
           created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
         input.scope,
@@ -55,6 +60,7 @@ export async function insertCustomAiPhase(
         input.orgId,
         input.name,
         input.description ?? "",
+        input.icon ?? null,
         JSON.stringify(input.inputFields ?? []),
         input.outputMode ?? "none",
         input.outputSchema ? JSON.stringify(input.outputSchema) : null,
@@ -63,6 +69,8 @@ export async function insertCustomAiPhase(
         JSON.stringify(input.defaultMcpIds ?? []),
         JSON.stringify(input.defaultSkillIds ?? []),
         JSON.stringify(input.slots ?? []),
+        input.requiresSkills ?? false,
+        input.requiresMcp ?? false,
         input.createdBy,
       ],
     );
@@ -124,6 +132,7 @@ export async function updateCustomAiPhase(
   const push = (col: string, v: unknown) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
   if (patch.name !== undefined)            push("name", patch.name);
   if (patch.description !== undefined)     push("description", patch.description);
+  if (patch.icon !== undefined)            push("icon", patch.icon);
   if (patch.inputFields !== undefined)     push("input_fields", JSON.stringify(patch.inputFields));
   if (patch.outputMode !== undefined)      push("output_mode", patch.outputMode);
   if (patch.outputSchema !== undefined)    push("output_schema", patch.outputSchema ? JSON.stringify(patch.outputSchema) : null);
@@ -131,6 +140,8 @@ export async function updateCustomAiPhase(
   if (patch.defaultTools !== undefined)    push("default_tools", JSON.stringify(patch.defaultTools));
   if (patch.defaultMcpIds !== undefined)   push("default_mcp_ids", JSON.stringify(patch.defaultMcpIds));
   if (patch.defaultSkillIds !== undefined) push("default_skill_ids", JSON.stringify(patch.defaultSkillIds));
+  if (patch.requiresSkills !== undefined)  push("requires_skills", patch.requiresSkills);
+  if (patch.requiresMcp !== undefined)     push("requires_mcp", patch.requiresMcp);
   if (patch.slots !== undefined)           push("slots", JSON.stringify(patch.slots));
   if (sets.length === 0) return getCustomAiPhase(pool, id);
   sets.push(`updated_at = now()`);
