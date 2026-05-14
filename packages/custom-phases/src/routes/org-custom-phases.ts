@@ -12,6 +12,7 @@ import {
   listCustomAiPhases,
   updateCustomAiPhase,
 } from "../db.ts";
+import { toExportV1 } from "../export.ts";
 import { assertScopeSafeDefaults, ScopeViolationError } from "../scope-guard.ts";
 import { buildScopeLookup } from "../scope-lookup.ts";
 
@@ -92,6 +93,27 @@ export async function registerOrgCustomPhaseRoutes(app: FastifyInstance, pool: P
       const { orgId } = req.params as { orgId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
       return listCustomAiPhases(pool, orgId, null);
+    },
+  );
+
+  app.get(
+    "/api/orgs/:orgId/custom-phases/:id/export",
+    { preHandler: requireAuth() },
+    async (req, reply) => {
+      const { orgId, id } = req.params as { orgId: string; id: string };
+      if (req.runContext!.org.id !== orgId) {
+        return reply.code(403).send({ error: "Wrong org" });
+      }
+      const rec = await getCustomAiPhase(pool, id);
+      if (!rec || rec.orgId !== orgId || rec.scope !== "org") {
+        return reply.code(404).send({ error: "Not found" });
+      }
+      const payload = toExportV1(rec);
+      const slug = rec.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "custom-phase";
+      reply
+        .header("Content-Type", "application/json; charset=utf-8")
+        .header("Content-Disposition", `attachment; filename="${slug}.json"`);
+      return payload;
     },
   );
 
