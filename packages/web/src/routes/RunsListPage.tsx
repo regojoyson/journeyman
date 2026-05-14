@@ -48,7 +48,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
   // provider+id pair. Skip it in the dynamic loop to avoid a duplicate field
   // and to keep the provider-built value from being overwritten by an empty
   // string on submit.
-  const dynamicDefs = inputDefs.filter(d => d.name !== "issueRef");
+  const dynamicDefs = inputDefs.filter(d => d.name.trim() !== "" && d.name !== "issueRef");
 
   const submitM = useMutation({
     mutationFn: () => {
