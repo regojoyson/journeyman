@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
 import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope, IssueRefProvider } from "@journeyman/core";
-import { buildIssueRef } from "@journeyman/core";
+import { buildIssueRef, getStartWorkflowInputs } from "@journeyman/core";
 import { listRunsPaged, rerunRun } from "../api/runs.ts";
 import { getCurrentWorkflowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
@@ -42,7 +42,8 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     enabled: !!flowId,
   });
 
-  const inputDefs: WorkflowInputDef[] = versionQ.data?.definition.inputDefs ?? [];
+  const startNode = versionQ.data?.definition.nodes.find(n => n.type === "start");
+  const inputDefs: WorkflowInputDef[] = getStartWorkflowInputs(startNode?.config);
 
   const submitM = useMutation({
     mutationFn: () => {
