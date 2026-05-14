@@ -10,6 +10,10 @@ export type * from "./types/coding.types.ts";
 export type * from "./types/coding-models.types.ts";
 export * from "./types/coding-tools.types.ts";
 export type * from "./types/custom-phases.types.ts";
+export {
+  CUSTOM_PHASE_EXPORT_KIND,
+  CUSTOM_PHASE_EXPORT_VERSION,
+} from "./types/custom-phases.types.ts";
 export * from "./types/custom-phase-icons.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";

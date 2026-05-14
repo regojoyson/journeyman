@@ -72,3 +72,33 @@ export interface CustomAiPhaseCreateInput {
 }
 
 export type CustomAiPhaseUpdateInput = Partial<Omit<CustomAiPhaseCreateInput, "scope">>;
+
+export const CUSTOM_PHASE_EXPORT_KIND = "journeyman.customPhase" as const;
+export const CUSTOM_PHASE_EXPORT_VERSION = 1 as const;
+
+/** Portable subset of CustomAiPhase used for cross-deployment export/import. */
+export interface CustomPhaseExportPayloadV1 {
+  name: string;
+  description: string;
+  icon: string | null;
+  inputFields: CustomPhaseInputField[];
+  outputMode: CustomPhaseOutputMode;
+  outputSchema?: CustomPhaseJsonSchema;
+  promptTemplate: string;
+  defaultTools: CanonicalTool[];
+  /** Always [] in exports — cross-system IDs do not resolve. */
+  defaultMcpIds: string[];
+  /** Always [] in exports — cross-system IDs do not resolve. */
+  defaultSkillIds: string[];
+  requiresSkills: boolean;
+  requiresMcp: boolean;
+  slots: SecretSlotDef[];
+}
+
+export interface CustomPhaseExportV1 {
+  schemaVersion: typeof CUSTOM_PHASE_EXPORT_VERSION;
+  kind: typeof CUSTOM_PHASE_EXPORT_KIND;
+  exportedAt: string;
+  exportedFrom: string;
+  phase: CustomPhaseExportPayloadV1;
+}
