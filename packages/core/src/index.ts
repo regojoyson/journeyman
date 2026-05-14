@@ -10,6 +10,7 @@ export type * from "./types/coding.types.ts";
 export type * from "./types/coding-models.types.ts";
 export * from "./types/coding-tools.types.ts";
 export type * from "./types/custom-phases.types.ts";
+export * from "./types/custom-phase-icons.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
@@ -147,6 +148,7 @@ export type {
   BindingCheck,
   ValidationCatalog,
   ValidationCatalogEntry,
+  CustomPhaseValidationEntry,
 } from "./utils/validate-workflow.ts";
 export type {
   WebhookEvent,
