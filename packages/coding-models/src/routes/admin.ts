@@ -9,6 +9,7 @@ import {
   listAllCodingModels,
   updateCodingModel,
 } from "../db.ts";
+import { isValidCodingProvider, LIST_CODING_PROVIDERS } from "../validate-provider.ts";
 
 function requirePlatformAdmin(req: FastifyRequest, reply: FastifyReply): boolean {
   if (!req.runContext?.isPlatformAdmin) {
@@ -38,6 +39,11 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
       const b = req.body as any;
       if (!b?.provider || !b?.modelId || !b?.label) {
         return reply.code(400).send({ error: "provider, modelId, label required" });
+      }
+      if (!isValidCodingProvider(b.provider)) {
+        return reply.code(400).send({
+          error: `Unknown coding-cli provider: ${b.provider}. Allowed: ${LIST_CODING_PROVIDERS.join(", ")}`,
+        });
       }
       try {
         const rec = await insertCodingModel(pool, {
@@ -71,6 +77,14 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
       const { id } = req.params as { id: string };
       const existing = await getCodingModel(pool, id);
       if (!existing) return reply.code(404).send({ error: "Not found" });
+      const patch = req.body as Record<string, unknown> | undefined;
+      if (patch && Object.prototype.hasOwnProperty.call(patch, "provider")) {
+        if (!isValidCodingProvider(patch.provider)) {
+          return reply.code(400).send({
+            error: `Unknown coding-cli provider: ${String(patch.provider)}. Allowed: ${LIST_CODING_PROVIDERS.join(", ")}`,
+          });
+        }
+      }
       try {
         const updated = await updateCodingModel(pool, id, req.body as any);
         return updated;
