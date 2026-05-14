@@ -29,6 +29,13 @@ export interface CustomAiPhase {
   orgId: string;
   name: string;
   description: string;
+  /**
+   * Icon shown in the palette and on the canvas. Scheme-prefixed string:
+   *   "lucide:<Name>" — a name from CUSTOM_PHASE_ICON_NAMES (today).
+   *   "data:image/..." — inline uploaded raster (future; rejected today).
+   *   null/undefined — render DEFAULT_CUSTOM_PHASE_ICON_ID.
+   */
+  icon?: string | null;
   inputFields: CustomPhaseInputField[];
   outputMode: CustomPhaseOutputMode;
   outputSchema?: CustomPhaseJsonSchema;
@@ -36,6 +43,10 @@ export interface CustomAiPhase {
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
   defaultSkillIds: string[];
+  /** When true, a flow author must attach at least one skill to any node that uses this phase. */
+  requiresSkills: boolean;
+  /** When true, a flow author must attach at least one MCP to any node that uses this phase. */
+  requiresMcp: boolean;
   /** Credential slots this phase needs at run time. Each slot becomes a $SLOT_NAME env var in the Bash tool when bound at the node level. */
   slots: SecretSlotDef[];
   createdBy: string;
@@ -47,6 +58,7 @@ export interface CustomAiPhaseCreateInput {
   scope: CustomPhaseScope;
   name: string;
   description?: string;
+  icon?: string | null;
   inputFields?: CustomPhaseInputField[];
   outputMode?: CustomPhaseOutputMode;
   outputSchema?: CustomPhaseJsonSchema;
@@ -54,6 +66,8 @@ export interface CustomAiPhaseCreateInput {
   defaultTools?: CanonicalTool[];
   defaultMcpIds?: string[];
   defaultSkillIds?: string[];
+  requiresSkills?: boolean;
+  requiresMcp?: boolean;
   slots?: SecretSlotDef[];
 }
 
