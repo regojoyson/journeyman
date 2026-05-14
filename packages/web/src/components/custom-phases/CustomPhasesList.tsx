@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CustomAiPhase, CustomAiPhaseCreateInput } from "@journeyman/core";
 import { customPhasesApi } from "../../api/customPhases.ts";
 import { EditCustomPhaseModal } from "./EditCustomPhaseModal.tsx";
@@ -10,6 +10,7 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<{ phase?: CustomAiPhase } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -44,6 +45,33 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
     await refresh();
   };
 
+  const handleImport = async (parsed: unknown) => {
+    try {
+      await customPhasesApi.importOne(orgId, parsed);
+      await refresh();
+    } catch (err: any) {
+      const msg: string = err?.message ?? String(err);
+      if (msg.includes("name_conflict")) {
+        const newName = window.prompt(
+          "A custom phase with this name already exists. Enter a new name to import as, or Cancel.",
+        );
+        if (!newName) return;
+        if (typeof parsed === "object" && parsed !== null && "phase" in (parsed as any)) {
+          (parsed as any).phase.name = newName;
+          try {
+            await customPhasesApi.importOne(orgId, parsed);
+            await refresh();
+            return;
+          } catch (retryErr: any) {
+            setError(retryErr?.message ?? String(retryErr));
+            return;
+          }
+        }
+      }
+      setError(msg);
+    }
+  };
+
   const handlePromote = async (p: CustomAiPhase) => {
     if (!confirm(`Promote "${p.name}" to org scope? It will be visible to all org members and removed from your personal phases.`)) return;
     await customPhasesApi.promoteToOrg(orgId, p.id);
@@ -59,7 +87,32 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
             <span className="text-slate-500 font-normal ml-2">({items.length})</span>
           </h2>
           {scope === "user" && (
-            <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom phase</button>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    let parsed: unknown;
+                    try { parsed = JSON.parse(text); }
+                    catch { throw new Error("File is not valid JSON"); }
+                    await handleImport(parsed);
+                  } catch (err: any) {
+                    setError(err?.message ?? String(err));
+                  }
+                }}
+              />
+              <button className={btnGhost} onClick={() => fileInputRef.current?.click()}>
+                Import
+              </button>
+              <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom phase</button>
+            </div>
           )}
         </div>
 
@@ -103,6 +156,18 @@ export function CustomPhasesList(props: { orgId: string; scope: "user" | "org" }
                   </td>
                   <td className="px-6 py-3 text-slate-300">{p.inputFields.length}</td>
                   <td className="px-6 py-3 text-right whitespace-nowrap space-x-2">
+                    <button
+                      className={btnGhost}
+                      onClick={async () => {
+                        try {
+                          await customPhasesApi.exportOne(orgId, p.id, scope);
+                        } catch (err: any) {
+                          setError(err?.message ?? String(err));
+                        }
+                      }}
+                    >
+                      Export
+                    </button>
                     <button className={btnGhost} onClick={() => setEditing({ phase: p })}>Edit</button>
                     {p.scope === "user" && (
                       <button className={btnGhost} onClick={() => handlePromote(p)}>Promote to org</button>
