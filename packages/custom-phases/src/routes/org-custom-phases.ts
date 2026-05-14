@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
-import { CANONICAL_TOOLS, isCanonicalTool, type CanonicalTool, type SecretSlotDef } from "@journeyman/core";
+import {
+  CANONICAL_TOOLS, isCanonicalTool, isValidCustomPhaseIcon,
+  type CanonicalTool, type SecretSlotDef,
+} from "@journeyman/core";
 import {
   DuplicateCustomPhaseError,
   deleteCustomAiPhase,
@@ -9,6 +12,14 @@ import {
   listCustomAiPhases,
   updateCustomAiPhase,
 } from "../db.ts";
+import { assertScopeSafeDefaults, ScopeViolationError } from "../scope-guard.ts";
+import { buildScopeLookup } from "../scope-lookup.ts";
+
+function formatScopeError(err: ScopeViolationError): string {
+  const list = err.offenders.map(o => `${o.kind} '${o.id}' (${o.scope}-scoped)`).join(", ");
+  return `Cannot save: defaults reference scope-incompatible resources — ${list}. ` +
+         `Either promote those resources or remove them from the defaults.`;
+}
 
 const SLOT_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
 const RESERVED_SLOT_NAMES = new Set(["PATH", "HOME", "USER", "SHELL", "PWD"]);
@@ -43,6 +54,14 @@ function parseSlots(raw: unknown): SecretSlotDef[] {
     out.push(optional ? { name, description, optional: true } : { name, description });
   }
   return out;
+}
+
+function parseIcon(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!isValidCustomPhaseIcon(raw)) {
+    throw new Error("icon must be null or 'lucide:<AllowlistedName>'");
+  }
+  return (raw ?? null) as string | null;
 }
 
 function parseDefaultTools(raw: unknown): CanonicalTool[] {
@@ -91,6 +110,9 @@ export async function registerOrgCustomPhaseRoutes(app: FastifyInstance, pool: P
         const patchBody = req.body as any;
         const patch = {
           ...patchBody,
+          ...(patchBody?.icon !== undefined
+            ? { icon: parseIcon(patchBody.icon) }
+            : {}),
           ...(patchBody?.defaultTools !== undefined
             ? { defaultTools: parseDefaultTools(patchBody.defaultTools) }
             : {}),
@@ -98,9 +120,25 @@ export async function registerOrgCustomPhaseRoutes(app: FastifyInstance, pool: P
             ? { slots: parseSlots(patchBody.slots) }
             : {}),
         };
+        const skillIds = patch.defaultSkillIds ?? existing.defaultSkillIds;
+        const mcpIds   = patch.defaultMcpIds   ?? existing.defaultMcpIds;
+        try {
+          await assertScopeSafeDefaults({
+            phaseScope: "org",
+            defaultSkillIds: skillIds,
+            defaultMcpIds: mcpIds,
+            lookup: buildScopeLookup(pool),
+          });
+        } catch (e) {
+          if (e instanceof ScopeViolationError) return reply.code(400).send({ error: formatScopeError(e) });
+          throw e;
+        }
         return await updateCustomAiPhase(pool, id, patch);
       } catch (err) {
         if (err instanceof DuplicateCustomPhaseError) return reply.code(409).send({ error: err.message });
+        if (err instanceof Error && /^(icon|defaultTools|slots)/.test(err.message)) {
+          return reply.code(400).send({ error: err.message });
+        }
         throw err;
       }
     },

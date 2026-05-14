@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
-import { CANONICAL_TOOLS, isCanonicalTool, type CanonicalTool, type SecretSlotDef } from "@journeyman/core";
+import {
+  CANONICAL_TOOLS, isCanonicalTool, isValidCustomPhaseIcon,
+  type CanonicalTool, type SecretSlotDef,
+} from "@journeyman/core";
 import {
   DuplicateCustomPhaseError,
   deleteCustomAiPhase,
@@ -11,6 +14,14 @@ import {
   promoteCustomAiPhaseToOrg,
   updateCustomAiPhase,
 } from "../db.ts";
+import { assertScopeSafeDefaults, ScopeViolationError } from "../scope-guard.ts";
+import { buildScopeLookup } from "../scope-lookup.ts";
+
+function formatScopeError(err: ScopeViolationError): string {
+  const list = err.offenders.map(o => `${o.kind} '${o.id}' (${o.scope}-scoped)`).join(", ");
+  return `Cannot save: defaults reference scope-incompatible resources — ${list}. ` +
+         `Either promote those resources or remove them from the defaults.`;
+}
 
 const SLOT_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
 const RESERVED_SLOT_NAMES = new Set(["PATH", "HOME", "USER", "SHELL", "PWD"]);
@@ -45,6 +56,14 @@ function parseSlots(raw: unknown): SecretSlotDef[] {
     out.push(optional ? { name, description, optional: true } : { name, description });
   }
   return out;
+}
+
+function parseIcon(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!isValidCustomPhaseIcon(raw)) {
+    throw new Error("icon must be null or 'lucide:<AllowlistedName>'");
+  }
+  return (raw ?? null) as string | null;
 }
 
 function parseDefaultTools(raw: unknown): CanonicalTool[] {
@@ -87,6 +106,19 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
       const ctx = req.runContext!;
       if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as any;
+      const skillIds  = Array.isArray(body.defaultSkillIds) ? body.defaultSkillIds as string[] : [];
+      const mcpIds    = Array.isArray(body.defaultMcpIds)   ? body.defaultMcpIds   as string[] : [];
+      try {
+        await assertScopeSafeDefaults({
+          phaseScope: "user",
+          defaultSkillIds: skillIds,
+          defaultMcpIds: mcpIds,
+          lookup: buildScopeLookup(pool),
+        });
+      } catch (e) {
+        if (e instanceof ScopeViolationError) return reply.code(400).send({ error: formatScopeError(e) });
+        throw e;
+      }
       try {
         const rec = await insertCustomAiPhase(pool, {
           orgId,
@@ -95,6 +127,7 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
           scope: "user",
           name: body.name,
           description: body.description,
+          icon: parseIcon(body.icon) ?? null,
           inputFields: body.inputFields,
           outputMode: body.outputMode,
           outputSchema: body.outputSchema,
@@ -102,12 +135,17 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
           defaultTools: parseDefaultTools(body.defaultTools),
           defaultMcpIds: body.defaultMcpIds,
           defaultSkillIds: body.defaultSkillIds,
+          requiresSkills: typeof body.requiresSkills === "boolean" ? body.requiresSkills : false,
+          requiresMcp: typeof body.requiresMcp === "boolean" ? body.requiresMcp : false,
           slots: parseSlots(body.slots),
         });
         reply.code(201);
         return rec;
       } catch (err) {
         if (err instanceof DuplicateCustomPhaseError) return reply.code(409).send({ error: err.message });
+        if (err instanceof Error && /^(icon|defaultTools|slots)/.test(err.message)) {
+          return reply.code(400).send({ error: err.message });
+        }
         throw err;
       }
     },
@@ -143,6 +181,9 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
         const patchBody = req.body as any;
         const patch = {
           ...patchBody,
+          ...(patchBody?.icon !== undefined
+            ? { icon: parseIcon(patchBody.icon) }
+            : {}),
           ...(patchBody?.defaultTools !== undefined
             ? { defaultTools: parseDefaultTools(patchBody.defaultTools) }
             : {}),
@@ -150,9 +191,25 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
             ? { slots: parseSlots(patchBody.slots) }
             : {}),
         };
+        const skillIds = patch.defaultSkillIds ?? existing.defaultSkillIds;
+        const mcpIds   = patch.defaultMcpIds   ?? existing.defaultMcpIds;
+        try {
+          await assertScopeSafeDefaults({
+            phaseScope: existing.scope,
+            defaultSkillIds: skillIds,
+            defaultMcpIds: mcpIds,
+            lookup: buildScopeLookup(pool),
+          });
+        } catch (e) {
+          if (e instanceof ScopeViolationError) return reply.code(400).send({ error: formatScopeError(e) });
+          throw e;
+        }
         return await updateCustomAiPhase(pool, id, patch);
       } catch (err) {
         if (err instanceof DuplicateCustomPhaseError) return reply.code(409).send({ error: err.message });
+        if (err instanceof Error && /^(icon|defaultTools|slots)/.test(err.message)) {
+          return reply.code(400).send({ error: err.message });
+        }
         throw err;
       }
     },
@@ -165,6 +222,26 @@ export async function registerUserCustomPhaseRoutes(app: FastifyInstance, pool: 
       const { orgId, id } = req.params as { orgId: string; id: string };
       const ctx = req.runContext!;
       if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      const existing = await getCustomAiPhase(pool, id);
+      if (!existing || existing.orgId !== orgId || existing.userId !== ctx.user.id) {
+        return reply.code(404).send({ error: "Not found" });
+      }
+      try {
+        await assertScopeSafeDefaults({
+          phaseScope: "org",
+          defaultSkillIds: existing.defaultSkillIds,
+          defaultMcpIds: existing.defaultMcpIds,
+          lookup: buildScopeLookup(pool),
+        });
+      } catch (e) {
+        if (e instanceof ScopeViolationError) {
+          const list = e.offenders.map(o => `${o.kind} '${o.id}' is ${o.scope}-scoped`).join(", ");
+          return reply.code(400).send({
+            error: `Cannot promote to org: ${list}. Promote those resources first, or remove them from the defaults.`,
+          });
+        }
+        throw e;
+      }
       const result = await promoteCustomAiPhaseToOrg(pool, id, ctx.user.id);
       if (!result) return reply.code(404).send({ error: "Not found" });
       return result;
