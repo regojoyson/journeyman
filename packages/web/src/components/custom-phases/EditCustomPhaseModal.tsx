@@ -13,6 +13,7 @@ import { OutputSchemaEditor } from "./OutputSchemaEditor.tsx";
 import { ToolsPicker } from "./ToolsPicker.tsx";
 import { SecretsEditor } from "./SecretsEditor.tsx";
 import { PromptEditor } from "./PromptEditor.tsx";
+import { IconPicker } from "./IconPicker.tsx";
 import { btnGhost, btnPrimary, inputCls } from "../../routes/admin-styles.ts";
 
 type TabId = "definition" | "inputs" | "output" | "tools" | "secrets" | "prompt";
@@ -35,12 +36,15 @@ export function EditCustomPhaseModal(props: {
   const { initial, scope, onCancel, onSave } = props;
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
   const [inputFields, setInputFields] = useState<CustomPhaseInputField[]>(initial?.inputFields ?? []);
   const [outputMode, setOutputMode] = useState<CustomPhaseOutputMode>(initial?.outputMode ?? "none");
   const [outputSchema, setOutputSchema] = useState<CustomPhaseJsonSchema | undefined>(initial?.outputSchema);
   const [promptTemplate, setPromptTemplate] = useState(initial?.promptTemplate ?? "");
   const [defaultTools, setDefaultTools] = useState<CanonicalTool[]>(initial?.defaultTools ?? []);
   const [slots, setSlots] = useState<SecretSlotDef[]>(initial?.slots ?? []);
+  const [requiresSkills, setRequiresSkills] = useState<boolean>(initial?.requiresSkills ?? false);
+  const [requiresMcp, setRequiresMcp] = useState<boolean>(initial?.requiresMcp ?? false);
   const [pendingTools, setPendingTools] = useState<CanonicalTool[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +82,7 @@ export function EditCustomPhaseModal(props: {
       await onSave({
         scope,
         name, description,
+        icon,
         inputFields,
         outputMode,
         outputSchema: outputMode === "structured" ? outputSchema : undefined,
@@ -85,6 +90,8 @@ export function EditCustomPhaseModal(props: {
         defaultTools,
         defaultMcpIds: initial?.defaultMcpIds ?? [],
         defaultSkillIds: initial?.defaultSkillIds ?? [],
+        requiresSkills,
+        requiresMcp,
         slots,
       });
     } catch (err: any) {
@@ -192,6 +199,48 @@ export function EditCustomPhaseModal(props: {
                     placeholder="What this phase does, and when a flow author would reach for it."
                   />
                 </label>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-slate-300">Icon</div>
+                  <IconPicker value={icon} onChange={setIcon} />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={requiresSkills}
+                      onChange={(e) => setRequiresSkills(e.target.checked)}
+                    />
+                    <span>Skills required</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-1 ml-6">
+                    Workflows using this phase must have at least one skill attached.
+                  </p>
+                  {requiresSkills && (initial?.defaultSkillIds?.length ?? 0) === 0 && (
+                    <p className="text-[11px] text-amber-400 mt-1 ml-6">
+                      ⚠ No default skills set. Flow authors will have to pick skills manually each time.
+                      Consider adding defaults so the phase works out of the box.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={requiresMcp}
+                      onChange={(e) => setRequiresMcp(e.target.checked)}
+                    />
+                    <span>MCP required</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-1 ml-6">
+                    Workflows using this phase must have at least one MCP attached.
+                  </p>
+                  {requiresMcp && (initial?.defaultMcpIds?.length ?? 0) === 0 && (
+                    <p className="text-[11px] text-amber-400 mt-1 ml-6">
+                      ⚠ No default MCPs set. Flow authors will have to pick MCPs manually each time.
+                      Consider adding defaults so the phase works out of the box.
+                    </p>
+                  )}
+                </div>
               </section>
             )}
 

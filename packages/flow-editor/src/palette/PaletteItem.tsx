@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { resolvePhaseIcon } from "../icons/resolve.tsx";
 
 export interface PaletteItemEntryLike {
   label: string;
@@ -57,7 +58,9 @@ export function PaletteItem({ entry, disabled = false }: PaletteItemProps) {
       title={disabled ? "Coming soon — not yet available" : undefined}
       aria-disabled={disabled || undefined}
     >
-      <div className="je-palette__icon" style={{ background: entry.color }}>{entry.icon}</div>
+      <div className="je-palette__icon" style={{ background: entry.color }}>
+        {resolvePhaseIcon(entry.icon, { size: 16, className: "je-palette__icon-svg" })}
+      </div>
       <span className="je-palette__label">{entry.label}</span>
       {entry.description && (
         <span className="je-palette__info" aria-label="info">i</span>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CustomAiPhase, OutputSchema } from "@journeyman/core";
+import { DEFAULT_CUSTOM_PHASE_ICON_ID } from "@journeyman/core";
 import type { PhaseDefinition } from "@journeyman/flow-editor";
 
 const colors = ["#a29bfe", "#fd79a8", "#55efc4", "#ffeaa7", "#74b9ff", "#fab1a0"];
@@ -39,7 +40,7 @@ function buildSyntheticPhase(p: CustomAiPhase, color: string): PhaseDefinition<a
     category: p.scope === "org" ? "Custom (Org)" : "Custom",
     description: p.description || `Custom AI phase: ${p.name}`,
     color,
-    icon: "🧩",
+    icon: p.icon ?? DEFAULT_CUSTOM_PHASE_ICON_ID,
     defaultConfig: {
       customPhaseId: p.id,
       mcpInstanceIds: p.defaultMcpIds ?? [],

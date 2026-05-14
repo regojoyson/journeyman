@@ -27,3 +27,5 @@ export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
 export { ValuePicker } from "./properties-panel/ValuePicker.tsx";
 export { PanelResizer } from "./canvas/PanelResizer.tsx";
 export type { UpstreamSource, UpstreamField } from "./properties-panel/use-upstream-sources.ts";
+export { resolvePhaseIcon } from "./icons/resolve.tsx";
+export { CUSTOM_PHASE_ICON_COMPONENTS } from "./icons/custom-phase-icons.tsx";
