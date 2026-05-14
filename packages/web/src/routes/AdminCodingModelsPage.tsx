@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
+import { providersForKind } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
+
+const CODING_PROVIDERS = providersForKind("coding-cli");
 import {
   btnGhost,
   btnPrimary,
@@ -166,7 +169,23 @@ function ModelForm(props: {
           <h3 className="text-sm font-medium text-slate-200">Identity</h3>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Provider">
-              <input className={inputCls} value={v.provider} onChange={(e) => set("provider", e.target.value)} placeholder="claude" />
+              <select
+                className={inputCls}
+                value={v.provider}
+                onChange={(e) => set("provider", e.target.value)}
+              >
+                {!CODING_PROVIDERS.some((p) => p.value === v.provider) && v.provider && (
+                  <option value={v.provider} disabled>
+                    {v.provider} (unknown)
+                  </option>
+                )}
+                {CODING_PROVIDERS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                    {!p.implemented ? " (not yet implemented)" : ""}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Model ID">
               <input className={`${inputCls} font-mono text-sm`} value={v.modelId} onChange={(e) => set("modelId", e.target.value)} placeholder="claude-opus-4-7" />
