@@ -44,12 +44,17 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 
   const startNode = versionQ.data?.definition.nodes.find(n => n.type === "start");
   const inputDefs: WorkflowInputDef[] = getStartWorkflowInputs(startNode?.config);
+  // The dedicated Issue Ref block above already collects `issueRef` via the
+  // provider+id pair. Skip it in the dynamic loop to avoid a duplicate field
+  // and to keep the provider-built value from being overwritten by an empty
+  // string on submit.
+  const dynamicDefs = inputDefs.filter(d => d.name !== "issueRef");
 
   const submitM = useMutation({
     mutationFn: () => {
       const inputs: Record<string, unknown> = {};
       if (issueRef.trim()) inputs.issueRef = issueRef.trim();
-      for (const def of inputDefs) {
+      for (const def of dynamicDefs) {
         const raw = dynValues[def.name] ?? "";
         if (def.type === "number") inputs[def.name] = Number(raw);
         else if (def.type === "boolean") inputs[def.name] = raw === "true";
@@ -76,7 +81,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     global: flows.filter(f => f.scope === "global"),
   };
 
-  const missingRequired = inputDefs
+  const missingRequired = dynamicDefs
     .filter(d => d.required && !dynValues[d.name]?.trim())
     .map(d => d.name);
   const canRun = !!flowId && missingRequired.length === 0 && !submitM.isPending;
@@ -162,7 +167,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
         {versionQ.isLoading && flowId && (
           <div style={{ color: "#888", fontSize: 12, marginBottom: 12 }}>Loading flow inputs…</div>
         )}
-        {inputDefs.map(def => (
+        {dynamicDefs.map(def => (
           <label key={def.name} style={{ display: "block", marginBottom: 14 }}>
             <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>
               {def.name}{def.required && <span style={{ color: "#ff7675" }}> *</span>}
