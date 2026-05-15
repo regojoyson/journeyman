@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Logo } from "../components/Logo.tsx";
 
 export function LoginPage(props: {
   onLoggedIn: () => void;
@@ -30,6 +31,9 @@ export function LoginPage(props: {
         onSubmit={submit}
         className="w-full max-w-sm bg-slate-900/60 backdrop-blur border border-slate-800 rounded-xl p-8 shadow-xl space-y-5"
       >
+        <div className="flex justify-center text-slate-100">
+          <Logo height={64} />
+        </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-slate-100">Sign in</h1>
           <p className="text-sm text-slate-400">Welcome back to Journeyman.</p>

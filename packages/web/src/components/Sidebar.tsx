@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ThemeToggle } from "@journeyman/theme";
 import { useAuth } from "../AuthContext.tsx";
+import { Logo, LogoMark } from "./Logo.tsx";
 
 const NAV_ITEMS = [
   { to: "/workflows",          icon: "⚡", label: "Workflows"          },
@@ -101,9 +102,17 @@ export default function Sidebar() {
       }}>
         <Link
           to="/"
-          style={{ color: "#4a9eff", fontWeight: 700, textDecoration: "none", fontSize: 13, whiteSpace: "nowrap" }}
+          style={{
+            color: "#e2e8f0",
+            fontWeight: 700,
+            textDecoration: "none",
+            fontSize: 13,
+            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+          }}
         >
-          {expanded ? "◆ Journeyman" : "◆"}
+          {expanded ? <Logo height={40} /> : <LogoMark height={28} />}
         </Link>
         {expanded && (
           <button

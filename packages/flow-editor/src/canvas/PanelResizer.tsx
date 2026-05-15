@@ -56,7 +56,7 @@ export function PanelResizer({ width, onResize, min = 220, max = 720, side }: Pa
         borderRight: "1px solid #2a2a3a",
         position: "relative",
       }}
-      title="Drag to resize"
+      aria-label="Resize panel"
     >
       {/* Centred grip dots so the user can see where to grab. */}
       <div style={{

@@ -2,7 +2,6 @@ import type { WorkflowInstanceFilter } from "./types.ts";
 import type { WorkflowInstance } from "@journeyman/core";
 
 const STATUSES: WorkflowInstance["status"][] = ["pending", "running", "completed", "failed", "cancelled", "paused"];
-const PROVIDERS = ["jira", "github", "monday", "linear", "manual", "api"];
 
 export interface WorkflowInstanceFiltersProps {
   filter: WorkflowInstanceFilter;
@@ -18,14 +17,6 @@ export function WorkflowInstanceFilters({ filter, onChange }: WorkflowInstanceFi
       >
         <option value="">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-      </select>
-
-      <select
-        value={filter.provider ?? ""}
-        onChange={e => onChange({ ...filter, provider: e.target.value || undefined })}
-      >
-        <option value="">All providers</option>
-        {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
       </select>
 
       <input

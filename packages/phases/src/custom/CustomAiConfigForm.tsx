@@ -78,136 +78,111 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
         )}
       </div>
 
-      <div className="je-props__field" style={{ position: "relative" }}>
-        <label>Inputs</label>
+      <div style={{ position: "relative" }}>
+        <div className="je-props__bind-only-title">Inputs</div>
         {phase.inputFields.length === 0 && (
           <div className="je-props__field-help">No inputs declared.</div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {phase.inputFields.map((f) => {
-            if (f.type === "template") {
-              const tpl = getTemplate(f.name);
-              const empty = tpl.trim().length === 0;
-              const showError = f.required && empty;
-              return (
-                <div key={f.name} style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
-                  <span style={{ fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
-                    {f.name}
-                    {f.required && <span style={{ color: "#ff7675", marginLeft: 3 }}>*</span>}
-                    <span style={{ color: "#888", marginLeft: 6, fontSize: 10 }}>template</span>
-                  </span>
-                  {f.description && <span style={{ fontSize: 10, color: "#666" }}>{f.description}</span>}
-                  <textarea
-                    value={tpl}
-                    disabled={readOnly}
-                    rows={4}
-                    onChange={(e) => {
-                      cursorByField.current[f.name] = e.target.selectionStart;
-                      setTemplate(f.name, e.target.value);
-                    }}
-                    onSelect={(e) => {
-                      cursorByField.current[f.name] = (e.target as HTMLTextAreaElement).selectionStart;
-                    }}
-                    style={{
-                      background: "#1a1a2a",
-                      border: showError ? "1px solid #ff7675" : "1px solid #444",
-                      color: "#ddd",
-                      padding: "6px 8px",
-                      borderRadius: 4,
-                      fontFamily: "ui-monospace, monospace",
-                      fontSize: 12,
-                      resize: "vertical",
-                    }}
-                  />
-                  <div>
-                    <button
-                      type="button"
-                      disabled={readOnly}
-                      onClick={() => setTemplateInsertFor(templateInsertFor === f.name ? null : f.name)}
-                      style={{
-                        background: "#2a2a3e",
-                        border: "1px solid #444",
-                        color: "#ddd",
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        fontSize: 11,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {`{x} Insert ref`}
-                    </button>
-                  </div>
-                  {templateInsertFor === f.name && (
-                    <div className="je-props__picker-popover">
-                      <ValuePicker
-                        sources={sources ?? []}
-                        onPick={(ref) => {
-                          const pos = cursorByField.current[f.name] ?? tpl.length;
-                          const next = tpl.slice(0, pos) + `{{${ref}}}` + tpl.slice(pos);
-                          setTemplate(f.name, next);
-                          setTemplateInsertFor(null);
-                        }}
-                        onClose={() => setTemplateInsertFor(null)}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            const ref = getRef(f.name);
-            const isPicking = pickerFor === f.name;
-            const empty = !ref;
+        {phase.inputFields.map((f) => {
+          if (f.type === "template") {
+            const tpl = getTemplate(f.name);
+            const empty = tpl.trim().length === 0;
             const showError = f.required && empty;
+            const insertOpen = templateInsertFor === f.name;
             return (
-              <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{ fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
+              <div key={f.name} className="je-props__field" style={{ position: "relative" }}>
+                <div className="je-props__field-label-row">
+                  <label>
                     {f.name}
-                    {f.required && <span style={{ color: "#ff7675", marginLeft: 3 }}>*</span>}
-                    <span style={{ color: "#888", marginLeft: 6, fontSize: 10 }}>{f.type}</span>
-                  </span>
-                  {f.description && (
-                    <span style={{ fontSize: 10, color: "#666" }}>{f.description}</span>
-                  )}
-                </div>
-                {ref ? (
-                  <div className="je-props__bound-pill" style={{ flex: 2 }}>
-                    <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
-                    <code className="je-props__bound-pill-ref">{ref}</code>
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        className="je-props__bound-pill-unbind"
-                        onClick={() => setRef(f.name, "")}
-                        title="unbind"
-                      >×</button>
-                    )}
-                  </div>
-                ) : (
+                    {f.required && <span className="je-props__required-mark">*</span>}
+                  </label>
                   <button
                     type="button"
                     disabled={readOnly}
-                    onClick={() => setPickerFor(isPicking ? null : f.name)}
-                    style={{
-                      flex: 2,
-                      background: "#2a2a3e",
-                      border: showError ? "1px solid #ff7675" : "1px solid #444",
-                      color: "#ddd",
-                      padding: "4px 8px",
-                      borderRadius: 4,
-                      fontSize: 11,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
+                    className="je-props__bind-icon"
+                    onClick={() => setTemplateInsertFor(insertOpen ? null : f.name)}
+                    title="insert upstream value"
                   >
-                    {`{x} Pick value…`}
+                    {`{x}`}
                   </button>
+                </div>
+                <textarea
+                  value={tpl}
+                  disabled={readOnly}
+                  rows={4}
+                  onChange={(e) => {
+                    cursorByField.current[f.name] = e.target.selectionStart;
+                    setTemplate(f.name, e.target.value);
+                  }}
+                  onSelect={(e) => {
+                    cursorByField.current[f.name] = (e.target as HTMLTextAreaElement).selectionStart;
+                  }}
+                  style={{
+                    borderColor: showError ? "#ff7675" : undefined,
+                  }}
+                />
+                {f.description && <div className="je-props__field-help">{f.description}</div>}
+                {insertOpen && (
+                  <div className="je-props__picker-popover">
+                    <ValuePicker
+                      sources={sources ?? []}
+                      onPick={(ref) => {
+                        const pos = cursorByField.current[f.name] ?? tpl.length;
+                        const next = tpl.slice(0, pos) + `{{${ref}}}` + tpl.slice(pos);
+                        setTemplate(f.name, next);
+                        setTemplateInsertFor(null);
+                      }}
+                      onClose={() => setTemplateInsertFor(null)}
+                    />
+                  </div>
                 )}
               </div>
             );
-          })}
-        </div>
+          }
+
+          const ref = getRef(f.name);
+          const isBound = !!ref;
+          const showError = f.required && !isBound;
+          return (
+            <div key={f.name} className={`je-props__field${showError ? " je-props__field--invalid" : ""}`}>
+              <div className="je-props__field-label-row">
+                <label>
+                  {f.name}
+                  {f.required && <span className="je-props__required-mark">*</span>}
+                </label>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className={`je-props__bind-icon${isBound ? " je-props__bind-icon--bound" : ""}`}
+                    onClick={() => setPickerFor(pickerFor === f.name ? null : f.name)}
+                    title={isBound ? `bound to ${ref}` : "bind to upstream value"}
+                  >
+                    {`{x}`}
+                  </button>
+                )}
+              </div>
+              {isBound ? (
+                <div className="je-props__bound-pill">
+                  <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
+                  <code className="je-props__bound-pill-ref">{ref}</code>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="je-props__bound-pill-unbind"
+                      onClick={() => setRef(f.name, "")}
+                      title="unbind"
+                    >×</button>
+                  )}
+                </div>
+              ) : (
+                <div className="je-props__bind-only-empty">
+                  {f.required ? "Required — bind from upstream" : "Optional — not bound"}
+                </div>
+              )}
+              {f.description && <div className="je-props__field-help">{f.description}</div>}
+            </div>
+          );
+        })}
         {pickerFor !== null && (
           <div className="je-props__picker-popover">
             <ValuePicker

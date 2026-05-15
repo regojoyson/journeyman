@@ -12,6 +12,31 @@ function rawIssueId(issueRef: string | null | undefined): string {
   return colon === -1 ? issueRef : issueRef.slice(colon + 1);
 }
 
+/**
+ * Pick a short label for the leftmost "Ref" column. Prefer the webhook
+ * issueRef when present, otherwise fall back to the first input attribute
+ * with a primitive value.
+ */
+function refLabel(
+  webhookEvent: { issueRef: string | null } | null | undefined,
+  inputs: Record<string, unknown> | undefined,
+): { text: string; title?: string } {
+  if (webhookEvent?.issueRef) {
+    return { text: rawIssueId(webhookEvent.issueRef), title: webhookEvent.issueRef };
+  }
+  if (inputs) {
+    for (const [k, v] of Object.entries(inputs)) {
+      if (v == null) continue;
+      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+        const text = String(v);
+        const trimmed = text.length > 40 ? text.slice(0, 37) + "…" : text;
+        return { text: trimmed, title: `${k}: ${text}` };
+      }
+    }
+  }
+  return { text: "—" };
+}
+
 export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
   const scope = p.scope ?? "mine";
   const [expandedIgnored, setExpandedIgnored] = React.useState<Set<string>>(new Set());
@@ -60,6 +85,7 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
         <table className="je-runslist__table">
           <thead>
             <tr>
+              <th>Ref</th>
               <th>Status</th>
               <th>Instance</th>
               <th>Workflow</th>
@@ -69,16 +95,15 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
               <th>Started</th>
               <th>Duration</th>
               <th>Failed at</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
             {p.workflowInstances.map(r => {
-              const canAct = r.effectiveRole === "owner";
               const webhookEvent = (r as any).webhookEvent as {
                 provider: string; issueRef: string | null; deliveryId: string | null; receivedAt: string;
               } | null | undefined;
               const isIgnored = r.status === "ignored" as string;
+              const ref = refLabel(webhookEvent, r.inputs);
               return (
                 <React.Fragment key={r.id}>
                   <tr
@@ -91,9 +116,19 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                         })
                       : () => p.onSelectWorkflowInstance(r.id)}
                   >
+                    <td
+                      title={ref.title}
+                      style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#cfd6e4", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                      {ref.text}
+                    </td>
                     <td><span className={`je-runslist__pill ${r.status}`}>{r.status}</span></td>
                     <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 11 }}>{r.id.slice(0, 8)}</td>
-                    <td style={{ color: "#aaa" }}>{r.workflowVersionId ? (p.workflowNameByVersionId?.[r.workflowVersionId] ?? r.workflowVersionId.slice(0, 8)) : r.workflowNameSnapshot}</td>
+                    <td style={{ color: "#aaa" }}>
+                      {(r.workflowVersionId && p.workflowNameByVersionId?.[r.workflowVersionId])
+                        || r.workflowNameSnapshot
+                        || (r.workflowVersionId ? r.workflowVersionId.slice(0, 8) : "—")}
+                    </td>
                     <td><span className={`je-badge je-badge--scope-${r.workflowScopeSnapshot}`}>{r.workflowScopeSnapshot}</span></td>
                     {scope !== "mine" && (
                       <td style={{ color: "#aaa", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
@@ -115,11 +150,6 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                     <td style={{ color: "#888" }}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"}</td>
                     <td style={{ color: "#888" }}>{formatDuration(r.durationMs)}</td>
                     <td style={{ color: "#ff7675" }}>{r.failedAtNodeId ?? ""}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      {canAct && p.onRerun && r.status !== "running" && (
-                        <button className="je-runslist__rerun" onClick={() => p.onRerun!(r)}>Re-run</button>
-                      )}
-                    </td>
                   </tr>
                   {isIgnored && expandedIgnored.has(r.id) && (
                     <tr>
