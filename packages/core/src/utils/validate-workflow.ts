@@ -14,6 +14,12 @@ export interface CustomPhaseValidationEntry {
   defaultSkillIds: string[];
   requiresMcp: boolean;
   defaultMcpIds: string[];
+  /** Per-customPhaseId input declarations. Falls back to the bare entry's
+   *  inputFields when absent. */
+  inputFields?: Record<string, { shape: Shape; required?: boolean }>;
+  /** Per-customPhaseId output schema. Falls back to the bare entry's
+   *  outputSchema when absent. */
+  outputSchema?: OutputSchema | null;
 }
 
 export interface ValidationCatalogEntry {
@@ -125,6 +131,15 @@ export function validateWorkflowInputs(
   const workflowInputs = findStartWorkflowInputs(flow);
   const workflowInputByName = new Map(workflowInputs.map((r) => [r.name, r] as const));
 
+  // Resolve a node's per-customPhaseId overlay (if any) on the catalog entry
+  // for "custom-ai". Returns undefined for non-custom-ai or unknown ids.
+  function cpDefFor(n: WorkflowNode | undefined): CustomPhaseValidationEntry | undefined {
+    if (!n || n.type !== "phase" || n.phaseType !== "custom-ai") return undefined;
+    const cpId = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (typeof cpId !== "string") return undefined;
+    return catalog["custom-ai"]?.customPhases?.[cpId];
+  }
+
   for (const node of flow.nodes) {
     if (node.type !== "phase" || !node.phaseType) continue;
     const entry = catalog[node.phaseType];
@@ -164,12 +179,14 @@ export function validateWorkflowInputs(
       }
     }
 
-    if (!entry?.inputFields) continue;
+    const ownCpDef = cpDefFor(node);
+    const effectiveInputFields = ownCpDef?.inputFields ?? entry?.inputFields;
+    if (!effectiveInputFields) continue;
 
     const config = (node.config ?? {}) as Record<string, unknown>;
     const inputs = (node.inputs ?? {}) as Record<string, WorkflowInputValue>;
 
-    for (const [key, fieldDef] of Object.entries(entry.inputFields)) {
+    for (const [key, fieldDef] of Object.entries(effectiveInputFields)) {
       const expected = fieldDef.shape;
       const inputValue = inputs[key];
       const configValue = config[key];
@@ -260,7 +277,8 @@ export function validateWorkflowInputs(
           if (parsed.scope === "input") continue;
           if (sourceNode.type !== "phase" || !sourceNode.phaseType) continue;
           const sourceEntry = catalog[sourceNode.phaseType];
-          const outputSchema = sourceEntry?.outputSchema;
+          const sourceCpDef = cpDefFor(sourceNode);
+          const outputSchema = sourceCpDef?.outputSchema ?? sourceEntry?.outputSchema;
           if (!outputSchema) continue;
           const root = outputSchema[parsed.fieldPath[0]];
           if (!root) {

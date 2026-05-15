@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { WorkflowEdge, WorkflowGraph } from "@journeyman/core";
 
 export interface UseFlowEditorStateArgs {
@@ -12,15 +12,10 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
   const [selectedEdgeId, setSelectedEdgeIdState] = useState<string | null>(null);
   const readOnly = args.readOnly ?? false;
 
-  const flowRef = useRef(args.flow);
-  flowRef.current = args.flow;
-  const onChangeRef = useRef(args.onChange);
-  onChangeRef.current = args.onChange;
-
   const update = useCallback((mutator: (f: WorkflowGraph) => WorkflowGraph) => {
     if (readOnly) return;
-    onChangeRef.current(mutator(flowRef.current));
-  }, [readOnly]);
+    args.onChange(mutator(args.flow));
+  }, [args, readOnly]);
 
   const selectedNode = useMemo(
     () => args.flow.nodes.find(n => n.id === selectedNodeId) ?? null,
@@ -44,12 +39,11 @@ export function useFlowEditorState(args: UseFlowEditorStateArgs) {
 
   const updateEdge = useCallback((next: WorkflowEdge) => {
     if (readOnly) return;
-    const flow = flowRef.current;
-    onChangeRef.current({
-      ...flow,
-      edges: flow.edges.map(e => e.id === next.id ? next : e),
+    args.onChange({
+      ...args.flow,
+      edges: args.flow.edges.map(e => e.id === next.id ? next : e),
     });
-  }, [readOnly]);
+  }, [args, readOnly]);
 
   return {
     flow: args.flow,

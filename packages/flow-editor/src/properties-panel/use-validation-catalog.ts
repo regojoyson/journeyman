@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { ValidationCatalog, CustomPhaseValidationEntry, WorkflowGraph, CustomAiPhase } from "@journeyman/core";
+import { customPhaseToShape } from "@journeyman/custom-phases/shape-adapter";
 import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
 import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
 
@@ -38,12 +39,15 @@ export function useValidationCatalog(flow?: WorkflowGraph | null): ValidationCat
     for (const [id, def] of Object.entries(defs)) {
       if (!def) continue;
       const d = def as CustomAiPhase;
+      const shape = customPhaseToShape(d);
       customPhases[id] = {
         name: d.name,
         requiresSkills: d.requiresSkills ?? false,
         defaultSkillIds: d.defaultSkillIds ?? [],
         requiresMcp: d.requiresMcp ?? false,
         defaultMcpIds: d.defaultMcpIds ?? [],
+        inputFields: shape.inputFields,
+        outputSchema: shape.outputSchema,
       };
     }
     out["custom-ai"] = { ...(out["custom-ai"] ?? {}), customPhases };

@@ -2,45 +2,123 @@
 
 ## Project Overview
 
-**Journeyman** is an npm workspaces monorepo that provides a provider-pattern abstraction over AI coding CLIs (Claude, Gemini, Codex), git hosting APIs, ticket trackers, and notification services. All packages share types and interfaces via `@journeyman/core`.
+**Journeyman** is a configurable, phase-based AI pipeline that automates ticket → code → PR workflows. It's an npm workspaces monorepo built around a provider-pattern: AI coding CLIs (Claude, Gemini, Codex), git hosts (GitHub, GitLab), ticket trackers (Jira, Linear, Monday, GitHub Issues/Projects), and notification channels (Slack) are all swappable behind interfaces defined in `@journeyman/core`.
+
+A visual canvas editor (n8n-style) lets users drag-and-drop phase nodes, wire conditional branches, and configure retry/MCP/skills per node. Durable execution is backed by Conductor, with step retries and human-in-the-loop pause/resume.
+
+## Architecture Layers
+
+| Layer | Role |
+|---|---|
+| **Web UI** | Visual canvas editor, live run monitoring, runs history |
+| **API Gateway** | Fastify REST + SSE; auth, validation, routing |
+| **Orchestrator** | Conductor adapter, worker harness, durable execution |
+| **Phases & Providers** | Per-node execution logic — AI coding, git, tickets, notifications |
+| **Storage** | PostgreSQL (persistence) + Redis (job queue) |
 
 ## Monorepo Structure
 
 ```
-claude-sdk-test/            ← repo root (name: journeyman)
+journeyman/                  ← repo root
 ├── CLAUDE.md
-├── package.json            ← workspaces: ["packages/*"]
-├── sdk.ts                  ← original SDK type dump (root copy)
+├── README.md
+├── package.json             ← workspaces: ["packages/*"]
+├── docs/                    ← architecture diagrams, quickstart, setup
+├── examples/
+├── infra/                   ← docker-compose (Postgres, Redis, Conductor)
+├── scripts/                 ← check-import-boundaries.mjs, etc.
 ├── .claude/
-│   ├── sdk.d.ts            ← @anthropic-ai/claude-agent-sdk type declarations (reference only)
-│   └── memory/             ← persistent memory files
+│   ├── sdk.d.ts             ← @anthropic-ai/claude-agent-sdk type declarations
+│   └── memory/
 └── packages/
-    ├── core/               ← @journeyman/core   — interfaces + shared types (source of truth)
-    ├── coding-cli/         ← @journeyman/coding-cli  — Claude/Gemini/Codex CLI providers
-    ├── git-provider/       ← @journeyman/git-provider  — GitHub/GitLab REST API providers
-    ├── github-api/         ← @journeyman/github-api  — shared GitHub Octokit client (REST + GraphQL; used by git-provider + ticket-provider)
-    ├── ticket-provider/    ← @journeyman/ticket-provider  — Jira/Linear/Monday providers
-    └── notification-provider/ ← @journeyman/notification-provider  — Slack provider
+    ├── core/                ← interfaces + shared types (source of truth)
+    │
+    ├── web/                 ← React web shell
+    ├── flow-editor/         ← visual canvas editor (drag-drop, properties panel)
+    ├── run-viewer/          ← read-only execution canvas with live status
+    ├── runs-list/           ← sortable/filterable run history table
+    ├── theme/               ← shared UI theme
+    │
+    ├── api-server/          ← Fastify HTTP gateway (REST + SSE)
+    ├── orchestrator/        ← Conductor adapter + worker harness
+    ├── identity/            ← JWT auth, bcrypt, user/org/role management
+    ├── secrets/             ← user/org secret vault (AES encryption)
+    ├── migrations/          ← SQL migrations (journeyman-migrate CLI)
+    │
+    ├── phases/              ← built-in phase catalog
+    ├── custom-phases/       ← user-defined AI phases with prompt templates
+    │
+    ├── coding-cli/          ← Claude/Gemini/Codex providers (analyze, plan, implement, git)
+    ├── coding-models/       ← AI model provider configuration
+    ├── git-provider/        ← GitHub/GitLab REST API providers
+    ├── github-api/          ← shared Octokit client (REST + GraphQL)
+    ├── ticket-provider/     ← Jira/Linear/Monday/GitHub Issues/Projects
+    ├── notification-provider/ ← Slack
+    │
+    ├── mcp/                 ← MCP instance registry + Claude SDK adapter
+    └── skills/              ← Skill package management + Claude SDK adapter
 ```
 
 ## Package Responsibilities
 
+### Shared
+
 | Package | Scope |
 |---|---|
 | `@journeyman/core` | Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) and all shared option/result types. Never imports from other `@journeyman/*` packages. |
-| `@journeyman/coding-cli` | AI-powered git operations (clone, scan, reset) and AI operations (analyze, plan, implement) via Claude Agent SDK. Providers: `ClaudeProvider`, `GeminiProvider`, `CodexProvider`. |
-| `@journeyman/git-provider` | REST API operations (get repo, create PR/MR). Providers: `GitHubProvider`, `GitLabProvider`. |
-| `@journeyman/github-api` | Shared GitHub Octokit-based client (`@octokit/rest` + `@octokit/graphql` with retry/throttling plugins). Exposes `createGitHubClient({ token })` returning `{ rest, graphql }`. Consumed by `git-provider` and `ticket-provider` GitHub implementations. |
-| `@journeyman/ticket-provider` | Issue tracker operations (CRUD tickets). Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`. |
+
+### UI
+
+| Package | Scope |
+|---|---|
+| `@journeyman/web` | React shell — flows list, flow editor page, run detail page. |
+| `@journeyman/flow-editor` | Canvas editor component: drag-drop nodes, properties panel, MCP/skills config. |
+| `@journeyman/run-viewer` | Read-only execution canvas with live per-node status. |
+| `@journeyman/runs-list` | Sortable/filterable run history table. |
+| `@journeyman/theme` | Shared UI theme primitives. |
+
+### Backend
+
+| Package | Scope |
+|---|---|
+| `@journeyman/api-server` | Fastify HTTP gateway with REST and SSE endpoints. |
+| `@journeyman/orchestrator` | Conductor adapter, worker harness, pluggable flow + run stores. |
+| `@journeyman/identity` | JWT auth, bcrypt passwords, user/org/role management. |
+| `@journeyman/secrets` | User- and org-scoped secret vault with AES encryption. |
+| `@journeyman/migrations` | SQL migrations (`journeyman-migrate` CLI). |
+
+### Phases
+
+| Package | Scope |
+|---|---|
+| `@journeyman/phases` | Built-in phase catalog (getTicket, analyze, plan, implement, createPR, …). |
+| `@journeyman/custom-phases` | User-defined AI phase registration with prompt templates. |
+
+### Providers
+
+| Package | Scope |
+|---|---|
+| `@journeyman/coding-cli` | AI coding ops via Claude Agent SDK (analyze, plan, implement) + local git ops (clone, scan, reset). Providers: `ClaudeProvider`, `GeminiProvider`, `CodexProvider`. |
+| `@journeyman/coding-models` | AI model provider configuration (Claude, Gemini, Codex). |
+| `@journeyman/git-provider` | Remote REST ops (create PR/MR, list repos). Providers: `GitHubProvider`, `GitLabProvider`. |
+| `@journeyman/github-api` | Shared Octokit client (`@octokit/rest` + `@octokit/graphql` with retry/throttling). `createGitHubClient({ token })` → `{ rest, graphql }`. |
+| `@journeyman/ticket-provider` | Issue tracker CRUD. Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`, `GitHubIssuesProvider`, `GitHubProjectsProvider`. |
 | `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`. |
-| `@journeyman/mcp` | DB-backed MCP instance registry (user/org scope), routes for CRUD + visible-list + static catalog, resolver that produces `ResolvedMcpInstance[]`, and a pure subpath `@journeyman/mcp/sdk-adapter` consumed by `coding-cli`. |
+
+### Integrations
+
+| Package | Scope |
+|---|---|
+| `@journeyman/mcp` | DB-backed MCP instance registry (user/org scope), CRUD + visible-list + static catalog routes, resolver producing `ResolvedMcpInstance[]`, and pure subpath `@journeyman/mcp/sdk-adapter` consumed by `coding-cli`. |
+| `@journeyman/skills` | Skill package management and Claude Agent SDK adapter. |
 
 ## Key Design Rules
 
 - **Interface-first**: every provider category has an interface in `@journeyman/core`. Implementations live in their respective package and must satisfy the interface.
-- **`@journeyman/core` is the single type source**: import all option/result types from there, never duplicate them.
-- **Coding-CLI vs Git-Provider distinction**: `coding-cli` runs git operations *locally via bash* (clone, scan, reset). `git-provider` calls *remote REST APIs* (PRs, webhooks). Don't mix them.
-- **Stub pattern**: unimplemented methods throw `new Error("<ClassName>.<method> not implemented")` — never return silent no-ops.
+- **`@journeyman/core` is the single type source**: import all option/result types from there, never duplicate them. `core` never imports from other `@journeyman/*` packages.
+- **Coding-CLI vs Git-Provider distinction**: `coding-cli` runs git ops *locally via bash* (clone, scan, reset). `git-provider` calls *remote REST APIs* (PRs, webhooks). Don't mix them.
+- **Stub pattern**: unimplemented methods throw `new Error("<ClassName>.<method> not implemented")` — never silent no-ops.
+- **Import boundaries** enforced via `npm run check:boundaries` (see [scripts/check-import-boundaries.mjs](scripts/check-import-boundaries.mjs)).
 
 ## coding-cli Internal Layout
 
@@ -51,9 +129,7 @@ packages/coding-cli/src/
 └── providers/
     ├── claude/
     │   ├── index.ts                ← ClaudeProvider class
-    │   ├── operations/
-    │   │   ├── scan-repos.ts       ← scanRepos() via Claude Agent SDK
-    │   │   └── checkout-repo.ts    ← checkoutRepo() via Claude Agent SDK
+    │   ├── operations/             ← scan-repos, checkout-repo, analyze, plan, implement, …
     │   └── utils/
     │       └── sdk-logger.ts       ← shared logSdkMessage() utility
     ├── gemini/index.ts             ← GeminiProvider stub
@@ -62,7 +138,7 @@ packages/coding-cli/src/
 
 ## Claude Agent SDK Usage
 
-> **Type reference**: for all SDK types (`Options`, `Query`, `SDKMessage`, `PermissionMode`, `OutputFormat`, etc.) refer to [`.claude/sdk.d.ts`](.claude/sdk.d.ts). Read it before adding or changing any `query()` options.
+> **Type reference**: for all SDK types (`Options`, `Query`, `SDKMessage`, `PermissionMode`, `OutputFormat`, …) refer to [`.claude/sdk.d.ts`](.claude/sdk.d.ts). Read it before adding or changing any `query()` options.
 
 All Claude operations use `query()` from `@anthropic-ai/claude-agent-sdk` with this minimal config:
 
@@ -85,10 +161,10 @@ const response = query({
 });
 ```
 
-- `settingSources: []` — disables all `.claude/` settings loading (minimal token config)
-- `permissionMode: "bypassPermissions"` + `allowDangerouslySkipPermissions: true` — two separate permission layers, both required
-- `outputFormat: json_schema` — structured JSON returned in `msg.structured_output` on the `result` message
-- Use `sdk-logger.ts` (`logSdkMessage`) for all SDK message logging — never inline
+- `settingSources: []` — disables all `.claude/` settings loading (minimal token config).
+- `permissionMode: "bypassPermissions"` + `allowDangerouslySkipPermissions: true` — two separate permission layers, both required.
+- `outputFormat: json_schema` — structured JSON returned in `msg.structured_output` on the `result` message.
+- Use `sdk-logger.ts` (`logSdkMessage`) for all SDK message logging — never inline.
 
 ## Structured Output Pattern
 
@@ -104,9 +180,7 @@ for await (const msg of response) {
 
 ## SDK Type Reference
 
-Full type declarations: [.claude/sdk.d.ts](.claude/sdk.d.ts)
-
-Key types: `Options`, `Query`, `SDKMessage`, `SDKResultMessage`, `JsonSchemaOutputFormat`, `PermissionMode`.
+Full type declarations: [.claude/sdk.d.ts](.claude/sdk.d.ts). Key types: `Options`, `Query`, `SDKMessage`, `SDKResultMessage`, `JsonSchemaOutputFormat`, `PermissionMode`.
 
 ## Commands
 
@@ -114,45 +188,46 @@ Key types: `Options`, `Query`, `SDKMessage`, `SDKResultMessage`, `JsonSchemaOutp
 # Install / link workspace packages
 npm install
 
-# Type-check all packages
+# Type-check + import-boundary check (run both)
+npm run check
 npm run typecheck
+npm run check:boundaries
 
-# Run a specific operation (example)
-npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
+# Tests (per-workspace, if present)
+npm test
+
+# Infrastructure (Postgres, Redis, Conductor)
+npm run infra:up
+npm run infra:down
+npm run infra:reset       # destroys volumes
+
+# DB migrations
+npm run migrate
+
+# Run services
+npm run start:api-server
+npm run start:worker      # tsx packages/orchestrator/src/cli-worker.ts
+npm run dev:web
+npm run build:web
 ```
 
 ## Implementation Status
 
 | Feature | Status |
 |---|---|
-| `ClaudeProvider.scanRepos` | Implemented |
-| `ClaudeProvider.checkoutRepo` | Implemented |
-| `ClaudeProvider.commitPushRepos` | Implemented |
-| `ClaudeProvider.cleanupRepos` | Implemented |
-| `ClaudeProvider.createWorkspace` | Implemented |
-| `ClaudeProvider.analyze` | Implemented (Claude Agent SDK + json_schema structured output) |
-| `ClaudeProvider.plan` | Implemented (Claude Agent SDK + json_schema structured output) |
-| `ClaudeProvider.implement` | Implemented (Claude Agent SDK + json_schema structured output) |
-| `GeminiProvider` | Stub |
-| `CodexProvider` | Stub |
-| `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via `@journeyman/github-api` Octokit REST client) |
+| `ClaudeProvider.scanRepos` / `checkoutRepo` / `commitPushRepos` / `cleanupRepos` / `createWorkspace` | Implemented |
+| `ClaudeProvider.analyze` / `plan` / `implement` | Implemented (Claude Agent SDK + json_schema structured output) |
+| `GeminiProvider` / `CodexProvider` | Stub |
+| `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via `@journeyman/github-api`) |
 | `GitHubIssuesProvider` | Implemented (REST via `@journeyman/github-api`) |
 | `GitHubProjectsProvider` | Implemented (GraphQL ProjectV2 via `@journeyman/github-api`) |
-| `GitLabProvider` | Stub |
-| `JiraProvider` | Stub |
-| `LinearProvider` | Stub |
-| `MondayProvider` | Stub |
-| `SlackProvider` | Stub |
-| `retryable` step flag | Implemented (`retryable?: boolean` on `FlowStepDefinition`; gates `POST /retry`) |
-| `@journeyman/mcp` package | Implemented |
-| MCP instance CRUD (user + org routes) | Implemented |
-| `resolveMcpInstances` resolver | Implemented |
-| `toMcpServerConfigs` / `mergeSystemPrompts` (subpath export) | Implemented |
-| `analyze`/`plan`/`implement` consume `mcps?: ResolvedMcpInstance[]` | Implemented |
-| `PhaseDefinition.supportsMcp` flag | Removed (unused; replaced by existing `tabs.mcp`) |
-| Flow-editor MCP picker UI | Implemented |
-| Worker pre-resolution of `mcpInstanceIds → ResolvedMcpInstance[]` | Implemented |
-| Legacy `config.mcp` / `config.allowedTools` migration | Implemented (load-time strip in flow editor) |
+| `GitLabProvider` / `JiraProvider` / `LinearProvider` / `MondayProvider` / `SlackProvider` | Stub |
+| `retryable` step flag (`FlowStepDefinition`; gates `POST /retry`) | Implemented |
+| `@journeyman/mcp` — registry, CRUD (user + org routes), `resolveMcpInstances`, `toMcpServerConfigs` / `mergeSystemPrompts` subpath | Implemented |
+| `analyze` / `plan` / `implement` consume `mcps?: ResolvedMcpInstance[]` | Implemented |
+| Flow-editor MCP picker UI + worker pre-resolution of `mcpInstanceIds` | Implemented |
+| Legacy `config.mcp` / `config.allowedTools` migration (load-time strip) | Implemented |
+| `PhaseDefinition.supportsMcp` flag | Removed (replaced by `tabs.mcp`) |
 
 ## Adding a New Provider
 
@@ -161,3 +236,4 @@ npx tsx packages/coding-cli/src/providers/claude/operations/scan-repos.ts
 3. Create the provider class in the correct package under `src/providers/<name>/index.ts`.
 4. Implement the interface — throw for unimplemented methods.
 5. Export from the package's `src/index.ts`.
+6. Run `npm run check` to verify types + import boundaries.

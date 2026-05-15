@@ -191,11 +191,12 @@ export interface WorkflowValidationReport {
 }
 
 /** Pure function — does not mutate any reply. Returns the full report.
- *  `customPhaseInputs` maps a customPhaseId to its declared input fields,
- *  so custom-ai nodes get per-instance validation (required-field checks). */
+ *  `customPhaseShapes` maps a customPhaseId to its declared inputFields and
+ *  outputSchema, so custom-ai nodes get per-instance validation on both
+ *  consumer side (required fields) and source side (ref output resolution). */
 export function computeValidationReport(
   definition: WorkflowGraph,
-  customPhaseInputs: Map<string, Record<string, unknown>> = new Map(),
+  customPhaseShapes: Map<string, CustomPhaseShape> = new Map(),
 ): WorkflowValidationReport {
   const errors: string[] = [];
   const missing: string[] = [];
@@ -213,7 +214,9 @@ export function computeValidationReport(
     if (node.phaseType === "custom-ai") {
       const cfg = (node.config ?? {}) as { customPhaseId?: string };
       const id = cfg.customPhaseId;
-      if (id && customPhaseInputs.has(id)) return customPhaseInputs.get(id)!;
+      if (id && customPhaseShapes.has(id)) {
+        return customPhaseShapes.get(id)!.inputFields as Record<string, unknown>;
+      }
     }
     return inputsByPhase.get(node.phaseType ?? "") ?? {};
   }
@@ -248,98 +251,34 @@ export function computeValidationReport(
       outputSchema: entry.outputSchema,
     };
   }
-  // Per-node overlay: custom-ai nodes get per-instance inputFields keyed by
-  // the synthetic phaseType `custom-ai:<id>` so validateFlowInputs picks up
-  // the right declarations. We mutate the validationCatalog AND temporarily
-  // rewrite the node's phaseType for the validator's lookup.
-  for (const [id, fields] of customPhaseInputs) {
-    validationCatalog[`custom-ai:${id}`] = {
-      inputFields: fields as ValidationCatalog[string]["inputFields"],
-      outputSchema: validationCatalog["custom-ai"]?.outputSchema ?? null,
-    };
+  // Per-customPhaseId overlay on the "custom-ai" entry. The core validator
+  // resolves a node's effective inputFields/outputSchema by checking
+  // customPhases[customPhaseId] on both the consumer side and source side
+  // (refs into a custom-ai node's output). No phaseType rewrite needed.
+  if (customPhaseShapes.size > 0) {
+    const existing = validationCatalog["custom-ai"] ?? {};
+    const customPhases: NonNullable<ValidationCatalog[string]["customPhases"]> = { ...(existing.customPhases ?? {}) };
+    for (const [id, shape] of customPhaseShapes) {
+      const prior = customPhases[id];
+      customPhases[id] = {
+        name: prior?.name ?? id,
+        requiresSkills: prior?.requiresSkills ?? false,
+        defaultSkillIds: prior?.defaultSkillIds ?? [],
+        requiresMcp: prior?.requiresMcp ?? false,
+        defaultMcpIds: prior?.defaultMcpIds ?? [],
+        inputFields: shape.inputFields as ValidationCatalog[string]["inputFields"],
+        outputSchema: shape.outputSchema,
+      };
+    }
+    validationCatalog["custom-ai"] = { ...existing, customPhases };
   }
-  const adaptedDef: WorkflowGraph = {
-    ...definition,
-    nodes: definition.nodes.map((n) => {
-      if (n.phaseType === "custom-ai") {
-        const cfg = (n.config ?? {}) as { customPhaseId?: string };
-        if (cfg.customPhaseId && customPhaseInputs.has(cfg.customPhaseId)) {
-          return { ...n, phaseType: `custom-ai:${cfg.customPhaseId}` };
-        }
-      }
-      return n;
-    }),
-  };
-  const inputWarnings = validateWorkflowInputs(adaptedDef, validationCatalog);
+  const inputWarnings = validateWorkflowInputs(definition, validationCatalog);
   for (const w of inputWarnings) {
     if (w.code === "missing-required") continue; // already in `missing[]` via Check 1
     warnings.push(w.message);
   }
 
   return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };
-}
-
-/** Pre-fetches custom-ai phase inputFields referenced by the workflow so the
- *  validator can apply per-instance required-field checks. */
-async function loadCustomPhaseInputs(
-  c: Composition,
-  definition: WorkflowGraph,
-): Promise<Map<string, Record<string, unknown>>> {
-  const map = new Map<string, Record<string, unknown>>();
-  if (!c.pool) return map;
-  const ids = new Set<string>();
-  for (const node of definition.nodes) {
-    if (node.phaseType !== "custom-ai") continue;
-    const cfg = (node.config ?? {}) as { customPhaseId?: string };
-    if (cfg.customPhaseId) ids.add(cfg.customPhaseId);
-  }
-  for (const id of ids) {
-    const phase = await getCustomAiPhase(c.pool, id);
-    if (!phase) continue;
-    // Convert CustomPhaseInputField[] → InputFields shape (record keyed by name).
-    const fields: Record<string, { shape: { type: string }; required: boolean; label?: string }> = {};
-    for (const f of phase.inputFields ?? []) {
-      fields[f.name] = {
-        shape: { type: customTypeToShape(f.type) },
-        required: f.required,
-        label: f.name,
-      };
-    }
-    map.set(id, fields as unknown as Record<string, unknown>);
-  }
-  return map;
-}
-
-function customTypeToShape(t: string): string {
-  switch (t) {
-    case "string": case "number": case "boolean": return t;
-    case "string[]": return "array";
-    case "object": return "object";
-    case "array": return "array";
-    case "workspaceDir": return "string";
-    case "repoRef": return "ref";
-    case "issueRef": return "ref";
-    default: return "string";
-  }
-}
-
-/** Save-path adapter: writes 400 to reply if invalid. */
-function validateAndWarnDefinition(
-  definition: WorkflowGraph,
-  reply: import("fastify").FastifyReply,
-  customPhaseInputs?: Map<string, Record<string, unknown>>,
-): { ok: true } | { ok: false } {
-  const report = computeValidationReport(definition, customPhaseInputs);
-  if (report.errors.length) {
-    reply.code(400).send({ error: "WorkflowValidationError", message: report.errors[0], errors: report.errors });
-    return { ok: false };
-  }
-  if (report.missing.length) {
-    reply.code(400).send({ error: "WorkflowValidationError", message: "Required inputs missing", missing: report.missing });
-    return { ok: false };
-  }
-  if (report.warnings.length) console.warn("[workflow save warnings]", report.warnings);
-  return { ok: true };
 }
 
 async function loadCustomPhaseShapes(
@@ -362,29 +301,6 @@ async function loadCustomPhaseShapes(
   return map;
 }
 
-/** Save-path structural check: rejects only graphs that cannot round-trip
- *  through ConductorJsonConverter. Content-level validation (missing inputs,
- *  dangling refs, shape mismatches) is intentionally skipped on save and
- *  enforced only on publish via validateForPublish. */
-async function validateGraphStructure(
-  c: Composition,
-  definition: WorkflowGraph,
-  reply: import("fastify").FastifyReply,
-): Promise<{ ok: true } | { ok: false }> {
-  try {
-    const customPhaseDefs = await loadCustomPhaseShapes(c, definition);
-    ConductorJsonConverter.validateGraph(definition, undefined, customPhaseDefs);
-    return { ok: true };
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    reply.code(400).send({
-      error: "WorkflowValidationError",
-      message,
-      errors: [message],
-    });
-    return { ok: false };
-  }
-}
 import {
   canCreateAtScope, canDelete, canEdit, canPromoteTo, canRead,
   type Caller,
@@ -414,8 +330,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       reply.code(400);
       return { error: "bad_request", message: "definition is required" };
     }
-    const customPhaseInputs = await loadCustomPhaseInputs(c, body.definition);
-    const report = computeValidationReport(body.definition, customPhaseInputs);
+    const customPhaseShapes = await loadCustomPhaseShapes(c, body.definition);
+    const report = computeValidationReport(body.definition, customPhaseShapes);
     const callerScope: WorkflowScope = "user";
     const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
 
@@ -497,9 +413,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const ownerUserId = body.scope === "user" ? caller.userId : null;
 
-    const _v = await validateGraphStructure(c, body.definition as WorkflowGraph, reply);
-    if (!_v.ok) return;
-
+    // Save accepts any graph that passes the Zod envelope check. Semantic
+    // validation (refs, dominators, shape) runs on Validate and Publish.
     const warnings = await computeSaveWarnings(c, ctx, body.scope as WorkflowScope, body.definition as WorkflowGraph);
 
     const { workflow, version } = await c.workflows.create({
@@ -572,8 +487,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     let newVersion = null;
     let warnings: WorkflowSaveWarning[] = [];
     if (body.definition) {
-      const _v = await validateGraphStructure(c, body.definition as WorkflowGraph, reply);
-      if (!_v.ok) return;
+      // Save accepts any graph that passes the Zod envelope check. Semantic
+      // validation (refs, dominators, shape) runs on Validate and Publish.
       warnings = await computeSaveWarnings(c, ctx, workflow.scope, body.definition as WorkflowGraph);
       newVersion = await c.workflowVersions.appendVersion({
         workflowId: id, definition: body.definition as WorkflowGraph, createdByUserId: caller.userId,
