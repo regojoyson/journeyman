@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NodeExecution, WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, ResolvedNodeStatus } from "../types.ts";
-import { PhaseLogsSection } from "./PhaseLogsSection.tsx";
 
 export interface NodeDetailDrawerProps {
   nodeId: string | null;
@@ -71,8 +70,6 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
           </pre>
         </div>
       )}
-
-      <PhaseLogsSection events={p.events} />
 
       <div className="je-runview__section">
         <h3>Attempts</h3>

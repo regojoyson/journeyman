@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { WorkflowInstanceViewer as RunViewer } from "@journeyman/run-viewer";
-import { PhaseRegistryProvider } from "@journeyman/flow-editor";
+import { PhaseRegistryProvider, OrgIdProvider } from "@journeyman/flow-editor";
 import { builtInPhases } from "@journeyman/phases";
 import type { WorkflowInstanceEvent } from "@journeyman/core";
 import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
 import { useRunActions } from "../hooks/useRunActions.ts";
+import { useAuth } from "../AuthContext.tsx";
 
 export function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { activeOrgId } = useAuth();
   const [liveEvents, setLiveEvents] = useState<WorkflowInstanceEvent[]>([]);
   const actions = useRunActions(id);
 
@@ -102,6 +104,7 @@ export function RunDetailPage() {
           </details>
         </div>
       )}
+      <OrgIdProvider orgId={activeOrgId ?? ""}>
       <PhaseRegistryProvider phases={builtInPhases}>
       <RunViewer
         workflow={detailQ.data.workflowInstance.definitionSnapshot}
@@ -122,6 +125,7 @@ export function RunDetailPage() {
         onRefresh={() => { setLiveEvents([]); detailQ.refetch(); }}
       />
       </PhaseRegistryProvider>
+      </OrgIdProvider>
       {busy && (
         <div style={{ position: "fixed", bottom: 16, left: 16, color: "#888", fontSize: 11 }}>
           working…
