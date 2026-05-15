@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { WorkflowGraph, WorkflowSaveWarning, WorkflowStatus } from "@journeyman/core";
-import { validateWorkflowInputs } from "@journeyman/core";
-import { useValidationCatalog } from "../properties-panel/use-validation-catalog.ts";
-import { InputWarningsSection } from "./InputWarningsSection.tsx";
 import { StatusPill } from "./StatusPill.tsx";
 import {
   Check,
@@ -26,7 +23,6 @@ export interface ValidationReport {
   missing: string[];
   warnings: string[];
   secretWarnings?: WorkflowSaveWarning[];
-  inputWarnings?: WorkflowSaveWarning[];
 }
 
 export interface TopbarProps {
@@ -62,18 +58,12 @@ export function Topbar(p: TopbarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const validationCatalog = useValidationCatalog(p.flow);
-  const inputWarnings = useMemo(
-    () => (p.flow ? validateWorkflowInputs(p.flow, validationCatalog) : []),
-    [p.flow, validationCatalog],
-  );
-
   const runValidate = async () => {
     if (!p.onValidate) return;
     setValidating(true);
     try {
       const r = await p.onValidate();
-      setReport({ ...r, inputWarnings });
+      setReport(r);
     } catch (e) {
       setReport({
         ok: false,
@@ -81,7 +71,6 @@ export function Topbar(p: TopbarProps) {
         missing: [],
         warnings: [],
         secretWarnings: [],
-        inputWarnings,
       });
     } finally {
       setValidating(false);
@@ -467,11 +456,10 @@ function ImportPanel({
 
 function ValidationPanel({ report, onClose }: { report: ValidationReport; onClose: () => void }) {
   const secretWarnings = report.secretWarnings ?? [];
-  const inputWarnings = report.inputWarnings ?? [];
   const total =
     report.errors.length + report.missing.length + report.warnings.length +
-    secretWarnings.length + inputWarnings.length;
-  const totalWarn = secretWarnings.length + inputWarnings.length;
+    secretWarnings.length;
+  const totalWarn = secretWarnings.length;
   return (
     <div className="je-validate-panel">
       <div className="je-validate-panel__header">
@@ -506,11 +494,6 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
         {secretWarnings.length > 0 && (
           <CollapsibleSection title="Secret warnings" tone="warn" count={secretWarnings.length} defaultOpen={false}>
             <SecretWarningsBody warnings={secretWarnings} />
-          </CollapsibleSection>
-        )}
-        {inputWarnings.length > 0 && (
-          <CollapsibleSection title="Input warnings" tone="warn" count={inputWarnings.length} defaultOpen={false}>
-            <InputWarningsSection warnings={inputWarnings} />
           </CollapsibleSection>
         )}
       </div>
@@ -622,7 +605,6 @@ function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
             </div>
           );
         }
-        // Other codes (input-validation variants) handled by InputWarningsSection — skip here.
         return null;
       })}
     </>
