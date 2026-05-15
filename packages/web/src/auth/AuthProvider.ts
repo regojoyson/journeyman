@@ -36,6 +36,6 @@ export interface AuthProvider {
 
 export const DEFAULT_AUTH_CONFIG: AuthProviderConfig = {
   refreshLeewaySeconds: 60,
-  idleTimeoutSeconds: 30 * 60,
+  idleTimeoutSeconds: 2 * 60 * 60,
   idleWarnBeforeSeconds: 60,
 };

@@ -26,3 +26,9 @@ export type Logger = pino.Logger;
 export function createLogger(namespace: string): Logger {
   return root.child({ ns: namespace });
 }
+
+export { createWorkflowLogger, loggerForRun, type WorkflowLogCtx } from "./log/workflow-logger.ts";
+export { serializeError, type SerializedError } from "./log/serialize-error.ts";
+export { redactString, redactObject } from "./log/redact.ts";
+export { LogTail } from "./log/log-tail.ts";
+export { appendPhaseEvent, type MinimalEventBus } from "./log/append-phase-event.ts";

@@ -8,7 +8,7 @@ function envSeconds(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
-const ACCESS_TTL_SECONDS = envSeconds("ACCESS_TOKEN_TTL_SECONDS", 15 * 60);
+const ACCESS_TTL_SECONDS = envSeconds("ACCESS_TOKEN_TTL_SECONDS", 5 * 60 * 60);
 
 function secret(): string {
   const s = process.env.JWT_SECRET;

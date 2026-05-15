@@ -51,6 +51,10 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
           cur.durationMs = cur.completedAt.getTime() - cur.startedAt.getTime();
         }
         break;
+      case "phase.skipped":
+        cur.status = "skipped";
+        cur.completedAt = new Date(ev.ts);
+        break;
       case "node.waiting":
         cur.status = "waiting";
         cur.startedAt ??= new Date(ev.ts);

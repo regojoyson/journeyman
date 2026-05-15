@@ -7,6 +7,7 @@ import type {
 } from "@journeyman/core";
 import { createLogger } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
+import { emitRoutingEvents } from "./emit-routing-events.ts";
 import type { IWorkflowJsonConverter } from "@journeyman/core";
 import type { ConductorWorkflowDef } from "../../flow-json/conductor-types.ts";
 
@@ -195,6 +196,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
           payload: { taskType: t.taskType, output: t.outputData ?? {} },
         });
       }
+      await emitRoutingEvents(this.deps.events, instance.id, exec.tasks as unknown as Parameters<typeof emitRoutingEvents>[2]);
     } catch (err) {
       log.warn(
         { workflowInstanceId: instance.id, err: (err as Error)?.message },

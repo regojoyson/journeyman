@@ -229,7 +229,9 @@ function CanvasInner(p: CanvasProps) {
 
   /** Propagate a change to the parent and remember its sig so the resync effect skips the echo. */
   const propagate = useCallback((next: WorkflowGraph) => {
-    propagatedSigRef.current = structuralSig(next);
+    const sig = structuralSig(next);
+    if (sig === propagatedSigRef.current) return;
+    propagatedSigRef.current = sig;
     onChangeRef.current(next);
   }, []);
 

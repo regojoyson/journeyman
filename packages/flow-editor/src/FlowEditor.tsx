@@ -1,6 +1,7 @@
 // packages/flow-editor/src/FlowEditor.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "./canvas/Canvas.tsx";
+import { structuralSig } from "./canvas/flow-rf-adapters.ts";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
 import { PropertiesPanel } from "./properties-panel/PropertiesPanel.tsx";
@@ -80,7 +81,7 @@ export function FlowEditor(props: FlowEditorProps) {
   const lastHealedSigRef = useRef<string | null>(null);
   useEffect(() => {
     if (!heal.restored.length) return;
-    const sig = `${heal.healed.nodes.length}:${heal.healed.edges.length}:${heal.restored.join(",")}`;
+    const sig = `${structuralSig(heal.healed)}|${heal.restored.join(",")}`;
     if (lastHealedSigRef.current === sig) {
       // eslint-disable-next-line no-console
       console.warn("[flow-editor] autoHeal would re-fire with identical signature — skipping to break loop.", { sig });

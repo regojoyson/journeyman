@@ -1,4 +1,8 @@
-import { createLogger, PROVIDER_CATALOG, kindForPhaseType } from "@journeyman/core";
+import {
+  createLogger, PROVIDER_CATALOG, kindForPhaseType,
+  loggerForRun, appendPhaseEvent, serializeError, LogTail,
+  type WorkflowLogCtx,
+} from "@journeyman/core";
 import type {
   IEventBus, IPhaseRegistry, IWorkspaceProvider,
   SecretBinding,
@@ -7,8 +11,9 @@ import type {
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
+import { startHeartbeat } from "./heartbeat.ts";
 
-const log = createLogger("orchestrator:worker");
+const baseLog = createLogger("orchestrator:worker");
 
 export interface WorkerHarnessDeps {
   client: ConductorClient;
@@ -18,44 +23,22 @@ export interface WorkerHarnessDeps {
   workerId: string;
   pollIntervalMs?: number;
 
-  /**
-   * Slot-aware resolver injected by the composition root. Walks the phase's
-   * declared slots and the task's bindings, returns slot-keyed env values.
-   */
   bindingResolver: (input: {
     ctx: { userId: string | null; orgId: string | null; workflowId: string | null };
     slots: Array<{ name: string; optional?: boolean }>;
     bindings: Record<string, SecretBinding>;
   }) => Promise<Record<string, string>>;
 
-  /**
-   * Resolves `mcpInstanceIds` (declared on a phase's node config) into
-   * fully-formed `ResolvedMcpInstance[]` ready to hand to coding-cli.
-   * Composition root supplies the implementation (curries the pg pool
-   * over `resolveMcpInstances` from `@journeyman/mcp`).
-   */
   mcpResolver: (input: {
     ctx: { userId: string; orgId: string };
     instanceIds: string[];
   }) => Promise<ResolvedMcpInstance[]>;
 
-  /**
-   * Resolves `skillPackageIds` (declared on a phase's node config) into
-   * fully-formed `ResolvedSkillPackage[]` ready to hand to coding-cli.
-   * Composition root supplies the implementation (curries the pg pool
-   * over `resolveSkillPackagesByIds` from `@journeyman/skills`).
-   */
   skillsResolver: (input: {
     ctx: { userId: string; orgId: string };
     packageIds: string[];
   }) => Promise<ResolvedSkillPackage[]>;
 
-  /**
-   * Optional fallback resolver for the model when neither the node nor the
-   * workflow defaults provide one. Returns the admin-flagged DB default model_id
-   * for the given coding provider, or undefined to defer to the provider's
-   * own hardcoded fallback.
-   */
   modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
 }
 
@@ -65,7 +48,6 @@ export class WorkerHarness {
 
   constructor(private deps: WorkerHarnessDeps) {}
 
-  /** Start the long-poll loops for the given phase types. */
   async start(phaseTypes: string[]): Promise<void> {
     this.running = true;
     await Promise.all(phaseTypes.map(t => this.loop(t)));
@@ -77,25 +59,37 @@ export class WorkerHarness {
     const interval = this.deps.pollIntervalMs ?? 500;
     while (this.running) {
       try { await this.processOnce(phaseType); }
-      catch (err) { log.error({ err, phaseType }, "poll loop error"); }
+      catch (err) { baseLog.error({ err, phaseType }, "poll loop error"); }
       await new Promise(r => setTimeout(r, interval));
     }
   }
 
-  /** Test seam: poll once and process if a task is available. */
   async processOnce(phaseType: string): Promise<void> {
     const task = await this.deps.client.pollTask(phaseType, this.deps.workerId);
     if (!task) return;
-    // conductorWorkflowId is Conductor's execution UUID — used only for Conductor API calls (completeTask).
-    // workflowInstanceId is our DB UUID, propagated via workflow input → task inputData.
     const conductorWorkflowId = task.workflowInstanceId;
     const workflowInstanceId =
       (task.inputData as { workflowInstanceId?: string }).workflowInstanceId ?? conductorWorkflowId;
-    log.info({ workflowInstanceId, nodeId: task.taskDefName, phaseType, attempt: task.retryCount + 1 }, "task picked up");
+    const nodeId = task.referenceTaskName;
+    const attempt = task.retryCount + 1;
+
+    const ctx: WorkflowLogCtx = {
+      workflowInstanceId, nodeId, phaseType,
+      attempt, taskId: task.taskId, workerId: this.deps.workerId,
+    };
+    const rlog = loggerForRun(baseLog, ctx);
+
+    await appendPhaseEvent(this.deps.events, ctx, "task.polled", {},
+      e => rlog.error({ err: e }, "task.polled emit failed"));
+    rlog.info("task picked up");
 
     const handler = this.deps.registry.get(phaseType);
     if (!handler) {
-      log.error({ workflowInstanceId, nodeId: task.taskDefName, phaseType }, "no handler registered for phase — failing task");
+      rlog.error("no handler registered for phase — failing task");
+      await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        reason: "handler_missing",
+        error: { errorClass: "HandlerMissing", message: `No handler for phase '${phaseType}'` },
+      });
       await this.deps.client.completeTask({
         workflowInstanceId: conductorWorkflowId,
         taskId: task.taskId,
@@ -107,7 +101,7 @@ export class WorkerHarness {
 
     const visit = this.visitCounter.recordVisit(workflowInstanceId, task.taskDefName);
     if (visit.exceeded) {
-      log.warn({ workflowInstanceId, nodeId: task.taskDefName, count: visit.count }, "cycle limit exceeded");
+      rlog.warn({ count: visit.count }, "cycle limit exceeded");
       await this.deps.events.append({
         workflowInstanceId,
         nodeId: task.taskDefName,
@@ -123,7 +117,6 @@ export class WorkerHarness {
       return;
     }
 
-    const nodeId = task.referenceTaskName;
     const rawInput = (task.inputData ?? {}) as Record<string, unknown>;
     const inputSources = (rawInput as { _flowDefaultSources?: Record<string, "node" | "flow-default"> })._flowDefaultSources;
     const phaseInput: Record<string, unknown> = { ...rawInput };
@@ -148,10 +141,6 @@ export class WorkerHarness {
         : [];
       const phaseSlots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
 
-      // Kind-override: when the phase declares `slotsFromKind`, look up the
-      // slot list from the workflow's catalog entry for that kind, not the
-      // phase's executor provider. The conductor-converter passes the
-      // workflow's per-kind providers as `_kindProviders`.
       const slotsFromKind = (phaseDef as unknown as { slotsFromKind?: string }).slotsFromKind;
       const kindProviders =
         (phaseInput as { _kindProviders?: Record<string, string> })._kindProviders ?? {};
@@ -163,8 +152,8 @@ export class WorkerHarness {
         ? kindOverrideSlots
         : (phaseSlots.length > 0 ? phaseSlots : providerSlots);
 
-      log.info({
-        workflowInstanceId, nodeId, phaseKind, provider,
+      rlog.info({
+        phaseKind, provider,
         slotsFromKind: slotsFromKind ?? null,
         kindProvider: slotsFromKind ? (kindProviders[slotsFromKind] ?? null) : null,
         slots: slots.map(s => s.name),
@@ -179,15 +168,16 @@ export class WorkerHarness {
         bindings: declaredBindings,
       });
 
-      log.info({ workflowInstanceId, nodeId, resolvedKeys: Object.keys(resolvedEnv) }, "secrets resolved");
+      rlog.info({ resolvedKeys: Object.keys(resolvedEnv) }, "secrets resolved");
     } catch (err: any) {
       const isCredErr = err?.name === "MissingSecretsError";
       if (isCredErr) {
         const missing: string[] = err.missing ?? (err.ref ? [String(err.ref)] : []);
-        log.error({ workflowInstanceId, nodeId, missing }, "phase failed: missing secrets");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.failed",
-          payload: { reason: "missing_secrets", missing, message: String(err?.message ?? "") },
+        rlog.error({ missing }, "phase failed: missing secrets");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+          reason: "missing_secrets",
+          missing,
+          error: serializeError(err),
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -211,12 +201,12 @@ export class WorkerHarness {
           ctx: { userId, orgId },
           instanceIds: mcpInstanceIds,
         });
-        log.info({ workflowInstanceId, nodeId, count: mcps.length }, "MCPs resolved");
+        rlog.info({ count: mcps.length }, "MCPs resolved");
       } catch (err: any) {
-        log.error({ workflowInstanceId, nodeId, err: err?.message }, "MCP resolution failed");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.failed",
-          payload: { reason: "mcp_resolution_failed", message: String(err?.message ?? "") },
+        rlog.error({ err: err?.message }, "MCP resolution failed");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+          reason: "mcp_resolution_failed",
+          error: serializeError(err),
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -240,12 +230,12 @@ export class WorkerHarness {
           ctx: { userId, orgId },
           packageIds: skillPackageIds,
         });
-        log.info({ workflowInstanceId, nodeId, count: skills.length }, "skills resolved");
+        rlog.info({ count: skills.length }, "skills resolved");
       } catch (err: any) {
-        log.error({ workflowInstanceId, nodeId, err: err?.message }, "skills resolution failed");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.failed",
-          payload: { reason: "skills_resolution_failed", message: String(err?.message ?? "") },
+        rlog.error({ err: err?.message }, "skills resolution failed");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+          reason: "skills_resolution_failed",
+          error: serializeError(err),
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -267,7 +257,7 @@ export class WorkerHarness {
             (phaseInput as { model?: string }).model = sysModel;
           }
         } catch (err: any) {
-          log.warn({ workflowInstanceId, nodeId, err: err?.message }, "model resolver failed; deferring to provider default");
+          rlog.warn({ err: err?.message }, "model resolver failed; deferring to provider default");
         }
       }
     }
@@ -278,6 +268,18 @@ export class WorkerHarness {
       payload: { attempt: task.retryCount + 1, inputSources, input: inputForEvent },
     });
 
+    const tail = new LogTail<string>(20);
+    const heartbeatMs = Number(process.env.WORKER_HEARTBEAT_MS ?? 30_000);
+    const startedAt = Date.now();
+    const stopHeartbeat = startHeartbeat({
+      intervalMs: heartbeatMs,
+      onBeat: (elapsedMs) => {
+        appendPhaseEvent(this.deps.events, ctx, "worker.heartbeat", { elapsedMs })
+          .catch(e => rlog.debug({ err: e }, "heartbeat emit failed"));
+        rlog.debug({ elapsedMs }, "phase.heartbeat");
+      },
+    });
+
     try {
       const workflowInputs = ((phaseInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
       const result = await handler.run(phaseInput, {
@@ -286,17 +288,19 @@ export class WorkerHarness {
         env: resolvedEnv,
         workflowInputs,
         log: (line, meta) => {
+          const text = typeof line === "string" ? line : String(line);
+          tail.push(text);
           this.deps.events.append({
             workflowInstanceId, nodeId, eventType: "phase.log", payload: { line, meta },
-          }).catch(err => log.error(err, "log emit failed"));
+          }).catch(err => rlog.error({ err }, "log emit failed"));
         },
       });
 
       if (result.kind === "success") {
-        log.info({ workflowInstanceId, nodeId }, "phase completed");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.completed",
-          payload: { output: result.output },
+        const durationMs = Date.now() - startedAt;
+        rlog.info({ durationMs }, "phase completed");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.completed", {
+          output: result.output, durationMs,
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -304,10 +308,14 @@ export class WorkerHarness {
         });
       } else {
         const retryable = result.failure.retryable ?? false;
-        log.error({ workflowInstanceId, nodeId, retryable, error: result.failure }, "phase failed");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.failed",
-          payload: { error: result.failure, classified: { retryable } },
+        const durationMs = Date.now() - startedAt;
+        rlog.error({ retryable, error: result.failure, durationMs }, "phase failed");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+          reason: "handler_error",
+          error: { ...result.failure, retryable },
+          tail: tail.drain(),
+          classified: { retryable },
+          durationMs,
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -316,11 +324,14 @@ export class WorkerHarness {
         });
       }
     } catch (err: any) {
+      const durationMs = Date.now() - startedAt;
       if (err?.name === "ConfigurationError") {
-        log.error({ workflowInstanceId, nodeId, message: err.message }, "phase failed: configuration error");
-        await this.deps.events.append({
-          workflowInstanceId, nodeId, eventType: "phase.failed",
-          payload: { reason: "configuration_error", message: String(err?.message ?? "") },
+        rlog.error({ message: err.message, durationMs }, "phase failed: configuration error");
+        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+          reason: "configuration_error",
+          error: serializeError(err),
+          tail: tail.drain(),
+          durationMs,
         });
         await this.deps.client.completeTask({
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -329,10 +340,12 @@ export class WorkerHarness {
         });
         return;
       }
-      log.error({ workflowInstanceId, nodeId, err }, "phase threw unhandled error");
-      await this.deps.events.append({
-        workflowInstanceId, nodeId, eventType: "phase.failed",
-        payload: { error: { errorClass: "UnhandledError", message: String(err?.message ?? err) } },
+      rlog.error({ err: serializeError(err), durationMs }, "phase threw unhandled error");
+      await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        reason: "unhandled",
+        error: serializeError(err),
+        tail: tail.drain(),
+        durationMs,
       });
       await this.deps.client.completeTask({
         workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
@@ -340,17 +353,12 @@ export class WorkerHarness {
         reasonForIncompletion: String(err?.message ?? err),
       });
     } finally {
-      await ws.destroy().catch(e => log.warn(e, "workspace destroy failed"));
+      stopHeartbeat();
+      await ws.destroy().catch(e => rlog.warn({ err: e }, "workspace destroy failed"));
     }
   }
 }
 
-/**
- * Strip resolved/internal fields from phaseInput before emitting it on
- * `phase.started`. The UI shows this as the phase's Input — keep only the
- * user-meaningful fields, not server-resolved objects (mcps, skills,
- * resolved secret values) or harness plumbing.
- */
 function redactPhaseInputForEvent(phaseInput: Record<string, unknown>): Record<string, unknown> {
   const REDACT = new Set([
     "mcps", "skills", "secretBindings",

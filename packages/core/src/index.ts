@@ -24,7 +24,14 @@ export type * from "./types/human-task.types.ts";
 export type * from "./types/secret-slot.types.ts";
 export * from "./types/identity.types.ts";
 // Logger
-export { createLogger, type Logger } from "./logger.ts";
+export {
+  createLogger, type Logger,
+  createWorkflowLogger, loggerForRun, type WorkflowLogCtx,
+  serializeError, type SerializedError,
+  redactString, redactObject,
+  LogTail,
+  appendPhaseEvent, type MinimalEventBus,
+} from "./logger.ts";
 
 export type {
   PipelineContext,

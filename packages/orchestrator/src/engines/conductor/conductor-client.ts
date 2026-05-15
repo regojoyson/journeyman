@@ -126,10 +126,22 @@ export class ConductorClient {
   }
 
   async pollTask(taskType: string, workerId: string): Promise<PolledTask | null> {
-    const r = await this.request<PolledTask | null>(
-      `/tasks/poll/${encodeURIComponent(taskType)}?workerid=${encodeURIComponent(workerId)}`,
-    );
-    return r ?? null;
+    const reqStart = Date.now();
+    log.debug({ phaseType: taskType, workerId }, "conductor.poll.request.start");
+    try {
+      const r = await this.request<PolledTask | null>(
+        `/tasks/poll/${encodeURIComponent(taskType)}?workerid=${encodeURIComponent(workerId)}`,
+      );
+      log.debug({
+        phaseType: taskType, workerId, hasTask: !!r, durationMs: Date.now() - reqStart,
+      }, "conductor.poll.request.end");
+      return r ?? null;
+    } catch (err) {
+      log.error({
+        phaseType: taskType, workerId, err, durationMs: Date.now() - reqStart,
+      }, "conductor.poll.request.failed");
+      throw err;
+    }
   }
 
   async ackTask(taskId: string, workerId: string): Promise<boolean> {
@@ -140,7 +152,19 @@ export class ConductorClient {
   }
 
   async completeTask(body: TaskCompletionBody): Promise<void> {
-    await this.request(`/tasks`, { method: "POST", body: JSON.stringify(body) });
+    const reqStart = Date.now();
+    log.debug({ taskId: body.taskId, status: body.status }, "conductor.complete.request.start");
+    try {
+      await this.request(`/tasks`, { method: "POST", body: JSON.stringify(body) });
+      log.debug({
+        taskId: body.taskId, status: body.status, durationMs: Date.now() - reqStart,
+      }, "conductor.complete.request.end");
+    } catch (err) {
+      log.error({
+        taskId: body.taskId, status: body.status, err, durationMs: Date.now() - reqStart,
+      }, "conductor.complete.request.failed");
+      throw err;
+    }
   }
 
   /**
