@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { WorkflowInstance } from "@journeyman/core";
+import { formatDuration, type WorkflowInstance } from "@journeyman/core";
 
 export interface WorkflowInstanceTopbarProps {
   workflowName: string;
@@ -34,7 +34,7 @@ export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
   }, [autoRefreshMs, p.onRefresh]);
 
   const startedLabel = p.workflowInstance.startedAt
-    ? `started ${new Date(p.workflowInstance.startedAt).toLocaleTimeString()}`
+    ? `started ${new Date(p.workflowInstance.startedAt).toLocaleString()}`
     : "not started";
   const isRunning = p.workflowInstance.status === "running";
   const isPaused = p.workflowInstance.status === "paused";
@@ -54,7 +54,7 @@ export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
       <span className={`je-runview__pill ${p.workflowInstance.status}`}>{p.workflowInstance.status}</span>
       <span style={{ color: "#888", fontSize: 11 }}>{startedLabel}</span>
       {p.workflowInstance.durationMs && (
-        <span style={{ color: "#888", fontSize: 11 }}>· {(p.workflowInstance.durationMs / 1000).toFixed(1)}s</span>
+        <span style={{ color: "#888", fontSize: 11 }}>· {formatDuration(p.workflowInstance.durationMs)}</span>
       )}
       <div style={{ flex: 1 }} />
       {p.onRefresh && (

@@ -143,6 +143,7 @@ export { extractTemplateRefs, replaceTemplateRefs } from "./utils/template-refs.
 export type { TemplateSegment } from "./utils/template-refs.ts";
 export type { IssueRefProvider, ParsedIssueRef } from "./utils/issue-ref.ts";
 export { formatIssueForPrompt, isIssueLike } from "./utils/format-issue.ts";
+export { formatDuration } from "./utils/format-duration.ts";
 export {
   validateInputBinding,
   validateWorkflowInputs,

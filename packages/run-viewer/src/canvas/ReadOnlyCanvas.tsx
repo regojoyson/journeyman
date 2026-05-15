@@ -57,6 +57,8 @@ function CanvasInner(p: ReadOnlyCanvasProps) {
     data: {
       displayName: n.displayName ?? n.phaseType ?? n.type,
       phaseType: n.phaseType ?? "",
+      config: n.config ?? {},
+      inputs: n.inputs ?? {},
       runStatus: p.statuses.get(n.id),
     },
     selected: n.id === p.selectedNodeId,

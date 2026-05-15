@@ -101,7 +101,11 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
       />
       <div
         className="je-runview__body"
-        style={{ gridTemplateColumns: `1fr 6px ${drawerWidth}px` }}
+        style={{
+          gridTemplateColumns: selectedNodeId
+            ? `1fr 6px ${drawerWidth}px`
+            : `1fr 0 0`,
+        }}
       >
         <ReadOnlyCanvas
           workflow={props.workflow}
@@ -109,25 +113,28 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
           selectedNodeId={selectedNodeId}
           onSelect={setSelectedNodeId}
         />
-        <PanelResizer
-          width={drawerWidth}
-          onResize={setDrawerWidth}
-          side="right"
-          min={DRAWER_WIDTH_MIN}
-          max={DRAWER_WIDTH_MAX}
-        />
-        <NodeDetailDrawer
+        {selectedNodeId && (
+          <PanelResizer
+            width={drawerWidth}
+            onResize={setDrawerWidth}
+            side="right"
+            min={DRAWER_WIDTH_MIN}
+            max={DRAWER_WIDTH_MAX}
+          />
+        )}
+        {selectedNodeId && <NodeDetailDrawer
           nodeId={selectedNodeId}
           displayName={selectedDisplayName}
           status={selectedNodeId ? (statuses.get(selectedNodeId) ?? null) : null}
           events={eventsForSelected}
           executions={execsForSelected}
+          onClose={() => setSelectedNodeId(null)}
           onRetryStep={selectedNodeId && props.onRetryStep
             ? () => props.onRetryStep!(selectedNodeId)
             : undefined}
           pendingHumanTask={props.pendingHumanTask ?? null}
           onResolveHumanTask={props.onResolveHumanTask}
-        />
+        />}
       </div>
       {logsOpen && (
         <WorkflowLogsPanel

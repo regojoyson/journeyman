@@ -1,5 +1,6 @@
 import "./styles.css";
 import React from "react";
+import { formatDuration } from "@journeyman/core";
 import type { WorkflowInstancesListProps } from "./types.ts";
 import { WorkflowInstanceFilters } from "./RunFilters.tsx";
 import { ProviderBadge } from "./ProviderBadge.tsx";
@@ -112,7 +113,7 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                       )}
                     </td>
                     <td style={{ color: "#888" }}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"}</td>
-                    <td style={{ color: "#888" }}>{r.durationMs ? `${(r.durationMs / 1000).toFixed(1)}s` : "—"}</td>
+                    <td style={{ color: "#888" }}>{formatDuration(r.durationMs)}</td>
                     <td style={{ color: "#ff7675" }}>{r.failedAtNodeId ?? ""}</td>
                     <td onClick={e => e.stopPropagation()}>
                       {canAct && p.onRerun && r.status !== "running" && (

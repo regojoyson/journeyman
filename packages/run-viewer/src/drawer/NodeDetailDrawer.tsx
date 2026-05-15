@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { NodeExecution, WorkflowInstanceEvent } from "@journeyman/core";
+import { formatDuration, type NodeExecution, type WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, ResolvedNodeStatus } from "../types.ts";
 
 export interface NodeDetailDrawerProps {
@@ -8,6 +8,7 @@ export interface NodeDetailDrawerProps {
   status: ResolvedNodeStatus | null;
   events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
+  onClose?: () => void;
   onRetryStep?: () => void;
   pendingHumanTask?: PendingHumanTask | null;
   onResolveHumanTask?: (input: {
@@ -18,7 +19,44 @@ export interface NodeDetailDrawerProps {
   }) => Promise<void>;
 }
 
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      title="Close (Esc)"
+      aria-label="Close details"
+      style={{
+        position: "absolute",
+        top: 8,
+        right: 8,
+        width: 28,
+        height: 28,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
+        border: "1px solid #2a2a3e",
+        borderRadius: 6,
+        color: "#aaa",
+        cursor: "pointer",
+        fontSize: 16,
+        lineHeight: 1,
+      }}
+    >
+      ×
+    </button>
+  );
+}
+
 export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
+  useEffect(() => {
+    if (!p.nodeId || !p.onClose) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") p.onClose!(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [p.nodeId, p.onClose]);
+
   if (!p.nodeId) {
     return (
       <aside className="je-runview__drawer">
@@ -45,11 +83,12 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
   const outputToShow = lastExec?.output ?? completedOutput ?? null;
 
   return (
-    <aside className="je-runview__drawer">
-      <h2>{p.displayName ?? p.nodeId}</h2>
+    <aside className="je-runview__drawer" style={{ position: "relative" }}>
+      {p.onClose && <CloseButton onClose={p.onClose} />}
+      <h2 style={{ paddingRight: 36 }}>{p.displayName ?? p.nodeId}</h2>
       <div style={{ color: "#aaa", fontSize: 11, marginBottom: 10 }}>
         {p.status ? `${p.status.status} · attempt ${p.status.attempt || 0}` : "no status"}
-        {p.status?.durationMs ? ` · ${(p.status.durationMs / 1000).toFixed(1)}s` : ""}
+        {p.status?.durationMs ? ` · ${formatDuration(p.status.durationMs)}` : ""}
       </div>
 
       <div className="je-runview__section">

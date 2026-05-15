@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 const ADMIN_ITEMS = [
   { to: "/admin/users",   icon: "👥", label: "Users"       },
   { to: "/admin/secrets", icon: "🔐", label: "Org Secrets" },
-  { to: "/admin/mcps",    icon: "🧩", label: "Org MCPs"    },
+  { to: "/admin/mcps",    icon: "🔌", label: "Org MCPs"    },
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
   { to: "/admin/custom-phases", icon: "🧩", label: "Org Custom Phases" },
   { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
