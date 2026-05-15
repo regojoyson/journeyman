@@ -21,8 +21,9 @@ const LOGS_HEIGHT_KEY = "je-runview:logsHeight";
 const LOGS_HEIGHT_DEFAULT = 240;
 const LOGS_HEIGHT_MIN = 120;
 function logsHeightMax(): number {
-  if (typeof window === "undefined") return 800;
-  return Math.max(LOGS_HEIGHT_MIN, Math.floor(window.innerHeight * 0.7));
+  if (typeof window === "undefined") return 2000;
+  // Leave just enough room for the 44px topbar so the canvas/drawer don't fully collapse.
+  return Math.max(LOGS_HEIGHT_MIN, window.innerHeight - 80);
 }
 
 export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { workflowName?: string }) {
