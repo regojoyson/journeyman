@@ -12,6 +12,9 @@ export interface WorkflowInstanceTopbarProps {
   onFork?: () => void;
   onRefresh?: () => void;
   busy?: boolean;
+  logsOpen?: boolean;
+  logsCount?: number;
+  onToggleLogs?: () => void;
 }
 
 const AUTO_REFRESH_OPTIONS: { label: string; ms: number }[] = [
@@ -22,7 +25,7 @@ const AUTO_REFRESH_OPTIONS: { label: string; ms: number }[] = [
 ];
 
 export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
-  const [autoRefreshMs, setAutoRefreshMs] = useState(0);
+  const [autoRefreshMs, setAutoRefreshMs] = useState(5000);
 
   useEffect(() => {
     if (!p.onRefresh || autoRefreshMs === 0) return;
@@ -88,6 +91,20 @@ export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
       )}
       {isTerminal && p.onFork && (
         <button style={btn} disabled={p.busy} onClick={p.onFork}>✏ Fork &amp; edit</button>
+      )}
+      {p.onToggleLogs && (
+        <button
+          style={btn}
+          onClick={p.onToggleLogs}
+          title={p.logsOpen ? "Hide logs panel" : "Show logs panel"}
+        >
+          {p.logsOpen ? "▾ Hide logs" : "▴ Show logs"}
+          {typeof p.logsCount === "number" && p.logsCount > 0 && (
+            <span style={{ marginLeft: 6, color: "#888", fontSize: 11 }}>
+              ({p.logsCount})
+            </span>
+          )}
+        </button>
       )}
       {p.onRerun && (
         <button style={btn} disabled={p.busy} onClick={p.onRerun}>↻ Re-run</button>

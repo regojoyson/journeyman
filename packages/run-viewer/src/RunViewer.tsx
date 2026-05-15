@@ -3,6 +3,7 @@ import { PanelResizer } from "@journeyman/flow-editor";
 import { ReadOnlyCanvas } from "./canvas/ReadOnlyCanvas.tsx";
 import { NodeDetailDrawer } from "./drawer/NodeDetailDrawer.tsx";
 import { WorkflowInstanceTopbar } from "./topbar/RunTopbar.tsx";
+import { WorkflowLogsPanel } from "./logs/WorkflowLogsPanel.tsx";
 import { computeNodeStatuses } from "./status/compute-node-status.ts";
 import type { WorkflowInstanceViewerProps } from "./types.ts";
 // Pull in flow-editor styles so PhaseNode (`je-node*`) and ReactFlow handle/edge
@@ -15,6 +16,15 @@ const DRAWER_WIDTH_DEFAULT = 360;
 const DRAWER_WIDTH_MIN = 280;
 const DRAWER_WIDTH_MAX = 900;
 
+const LOGS_OPEN_KEY = "je-runview:logsOpen";
+const LOGS_HEIGHT_KEY = "je-runview:logsHeight";
+const LOGS_HEIGHT_DEFAULT = 240;
+const LOGS_HEIGHT_MIN = 120;
+function logsHeightMax(): number {
+  if (typeof window === "undefined") return 800;
+  return Math.max(LOGS_HEIGHT_MIN, Math.floor(window.innerHeight * 0.7));
+}
+
 export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { workflowName?: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(props.initialSelectedNodeId ?? null);
 
@@ -26,6 +36,33 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
   useEffect(() => {
     try { localStorage.setItem(DRAWER_WIDTH_KEY, String(drawerWidth)); } catch { /* ignore */ }
   }, [drawerWidth]);
+
+  const [logsOpen, setLogsOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(LOGS_OPEN_KEY) === "1";
+  });
+  useEffect(() => {
+    try { localStorage.setItem(LOGS_OPEN_KEY, logsOpen ? "1" : "0"); } catch { /* ignore */ }
+  }, [logsOpen]);
+
+  const [logsHeight, setLogsHeight] = useState<number>(() => {
+    if (typeof window === "undefined") return LOGS_HEIGHT_DEFAULT;
+    const stored = localStorage.getItem(LOGS_HEIGHT_KEY);
+    const n = stored ? Number(stored) : NaN;
+    const max = logsHeightMax();
+    return Number.isFinite(n) && n >= LOGS_HEIGHT_MIN && n <= max ? n : LOGS_HEIGHT_DEFAULT;
+  });
+  useEffect(() => {
+    try { localStorage.setItem(LOGS_HEIGHT_KEY, String(logsHeight)); } catch { /* ignore */ }
+  }, [logsHeight]);
+  useEffect(() => {
+    const onResize = () => {
+      const max = logsHeightMax();
+      setLogsHeight(prev => Math.min(prev, max));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const statuses = useMemo(() => computeNodeStatuses({
     workflow: props.workflow, events: props.events, executions: props.executions, workflowInstanceStatus: props.workflowInstance.status,
@@ -43,6 +80,8 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
     [props.executions, selectedNodeId],
   );
 
+  const totalLogCount = props.events.length;
+
   return (
     <div className="je-runview">
       <WorkflowInstanceTopbar
@@ -55,6 +94,9 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
         onExport={props.onExport}
         onFork={props.onFork}
         onRefresh={props.onRefresh}
+        logsOpen={logsOpen}
+        logsCount={totalLogCount}
+        onToggleLogs={() => setLogsOpen(v => !v)}
       />
       <div
         className="je-runview__body"
@@ -86,6 +128,18 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
           onResolveHumanTask={props.onResolveHumanTask}
         />
       </div>
+      {logsOpen && (
+        <WorkflowLogsPanel
+          events={props.events}
+          nodes={props.workflow.nodes}
+          height={logsHeight}
+          onResizeHeight={(next) => {
+            const max = logsHeightMax();
+            setLogsHeight(Math.min(max, Math.max(LOGS_HEIGHT_MIN, next)));
+          }}
+          onClose={() => setLogsOpen(false)}
+        />
+      )}
     </div>
   );
 }

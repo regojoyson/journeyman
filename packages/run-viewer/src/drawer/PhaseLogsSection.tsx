@@ -1,42 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowInstanceEvent } from "@journeyman/core";
-
-type LogKind = "assistant" | "tool" | "tool_result" | "result_ok" | "result_err" | "other";
-
-interface ParsedLog {
-  id: number;
-  ts: Date;
-  line: string;
-  kind: LogKind;
-  meta?: Record<string, unknown>;
-}
-
-const KIND_COLOR: Record<LogKind, string> = {
-  assistant: "#74b9ff",
-  tool: "#fdcb6e",
-  tool_result: "#a4b0be",
-  result_ok: "#55efc4",
-  result_err: "#ff7675",
-  other: "#ddd",
-};
-
-const KIND_LABEL: Record<LogKind, string> = {
-  assistant: "Assistant",
-  tool: "Tools",
-  tool_result: "Tool results",
-  result_ok: "Results",
-  result_err: "Errors",
-  other: "Other",
-};
-
-function classify(line: string): LogKind {
-  if (line.startsWith("🤖")) return "assistant";
-  if (line.startsWith("🔧")) return "tool";
-  if (line.startsWith("📥")) return "tool_result";
-  if (line.startsWith("✅")) return "result_ok";
-  if (line.startsWith("❌")) return "result_err";
-  return "other";
-}
+import { parseLogs } from "../logs/parse-logs.ts";
+import {
+  ALL_KINDS,
+  KIND_COLOR,
+  KIND_LABEL,
+  type LogKind,
+  type ParsedLog,
+} from "../logs/types.ts";
 
 function fmtTime(d: Date): string {
   const dt = d instanceof Date ? d : new Date(d);
@@ -47,20 +18,10 @@ const NEAR_BOTTOM_THRESHOLD = 24; // px — within this distance of the bottom c
 
 export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }) {
   const logs: ParsedLog[] = useMemo(
-    () =>
-      events
-        .filter(e => e.eventType === "phase.log")
-        .map(ev => {
-          const payload = ev.payload as { line?: string; meta?: Record<string, unknown> };
-          const line = payload.line ?? JSON.stringify(payload);
-          return {
-            id: ev.id,
-            ts: ev.ts,
-            line,
-            kind: classify(line),
-            meta: payload.meta,
-          };
-        }),
+    () => parseLogs(
+      events.filter(e => e.eventType === "phase.log"),
+      [],
+    ),
     [events],
   );
 
@@ -70,7 +31,6 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
     return c;
   }, [logs]);
 
-  const allKinds: LogKind[] = ["assistant", "tool", "tool_result", "result_ok", "result_err", "other"];
   const [active, setActive] = useState<Record<LogKind, boolean>>({
     assistant: true, tool: true, tool_result: true,
     result_ok: true, result_err: true, other: true,
@@ -190,7 +150,7 @@ export function PhaseLogsSection({ events }: { events: WorkflowInstanceEvent[] }
 
       {logs.length > 0 && (
         <div className="je-runview__log-filters">
-          {allKinds.map(k => {
+          {ALL_KINDS.map(k => {
             const n = counts[k] ?? 0;
             if (n === 0) return null;
             const on = active[k];
