@@ -38,14 +38,14 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 ---
 
-## Boot error: Flow X references unknown phase Y
+## Boot error: Flow X references unknown step Y
 
-**Symptom:** Server fails to start with an error like: `Flow "create-pr" references unknown phase "post-review" not in registered phases: [analyze, plan, implement, create-pr, notify]`
+**Symptom:** Server fails to start with an error like: `Flow "create-pr" references unknown step "post-review" not in registered steps: [analyze, plan, implement, create-pr, notify]`
 
 **Diagnostics:**
-- The error lists all registered phases in the registry
+- The error lists all registered steps in the registry
 - Open the flow in the UI flow editor and check for typos in step definitions
-- Verify each `step.phase` matches a registered phase name (case-sensitive)
+- Verify each `step.stepType` matches a registered step name (case-sensitive)
 
 **Fix:**
 - Correct the typo in the flow YAML configuration
@@ -93,10 +93,10 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 ## PR creation failed: "A pull request already exists"
 
-**Symptom:** A `create-pr` phase fails with: `Error: A pull request already exists for <branch>`
+**Symptom:** A `create-pr` step fails with: `Error: A pull request already exists for <branch>`
 
 **Diagnostics:**
-- This error should be prevented by the `listPRs` preflight check in `CreatePRPhase`
+- This error should be prevented by the `listPRs` preflight check in `CreatePRStep`
 - If it still occurs, verify that `GitHubProvider.listPRs()` is correctly returning the existing PR
 - Check the provider's token permissions: `github_token` scope must include `repo:read`
 
@@ -108,12 +108,12 @@ This document covers known failure modes, diagnostics, and remediation steps for
 
 ---
 
-## `implement` phase times out
+## `implement` step times out
 
-**Symptom:** A step in the `implement` phase fails with `code: AbortError` or similar timeout-related error. The step shows a very long `durationMs` close to or exceeding `timeoutMs`.
+**Symptom:** A step in the `implement` step fails with `code: AbortError` or similar timeout-related error. The step shows a very long `durationMs` close to or exceeding `timeoutMs`.
 
 **Diagnostics:**
-- Check the step's metadata: `jq '.steps[] | select(.phase=="implement") | {name, timeoutMs, durationMs, status, code}' workspaces/<product>/state/<sessionId>.json`
+- Check the step's metadata: `jq '.steps[] | select(.stepType=="implement") | {name, timeoutMs, durationMs, status, code}' workspaces/<product>/state/<sessionId>.json`
 - Verify `ANTHROPIC_API_KEY` is valid and not rate-limited (check Claude API dashboard)
 - Look at step logs: `tail -f workspaces/<product>/logs/<sessionId>/<stepId>.log` while reproducing
 
@@ -277,13 +277,13 @@ This document covers known failure modes, diagnostics, and remediation steps for
 - The artifact may not have been written to storage
 - Check the run state: `jq '.artifacts | .. | select(type=="object" and .kind=="artifact")' workspaces/<product>/state/<sessionId>.json`
 - Look for the artifact entry — if it's missing `reportHandle`, it was never persisted
-- Check the phase code that produced the artifact — it should call `artifactStore.putPath()`
+- Check the step code that produced the artifact — it should call `artifactStore.putPath()`
 
 **Fix:**
-- Verify the phase that creates the artifact actually calls `artifactStore.putPath()` with the correct key
-- Check the phase's logs for write errors: `tail workspaces/<product>/logs/<sessionId>/<phaseId>.log`
+- Verify the step that creates the artifact actually calls `artifactStore.putPath()` with the correct key
+- Check the step's logs for write errors: `tail workspaces/<product>/logs/<sessionId>/<stepId>.log`
 - Manually check the artifact store directory: `ls -la workspaces/<product>/artifacts/<sessionId>/`
-- If missing, re-run the phase that produces the artifact
+- If missing, re-run the step that produces the artifact
 
 ---
 

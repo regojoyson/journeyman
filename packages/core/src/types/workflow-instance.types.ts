@@ -36,12 +36,12 @@ export interface WorkflowInstance {
 }
 
 export type WorkflowInstanceEventType =
-  | "phase.started"
-  | "phase.log"
-  | "phase.failed"
-  | "phase.retrying"
-  | "phase.completed"
-  | "phase.skipped"
+  | "step.started"
+  | "step.log"
+  | "step.failed"
+  | "step.retrying"
+  | "step.completed"
+  | "step.skipped"
   | "node.cycled"
   | "node.waiting"
   | "node.resolved"

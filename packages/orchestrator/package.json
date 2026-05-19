@@ -20,7 +20,7 @@
     "@journeyman/git-provider": "*",
     "@journeyman/mcp": "*",
     "@journeyman/skills": "*",
-    "@journeyman/custom-phases": "*",
+    "@journeyman/custom-steps": "*",
     "@journeyman/notification-provider": "*",
     "@journeyman/secrets": "*",
     "@journeyman/ticket-provider": "*",

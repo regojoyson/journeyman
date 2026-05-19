@@ -23,15 +23,15 @@ Uses `@anthropic-ai/claude-agent-sdk` (`query()`) to run all AI operations. Auth
 - Local dev: run `claude login` once — no env var needed.
 - Server/Docker/CI: set `ANTHROPIC_API_KEY`.
 
-Optional per-phase model configuration:
+Optional per-step model configuration:
 
 ```yaml
 # In pipeline.yaml product block
 providerConfig:
   coding:
-    defaultModel: claude-sonnet-4-6   # fallback for all phases
+    defaultModel: claude-sonnet-4-6   # fallback for all steps
     models:
-      analyze: claude-opus-4-7        # override for a specific phase
+      analyze: claude-opus-4-7        # override for a specific step
       implement: claude-haiku-4-5
 ```
 
@@ -52,4 +52,4 @@ import type { ICodingCLI, OpenCodeProviderConfig } from "@journeyman/coding-cli"
 ## Documentation
 
 - [Providers reference](../../docs/providers.md#claude--claudeprovider) — full config + env var details
-- [Configuration reference](../../docs/configuration.md#per-phase-model-configuration-coding-providers) — per-phase model config
+- [Configuration reference](../../docs/configuration.md#per-step-model-configuration-coding-providers) — per-step model config

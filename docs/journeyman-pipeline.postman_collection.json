@@ -24,14 +24,14 @@
             "auth": { "type": "noauth" },
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] },
-            "description": "No auth required. Returns counts of registered phases, flows, and providers."
+            "description": "No auth required. Returns counts of registered steps, flows, and providers."
           },
           "response": [
             {
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "body": "{\n  \"status\": \"ok\",\n  \"registries\": {\n    \"phases\": 10,\n    \"flows\": 2,\n    \"coding\": 1,\n    \"git\": 1,\n    \"ticket\": 1,\n    \"notification\": 1\n  }\n}"
+              "body": "{\n  \"status\": \"ok\",\n  \"registries\": {\n    \"steps\": 10,\n    \"flows\": 2,\n    \"coding\": 1,\n    \"git\": 1,\n    \"ticket\": 1,\n    \"notification\": 1\n  }\n}"
             }
           ]
         }
@@ -238,7 +238,7 @@
               "raw": "{\n  \"ticketStatus\": \"completed\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "description": "Resume a run that is in `blocked` status. **Re-runs the blocked step** (it isn't skipped) — the phase decides whether to `ok` / re-block / fail based on the injected `ctx.artifacts.__resumeStatus`.\n\nBody (optional):\n- `ticketStatus` — literal ticket status value to inject (used by `reviewLoop` and `awaitTicketStatus` phases). Omit for non-human-loop gates that just need a poke.\n\nReturns 409 if the run is not blocked."
+            "description": "Resume a run that is in `blocked` status. **Re-runs the blocked step** (it isn't skipped) — the step decides whether to `ok` / re-block / fail based on the injected `ctx.artifacts.__resumeStatus`.\n\nBody (optional):\n- `ticketStatus` — literal ticket status value to inject (used by `reviewLoop` and `awaitTicketStatus` steps). Omit for non-human-loop gates that just need a poke.\n\nReturns 409 if the run is not blocked."
           }
         },
         {
@@ -324,7 +324,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "runs", "{{sessionId}}", "artifacts", "scan-result"]
             },
-            "description": "Download a named artifact from the run. The artifact `key` comes from the phase that produced it (check `run.artifacts` in the Get Run response). Returns the raw bytes with the correct Content-Type."
+            "description": "Download a named artifact from the run. The artifact `key` comes from the step that produced it (check `run.artifacts` in the Get Run response). Returns the raw bytes with the correct Content-Type."
           }
         },
         {

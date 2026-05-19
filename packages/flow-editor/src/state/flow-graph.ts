@@ -14,15 +14,15 @@ export function createBlankFlow(): WorkflowGraph {
   };
 }
 
-export function newPhaseNode(args: {
-  phaseType: string;
+export function newStepNode(args: {
+  stepType: string;
   displayName: string;
   position: { x: number; y: number };
 }): WorkflowNode {
   return {
     id: `step_${Math.random().toString(36).slice(2, 8)}`,
-    type: "phase",
-    phaseType: args.phaseType,
+    type: "step",
+    stepType: args.stepType,
     displayName: args.displayName,
     config: {},
     position: args.position,

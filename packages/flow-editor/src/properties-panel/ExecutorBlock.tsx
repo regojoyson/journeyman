@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/ExecutorBlock.tsx
 import type { WorkflowDefaults, CoreExecutorKind } from "@journeyman/core";
-import type { ExecutorKind } from "../phase-definition.ts";
+import type { ExecutorKind } from "../step-definition.ts";
 import { executorCommonConfig, visibleProvidersFor } from "../executor-common-config.ts";
 import { useFieldInheritance } from "../hooks/use-field-inheritance.ts";
 import { InheritanceChip } from "./InheritanceChip.tsx";

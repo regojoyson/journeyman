@@ -11,7 +11,7 @@ import { PublishModal } from "./topbar/PublishModal.tsx";
 import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
-import { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
+import { StepRegistryProvider } from "./state/step-registry-context.tsx";
 import { OrgIdProvider } from "./state/org-context.tsx";
 import { ValidationProvider } from "./state/validation-context.tsx";
 import { useValidationCatalog } from "./properties-panel/use-validation-catalog.ts";
@@ -155,7 +155,7 @@ export function FlowEditor(props: FlowEditorProps) {
   }, [heal.healed, validationCatalog]);
 
   return (
-    <PhaseRegistryProvider phases={props.phases}>
+    <StepRegistryProvider steps={props.steps}>
      <OrgIdProvider orgId={props.orgId}>
       <ValidationProvider inputWarnings={inputWarnings}>
       <div className="je-editor">
@@ -199,7 +199,7 @@ export function FlowEditor(props: FlowEditorProps) {
           className="je-editor__body"
           style={{ gridTemplateColumns: `${paletteWidth}px 6px 1fr 6px ${propsWidth}px` }}
         >
-          <Palette phases={props.phases} controlCatalog={props.controlCatalog} />
+          <Palette steps={props.steps} controlCatalog={props.controlCatalog} />
           <PanelResizer width={paletteWidth} onResize={setPaletteWidth} side="left" min={160} max={480} />
           <Canvas
             flow={heal.healed}
@@ -208,7 +208,7 @@ export function FlowEditor(props: FlowEditorProps) {
             onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
             onChange={props.onChange}
             readOnly={effectiveReadOnly}
-            phaseRunStates={props.phaseRunStates}
+            stepRunStates={props.stepRunStates}
           />
           <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
           {flowConfigOpen ? (
@@ -265,6 +265,6 @@ export function FlowEditor(props: FlowEditorProps) {
       </div>
       </ValidationProvider>
      </OrgIdProvider>
-    </PhaseRegistryProvider>
+    </StepRegistryProvider>
   );
 }

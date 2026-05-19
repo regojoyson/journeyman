@@ -65,7 +65,7 @@ export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
       <div className="je-props__field">
         <label>Skills</label>
         <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
-          Skill packages to load when this phase runs. Manage your skills at{" "}
+          Skill packages to load when this step runs. Manage your skills at{" "}
           <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/skills</a>{" "}
           or{" "}
           <a href="/admin/skills" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/admin/skills</a>.

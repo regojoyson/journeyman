@@ -9,10 +9,10 @@ function flowWithCustomAi(skillPackageIds: string[]): WorkflowGraph {
       { id: "start", type: "start", displayName: "Start", config: {}, position: { x: 0, y: 0 } },
       {
         id: "n1",
-        type: "phase",
-        phaseType: "custom-ai",
+        type: "step",
+        stepType: "custom-ai",
         displayName: "Code Review",
-        config: { customPhaseId: "cp-1", skillPackageIds },
+        config: { customStepId: "cp-1", skillPackageIds },
         position: { x: 100, y: 0 },
       },
       { id: "end", type: "end", displayName: "End", config: {}, position: { x: 200, y: 0 } },
@@ -28,7 +28,7 @@ const catalog: ValidationCatalog = {
   "custom-ai": {
     inputFields: {},
     outputSchema: null,
-    customPhases: {
+    customSteps: {
       "cp-1": { name: "Code Review", requiresSkills: true, defaultSkillIds: ["code-reviewer"], requiresMcp: false, defaultMcpIds: [] },
     },
   },
@@ -54,16 +54,16 @@ describe("validateWorkflowInputs — requiresSkills", () => {
       "custom-ai": {
         inputFields: {},
         outputSchema: null,
-        customPhases: { "cp-1": { name: "Code Review", requiresSkills: false, defaultSkillIds: [], requiresMcp: false, defaultMcpIds: [] } },
+        customSteps: { "cp-1": { name: "Code Review", requiresSkills: false, defaultSkillIds: [], requiresMcp: false, defaultMcpIds: [] } },
       },
     };
     const warnings = validateWorkflowInputs(flowWithCustomAi([]), customCatalog);
     expect(warnings.find(w => "nodeId" in w && w.nodeId === "n1" && "inputKey" in w && w.inputKey === "skillPackageIds")).toBeUndefined();
   });
 
-  it("does not crash when phase def is missing from catalog", () => {
+  it("does not crash when step def is missing from catalog", () => {
     const customCatalog: ValidationCatalog = {
-      "custom-ai": { inputFields: {}, outputSchema: null, customPhases: {} },
+      "custom-ai": { inputFields: {}, outputSchema: null, customSteps: {} },
     };
     const warnings = validateWorkflowInputs(flowWithCustomAi([]), customCatalog);
     expect(warnings.find(w => "nodeId" in w && w.nodeId === "n1" && "inputKey" in w && w.inputKey === "skillPackageIds")).toBeUndefined();

@@ -127,18 +127,18 @@ export class ConductorClient {
 
   async pollTask(taskType: string, workerId: string): Promise<PolledTask | null> {
     const reqStart = Date.now();
-    log.debug({ phaseType: taskType, workerId }, "conductor.poll.request.start");
+    log.debug({ stepType: taskType, workerId }, "conductor.poll.request.start");
     try {
       const r = await this.request<PolledTask | null>(
         `/tasks/poll/${encodeURIComponent(taskType)}?workerid=${encodeURIComponent(workerId)}`,
       );
       log.debug({
-        phaseType: taskType, workerId, hasTask: !!r, durationMs: Date.now() - reqStart,
+        stepType: taskType, workerId, hasTask: !!r, durationMs: Date.now() - reqStart,
       }, "conductor.poll.request.end");
       return r ?? null;
     } catch (err) {
       log.error({
-        phaseType: taskType, workerId, err, durationMs: Date.now() - reqStart,
+        stepType: taskType, workerId, err, durationMs: Date.now() - reqStart,
       }, "conductor.poll.request.failed");
       throw err;
     }

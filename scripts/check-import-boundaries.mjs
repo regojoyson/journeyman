@@ -4,7 +4,7 @@
 //
 // Layers:
 //   ui      — must NOT be imported from backend code (drags in React, browser-only deps).
-//             Packages: @journeyman/flow-editor, @journeyman/phases (default entry),
+//             Packages: @journeyman/flow-editor, @journeyman/steps (default entry),
 //             @journeyman/run-viewer, @journeyman/runs-list, @journeyman/web.
 //   backend — must NOT be imported from ui code (drags in node:*, db, secrets, providers).
 //             Packages: @journeyman/api-server, @journeyman/orchestrator, @journeyman/coding-cli,
@@ -12,7 +12,7 @@
 //             @journeyman/notification-provider, @journeyman/secrets, @journeyman/migrations.
 //   shared  — universal. Importable from anywhere.
 //             Packages: @journeyman/core, @journeyman/identity.
-//             Subpaths: @journeyman/phases/catalog (pure-data .meta.ts aggregator, no React).
+//             Subpaths: @journeyman/steps/catalog (pure-data .meta.ts aggregator, no React).
 //
 // Allowed import directions:
 //   ui      → ui, shared
@@ -32,7 +32,7 @@ const PKG_LAYER = {
   "@journeyman/run-viewer": "ui",
   "@journeyman/runs-list": "ui",
   "@journeyman/web": "ui",
-  "@journeyman/phases": "ui",
+  "@journeyman/steps": "ui",
 
   "@journeyman/api-server": "backend",
   "@journeyman/orchestrator": "backend",
@@ -48,9 +48,9 @@ const PKG_LAYER = {
   "@journeyman/identity": "shared",
 };
 
-// Subpath overrides — "@journeyman/phases/catalog" is shared (no React).
+// Subpath overrides — "@journeyman/steps/catalog" is shared (no React).
 const SUBPATH_OVERRIDES = {
-  "@journeyman/phases/catalog": "shared",
+  "@journeyman/steps/catalog": "shared",
 };
 
 const ALLOWED = {

@@ -584,7 +584,7 @@ function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
-                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> — no longer declared on the phase
+                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> — no longer declared on the step
                   </li>
                 ))}
               </ul>

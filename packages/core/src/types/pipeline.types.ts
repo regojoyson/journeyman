@@ -5,7 +5,7 @@ export type IProviderMeta = {
   category: "coding-cli" | "git" | "issue" | "notification";
 };
 
-export type PhaseResult =
+export type StepResult =
   | { status: "ok"; artifacts: Record<string, unknown> }
   | {
       status: "blocked";
@@ -17,7 +17,7 @@ export type PhaseResult =
 
 export type StepRecord = {
   id: string;                          // unique within flow
-  phase: string;                       // registry key
+  step: string;                       // registry key
   attempt: number;
   status: "pending" | "running" | "ok" | "blocked" | "failed" | "cancelled";
   startedAt?: string;
@@ -28,7 +28,7 @@ export type StepRecord = {
   error?: { message: string; code?: string; stack?: string };
   blockedReason?: string;
   waitFor?: "issue-comment" | "pr-comment" | "manual";
-  /** Per-field source: "node" = explicit on the phase node; "flow-default" = inherited from FlowGraph.defaults. */
+  /** Per-field source: "node" = explicit on the step node; "flow-default" = inherited from FlowGraph.defaults. */
   inputSources?: Record<string, "node" | "flow-default">;
 };
 
@@ -75,7 +75,7 @@ export type ProductConfig = {
 
 export type FlowStepDefinition = {
   id: string;                           // unique within flow
-  phase: string;
+  step: string;
   config?: Record<string, unknown>;
   /** Per-step model override. Empty/undefined ⇒ use flow.defaultModel. */
   model?: string;
@@ -88,7 +88,7 @@ export type FlowStepDefinition = {
 export type FlowDefinition = {
   name: string;
   providers: { issue: string; git: string; coding: string; notification: string };
-  /** Default model for AI phases. References coding_models.model_id for providers.coding. */
+  /** Default model for AI steps. References coding_models.model_id for providers.coding. */
   defaultModel?: string;
   steps: FlowStepDefinition[];
 };
@@ -150,8 +150,8 @@ export type PipelineTrigger = {
 
 export type PipelineEvent =
   | { type: "runStarted";  sessionId: string; issueRef: string; flowName: string; at: string }
-  | { type: "stepStarted"; sessionId: string; stepId: string; phase: string; attempt: number; at: string }
-  | { type: "stepEnded";   sessionId: string; stepId: string; phase: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
+  | { type: "stepStarted"; sessionId: string; stepId: string; step: string; attempt: number; at: string }
+  | { type: "stepEnded";   sessionId: string; stepId: string; step: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
   | { type: "logLine";     sessionId: string; stepId: string; level: "info"|"warn"|"error"; line: string; at: string }
   | { type: "statusChanged"; sessionId: string; from: PipelineRun["status"]; to: PipelineRun["status"]; at: string }
   | { type: "runEnded";    sessionId: string; status: PipelineRun["status"]; at: string };

@@ -17,9 +17,9 @@ import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
-import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
-import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
-import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
+import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
+import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
+import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 
 interface Props {
   flow: WorkflowGraph;
@@ -82,9 +82,9 @@ function ExprField({ label, value, onChange, readOnly, sources }: ExprFieldProps
 }
 
 export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) {
-  const catalog = usePhaseCatalog();
-  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(flow));
-  const sources = useUpstreamSources(flow, node.id, catalog, customPhaseDefs);
+  const catalog = useStepCatalog();
+  const customStepDefs = useCustomStepDefs(collectCustomStepIds(flow));
+  const sources = useUpstreamSources(flow, node.id, catalog, customStepDefs);
   const cfg = (node.config ?? {}) as Record<string, unknown>;
 
   const setCfg = (patch: Record<string, unknown>) => {

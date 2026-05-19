@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
  * The caller-supplied `input` is treated as a correlation id (e.g. a pipeline
  * run id) — NOT as a conversation to resume. Every invocation starts a fresh
  * SDK conversation with its own random UUID. Sharing a conversation across
- * phases produces cross-phase bash-transcript bloat and breaks when phases
+ * steps produces cross-step bash-transcript bloat and breaks when steps
  * use different structured-output schemas or tool sets.
  *
  * Returns:

@@ -34,8 +34,8 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
     if (n.type === "gateway-and") {
       if ((out.get(n.id) ?? 0) < 2) errors.push(`gateway-and ${nodeLabel(n)} needs at least 2 branches`);
     }
-    if (n.type === "phase" && !n.phaseType) {
-      errors.push(`Phase node ${nodeLabel(n)} is missing a phase type`);
+    if (n.type === "step" && !n.stepType) {
+      errors.push(`Step node ${nodeLabel(n)} is missing a step type`);
     }
     if (n.type === "subflow" && !(n.config as { workflowName?: string } | undefined)?.workflowName) {
       errors.push(`Subflow ${nodeLabel(n)} is missing config.workflowName`);

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import type { WorkflowGraph, Shape, CustomAiPhase } from "@journeyman/core";
+import type { WorkflowGraph, Shape, CustomAiStep } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
-import { customPhaseToShape } from "@journeyman/custom-phases/shape-adapter";
-import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
+import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
+import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 
 export interface UpstreamField {
   name: string;
@@ -25,8 +25,8 @@ export interface UpstreamSource {
 export function useUpstreamSources(
   graph: WorkflowGraph,
   nodeId: string,
-  catalog: Record<string, PhaseCatalogEntry>,
-  customPhaseDefs?: Record<string, CustomAiPhase | null>,
+  catalog: Record<string, StepCatalogEntry>,
+  customStepDefs?: Record<string, CustomAiStep | null>,
 ): UpstreamSource[] {
   return useMemo(() => {
     const _t0 = performance.now();
@@ -77,21 +77,21 @@ export function useUpstreamSources(
     }
     for (const id of upstream) {
       const n = graph.nodes.find(x => x.id === id);
-      if (!n || n.type !== "phase" || !n.phaseType) continue;
+      if (!n || n.type !== "step" || !n.stepType) continue;
 
-      let inputFields: PhaseCatalogEntry["inputFields"] = {};
-      let outputSchema: PhaseCatalogEntry["outputSchema"] = {};
+      let inputFields: StepCatalogEntry["inputFields"] = {};
+      let outputSchema: StepCatalogEntry["outputSchema"] = {};
 
-      if (n.phaseType === "custom-ai") {
-        const customId = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+      if (n.stepType === "custom-ai") {
+        const customId = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
         if (typeof customId !== "string" || !customId) continue;
-        const def = customPhaseDefs?.[customId];
+        const def = customStepDefs?.[customId];
         if (!def) continue;
-        const shape = customPhaseToShape(def);
+        const shape = customStepToShape(def);
         inputFields = shape.inputFields;
         outputSchema = shape.outputSchema ?? {};
       } else {
-        const entry = catalog[n.phaseType];
+        const entry = catalog[n.stepType];
         inputFields = entry?.inputFields ?? {};
         outputSchema = entry?.outputSchema ?? {};
       }
@@ -127,7 +127,7 @@ export function useUpstreamSources(
       sources.push({
         kind: "node",
         id,
-        label: n.displayName ?? n.phaseType,
+        label: n.displayName ?? n.stepType,
         groups,
       });
     }
@@ -140,14 +140,14 @@ export function useUpstreamSources(
       );
     }
     return sources;
-  }, [graph, nodeId, catalog, customPhaseDefs]);
+  }, [graph, nodeId, catalog, customStepDefs]);
 }
 
-export function collectCustomPhaseIds(graph: WorkflowGraph): string[] {
+export function collectCustomStepIds(graph: WorkflowGraph): string[] {
   const set = new Set<string>();
   for (const n of graph.nodes) {
-    if (n.type !== "phase" || n.phaseType !== "custom-ai") continue;
-    const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (n.type !== "step" || n.stepType !== "custom-ai") continue;
+    const id = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
     if (typeof id === "string" && id) set.add(id);
   }
   return [...set];

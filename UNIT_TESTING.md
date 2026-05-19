@@ -6,7 +6,7 @@ Linked from [AGENT.md](AGENT.md).
 
 **Vitest** (`vitest run`) is the test runner in this repo. Packages opt in by declaring a `test` script in their `package.json`. The root `npm test` fans out to all workspaces with `--if-present`.
 
-Currently configured packages: `core`, `custom-phases`, `coding-models`, `notification-provider`. ~445 `*.test.ts` files exist across the repo.
+Currently configured packages: `core`, `custom-steps`, `coding-models`, `notification-provider`. ~445 `*.test.ts` files exist across the repo.
 
 When adding tests to a package that doesn't yet have them:
 1. Add `vitest` as a devDependency at the package level (matching the version already used elsewhere).

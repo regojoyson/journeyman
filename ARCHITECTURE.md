@@ -9,7 +9,7 @@ Linked from [AGENT.md](AGENT.md). Provider-agnostic guide to where things live a
 | Web UI | Visual canvas editor, run monitoring, history | `web`, `flow-editor`, `run-viewer`, `runs-list`, `theme` |
 | API Gateway | Fastify REST + SSE; auth, validation | `api-server`, `identity`, `secrets` |
 | Orchestrator | Conductor adapter, worker harness, durable execution | `orchestrator`, `migrations` |
-| Phases & Providers | Per-node logic — AI coding, git, tickets, notifications | `phases`, `custom-phases`, `coding-cli`, `coding-models`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `mcp`, `skills` |
+| Steps & Providers | Per-node logic — AI coding, git, tickets, notifications | `steps`, `custom-steps`, `coding-cli`, `coding-models`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `mcp`, `skills` |
 | Storage | Persistence + queue | PostgreSQL, Redis (`@journeyman/migrations` owns schema) |
 
 ## Import-boundary layers (enforced)
@@ -19,10 +19,10 @@ Linked from [AGENT.md](AGENT.md). Provider-agnostic guide to where things live a
 | Bucket | Members | May import from |
 |---|---|---|
 | **Shared** | `core`, `identity` | shared only |
-| **UI** | `web`, `flow-editor`, `run-viewer`, `runs-list`, `phases`, `theme` | UI + shared |
-| **Backend** | `api-server`, `orchestrator`, `coding-cli`, `coding-models`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `secrets`, `migrations`, `mcp`, `skills`, `custom-phases` | backend + shared |
+| **UI** | `web`, `flow-editor`, `run-viewer`, `runs-list`, `steps`, `theme` | UI + shared |
+| **Backend** | `api-server`, `orchestrator`, `coding-cli`, `coding-models`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `secrets`, `migrations`, `mcp`, `skills`, `custom-steps` | backend + shared |
 
-**Subpath override:** `@journeyman/phases/catalog` is treated as **shared** (pure-data `*.meta.ts`), so backend packages may import it even though `phases` itself is UI-bucket.
+**Subpath override:** `@journeyman/steps/catalog` is treated as **shared** (pure-data `*.meta.ts`), so backend packages may import it even though `steps` itself is UI-bucket.
 
 Run `npm run check:boundaries` to validate. If you add a package, update the script.
 
@@ -43,7 +43,7 @@ journeyman/
     ├── web/ flow-editor/ run-viewer/ runs-list/ theme/   ← UI
     │
     ├── api-server/ orchestrator/ secrets/ migrations/    ← Backend
-    ├── phases/ custom-phases/
+    ├── steps/ custom-steps/
     ├── coding-cli/ coding-models/
     ├── git-provider/ github-api/
     ├── ticket-provider/ notification-provider/

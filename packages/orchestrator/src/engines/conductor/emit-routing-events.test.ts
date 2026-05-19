@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import { emitRoutingEvents } from "./emit-routing-events.ts";
 
 describe("emitRoutingEvents", () => {
-  it("emits phase.skipped for tasks with status SKIPPED", async () => {
+  it("emits step.skipped for tasks with status SKIPPED", async () => {
     const events = { append: vi.fn().mockResolvedValue(undefined) };
     await emitRoutingEvents(events, "wf-1", [
       { taskType: "SIMPLE", status: "SKIPPED", referenceTaskName: "node-2", inputData: {}, outputData: {} } as any,
       { taskType: "SIMPLE", status: "COMPLETED", referenceTaskName: "node-3", inputData: {}, outputData: {} } as any,
     ]);
-    const skipped = events.append.mock.calls.find(c => c[0].eventType === "phase.skipped");
+    const skipped = events.append.mock.calls.find(c => c[0].eventType === "step.skipped");
     expect(skipped).toBeDefined();
     expect(skipped![0].nodeId).toBe("node-2");
   });

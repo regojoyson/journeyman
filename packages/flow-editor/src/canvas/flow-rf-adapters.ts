@@ -2,7 +2,7 @@ import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 
 export const KNOWN_NODE_TYPES = new Set([
-  "start", "end", "phase",
+  "start", "end", "step",
   "gateway-xor", "gateway-and", "loop", "subflow", "if", "timer",
 ]);
 
@@ -43,7 +43,7 @@ export function structuralSig(flow: WorkflowGraph): string {
   _structuralSigCalls++;
   const result = JSON.stringify({
     nodes: flow.nodes.map(n => ({
-      id: n.id, type: n.type, name: n.displayName, phase: n.phaseType,
+      id: n.id, type: n.type, name: n.displayName, step: n.stepType,
       cfg: n.config ?? null, retry: n.retry ?? null, outcome: n.outcome ?? null,
     })),
     edges: flow.edges.map(e => ({
@@ -75,7 +75,7 @@ export function buildFlowFromInternal(
     if (prev) return { ...prev, position: rfn.position };
     return {
       id: rfn.id,
-      type: (rfn.type ?? "phase") as WorkflowNodeType,
+      type: (rfn.type ?? "step") as WorkflowNodeType,
       displayName: (rfn.data as { displayName?: string } | undefined)?.displayName,
       position: rfn.position,
       config: {},

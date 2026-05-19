@@ -2,7 +2,7 @@
 import type { ZodTypeAny } from "zod";
 import type { ReactNode } from "react";
 import type { WorkflowSaveWarning } from "@journeyman/core";
-import type { FieldMeta } from "../phase-definition.ts";
+import type { FieldMeta } from "../step-definition.ts";
 
 export interface SchemaFormProps {
   config: Record<string, unknown>;

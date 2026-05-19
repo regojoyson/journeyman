@@ -134,7 +134,7 @@ Each `ITriggerSource` implementation strips sensitive fields before the payload 
 1. **S3 with server-side encryption**:
    - Implement `IArtifactStore` interface against S3
    - Enable `sse-s3` or `sse-kms` in S3 bucket config
-   - Interface is unchanged; phases don't need to change
+   - Interface is unchanged; steps don't need to change
 
 2. **LUKS-encrypted volume**:
    - Mount `workspaces/` on an encrypted volume
@@ -151,7 +151,7 @@ Each `ITriggerSource` implementation strips sensitive fields before the payload 
 1. **PostgreSQL with Transparent Data Encryption (TDE)**:
    - Implement `IStateStore` interface against Postgres
    - Enable TDE on the Postgres instance
-   - Interface is unchanged; phases don't need to change
+   - Interface is unchanged; steps don't need to change
 
 2. **LUKS-encrypted volume**:
    - Mount `workspaces/` on an encrypted volume
@@ -194,7 +194,7 @@ Each `ITriggerSource` implementation strips sensitive fields before the payload 
 
 - Every `Run` includes:
   - `createdAt`, `updatedAt` timestamps
-  - `steps[].startedAt`, `steps[].endedAt` for each phase
+  - `steps[].startedAt`, `steps[].endedAt` for each step
   - All adapter results and error messages
   
 - Trace logs include:

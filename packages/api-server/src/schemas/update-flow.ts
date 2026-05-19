@@ -39,7 +39,7 @@ const flowNodeSchema = z.object({
   id: z.string(),
   type: z.string(),
   displayName: z.string().optional(),
-  phaseType: z.string().optional(),
+  stepType: z.string().optional(),
   config: z.record(z.unknown()).optional(),
   inputs: z.record(flowInputValueSchema).nullable().optional(),
   executorConfig: z.object({ provider: z.string().optional() }).passthrough().nullable().optional(),

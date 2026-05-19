@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
-  { to: "/me/custom-phases", icon: "🧩", label: "My Custom Phases" },
+  { to: "/me/custom-steps", icon: "🧩", label: "My Custom Steps" },
 ];
 
 const ADMIN_ITEMS = [
@@ -18,7 +18,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/secrets", icon: "🔐", label: "Org Secrets" },
   { to: "/admin/mcps",    icon: "🔌", label: "Org MCPs"    },
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
-  { to: "/admin/custom-phases", icon: "🧩", label: "Org Custom Phases" },
+  { to: "/admin/custom-steps", icon: "🧩", label: "Org Custom Steps" },
   { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
   { to: "/admin/workflows", icon: "📋", label: "Admin Workflows" },
 ];
@@ -222,7 +222,7 @@ export default function Sidebar() {
               { to: "/me/secrets",  label: "My Secrets"      },
               { to: "/me/mcps",     label: "My MCPs"         },
               { to: "/me/skills",   label: "My Skills"       },
-              { to: "/me/custom-phases", label: "My Custom Phases" },
+              { to: "/me/custom-steps", label: "My Custom Steps" },
               { to: "/me/password", label: "Change password" },
             ].map(({ to, label: itemLabel }) => (
               <Link

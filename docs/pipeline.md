@@ -1,6 +1,6 @@
 # @journeyman/pipeline
 
-`@journeyman/pipeline` is the core pipeline runner for Journeyman. It loads flow YAML, resolves providers, executes phases in order, manages per-run state and artifacts, and emits lifecycle events. It has no HTTP dependency and can be embedded in a CLI, a job runner, or a test harness.
+`@journeyman/pipeline` is the core pipeline runner for Journeyman. It loads flow YAML, resolves providers, executes steps in order, manages per-run state and artifacts, and emits lifecycle events. It has no HTTP dependency and can be embedded in a CLI, a job runner, or a test harness.
 
 ## Install
 
@@ -52,14 +52,14 @@ providers:
   notification: console
 
 steps:
-  - { id: fetch-ticket,  phase: getTicket }
-  - { id: clone,         phase: cloneRepos }
-  - { id: analyze,       phase: analyze,         timeoutMs: 900000 }
-  - { id: plan,          phase: plan,            timeoutMs: 900000 }
-  - { id: implement,     phase: implement,       timeoutMs: 1800000 }
-  - { id: commit-push,   phase: commitPushRepos }
-  - { id: open-pr,       phase: createPR }
-  - { id: cleanup,       phase: cleanupRepos,    onFailure: skip }
+  - { id: fetch-ticket,  stepType: getTicket }
+  - { id: clone,         stepType: cloneRepos }
+  - { id: analyze,       stepType: analyze,         timeoutMs: 900000 }
+  - { id: plan,          stepType: plan,            timeoutMs: 900000 }
+  - { id: implement,     stepType: implement,       timeoutMs: 1800000 }
+  - { id: commit-push,   stepType: commitPushRepos }
+  - { id: open-pr,       stepType: createPR }
+  - { id: cleanup,       stepType: cleanupRepos,    onFailure: skip }
 ```
 
 **3. Set environment variables:**
@@ -85,13 +85,13 @@ npm start
 | Export | Purpose |
 |---|---|
 | `Pipeline` | Main orchestrator — loads config, runs flows, manages state |
-| `PhaseRegistry` | Registry of available phases; use `register()` to add custom phases |
+| `StepRegistry` | Registry of available phases; use `register()` to add custom steps |
 | `ProviderRegistry` | Registry of adapter instances; use `register()` to add custom providers |
 | `FileStateStore` | File-backed run state store |
 | `FileTraceLogger` | File-backed per-step trace log writer |
 | `FileArtifactStore` | File-backed artifact persistence |
 | `EventBus` | Pub/sub lifecycle events (`runStarted`, `stepEnded`, etc.) |
-| `BasePhase` | Abstract base class for custom phases |
+| `BasePhase` | Abstract base class for custom steps |
 | `loadPipelineConfig` | Load and validate `pipeline.yaml` + flows |
 | `FlowValidator` | Boot-time artifact DAG + status name validator |
 | `SemaphorePool` | Per-product concurrency limiter |
@@ -114,7 +114,7 @@ npm run sweep            # delete old workspace run directories
 | [Setup guide](../docs/setup.md) | Full installation + multi-product config |
 | [Configuration reference](../docs/configuration.md) | Every `pipeline.yaml` field |
 | [Flows reference](../docs/flows.md) | Flow YAML authoring + patterns |
-| [Phases catalog](../docs/phases.md) | All built-in phases + writing custom phases |
+| [Phases catalog](../docs/phases.md) | All built-in phases + writing custom steps |
 | [Providers reference](../docs/providers.md) | Provider config + env vars |
 | [Artifacts](../docs/artifacts.md) | Artifact model and storage layout |
 | [Troubleshooting](../docs/troubleshooting.md) | Common failures and fixes |

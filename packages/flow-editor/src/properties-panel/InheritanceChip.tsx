@@ -24,9 +24,9 @@ export function InheritanceChip({ kind, onReset, inheritedValue }: InheritanceCh
   const valueStr = kind === "inherited" && inheritedValue !== undefined ? formatValue(inheritedValue) : "";
   const tooltip =
     kind === "inherited"
-      ? "Value comes from flow defaults. Edit to customize for this phase."
+      ? "Value comes from flow defaults. Edit to customize for this step."
       : kind === "override"
-      ? "This phase uses its own value. Click ↺ to go back to flow default."
+      ? "This step uses its own value. Click ↺ to go back to flow default."
       : undefined;
 
   return (

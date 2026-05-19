@@ -12,9 +12,9 @@ export type WorkflowSchemaVersion = typeof WORKFLOW_SCHEMA_VERSION;
 export type WorkflowNodeType =
   | "start"
   | "end"
-  | "phase"
+  | "step"
   | "human-task"
-  // node types reserved for later phases — listed so the converter can reject
+  // node types reserved for later step types — listed so the converter can reject
   // them in Phase 1 with a clear "not yet supported" error.
   | "gateway-xor"
   | "gateway-and"
@@ -42,27 +42,27 @@ export interface WorkflowNode {
   type: WorkflowNodeType;
   /** Human-readable label shown on the canvas tile. */
   displayName?: string;
-  /** Phase type ("clone-repos", "custom-ai", …) — required when type === "phase". */
-  phaseType?: string;
-  /** Free-form configuration consumed by the phase handler. */
+  /** Step type ("clone-repos", "custom-ai", …) — required when type === "step". */
+  stepType?: string;
+  /** Free-form configuration consumed by the step handler. */
   config?: Record<string, unknown>;
   /** Wires from upstream nodes / workflow inputs. Resolved by converter to Conductor refs. */
   inputs?: Record<string, WorkflowInputValue> | null;
   /**
-   * Common configuration shared by all phases of the same executor kind
-   * (e.g. coding-cli phases all carry `{ provider: "claude" | "gemini" | "codex" }`).
-   * Kept separate from `config` so phase-specific and kind-shared fields never collide.
+   * Common configuration shared by all steps of the same executor kind
+   * (e.g. coding-cli steps all carry `{ provider: "claude" | "gemini" | "codex" }`).
+   * Kept separate from `config` so step-specific and kind-shared fields never collide.
    */
   executorConfig?: { provider?: string } | null;
-  /** Per-phase retry policy. */
+  /** Per-step retry policy. */
   retry?: RetryPolicy | null;
   /**
-   * Per-step model override for AI-capable phases.
+   * Per-step model override for AI-capable steps.
    * Empty/undefined ⇒ use WorkflowGraph.defaults.defaultModel, then the system DB default.
    * References coding_models.model_id for the resolved coding provider.
    */
   model?: string | null;
-  /** Per-slot binding map. Key is the slot name from the phase definition. */
+  /** Per-slot binding map. Key is the slot name from the step definition. */
   secretBindings?: Record<string, SecretBinding> | null;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
@@ -162,13 +162,13 @@ export interface WorkflowDefaults {
   retry?: RetryPolicy;
   /**
    * Default executor provider per ExecutorKind.
-   * Each phase resolves its default via kindForPhaseType(phaseType).
+   * Each step resolves its default via kindForStepType(stepType).
    */
   executorConfig?: Partial<Record<ExecutorKind, { provider?: string }>>;
   /**
-   * Default model for AI-capable phases. Used when a phase node does not set
+   * Default model for AI-capable steps. Used when a step node does not set
    * its own `model`. Resolved against coding_models.model_id for the coding
-   * provider configured on the phase node.
+   * provider configured on the step node.
    */
   defaultModel?: string;
 }

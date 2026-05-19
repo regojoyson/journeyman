@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/tabs-shell.tsx
 import type { ReactNode } from "react";
-import type { TabVisibility } from "../phase-definition.ts";
+import type { TabVisibility } from "../step-definition.ts";
 
 export type TabId = "config" | "mcp" | "skills" | "requiredSecrets" | "retry" | "io";
 

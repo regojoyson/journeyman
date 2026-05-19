@@ -22,7 +22,7 @@ export type JsonLogicExpr =
 
 /**
  * Static workflow.input.* suggestions surfaced in the edge condition
- * autosuggest. Mirrors the keys orchestrator's emitPhase always injects
+ * autosuggest. Mirrors the keys orchestrator's emitStep always injects
  * onto every task's input.
  */
 export const WORKFLOW_INPUT_SUGGESTIONS: ReadonlyArray<{

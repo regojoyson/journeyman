@@ -1,10 +1,10 @@
 import {
-  createLogger, PROVIDER_CATALOG, kindForPhaseType,
-  loggerForRun, appendPhaseEvent, serializeError, LogTail,
+  createLogger, PROVIDER_CATALOG, kindForStepType,
+  loggerForRun, appendStepEvent, serializeError, LogTail,
   type WorkflowLogCtx,
 } from "@journeyman/core";
 import type {
-  IEventBus, IPhaseRegistry, IWorkspaceProvider,
+  IEventBus, IStepRegistry, IWorkspaceProvider,
   SecretBinding,
   ResolvedMcpInstance,
   ResolvedSkillPackage,
@@ -17,7 +17,7 @@ const baseLog = createLogger("orchestrator:worker");
 
 export interface WorkerHarnessDeps {
   client: ConductorClient;
-  registry: IPhaseRegistry;
+  registry: IStepRegistry;
   workspace: IWorkspaceProvider;
   events: IEventBus;
   workerId: string;
@@ -48,24 +48,24 @@ export class WorkerHarness {
 
   constructor(private deps: WorkerHarnessDeps) {}
 
-  async start(phaseTypes: string[]): Promise<void> {
+  async start(stepTypes: string[]): Promise<void> {
     this.running = true;
-    await Promise.all(phaseTypes.map(t => this.loop(t)));
+    await Promise.all(stepTypes.map(t => this.loop(t)));
   }
 
   stop(): void { this.running = false; }
 
-  private async loop(phaseType: string): Promise<void> {
+  private async loop(stepType: string): Promise<void> {
     const interval = this.deps.pollIntervalMs ?? 500;
     while (this.running) {
-      try { await this.processOnce(phaseType); }
-      catch (err) { baseLog.error({ err, phaseType }, "poll loop error"); }
+      try { await this.processOnce(stepType); }
+      catch (err) { baseLog.error({ err, stepType }, "poll loop error"); }
       await new Promise(r => setTimeout(r, interval));
     }
   }
 
-  async processOnce(phaseType: string): Promise<void> {
-    const task = await this.deps.client.pollTask(phaseType, this.deps.workerId);
+  async processOnce(stepType: string): Promise<void> {
+    const task = await this.deps.client.pollTask(stepType, this.deps.workerId);
     if (!task) return;
     const conductorWorkflowId = task.workflowInstanceId;
     const workflowInstanceId =
@@ -74,27 +74,27 @@ export class WorkerHarness {
     const attempt = task.retryCount + 1;
 
     const ctx: WorkflowLogCtx = {
-      workflowInstanceId, nodeId, phaseType,
+      workflowInstanceId, nodeId, stepType,
       attempt, taskId: task.taskId, workerId: this.deps.workerId,
     };
     const rlog = loggerForRun(baseLog, ctx);
 
-    await appendPhaseEvent(this.deps.events, ctx, "task.polled", {},
+    await appendStepEvent(this.deps.events, ctx, "task.polled", {},
       e => rlog.error({ err: e }, "task.polled emit failed"));
     rlog.info("task picked up");
 
-    const handler = this.deps.registry.get(phaseType);
+    const handler = this.deps.registry.get(stepType);
     if (!handler) {
-      rlog.error("no handler registered for phase — failing task");
-      await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+      rlog.error("no handler registered for step — failing task");
+      await appendStepEvent(this.deps.events, ctx, "step.failed", {
         reason: "handler_missing",
-        error: { errorClass: "HandlerMissing", message: `No handler for phase '${phaseType}'` },
+        error: { errorClass: "HandlerMissing", message: `No handler for step '${stepType}'` },
       });
       await this.deps.client.completeTask({
         workflowInstanceId: conductorWorkflowId,
         taskId: task.taskId,
         status: "FAILED_WITH_TERMINAL_ERROR",
-        reasonForIncompletion: `No handler for phase '${phaseType}'`,
+        reasonForIncompletion: `No handler for step '${stepType}'`,
       });
       return;
     }
@@ -119,41 +119,41 @@ export class WorkerHarness {
 
     const rawInput = (task.inputData ?? {}) as Record<string, unknown>;
     const inputSources = (rawInput as { _flowDefaultSources?: Record<string, "node" | "flow-default"> })._flowDefaultSources;
-    const phaseInput: Record<string, unknown> = { ...rawInput };
-    delete phaseInput["_flowDefaultSources"];
+    const stepInput: Record<string, unknown> = { ...rawInput };
+    delete stepInput["_flowDefaultSources"];
 
-    const userId = (phaseInput as { startedByUserId?: string | null }).startedByUserId ?? null;
-    const orgId = (phaseInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
+    const userId = (stepInput as { startedByUserId?: string | null }).startedByUserId ?? null;
+    const orgId = (stepInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
     const ws = await this.deps.workspace.create({ workflowInstanceId, nodeId, userId });
     const abort = new AbortController();
 
-    const workflowId = (phaseInput as { workflowId?: string | null }).workflowId ?? null;
+    const workflowId = (stepInput as { workflowId?: string | null }).workflowId ?? null;
     const declaredBindings =
-      (phaseInput as { secretBindings?: Record<string, SecretBinding> }).secretBindings ?? {};
+      (stepInput as { secretBindings?: Record<string, SecretBinding> }).secretBindings ?? {};
 
     let resolvedEnv: Record<string, string>;
     try {
-      const phaseDef = this.deps.registry.get(phaseType);
-      const phaseKind = kindForPhaseType(phaseType);
-      const provider = (phaseInput as { provider?: string }).provider;
-      const providerSlots = phaseKind
-        ? (PROVIDER_CATALOG.find(p => p.value === provider && p.kind === phaseKind)?.slots ?? [])
+      const stepDef = this.deps.registry.get(stepType);
+      const stepKind = kindForStepType(stepType);
+      const provider = (stepInput as { provider?: string }).provider;
+      const providerSlots = stepKind
+        ? (PROVIDER_CATALOG.find(p => p.value === provider && p.kind === stepKind)?.slots ?? [])
         : [];
-      const phaseSlots = (phaseDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
+      const stepSlots = (stepDef as unknown as { slots?: Array<{ name: string; optional?: boolean }> })?.slots ?? [];
 
-      const slotsFromKind = (phaseDef as unknown as { slotsFromKind?: string }).slotsFromKind;
+      const slotsFromKind = (stepDef as unknown as { slotsFromKind?: string }).slotsFromKind;
       const kindProviders =
-        (phaseInput as { _kindProviders?: Record<string, string> })._kindProviders ?? {};
+        (stepInput as { _kindProviders?: Record<string, string> })._kindProviders ?? {};
       const kindOverrideSlots = slotsFromKind && kindProviders[slotsFromKind]
         ? (PROVIDER_CATALOG.find(p => p.kind === slotsFromKind && p.value === kindProviders[slotsFromKind])?.slots ?? [])
         : [];
 
       const slots = kindOverrideSlots.length > 0
         ? kindOverrideSlots
-        : (phaseSlots.length > 0 ? phaseSlots : providerSlots);
+        : (stepSlots.length > 0 ? stepSlots : providerSlots);
 
       rlog.info({
-        phaseKind, provider,
+        stepKind, provider,
         slotsFromKind: slotsFromKind ?? null,
         kindProvider: slotsFromKind ? (kindProviders[slotsFromKind] ?? null) : null,
         slots: slots.map(s => s.name),
@@ -173,8 +173,8 @@ export class WorkerHarness {
       const isCredErr = err?.name === "MissingSecretsError";
       if (isCredErr) {
         const missing: string[] = err.missing ?? (err.ref ? [String(err.ref)] : []);
-        rlog.error({ missing }, "phase failed: missing secrets");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        rlog.error({ missing }, "step failed: missing secrets");
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "missing_secrets",
           missing,
           error: serializeError(err),
@@ -189,8 +189,8 @@ export class WorkerHarness {
       throw err;
     }
 
-    const mcpInstanceIds = Array.isArray((phaseInput as { mcpInstanceIds?: unknown }).mcpInstanceIds)
-      ? ((phaseInput as { mcpInstanceIds: unknown[] }).mcpInstanceIds.filter(
+    const mcpInstanceIds = Array.isArray((stepInput as { mcpInstanceIds?: unknown }).mcpInstanceIds)
+      ? ((stepInput as { mcpInstanceIds: unknown[] }).mcpInstanceIds.filter(
           (x): x is string => typeof x === "string"
         ))
       : [];
@@ -204,7 +204,7 @@ export class WorkerHarness {
         rlog.info({ count: mcps.length }, "MCPs resolved");
       } catch (err: any) {
         rlog.error({ err: err?.message }, "MCP resolution failed");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "mcp_resolution_failed",
           error: serializeError(err),
         });
@@ -216,10 +216,10 @@ export class WorkerHarness {
         return;
       }
     }
-    (phaseInput as { mcps?: ResolvedMcpInstance[] }).mcps = mcps;
+    (stepInput as { mcps?: ResolvedMcpInstance[] }).mcps = mcps;
 
-    const skillPackageIds = Array.isArray((phaseInput as { skillPackageIds?: unknown }).skillPackageIds)
-      ? ((phaseInput as { skillPackageIds: unknown[] }).skillPackageIds.filter(
+    const skillPackageIds = Array.isArray((stepInput as { skillPackageIds?: unknown }).skillPackageIds)
+      ? ((stepInput as { skillPackageIds: unknown[] }).skillPackageIds.filter(
           (x): x is string => typeof x === "string"
         ))
       : [];
@@ -233,7 +233,7 @@ export class WorkerHarness {
         rlog.info({ count: skills.length }, "skills resolved");
       } catch (err: any) {
         rlog.error({ err: err?.message }, "skills resolution failed");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "skills_resolution_failed",
           error: serializeError(err),
         });
@@ -245,16 +245,16 @@ export class WorkerHarness {
         return;
       }
     }
-    (phaseInput as { skills?: ResolvedSkillPackage[] }).skills = skills;
+    (stepInput as { skills?: ResolvedSkillPackage[] }).skills = skills;
 
-    const existingModel = (phaseInput as { model?: unknown }).model;
+    const existingModel = (stepInput as { model?: unknown }).model;
     if ((typeof existingModel !== "string" || !existingModel) && this.deps.modelResolver) {
-      const provider = (phaseInput as { provider?: string }).provider;
+      const provider = (stepInput as { provider?: string }).provider;
       if (typeof provider === "string" && provider) {
         try {
           const sysModel = await this.deps.modelResolver({ provider });
           if (sysModel) {
-            (phaseInput as { model?: string }).model = sysModel;
+            (stepInput as { model?: string }).model = sysModel;
           }
         } catch (err: any) {
           rlog.warn({ err: err?.message }, "model resolver failed; deferring to provider default");
@@ -262,9 +262,9 @@ export class WorkerHarness {
       }
     }
 
-    const inputForEvent = redactPhaseInputForEvent(phaseInput);
+    const inputForEvent = redactStepInputForEvent(stepInput);
     await this.deps.events.append({
-      workflowInstanceId, nodeId, eventType: "phase.started",
+      workflowInstanceId, nodeId, eventType: "step.started",
       payload: { attempt: task.retryCount + 1, inputSources, input: inputForEvent },
     });
 
@@ -274,15 +274,15 @@ export class WorkerHarness {
     const stopHeartbeat = startHeartbeat({
       intervalMs: heartbeatMs,
       onBeat: (elapsedMs) => {
-        appendPhaseEvent(this.deps.events, ctx, "worker.heartbeat", { elapsedMs })
+        appendStepEvent(this.deps.events, ctx, "worker.heartbeat", { elapsedMs })
           .catch(e => rlog.debug({ err: e }, "heartbeat emit failed"));
-        rlog.debug({ elapsedMs }, "phase.heartbeat");
+        rlog.debug({ elapsedMs }, "step.heartbeat");
       },
     });
 
     try {
-      const workflowInputs = ((phaseInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
-      const result = await handler.run(phaseInput, {
+      const workflowInputs = ((stepInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
+      const result = await handler.run(stepInput, {
         workflowInstanceId, nodeId, attempt: task.retryCount + 1,
         workspaceDir: ws.path, signal: abort.signal,
         env: resolvedEnv,
@@ -291,15 +291,15 @@ export class WorkerHarness {
           const text = typeof line === "string" ? line : String(line);
           tail.push(text);
           this.deps.events.append({
-            workflowInstanceId, nodeId, eventType: "phase.log", payload: { line, meta },
+            workflowInstanceId, nodeId, eventType: "step.log", payload: { line, meta },
           }).catch(err => rlog.error({ err }, "log emit failed"));
         },
       });
 
       if (result.kind === "success") {
         const durationMs = Date.now() - startedAt;
-        rlog.info({ durationMs }, "phase completed");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.completed", {
+        rlog.info({ durationMs }, "step completed");
+        await appendStepEvent(this.deps.events, ctx, "step.completed", {
           output: result.output, durationMs,
         });
         await this.deps.client.completeTask({
@@ -309,8 +309,8 @@ export class WorkerHarness {
       } else {
         const retryable = result.failure.retryable ?? false;
         const durationMs = Date.now() - startedAt;
-        rlog.error({ retryable, error: result.failure, durationMs }, "phase failed");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        rlog.error({ retryable, error: result.failure, durationMs }, "step failed");
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "handler_error",
           error: { ...result.failure, retryable },
           tail: tail.drain(),
@@ -326,8 +326,8 @@ export class WorkerHarness {
     } catch (err: any) {
       const durationMs = Date.now() - startedAt;
       if (err?.name === "ConfigurationError") {
-        rlog.error({ message: err.message, durationMs }, "phase failed: configuration error");
-        await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+        rlog.error({ message: err.message, durationMs }, "step failed: configuration error");
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "configuration_error",
           error: serializeError(err),
           tail: tail.drain(),
@@ -340,8 +340,8 @@ export class WorkerHarness {
         });
         return;
       }
-      rlog.error({ err: serializeError(err), durationMs }, "phase threw unhandled error");
-      await appendPhaseEvent(this.deps.events, ctx, "phase.failed", {
+      rlog.error({ err: serializeError(err), durationMs }, "step threw unhandled error");
+      await appendStepEvent(this.deps.events, ctx, "step.failed", {
         reason: "unhandled",
         error: serializeError(err),
         tail: tail.drain(),
@@ -359,14 +359,14 @@ export class WorkerHarness {
   }
 }
 
-function redactPhaseInputForEvent(phaseInput: Record<string, unknown>): Record<string, unknown> {
+function redactStepInputForEvent(stepInput: Record<string, unknown>): Record<string, unknown> {
   const REDACT = new Set([
     "mcps", "skills", "secretBindings",
     "__workflowInput", "_flowDefaultSources",
     "startedByUserId", "startedByOrgId",
   ]);
   const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(phaseInput)) {
+  for (const [k, v] of Object.entries(stepInput)) {
     if (REDACT.has(k)) continue;
     out[k] = v;
   }

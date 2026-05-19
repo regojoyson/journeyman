@@ -9,7 +9,7 @@ export type ExecutorKind =
 
 export interface ProviderEntry {
   kind: ExecutorKind;
-  /** Stable id used in flow JSON (`PhaseInput.provider`). */
+  /** Stable id used in flow JSON (`StepInput.provider`). */
   value: string;
   /** Human-readable label for the editor dropdown. */
   label: string;
@@ -68,10 +68,10 @@ export function defaultProviderForKind(kind: ExecutorKind): ProviderEntry | unde
 }
 
 /**
- * Static map from phaseType string to its ExecutorKind.
+ * Static map from stepType string to its ExecutorKind.
  * Used by the orchestrator to look up the correct per-kind default
- * from FlowDefaults.executorConfig without access to the editor's PhaseRegistry.
- * Must be updated when new phase types are added.
+ * from FlowDefaults.executorConfig without access to the editor's StepRegistry.
+ * Must be updated when new step types are added.
  */
 export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   // coding-cli
@@ -96,7 +96,7 @@ export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   "send-message": "notification",
 };
 
-/** Returns the ExecutorKind for a given phaseType, or undefined if unknown. */
-export function kindForPhaseType(phaseType: string): ExecutorKind | undefined {
-  return PHASE_KIND_MAP[phaseType];
+/** Returns the ExecutorKind for a given stepType, or undefined if unknown. */
+export function kindForStepType(stepType: string): ExecutorKind | undefined {
+  return PHASE_KIND_MAP[stepType];
 }

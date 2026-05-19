@@ -96,4 +96,4 @@
 .je-runview__logspanel-search { flex: 1; max-width: 320px; background: #1a1a2a; border: 1px solid #2a2a3a; color: #ddd; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: inherit; }
 .je-runview__logspanel-search::placeholder { color: #666; }
 .je-runview__logspanel-list { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; border: none; border-radius: 0; padding: 8px 10px; }
-.je-runview__log-phase { display: inline-block; padding: 0 6px; border-radius: 8px; background: rgba(125, 138, 255, 0.15); color: #aab2ff; font-size: 10px; flex-shrink: 0; }
+.je-runview__log-step { display: inline-block; padding: 0 6px; border-radius: 8px; background: rgba(125, 138, 255, 0.15); color: #aab2ff; font-size: 10px; flex-shrink: 0; }

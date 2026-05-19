@@ -10,7 +10,7 @@ export interface ParsedLog {
   id: number;
   ts: Date;
   nodeId: string | null;
-  phaseName: string;
+  stepName: string;
   line: string;
   kind: LogKind;
   meta?: Record<string, unknown>;

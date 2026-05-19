@@ -19,6 +19,6 @@ export interface ICodingCLI {
   cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult>;
   createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult>;
 
-  // Custom user-defined AI phase
+  // Custom user-defined AI step
   runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult>;
 }

@@ -9,10 +9,10 @@ function flowWithCustomAi(mcpInstanceIds: string[]): WorkflowGraph {
       { id: "start", type: "start", displayName: "Start", config: {}, position: { x: 0, y: 0 } },
       {
         id: "n1",
-        type: "phase",
-        phaseType: "custom-ai",
-        displayName: "Linear Phase",
-        config: { customPhaseId: "cp-1", mcpInstanceIds },
+        type: "step",
+        stepType: "custom-ai",
+        displayName: "Linear Step",
+        config: { customStepId: "cp-1", mcpInstanceIds },
         position: { x: 100, y: 0 },
       },
       { id: "end", type: "end", displayName: "End", config: {}, position: { x: 200, y: 0 } },
@@ -28,9 +28,9 @@ const catalog: ValidationCatalog = {
   "custom-ai": {
     inputFields: {},
     outputSchema: null,
-    customPhases: {
+    customSteps: {
       "cp-1": {
-        name: "Linear Phase",
+        name: "Linear Step",
         requiresSkills: false,
         defaultSkillIds: [],
         requiresMcp: true,
@@ -45,7 +45,7 @@ describe("validateWorkflowInputs — requiresMcp", () => {
     const warnings = validateWorkflowInputs(flowWithCustomAi([]), catalog);
     const w = warnings.find(w => w.code === "missing-required" && w.nodeId === "n1" && w.inputKey === "mcpInstanceIds");
     expect(w).toBeDefined();
-    expect(w!.message).toContain("Linear Phase");
+    expect(w!.message).toContain("Linear Step");
     expect(w!.message).toContain("requires at least one MCP");
     expect(w!.message).toContain("linear-mcp");
   });
@@ -60,9 +60,9 @@ describe("validateWorkflowInputs — requiresMcp", () => {
       "custom-ai": {
         inputFields: {},
         outputSchema: null,
-        customPhases: {
+        customSteps: {
           "cp-1": {
-            name: "Linear Phase",
+            name: "Linear Step",
             requiresSkills: false,
             defaultSkillIds: [],
             requiresMcp: false,
@@ -80,9 +80,9 @@ describe("validateWorkflowInputs — requiresMcp", () => {
       "custom-ai": {
         inputFields: {},
         outputSchema: null,
-        customPhases: {
+        customSteps: {
           "cp-1": {
-            name: "Linear Phase",
+            name: "Linear Step",
             requiresSkills: false,
             defaultSkillIds: [],
             requiresMcp: true,

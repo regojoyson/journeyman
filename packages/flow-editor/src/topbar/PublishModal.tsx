@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WorkflowGraph, PublishError, PhaseConfigValidator } from "@journeyman/core";
+import type { WorkflowGraph, PublishError, StepConfigValidator } from "@journeyman/core";
 import { validateForPublish } from "@journeyman/core";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 
 interface Props {
   flow: WorkflowGraph;
@@ -59,15 +59,15 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
   const [serverError, setServerError] = useState<string | null>(null);
   const [published, setPublished] = useState(false);
 
-  const registry = usePhaseRegistry();
-  const phaseConfigValidators = useMemo<Map<string, PhaseConfigValidator>>(() => {
-    const map = new Map<string, PhaseConfigValidator>();
+  const registry = useStepRegistry();
+  const stepConfigValidators = useMemo<Map<string, StepConfigValidator>>(() => {
+    const map = new Map<string, StepConfigValidator>();
     for (const def of registry.list()) {
       const schema = def.configSchema as
         | { safeParse: (v: unknown) => { success: boolean; error?: { issues?: Array<{ path?: (string | number)[]; message?: string }> } } }
         | undefined;
       if (!schema) continue;
-      map.set(def.phaseType, (config: unknown) => {
+      map.set(def.stepType, (config: unknown) => {
         const r = schema.safeParse(config);
         if (r.success) return [];
         return (r.error?.issues ?? []).map(i => ({
@@ -80,9 +80,9 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
   }, [registry]);
 
   useEffect(() => {
-    const result = validateForPublish(flow, { hasTrigger, phaseConfigValidators });
+    const result = validateForPublish(flow, { hasTrigger, stepConfigValidators });
     setIssues(result.errors);
-  }, [flow, hasTrigger, phaseConfigValidators]);
+  }, [flow, hasTrigger, stepConfigValidators]);
 
   const hardErrors = issues.filter(isHardError);
   const warnings = issues.filter(e => e.severity === "warning");

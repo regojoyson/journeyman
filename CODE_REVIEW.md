@@ -38,7 +38,7 @@ Before requesting review, confirm:
 - New cross-package types live in `@journeyman/core`.
 - No `@journeyman/core` → `@journeyman/*` imports.
 - UI bucket ↛ backend bucket and vice versa (`scripts/check-import-boundaries.mjs`).
-- `@journeyman/phases/catalog` is the only sanctioned phases subpath that backend may import.
+- `@journeyman/steps/catalog` is the only sanctioned steps subpath that backend may import.
 - All GitHub access goes through `@journeyman/github-api`; no ad-hoc Octokit instantiation.
 - The `coding-cli` (local bash) vs `git-provider` (remote REST) split is preserved.
 

@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@journeyman/core": "*",
-    "@journeyman/custom-phases": "*",
+    "@journeyman/custom-steps": "*",
     "@xyflow/react": "^12.3.5",
     "lucide-react": "^0.400.0",
     "zod": "^3.23.8"

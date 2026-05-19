@@ -90,7 +90,7 @@
     },
     {
       "id": "step_kjh1m1",
-      "type": "phase",
+      "type":"step",
       "config": {
         "issueRef": ""
       },
@@ -104,7 +104,7 @@
         "x": 42.612630110658216,
         "y": 292.01734651214304
       },
-      "phaseType": "get-issue",
+      "stepType": "get-issue",
       "displayName": "Get Issue",
       "executorConfig": {
         "provider": "jira"
@@ -119,7 +119,7 @@
     },
     {
       "id": "step_8slbou",
-      "type": "phase",
+      "type":"step",
       "config": {
         "issueRef": ""
       },
@@ -133,7 +133,7 @@
         "x": 283.31648607608514,
         "y": 298.65674527335807
       },
-      "phaseType": "create-workspace",
+      "stepType": "create-workspace",
       "displayName": "Create Workspace",
       "executorConfig": {
         "provider": "claude"
@@ -142,7 +142,7 @@
     },
     {
       "id": "step_00433l",
-      "type": "phase",
+      "type":"step",
       "config": {
         "repos": "https://github.com/regojoyson/agentic-ai-revolution.git"
       },
@@ -156,7 +156,7 @@
         "x": 540.2366156747215,
         "y": 301.9122052249072
       },
-      "phaseType": "clone-repos",
+      "stepType": "clone-repos",
       "displayName": "Clone Repos",
       "executorConfig": {
         "provider": "github"
@@ -171,7 +171,7 @@
     },
     {
       "id": "step_t29cxr",
-      "type": "phase",
+      "type":"step",
       "config": {},
       "inputs": {
         "issue": {
@@ -187,7 +187,7 @@
         "x": 783.7008604360578,
         "y": 303.1284788581168
       },
-      "phaseType": "start-feature-branch",
+      "stepType": "start-feature-branch",
       "displayName": "Start Feature Branch",
       "executorConfig": {
         "provider": "claude"
@@ -200,7 +200,7 @@
     },
     {
       "id": "step_tol1ks",
-      "type": "phase",
+      "type":"step",
       "config": {
         "repoDir": "",
         "issueContent": "test"
@@ -227,7 +227,7 @@
         "x": 1031.343690276949,
         "y": 302.9310495017347
       },
-      "phaseType": "analyze-repo",
+      "stepType": "analyze-repo",
       "displayName": "Analyze Repo",
       "executorConfig": {
         "provider": "claude"
@@ -240,7 +240,7 @@
     },
     {
       "id": "step_q5asju",
-      "type": "phase",
+      "type":"step",
       "config": {
         "repoDir": "",
         "issueContent": "",
@@ -272,7 +272,7 @@
         "x": 1278.8644678687679,
         "y": 305.44196940483295
       },
-      "phaseType": "plan-implementation",
+      "stepType": "plan-implementation",
       "displayName": "Plan Implementation",
       "executorConfig": {
         "provider": "claude"
@@ -285,7 +285,7 @@
     },
     {
       "id": "step_ky644k",
-      "type": "phase",
+      "type":"step",
       "config": {
         "repoDir": "",
         "issueContent": "",
@@ -322,7 +322,7 @@
         "x": 1534.1094434675256,
         "y": 307.5640216539049
       },
-      "phaseType": "implement-changes",
+      "stepType": "implement-changes",
       "displayName": "Implement Changes",
       "executorConfig": {
         "provider": "claude"
@@ -335,7 +335,7 @@
     },
     {
       "id": "step_nnylsj",
-      "type": "phase",
+      "type":"step",
       "config": {
         "repos": "",
         "branch": "test",
@@ -351,7 +351,7 @@
         "x": 1774.285033017711,
         "y": 308.54367961239296
       },
-      "phaseType": "commit-and-push",
+      "stepType": "commit-and-push",
       "displayName": "Commit & Push",
       "executorConfig": {
         "provider": "claude"
@@ -364,7 +364,7 @@
     },
     {
       "id": "step_besh7s",
-      "type": "phase",
+      "type":"step",
       "config": {
         "base": "main",
         "body": "",
@@ -403,7 +403,7 @@
         "x": 1997.064266090448,
         "y": 315.53918631833943
       },
-      "phaseType": "open-pull-request",
+      "stepType": "open-pull-request",
       "displayName": "Open Pull Request",
       "executorConfig": {
         "provider": "github"

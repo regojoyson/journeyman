@@ -8,16 +8,16 @@ import { extractTemplateRefs } from "./template-refs.ts";
  * Catalog entry the validator needs. The flow-editor and any future server-side
  * caller is responsible for constructing this from whatever source they have.
  */
-export interface CustomPhaseValidationEntry {
+export interface CustomStepValidationEntry {
   name: string;
   requiresSkills: boolean;
   defaultSkillIds: string[];
   requiresMcp: boolean;
   defaultMcpIds: string[];
-  /** Per-customPhaseId input declarations. Falls back to the bare entry's
+  /** Per-customStepId input declarations. Falls back to the bare entry's
    *  inputFields when absent. */
   inputFields?: Record<string, { shape: Shape; required?: boolean }>;
-  /** Per-customPhaseId output schema. Falls back to the bare entry's
+  /** Per-customStepId output schema. Falls back to the bare entry's
    *  outputSchema when absent. */
   outputSchema?: OutputSchema | null;
 }
@@ -25,10 +25,10 @@ export interface CustomPhaseValidationEntry {
 export interface ValidationCatalogEntry {
   inputFields?: Record<string, { shape: Shape; required?: boolean }>;
   outputSchema?: OutputSchema | null;
-  /** Only meaningful on the "custom-ai" entry: per-definition rules keyed by customPhaseId. */
-  customPhases?: Record<string, CustomPhaseValidationEntry>;
+  /** Only meaningful on the "custom-ai" entry: per-definition rules keyed by customStepId. */
+  customSteps?: Record<string, CustomStepValidationEntry>;
 }
-export type ValidationCatalog = Record<string /* phaseType */, ValidationCatalogEntry>;
+export type ValidationCatalog = Record<string /* stepType */, ValidationCatalogEntry>;
 
 /** Per-binding compatibility check used by both the picker and the whole-flow walker. */
 export type BindingCheck =
@@ -65,7 +65,7 @@ export function validateInputBinding(expected: Shape, actual: Shape | undefined)
 }
 
 /**
- * Wildcard: when `expected` is an object with no declared fields (custom-phase
+ * Wildcard: when `expected` is an object with no declared fields (custom-step
  * input typed as plain `object`), accept any object as actual.
  */
 function isWildcardObjectMatch(actual: Shape, expected: Shape): boolean {
@@ -111,7 +111,7 @@ function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
 }
 
 /**
- * Walk every phase node in `flow`, check each input against its catalog
+ * Walk every step node in `flow`, check each input against its catalog
  * declaration, and collect non-blocking WorkflowSaveWarning entries describing:
  *   - shape-mismatch: a ref whose upstream shape doesn't match the input
  *   - missing-required: a required input with no Config value and no ref
@@ -131,22 +131,22 @@ export function validateWorkflowInputs(
   const workflowInputs = findStartWorkflowInputs(flow);
   const workflowInputByName = new Map(workflowInputs.map((r) => [r.name, r] as const));
 
-  // Resolve a node's per-customPhaseId overlay (if any) on the catalog entry
+  // Resolve a node's per-customStepId overlay (if any) on the catalog entry
   // for "custom-ai". Returns undefined for non-custom-ai or unknown ids.
-  function cpDefFor(n: WorkflowNode | undefined): CustomPhaseValidationEntry | undefined {
-    if (!n || n.type !== "phase" || n.phaseType !== "custom-ai") return undefined;
-    const cpId = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+  function cpDefFor(n: WorkflowNode | undefined): CustomStepValidationEntry | undefined {
+    if (!n || n.type !== "step" || n.stepType !== "custom-ai") return undefined;
+    const cpId = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
     if (typeof cpId !== "string") return undefined;
-    return catalog["custom-ai"]?.customPhases?.[cpId];
+    return catalog["custom-ai"]?.customSteps?.[cpId];
   }
 
   for (const node of flow.nodes) {
-    if (node.type !== "phase" || !node.phaseType) continue;
-    const entry = catalog[node.phaseType];
+    if (node.type !== "step" || !node.stepType) continue;
+    const entry = catalog[node.stepType];
 
-    if (node.phaseType === "custom-ai") {
-      const cpId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-      const cpDef = typeof cpId === "string" ? entry?.customPhases?.[cpId] : undefined;
+    if (node.stepType === "custom-ai") {
+      const cpId = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+      const cpDef = typeof cpId === "string" ? entry?.customSteps?.[cpId] : undefined;
       if (cpDef?.requiresSkills) {
         const skillIds = (node.config as { skillPackageIds?: unknown } | undefined)?.skillPackageIds;
         const count = Array.isArray(skillIds) ? skillIds.length : 0;
@@ -156,7 +156,7 @@ export function validateWorkflowInputs(
             : "";
           warnings.push({
             code: "missing-required",
-            message: `${cpDef.name}: this phase requires at least one skill.${suggested} Add a skill in the Skills tab.`,
+            message: `${cpDef.name}: this step requires at least one skill.${suggested} Add a skill in the Skills tab.`,
             nodeId: node.id,
             inputKey: "skillPackageIds",
           });
@@ -171,7 +171,7 @@ export function validateWorkflowInputs(
             : "";
           warnings.push({
             code: "missing-required",
-            message: `${cpDef.name}: this phase requires at least one MCP.${suggested} Add an MCP in the MCP tab.`,
+            message: `${cpDef.name}: this step requires at least one MCP.${suggested} Add an MCP in the MCP tab.`,
             nodeId: node.id,
             inputKey: "mcpInstanceIds",
           });
@@ -194,7 +194,7 @@ export function validateWorkflowInputs(
       if (!expected) {
         warnings.push({
           code: "missing-input-shape",
-          message: `${node.id}.${key}: input has no declared shape — fix the phase catalog`,
+          message: `${node.id}.${key}: input has no declared shape — fix the step catalog`,
           nodeId: node.id,
           inputKey: key,
         });
@@ -275,8 +275,8 @@ export function validateWorkflowInputs(
             continue;
           }
           if (parsed.scope === "input") continue;
-          if (sourceNode.type !== "phase" || !sourceNode.phaseType) continue;
-          const sourceEntry = catalog[sourceNode.phaseType];
+          if (sourceNode.type !== "step" || !sourceNode.stepType) continue;
+          const sourceEntry = catalog[sourceNode.stepType];
           const sourceCpDef = cpDefFor(sourceNode);
           const outputSchema = sourceCpDef?.outputSchema ?? sourceEntry?.outputSchema;
           if (!outputSchema) continue;

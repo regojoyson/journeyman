@@ -29,7 +29,7 @@ export const HANDLES: LegendRow[] = [
   { swatch: <span style={dot("#4a9eff")} />, label: "Blue dot",
     desc: "Default flow input/output. Drag from one to another node to connect." },
   { swatch: <span style={dot("#ff7675")} />, label: "Red dot",
-    desc: "Error output. Connect to the node that handles failures for this phase." },
+    desc: "Error output. Connect to the node that handles failures for this step." },
   { swatch: <span style={dot("#00b894", "rgba(0,184,148,0.55)")} />, label: "Green glow",
     desc: "Transient — appears while you're dragging a connection. Means \"valid drop target\"." },
   { swatch: <span style={dot("#fdcb6e")} />, label: "Yellow dot",
@@ -45,7 +45,7 @@ export interface NodeRow {
 export const NODES: NodeRow[] = [
   { icon: "▶", label: "Start",        desc: "Entry point of the flow." },
   { icon: "■", label: "End",          desc: "Terminal node." },
-  { icon: "⚙", label: "Phase",        desc: "A unit of work — runs an action." },
+  { icon: "⚙", label: "Step",        desc: "A unit of work — runs an action." },
   { icon: "◆", label: "Gateway XOR",  desc: "Pick exactly one of N branches." },
   { icon: "⬡", label: "Gateway AND",  desc: "Run all outgoing branches in parallel." },
   { icon: "↻", label: "Loop",         desc: "Repeat a sub-section of the flow." },
@@ -70,6 +70,6 @@ export const INTERACTIONS: string[] = [
 ];
 
 export const ADDING_PARAGRAPH =
-  "Drag any item from the left \"Phases\" or \"Controls\" palette onto the canvas. " +
+  "Drag any item from the left \"Steps\" or \"Controls\" palette onto the canvas. " +
   "Then drag from its blue handle to another node's handle to connect them. " +
   "Wire up error paths by dragging from the red handle.";

@@ -1,10 +1,10 @@
-import type { WorkflowGraph, OutputSchema, Shape, CustomAiPhase } from "@journeyman/core";
+import type { WorkflowGraph, OutputSchema, Shape, CustomAiStep } from "@journeyman/core";
 import { WORKFLOW_INPUT_SUGGESTIONS, resolveShape } from "@journeyman/core";
 
 export interface ConditionSuggestion {
-  /** Full var path used in JsonLogic, e.g. "phase1.output.score". */
+  /** Full var path used in JsonLogic, e.g. "step1.output.score". */
   path: string;
-  /** Stable group key — phase id, or "Workflow input". */
+  /** Stable group key — step id, or "Workflow input". */
   group: string;
   /** Display label for the optgroup, e.g. "Analyze Repo · #abc123" or "Workflow input". */
   groupLabel: string;
@@ -15,7 +15,7 @@ export interface ConditionSuggestion {
 }
 
 export interface CatalogLookup {
-  outputSchemaFor(phaseType: string): OutputSchema | null;
+  outputSchemaFor(stepType: string): OutputSchema | null;
 }
 
 /**
@@ -23,12 +23,12 @@ export interface CatalogLookup {
  * leaves the gateway node identified by `gatewayId`.
  *
  * Walks predecessors backward (transparently through gateway-xor / gateway-and
- * nodes) and emits one entry per leaf field of each reachable phase's
+ * nodes) and emits one entry per leaf field of each reachable step
  * outputSchema, plus the static workflow.input.* entries.
  *
  * `extraSchemas` lets callers inject runtime-fetched schemas (e.g. per-instance
- * custom-ai phase outputs that the static registry doesn't know about). When a
- * phase id has both a static schema and an extra schema, the extra schema wins
+ * custom-ai step outputs that the static registry doesn't know about). When a
+ * step id has both a static schema and an extra schema, the extra schema wins
  * only if the static schema is empty.
  */
 export function buildConditionSuggestions(
@@ -37,42 +37,42 @@ export function buildConditionSuggestions(
   catalog: CatalogLookup,
   extraSchemas?: Map<string, OutputSchema>,
 ): ConditionSuggestion[] {
-  const phaseIds = collectUpstreamPhases(flow, gatewayId);
+  const stepIds = collectUpstreamSteps(flow, gatewayId);
 
-  const displayNameByPhase = new Map<string, string>();
+  const displayNameByStep = new Map<string, string>();
   const displayNameCounts = new Map<string, number>();
-  for (const phaseId of phaseIds) {
-    const node = flow.nodes.find(n => n.id === phaseId);
-    const name = node?.displayName?.trim() || node?.phaseType || phaseId;
-    displayNameByPhase.set(phaseId, name);
+  for (const stepId of stepIds) {
+    const node = flow.nodes.find(n => n.id === stepId);
+    const name = node?.displayName?.trim() || node?.stepType || stepId;
+    displayNameByStep.set(stepId, name);
     displayNameCounts.set(name, (displayNameCounts.get(name) ?? 0) + 1);
   }
 
   const out: ConditionSuggestion[] = [];
 
-  for (const phaseId of phaseIds) {
-    const node = flow.nodes.find(n => n.id === phaseId);
-    if (!node?.phaseType) continue;
-    const staticSchema = catalog.outputSchemaFor(node.phaseType);
-    const extra = extraSchemas?.get(phaseId);
+  for (const stepId of stepIds) {
+    const node = flow.nodes.find(n => n.id === stepId);
+    if (!node?.stepType) continue;
+    const staticSchema = catalog.outputSchemaFor(node.stepType);
+    const extra = extraSchemas?.get(stepId);
     const schema =
       extra && (!staticSchema || Object.keys(staticSchema).length === 0)
         ? extra
         : staticSchema;
     if (!schema) continue;
 
-    const displayName = displayNameByPhase.get(phaseId) ?? phaseId;
+    const displayName = displayNameByStep.get(stepId) ?? stepId;
     const ambiguous = (displayNameCounts.get(displayName) ?? 0) > 1
-      || displayName === phaseId;
+      || displayName === stepId;
     const groupLabel = ambiguous
-      ? `${displayName} · #${phaseId.slice(-6)}`
+      ? `${displayName} · #${stepId.slice(-6)}`
       : displayName;
 
     for (const leaf of flattenOutputSchema(schema)) {
       const typeSuffix = leaf.type ? ` (${leaf.type})` : "";
       out.push({
-        path: `${phaseId}.output.${leaf.path}`,
-        group: phaseId,
+        path: `${stepId}.output.${leaf.path}`,
+        group: stepId,
         groupLabel,
         fieldLabel: `output.${leaf.path}${typeSuffix}`,
         type: leaf.type,
@@ -94,7 +94,7 @@ export function buildConditionSuggestions(
   return out;
 }
 
-export function collectUpstreamPhases(flow: WorkflowGraph, gatewayId: string): string[] {
+export function collectUpstreamSteps(flow: WorkflowGraph, gatewayId: string): string[] {
   const incoming = new Map<string, string[]>();
   for (const e of flow.edges) {
     const arr = incoming.get(e.target) ?? [];
@@ -103,7 +103,7 @@ export function collectUpstreamPhases(flow: WorkflowGraph, gatewayId: string): s
   }
 
   const seen = new Set<string>();
-  const phases: string[] = [];
+  const steps: string[] = [];
   const stack = [...(incoming.get(gatewayId) ?? [])];
   while (stack.length) {
     const id = stack.pop()!;
@@ -111,10 +111,10 @@ export function collectUpstreamPhases(flow: WorkflowGraph, gatewayId: string): s
     seen.add(id);
     const node = flow.nodes.find(n => n.id === id);
     if (!node) continue;
-    if (node.type === "phase") phases.push(id);
+    if (node.type === "step") steps.push(id);
     for (const pred of incoming.get(id) ?? []) stack.push(pred);
   }
-  return phases.reverse();
+  return steps.reverse();
 }
 
 interface Leaf {
@@ -150,12 +150,12 @@ function flattenShape(shape: Shape, prefix: string): Leaf[] {
 }
 
 /**
- * Convert a `CustomAiPhase` (whose `outputSchema` is a JSON Schema fragment)
+ * Convert a `CustomAiStep` (whose `outputSchema` is a JSON Schema fragment)
  * into the editor's `OutputSchema` shape. Mirrors the conversion in
- * packages/web/src/flow-editor-integration/useCustomPhasePaletteEntries.ts —
+ * packages/web/src/flow-editor-integration/useCustomStepPaletteEntries.ts —
  * inlined here to keep flow-editor independent of the web package.
  */
-export function customAiOutputSchemaFromJsonSchema(p: CustomAiPhase): OutputSchema {
+export function customAiOutputSchemaFromJsonSchema(p: CustomAiStep): OutputSchema {
   if (p.outputMode === "text") {
     return { result: { type: "string" } } as OutputSchema;
   }

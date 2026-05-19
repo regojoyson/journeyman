@@ -472,7 +472,7 @@ label.je-switch,
   background: #00b894 !important;
   box-shadow: 0 0 0 5px rgba(0, 184, 148, 0.55);
 }
-/* Error handle (originally right, now bottom of phase nodes) — red */
+/* Error handle (originally right, now bottom of step nodes) — red */
 .react-flow__handle[data-handleid="error"] {
   background: #ff7675 !important;
   box-shadow: 0 0 0 2px rgba(255, 118, 117, 0.25);
@@ -963,7 +963,7 @@ label.je-switch,
 
 .je-props__field-help { font-size: 11px; color: #888; margin-top: 4px; }
 .je-props__field-error { margin-top: 8px; font-size: 11px; color: #ff7675; }
-.je-props__phase-desc { font-size: 11px; color: #888; margin-top: 8px; line-height: 1.4; }
+.je-props__step-desc { font-size: 11px; color: #888; margin-top: 8px; line-height: 1.4; }
 
 /* Validation: picker — disabled bind button on shape mismatch */
 .vp-shape-node--incompatible > .vp-shape-row > .vp-shape-bind {

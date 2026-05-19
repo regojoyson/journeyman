@@ -90,7 +90,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     await this.deps.workflowInstances.setEngineWorkflowId(instance.id, engineWorkflowId);
     await this.deps.workflowInstances.setStatus(instance.id, "running");
 
-    // Start nodes are graph markers, not phases — conductor-converter begins the task sequence at
+    // Start nodes are graph markers, not steps — conductor-converter begins the task sequence at
     // successor(start), so no worker ever runs for them. Emit node.resolved (the same family used
     // for human tasks) so the UI doesn't show the start node stuck at "pending".
     const startNode = args.definitionSnapshot.nodes.find((n) => n.type === "start");
@@ -176,10 +176,10 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
    * Several node types compile to engine-internal Conductor tasks that have no worker
    * (see conductor-converter#emitNode): SWITCH (if, gateway-xor), FORK_JOIN (gateway-and),
    * DO_WHILE (loop), WAIT (timer), SUB_WORKFLOW (subflow), TERMINATE (end). They never emit
-   * phase.* events and would otherwise stay `pending` in the run viewer forever.
+   * step.* events and would otherwise stay `pending` in the run viewer forever.
    *
    * On terminal sync, scan completed engine tasks and emit `node.resolved` for each. SIMPLE
-   * tasks are skipped because worker-harness already emits phase.* for them; HUMAN tasks are
+   * tasks are skipped because worker-harness already emits step.* for them; HUMAN tasks are
    * skipped because they emit their own node.waiting/node.resolved.
    */
   private async emitEngineNodeResolveds(instance: WorkflowInstance): Promise<void> {

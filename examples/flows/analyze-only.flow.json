@@ -1,6 +1,6 @@
 {
   "name": "analyze-only",
-  "description": "Smoke flow: a single 'analyze-repo' phase fed by run inputs.",
+  "description": "Smoke flow: a single 'analyze-repo' step fed by run inputs.",
   "definition": {
     "schemaVersion": 1,
     "nodes": [
@@ -16,8 +16,8 @@
       },
       {
         "id": "n_analyze",
-        "type": "phase",
-        "phaseType": "analyze-repo",
+        "type":"step",
+        "stepType": "analyze-repo",
         "inputs": {
           "workspaceDir": { "kind": "ref", "ref": "workflow.input.workspaceDir" },
           "issue":        { "kind": "ref", "ref": "workflow.input.issue" }

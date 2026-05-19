@@ -84,7 +84,7 @@ export function openWorkflowInstanceEventStream(args: {
   es.onopen = () => args.onOpen?.();
   es.onerror = (e) => args.onError?.(e);
   const types = [
-    "phase.started", "phase.log", "phase.failed", "phase.retrying", "phase.completed",
+    "step.started", "step.log", "step.failed", "step.retrying", "step.completed",
     "node.cycled", "run.started", "run.completed", "run.failed", "run.cancelled",
   ];
   for (const t of types) {

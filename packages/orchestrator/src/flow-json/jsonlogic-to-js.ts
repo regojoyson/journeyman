@@ -22,9 +22,9 @@ function walk(expr: JsonLogicExpr, roots: Set<string>): string {
 
   if ("var" in expr) {
     const path = expr.var;
-    const phase = path.match(PHASE_PATH);
-    if (phase) {
-      const [, root, rest] = phase;
+    const stepRef = path.match(PHASE_PATH);
+    if (stepRef) {
+      const [, root, rest] = stepRef;
       roots.add(root!);
       return rest ? `$.${root}.${rest}` : `$.${root}`;
     }

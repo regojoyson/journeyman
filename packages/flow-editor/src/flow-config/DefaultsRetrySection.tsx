@@ -63,7 +63,7 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
                 <span className="je-switch__track" aria-hidden><span className="je-switch__thumb" /></span>
                 <span className="je-switch__label">Enabled</span>
               </label>
-              <FieldInfo text="When enabled, all phases inherit this retry policy unless they override it individually." />
+              <FieldInfo text="When enabled, all steps inherit this retry policy unless they override it individually." />
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
             <div className="je-props__field-label-row">
               <FieldLabel
                 label="Max attempts"
-                info="Total number of times a phase can run, including the first attempt. A value of 3 means one initial run plus two retries."
+                info="Total number of times a step can run, including the first attempt. A value of 3 means one initial run plus two retries."
               />
             </div>
             <input type="number" min={1} max={10} value={r.maxAttempts ?? 3} disabled={readOnly}
