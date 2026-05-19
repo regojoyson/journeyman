@@ -1,0 +1,95 @@
+# Full Journeyman stack: infra + apps.
+# Infra services mirror infra/docker-compose.yml so `npm run infra:up` stays valid.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: journeyman
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6380:6379"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  conductor:
+    image: orkesio/orkes-conductor-community-standalone:latest
+    ports:
+      - "8080:8080"
+      - "5001:5000"
+    environment:
+      - CONFIG_PROP=/app/config/conductor.properties
+    volumes:
+      - ./infra/conductor-config:/app/config
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  migrations:
+    image: journeyman/migrations:dev
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api-server:
+    image: journeyman/api-server:dev
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
+      CONDUCTOR_BASE_URL: http://conductor:8080/api
+      STORE_BACKEND: postgres
+      IDENTITY_ENFORCE: "true"
+      PORT: "4000"
+    ports: ["4000:4000"]
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      conductor:
+        condition: service_started
+
+  worker:
+    image: journeyman/worker:dev
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
+      CONDUCTOR_BASE_URL: http://conductor:8080/api
+      STORE_BACKEND: postgres
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      conductor:
+        condition: service_started
+
+  web:
+    image: journeyman/web:dev
+    ports: ["8081:8080"]
+    depends_on:
+      api-server:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:

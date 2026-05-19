@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: journeyman
+
+resources:
+  - ../../base
+
+images:
+  - name: journeyman/api-server
+    newTag: dev
+  - name: journeyman/worker
+    newTag: dev
+  - name: journeyman/web
+    newTag: dev
+  - name: journeyman/migrations
+    newTag: dev
+
+# Override image pull policy via patch (Kustomize cannot set this through the images: field).
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+  - target:
+      kind: StatefulSet
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+  - target:
+      kind: Job
+      name: migrations
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+
+secretGenerator:
+  - name: journeyman-secrets
+    behavior: replace
+    envs:
+      - .env.secret
+
+generatorOptions:
+  disableNameSuffixHash: true

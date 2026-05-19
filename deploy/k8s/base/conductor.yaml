@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: conductor
+spec:
+  selector:
+    app: conductor
+  ports:
+    - name: api
+      port: 8080
+      targetPort: 8080
+    - name: ui
+      port: 5000
+      targetPort: 5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conductor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conductor
+  template:
+    metadata:
+      labels:
+        app: conductor
+    spec:
+      containers:
+        - name: conductor
+          image: orkesio/orkes-conductor-community-standalone:latest
+          ports:
+            - containerPort: 8080
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30

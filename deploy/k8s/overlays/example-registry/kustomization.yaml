@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: journeyman
+
+resources:
+  - ../../base
+
+# Replace REGISTRY/ORG/TAG to match your registry.
+images:
+  - name: journeyman/api-server
+    newName: ghcr.io/your-org/journeyman-api-server
+    newTag: REPLACE_ME
+  - name: journeyman/worker
+    newName: ghcr.io/your-org/journeyman-worker
+    newTag: REPLACE_ME
+  - name: journeyman/web
+    newName: ghcr.io/your-org/journeyman-web
+    newTag: REPLACE_ME
+  - name: journeyman/migrations
+    newName: ghcr.io/your-org/journeyman-migrations
+    newTag: REPLACE_ME
+
+# Production-leaning replicas.
+replicas:
+  - name: api-server
+    count: 2
+  - name: worker
+    count: 2
+  - name: web
+    count: 2
