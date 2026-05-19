@@ -1,0 +1,33 @@
+{
+  "name": "@journeyman/identity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./middleware": "./src/middleware.ts",
+    "./routes": "./src/routes/index.ts"
+  },
+  "bin": {
+    "journeyman-bootstrap": "./src/cli/bootstrap.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.10",
+    "fastify": "^4.28.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -33,16 +33,10 @@ export class GitHubProvider implements IGitProvider {
   private client?: GitHubClient;
 
   constructor(opts: GitHubProviderOptions = {}) {
-    const token =
-      opts.token
-      ?? (opts.tokenEnv ? process.env[opts.tokenEnv] : undefined)
-      ?? process.env.GITHUB_ACCESS_TOKEN;
-    if (!token) {
-      throw new Error(
-        "GitHubProvider: PAT required. Pass opts.token, set opts.tokenEnv to a populated env var, or set GITHUB_ACCESS_TOKEN.",
-      );
+    if (!opts.token) {
+      throw new Error("GitHubProvider: opts.token is required.");
     }
-    this.token = token;
+    this.token = opts.token;
   }
 
   async getRepo(opts: GetRepoOptions): Promise<GetRepoResult> {

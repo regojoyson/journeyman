@@ -1,0 +1,33 @@
+{
+  "name": "analyze-only",
+  "description": "Smoke flow: a single 'analyze-repo' phase fed by run inputs.",
+  "definition": {
+    "schemaVersion": 1,
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "config": {
+          "runInputs": [
+            { "name": "workspaceDir", "type": "string", "required": true },
+            { "name": "issue",   "type": "json",   "required": true, "description": "Full Issue object (id, title, description, ...)" }
+          ]
+        }
+      },
+      {
+        "id": "n_analyze",
+        "type": "phase",
+        "phaseType": "analyze-repo",
+        "inputs": {
+          "workspaceDir": { "kind": "ref", "ref": "workflow.input.workspaceDir" },
+          "issue":        { "kind": "ref", "ref": "workflow.input.issue" }
+        }
+      },
+      { "id": "end", "type": "end" }
+    ],
+    "edges": [
+      { "id": "e1", "source": "start",     "target": "n_analyze" },
+      { "id": "e2", "source": "n_analyze", "target": "end" }
+    ]
+  }
+}

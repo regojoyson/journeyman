@@ -7,3 +7,4 @@ dist/
 .claude/worktrees/
 .env
 workspaces/
+.superpowers/

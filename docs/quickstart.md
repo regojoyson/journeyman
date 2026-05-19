@@ -51,83 +51,10 @@ GITHUB_ACCESS_TOKEN=ghp_your_token_here
 > **Claude auth** — if you've run `claude login` (or use Claude Code desktop), the SDK picks up your `~/.claude/` session automatically and no API key is needed. Only required on servers / Docker / CI.
 >
 > **Webhook secret** — not needed for the manual-trigger path; only when wiring up real GitHub webhooks (covered at the end).
+>
+> **Workspace directory** — optionally set `JOURNEYMAN_BASE_DIR=/your/path/to/workspaces` in `.env` to control where run workspaces are created. Falls back to the OS temp dir.
 
-## 3. Write `config/pipeline.yaml`
-
-Create `config/pipeline.yaml`:
-
-```yaml
-defaultFlow: default
-
-products:
-  demo:
-    flow: default
-    workspace: ./workspaces/demo
-    repos:
-      - providerId: github
-        owner: YOUR_GITHUB_USER_OR_ORG      # ← replace
-        repo: YOUR_REPO                      # ← replace
-        url: "git@github.com:YOUR_GITHUB_USER_OR_ORG/YOUR_REPO.git"   # ← replace
-        defaultBranch: main                  # or "master" if that's your default
-    ticketWorkflow:
-      statuses:
-        development-started: "in-development"
-        code-review:          "code-review"
-        done:                 "done"
-        blocked:              "blocked"
-        failed:               "failed"
-
-server:
-  port: 3000
-  bearerTokenEnv: JOURNEYMAN_API_TOKEN
-  webhooks: {}         # leave empty — we're using manual trigger only
-
-workspaces:
-  cleanupOn: ["completed", "cancelled"]
-  retentionDays: 14
-  keepFailed: true
-```
-
-Replace the three `YOUR_...` placeholders in the `repos:` block with your actual GitHub owner/repo.
-
-## 4. Write `config/flows/default.yaml`
-
-Create `config/flows/default.yaml`:
-
-```yaml
-name: default
-
-providers:
-  ticket:       github-issues
-  git:          github
-  coding:       claude
-  notification: slack
-
-steps:
-  - { id: fetch-ticket,     phase: getTicket }
-  - { id: clone,            phase: cloneRepos }
-  - { id: analyze,          phase: analyze,         timeoutMs: 900000 }
-  - { id: comment-analysis, phase: addComment,      config: { template: analysis-summary }, onFailure: skip }
-  - { id: mark-in-progress, phase: updateStatus,    config: { status: development-started } }
-  - { id: plan,             phase: plan,            timeoutMs: 900000 }
-  - { id: implement,        phase: implement,       timeoutMs: 1800000 }
-  - { id: commit-push,      phase: commitPushRepos, config: { pattern: "#{ticket} : {summary}", prSummaryStyle: detailed } }
-  - { id: open-pr,          phase: createPR }
-  - { id: mark-in-review,   phase: updateStatus,    config: { status: code-review }, onFailure: skip }
-  - { id: cleanup,          phase: cleanupRepos,    onFailure: skip }
-```
-
-## 5. Validate
-
-```bash
-npm run validate
-```
-
-Expected: `✓ config valid`.
-
-If you see an error, it'll point to the exact line/field in your config. Fix and re-run.
-
-## 6. Run it two ways
+## 3. Run it two ways
 
 ### Option A — one-shot CLI (no server)
 
@@ -230,31 +157,15 @@ ls workspaces/demo/artifacts/<sessionId>/        # analyze-report.md, plan-repor
 
 Once the manual trigger works, wire up a GitHub webhook so labelling an issue kicks off a run automatically.
 
-1. Add webhook to `pipeline.yaml`:
-   ```yaml
-   server:
-     port: 3000
-     bearerTokenEnv: JOURNEYMAN_API_TOKEN
-     webhooks:
-       github: { secretEnv: GITHUB_WEBHOOK_SECRET }
-   ```
-2. Add trigger gating under your product:
-   ```yaml
-   products:
-     demo:
-       ticketWorkflow:
-         trigger:
-           matchLabels: ["ready-for-dev"]
-         statuses: { ... }
-   ```
-3. Generate + export the secret: `export GITHUB_WEBHOOK_SECRET="$(openssl rand -hex 32)"`.
-4. In your GitHub repo: **Settings → Webhooks → Add webhook**:
+1. Generate a webhook secret and add it to `.env`: `GITHUB_WEBHOOK_SECRET="$(openssl rand -hex 32)"`.
+2. Configure the webhook secret and trigger labels for the product in the UI (product settings → webhook secrets and trigger configuration).
+3. In your GitHub repo: **Settings → Webhooks → Add webhook**:
    - Payload URL: `https://your-host/webhooks/github/demo` (needs to be reachable from GitHub — use ngrok or a Cloudflare Tunnel for local testing).
    - Content type: `application/json`.
    - Secret: same value as `GITHUB_WEBHOOK_SECRET`.
    - Events: "Issues".
-5. Restart the server.
-6. Label an issue with `ready-for-dev` → check `curl http://localhost:3000/api/runs?product=demo | jq`.
+4. Restart the server.
+5. Label an issue with `ready-for-dev` → check `curl http://localhost:3000/api/runs?product=demo | jq`.
 
 For non-GitHub sources (GitLab, Jira) + multi-product / multi-tenant setups, see [setup.md](setup.md).
 

@@ -1,164 +1,157 @@
 # Journeyman
 
-Configurable, phase-based pipeline that automates **ticket → PR** by orchestrating pluggable adapters for AI coding CLIs, git hosting, issue trackers, and notification services.
+Configurable, phase-based AI pipeline that automates ticket → code → PR workflows.
 
-Webhook-driven, per-product configurable. Ships with working adapters for **Claude**, **GitHub (repos + issues)**, and a growing set of stubs for Jira / Linear / GitLab / Slack / Monday / Gemini / Codex.
+![License](https://img.shields.io/badge/license-MIT-blue) ![Node](https://img.shields.io/badge/node-%3E%3D18-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 
-## What it does
+## What is Journeyman?
 
-You label an issue. An agent clones the repo, analyses the ticket, drafts a plan, writes the code, runs the tests, opens a PR, and pings you when it's ready for review. The orchestration is entirely driven by YAML flow definitions — the same flow works across products by swapping adapters.
+Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs configurable AI-powered flows that clone repos, analyze the ticket, write code, and open PRs — all without manual intervention. A visual, n8n-style canvas editor lets you drag-and-drop phase nodes, wire conditional branches, and configure retry policies without touching code. The provider pattern means you can swap any AI coding tool (Claude, Gemini, Codex), git host (GitHub, GitLab), ticket tracker, or notification channel without changing your flow definitions. Durable execution is backed by Conductor, with support for step retries and human-in-the-loop pause/resume gates.
 
-## Repository layout
+## Architecture
 
-```
-journeyman/
-├── packages/
-│   ├── core/                    @journeyman/core                   — interfaces + types only
-│   ├── coding-cli/              @journeyman/coding-cli             — Claude / Gemini / Codex
-│   ├── git-provider/            @journeyman/git-provider           — GitHub / GitLab REST
-│   ├── github-api/              @journeyman/github-api             — shared GitHub Octokit client (REST + GraphQL)
-│   ├── ticket-provider/         @journeyman/ticket-provider        — Jira / Linear / Monday / GitHub Issues / GitHub Projects
-│   ├── notification-provider/   @journeyman/notification-provider  — Slack
-│   ├── pipeline/                @journeyman/pipeline               — runner + phases + registries + CLI
-│   └── pipeline-server/         @journeyman/pipeline-server        — Fastify + webhooks + management API
-├── docs/                       All documentation
-├── config/                      Your pipeline.yaml + flows/
-└── workspaces/                  Runtime state + logs + artifacts (one dir per product)
-```
+![Architecture](docs/architecture.svg)
 
-## Quick start
-
-See [**Quickstart**](docs/quickstart.md) — minimum viable setup in ~10 minutes.
-
-```bash
-npm install
-# create config/pipeline.yaml + config/flows/default.yaml  (see docs/setup.md)
-# set env vars in .env or shell: JOURNEYMAN_API_TOKEN, GITHUB_ACCESS_TOKEN
-# (ANTHROPIC_API_KEY only if you haven't run `claude login`)
-npm run validate
-npm start                        # or: npx journeyman serve
-```
-
-Or trigger a single run via CLI without the server:
-
-```bash
-npm run run-once -- --product edgereg --ticket "edgereg-org/edgereg-api#42"
-```
-
-## Commands
-
-| Command | What it does |
+| Layer | Role |
 |---|---|
-| `npm install` | Install workspace dependencies |
-| `npm run typecheck` | Typecheck all packages |
-| `npm run validate` | Validate `config/pipeline.yaml` + flows |
-| `npm start` | Start the HTTP pipeline server |
-| `npm run run-once -- --product <id> --ticket <key>` | Run one ticket end-to-end (no server) |
-| `npm run sweep` | Clean up old workspace directories |
+| **Web UI** | Visual canvas editor, live run monitoring, runs history |
+| **API Gateway** | Fastify REST + SSE; auth, validation, routing |
+| **Orchestrator** | Conductor adapter, worker harness, durable execution |
+| **Phases & Providers** | Execution logic per flow node — AI coding, git, tickets, notifications |
+| **Storage** | PostgreSQL (persistence) + Redis (job queue) |
 
-## Documentation
+## Packages
 
-### Getting started
-- [**Quickstart**](docs/quickstart.md) — minimum viable setup in 10 minutes
-- [**Setup**](docs/setup.md) — full installation + configuration guide
-- [**Add a product**](docs/new-product.md) — add a new project to an existing instance
+### Shared
 
-### Reference
-- [Configuration](docs/configuration.md) — `pipeline.yaml` field reference
-- [Flows](docs/flows.md) — flow YAML authoring guide
-- [Phases](docs/phases.md) — built-in phase catalog + writing custom phases
-- [Products](docs/products.md) — adding and managing products
-- [Triggers](docs/triggers.md) — webhook setup per source (GitHub, GitLab, Jira, API)
-- [Management API](docs/management-api.md) — REST + SSE endpoints
-- [Artifacts](docs/artifacts.md) — artifact model and storage
+| Package | Description |
+|---|---|
+| `@journeyman/core` | Interfaces and types — the contract all packages depend on |
+
+### UI
+
+| Package | Description |
+|---|---|
+| `@journeyman/web` | React web shell (flows list, flow editor page, run detail page) |
+| `@journeyman/flow-editor` | Visual canvas editor component (drag-drop nodes, properties panel, MCP/skills config) |
+| `@journeyman/run-viewer` | Read-only execution canvas with live per-node status |
+| `@journeyman/runs-list` | Sortable, filterable run history table |
+
+### Backend
+
+| Package | Description |
+|---|---|
+| `@journeyman/api-server` | Fastify HTTP gateway with REST and SSE endpoints |
+| `@journeyman/orchestrator` | Conductor adapter, worker harness, pluggable flow and run stores |
+| `@journeyman/identity` | JWT auth, bcrypt passwords, user/org/role management |
+| `@journeyman/secrets` | User- and org-scoped secret vault with AES encryption |
+| `@journeyman/migrations` | SQL migrations (`journeyman-migrate` CLI) |
+
+### Phases
+
+| Package | Description |
+|---|---|
+| `@journeyman/phases` | Built-in phase catalog (getTicket, analyze, plan, implement, createPR, …) |
+| `@journeyman/custom-phases` | User-defined AI phase registration with prompt templates |
+
+### Providers
+
+| Package | Description |
+|---|---|
+| `@journeyman/coding-cli` | AI coding operations via Claude Agent SDK (analyze, plan, implement, git) |
+| `@journeyman/coding-models` | AI model provider configuration (Claude, Gemini, Codex) |
+| `@journeyman/git-provider` | GitHub and GitLab REST (create PRs, MRs, list repos) |
+| `@journeyman/github-api` | Shared Octokit client (REST + GraphQL, retry + throttling) |
+| `@journeyman/ticket-provider` | Jira, Linear, Monday, GitHub Issues and Projects |
+| `@journeyman/notification-provider` | Slack notifications |
+
+### Integrations
+
+| Package | Description |
+|---|---|
+| `@journeyman/mcp` | MCP instance registry, resolver, and Claude Agent SDK adapter |
+| `@journeyman/skills` | Skill package management and Claude Agent SDK adapter |
+
+## Getting Started
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start infrastructure (Postgres, Redis, Conductor)
+npm run infra:up
+
+# 3. Run database migrations
+npm run migrate
+
+# 4. Copy and fill environment variables
+cp .env.example .env
+
+# 5. Start API server, worker, and web UI
+npm run start:api-server
+npm run start:worker
+npm run dev:web
+```
+
+→ [Quickstart guide](docs/quickstart.md) — 10-minute end-to-end walkthrough
+
+→ [Full setup reference](docs/setup.md) — all environment variables, webhook config, deployment
+
+## Flow Editor
+
+The visual canvas is powered by `@journeyman/flow-editor`, a React component built on XYFlow. Nodes represent phases (built-in or custom); edges carry JSON Logic conditions for conditional branching between them. The properties panel lets you configure node inputs, retry/backoff policy, MCP tools, skill packages, and secret bindings per node. Flows can be authored in the UI, validated, and published — the same JSON schema is used by the orchestrator at runtime.
+
+→ [Flow authoring guide](docs/flows.md)
+
+## Docs
+
+### Using Journeyman
+
+| Doc | Description |
+|---|---|
+| [Quickstart](docs/quickstart.md) | 10-minute end-to-end: install, configure, trigger your first run |
+| [Setup](docs/setup.md) | Full install reference: env vars, webhook config, deployment |
+| [Products](docs/products.md) | Logical tenants — isolate flows, repos, and concurrency per team |
+| [New Product](docs/new-product.md) | Add a new product via the UI without touching code |
+| [Flows](docs/flows.md) | Author flows in the visual editor or YAML: nodes, edges, conditions, retries |
+| [Phases](docs/phases.md) | Built-in phase catalog and the `IPhaseHandler` interface |
+| [Custom Phases](docs/custom-phases.md) | Register user-defined AI phases with custom prompts and tools |
+| [Providers](docs/providers.md) | Configure coding, git, ticket, and notification providers |
+| [Triggers](docs/triggers.md) | API, GitHub, GitLab, and Jira webhook trigger sources |
+| [Artifacts](docs/artifacts.md) | Shared artifact bag: how data flows between steps |
+| [Management API](docs/management-api.md) | Full REST + SSE API reference |
+
+### Platform Features
+
+| Doc | Description |
+|---|---|
+| [MCP](docs/mcp.md) | Connect Model Context Protocol servers to flows and AI phases |
+| [Skills](docs/skills.md) | Enable reusable skill bundles for AI phases |
+| [Secrets](docs/secrets.md) | User- and org-scoped secret vault with flow bindings |
+| [Users & Roles](docs/users.md) | Authentication, user management, and role-based access |
+| [Webhooks](docs/webhooks.md) | Inbound webhook verification, HMAC signing, and dedup |
 
 ### Operations
-- [Security](docs/security.md) — filesystem perms, secret rotation, redaction, encryption options
-- [Troubleshooting](docs/troubleshooting.md) — known failure modes and fixes
 
-### Package READMEs
-- [`@journeyman/core`](packages/core/README.md) — interfaces + shared types
-- [`@journeyman/coding-cli`](packages/coding-cli/README.md) — Claude / Gemini / Codex / OpenCode
-- [`@journeyman/git-provider`](packages/git-provider/README.md) — GitHub / GitLab REST
-- [`@journeyman/github-api`](packages/github-api/README.md) — shared Octokit client
-- [`@journeyman/ticket-provider`](packages/ticket-provider/README.md) — Jira / Linear / Monday / GitHub Issues / GitHub Projects
-- [`@journeyman/notification-provider`](packages/notification-provider/README.md) — Slack / Console
-- [`@journeyman/pipeline`](packages/pipeline/README.md) — runner + phases + registries + CLI
-- [`@journeyman/pipeline-server`](packages/pipeline-server/README.md) — Fastify + webhooks + management API
-- [`@journeyman/ui`](packages/ui/README.md) — run visualizer (Vite + React)
-
-## Architecture at a glance
-
-### System architecture
-
-Three layers: the server takes a request, the orchestrator runs the flow, and providers do the actual work. Every provider is pluggable.
-
-![Journeyman — Architecture](docs/diagrams/architecture.svg)
-
-**What to look at:**
-- **Pipeline Server** (top) — HTTP entry point. Accepts webhooks and API triggers.
-- **Pipeline Orchestrator** (middle) — runs the flow, executes phases, manages state and artifacts.
-- **Providers row** (bottom) — four pluggable categories: Coding CLI, Git, Ticket, Notification. The dashed **"+ Your Provider"** slot is literal: implement the interface, register it, reference it by id.
-
-### Orchestrator — how a run actually executes
-
-A flow is a chain of steps. The runner walks them one at a time; each step produces one of four outcomes.
-
-![Pipeline Orchestrator](docs/diagrams/orchestrator.svg)
-
-**What to look at:**
-- **Flow** (top) — ordered list of steps from your YAML (`getTicket → analyze → plan → implement → createPR → …`).
-- **Run the step** (middle) — the per-step mechanic: *resolve phase → execute → record outcome*. Timeout / retry / cancel are applied around the execute stage.
-- **Outcome** (bottom) — four possibilities: `ok` advances the flow, `blocked` pauses for later resume, `retry` loops back with backoff, `failed` stops the run.
-- **Threaded through every step** — `ctx.artifacts` (growing bag of outputs), `ctx.providers` (resolved adapters), `ctx.signal` (cancel/timeout), and persisted state.
-
-### Adapter pattern
-
-One interface in `@journeyman/core`, many implementations in adapter packages. Swap any provider by editing one line of YAML.
-
-![Adapter Pattern](docs/diagrams/adapter.svg)
-
-**What to look at:**
-- **YAML line** (top) — `coding: claude` is the only input to the resolution.
-- **Interface** (`ICodingCLI`) — the contract in `@journeyman/core`. Phase code only knows about this.
-- **Implementations row** — Claude, OpenCode, Gemini, Codex all implement the same interface. The dashed **"+ Your Provider"** slot shows how to extend: implement the interface, register with an id.
-- **Call site** — `ctx.providers.coding.analyze(…)` — phases never import a concrete provider. Swapping `claude` → `gemini` is genuinely a one-line YAML change.
-- **Four categories** (bottom) — the same pattern applies to Coding / Git / Ticket / Notification.
-
-### Sample flow
-
-A real flow wired up end-to-end — six stages with two human review gates. This is [`config/flows/advanced-flow.yaml`](config/flows/advanced-flow.yaml), an end-to-end ticket → PR workflow with approval checkpoints.
-
-![Flow — advanced-flow](docs/diagrams/advanced-flow.svg)
-
-**What to look at:**
-- **Six stages** — Setup · Analyze · Plan · *(gate)* · Implement · *(gate)* · Finish. Each stage is a sequence of phases from the [catalog](docs/phases.md).
-- **Two human gates** (amber) — `reviewLoop` steps that block the run until a reviewer changes the ticket status. On `*-approved` the pipeline advances; on `*-rework-requested` it re-runs the `onRework` sub-phases and blocks again.
-- **Auto-recovery** — `retryable: true` on the heavy AI steps (`analyze`, `plan`, `implement`, review gates). Side effects (`addComment`, `notify`, `updateStatus`) are `onFailure: skip` so a failed notification never stops the run.
-
-For more architectural detail, see the [spec](docs/superpowers/specs/2026-04-18-journeyman-pipeline-design.md) and the [phases catalog](docs/phases.md).
-
-## Design principles
-
-- **Interface-first.** Every provider category has an interface in `@journeyman/core`; implementations live in their own package. Swap Claude for Gemini, GitHub for GitLab, Jira for Linear — one line of YAML.
-- **Declarative phase contracts.** Every phase declares `reads` / `writes` as static arrays; a boot-time validator walks each flow and proves artifact dependencies before anything runs.
-- **Per-product isolation.** One dir per product under `workspaces/<productId>/` — state, logs, artifacts, ephemeral work. `rm -rf workspaces/<product>/` cleans up a whole tenant.
-- **Webhook-routed products.** GitHub fires `/webhooks/github/edgereg`; the product id in the path drives flow selection, credential lookup, and workspace isolation.
-- **Config-driven status transitions.** Semantic names (`development-started`, `code-review`) in flow YAML map to per-product literal values — one flow file, many tenants.
-
-## Implementation status
-
-| Component | Status |
+| Doc | Description |
 |---|---|
-| `ClaudeProvider` (analyze, plan, implement, clone, commit+push, cleanup) | ✅ |
-| `GitHubProvider` (getRepo, createPR, listPRs) | ✅ |
-| `GitHubIssuesProvider` (incl. label-based updateStatus) | ✅ |
-| `@journeyman/pipeline` + `@journeyman/pipeline-server` | ✅ |
-| `GitLabProvider` / `JiraProvider` / `LinearProvider` / `MondayProvider` | Stubs |
-| `GeminiProvider` / `CodexProvider` | Stubs |
-| `SlackProvider` | Stub |
-| Human review loop auto-resume (via PR-comment webhook) | Stub |
+| [Security](docs/security.md) | Threat model, token management, secret rotation, encryption |
+| [Troubleshooting](docs/troubleshooting.md) | Runbook for common failure modes |
 
-## License
+## Development
 
-Private — internal tooling.
+```bash
+# Type-check all packages
+npm run typecheck
+
+# Check import boundaries
+npm run check:boundaries
+
+# Run tests
+npm test
+
+# Infrastructure lifecycle
+npm run infra:up      # start Postgres, Redis, Conductor
+npm run infra:down    # stop containers
+npm run infra:reset   # wipe volumes and restart
+```

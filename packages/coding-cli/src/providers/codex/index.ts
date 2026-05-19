@@ -2,12 +2,9 @@ import type { ICodingCLI } from "../../interface.ts";
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
-  CommitPushReposOptions, CommitPushReposResult,
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
-  AnalyzeOptions, AnalyzeResult,
-  PlanOptions, PlanResult,
-  ImplementOptions, ImplementResult,
+  RunCustomPromptOptions, RunCustomPromptResult,
   IProviderMeta,
   CodingCLIProviderConfig,
 } from "@journeyman/core";
@@ -25,10 +22,7 @@ export class CodexProvider implements ICodingCLI {
 
   scanRepos(_opts: ScanReposOptions): Promise<ScanReposResult> { throw new Error("CodexProvider.scanRepos not implemented"); }
   checkoutRepo(_opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> { throw new Error("CodexProvider.checkoutRepo not implemented"); }
-  commitPushRepos(_opts: CommitPushReposOptions): Promise<CommitPushReposResult> { throw new Error("CodexProvider.commitPushRepos not implemented"); }
   cleanupRepos(_opts: CleanupReposOptions): Promise<CleanupReposResult> { throw new Error("CodexProvider.cleanupRepos not implemented"); }
   createWorkspace(_opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> { throw new Error("CodexProvider.createWorkspace not implemented"); }
-  analyze(_opts: AnalyzeOptions): Promise<AnalyzeResult> { throw new Error("CodexProvider.analyze not implemented"); }
-  plan(_opts: PlanOptions): Promise<PlanResult> { throw new Error("CodexProvider.plan not implemented"); }
-  implement(_opts: ImplementOptions): Promise<ImplementResult> { throw new Error("CodexProvider.implement not implemented"); }
+  runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> { throw new Error("CodexProvider.runCustomPrompt not implemented"); }
 }

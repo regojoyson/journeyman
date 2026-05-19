@@ -7,12 +7,17 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:boundaries": "node scripts/check-import-boundaries.mjs",
+    "check": "npm run typecheck && npm run check:boundaries",
     "test": "npm test --workspaces --if-present",
-    "start": "tsx packages/pipeline-server/src/cli-start.ts config/pipeline.yaml",
-    "validate": "tsx packages/pipeline/src/cli.ts validate-config --config config/pipeline.yaml",
-    "run-once": "tsx packages/pipeline/src/cli.ts run",
-    "sweep": "tsx packages/pipeline/src/cli.ts sweep --config config/pipeline.yaml",
-    "generate:schemas": "npm run generate:schemas -w packages/pipeline"
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:reset": "docker compose -f infra/docker-compose.yml down -v",
+    "migrate": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@localhost:5433/journeyman} npm run migrate -w @journeyman/migrations",
+    "start:api-server": "npm start -w @journeyman/api-server",
+    "start:worker": "tsx packages/orchestrator/src/cli-worker.ts",
+    "dev:web": "npm run dev -w @journeyman/web",
+    "build:web": "npm run build -w @journeyman/web"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.112",

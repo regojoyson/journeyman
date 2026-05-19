@@ -1,24 +1,29 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
+import type { AgentLogLevel, CodingCliLogFn } from "./coding.types.ts";
 
 // ---------------------------------------------------------------------------
 // Git CLI operation types (used by coding-cli providers)
 // ---------------------------------------------------------------------------
 
 export type RepoEntry = { url: string; branch: string };
-export type CheckoutEntry = { dirPath: string; branch: string };
+export type CheckoutEntry = { repoDir: string; branch: string };
 
 export type CloneReposOptions = {
   repos: string | string[] | RepoEntry | RepoEntry[];
   branch?: string;
-  targetDir?: string;
+  workspaceDir?: string;
   signal?: AbortSignal;
 };
 
 export type CloneResult = {
   folderName: string;
-  dirPath: string;
-  url: string;       // always the ORIGINAL, non-tokenized URL
+  repoDir: string;
+  url: string;
   branch: string;
+  /** GitHub/GitLab owner or org parsed from the clone URL (e.g. "regojoyson"). */
+  owner?: string;
+  /** Bare repository name parsed from the clone URL (e.g. "agentic-ai-revolution"). */
+  repoName?: string;
   error?: string;
 };
 
@@ -35,7 +40,7 @@ export type ScanReposOptions = SessionOptions & {
 
 export type RepoInfo = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   url?: string;
   branch?: string;
   isGitRepo: boolean;
@@ -49,14 +54,18 @@ export type ScanReposResult = SessionResult & {
 export type CheckoutRepoOptions = SessionOptions & {
   repos: string | string[] | CheckoutEntry | CheckoutEntry[];
   branch?: string;
-  ticket?: { id: string; title: string };
+  issue?: { id: string; title: string };
   signal?: AbortSignal;
   model?: string;
+  /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
+  onLog?: CodingCliLogFn;
+  /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
+  agentLogLevel?: AgentLogLevel;
 };
 
 export type CheckoutResult = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   baseBranch: string;
   newBranch: string;
   success: boolean;
@@ -70,7 +79,7 @@ export type CheckoutRepoResult = SessionResult & {
 };
 
 export type CleanupEntry = {
-  dirPath: string;
+  repoDir: string;
 };
 
 export type CleanupReposOptions = SessionOptions & {
@@ -81,7 +90,7 @@ export type CleanupReposOptions = SessionOptions & {
 
 export type CleanupRepoResult = {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   success: boolean;
   error?: string;
 };
@@ -92,15 +101,15 @@ export type CleanupReposResult = SessionResult & {
 };
 
 export type CreateWorkspaceOptions = SessionOptions & {
-  ticketId: string;
-  parentDir: string;
+  issueRef: string;
+  baseDir: string;
   signal?: AbortSignal;
   model?: string;
 };
 
 export type CreateWorkspaceResult = SessionResult & {
   folderName: string;
-  dirPath: string;
+  repoDir: string;
   error?: string;
 };
 
@@ -154,44 +163,6 @@ export type ListPRItem = {
 
 export type ListPRResult = SessionResult & {
   prs: ListPRItem[];
-  error?: string;
-};
-
-// ---------------------------------------------------------------------------
-// Commit + push operation types (used by coding-cli providers)
-// ---------------------------------------------------------------------------
-
-export type CommitPushEntry = {
-  dirPath: string;
-  ticket?: string;   // per-repo override of top-level ticket
-  message?: string;  // full commit message; if set, skips AI generation
-};
-
-export type CommitPushReposOptions = SessionOptions & {
-  repos: string | string[] | CommitPushEntry | CommitPushEntry[];
-  ticket?: string;                            // default ticket applied to all entries
-  pattern?: string;                           // default: "{ticket} : {summary}"
-  prSummaryStyle?: "brief" | "detailed";      // default: "detailed"
-  signal?: AbortSignal;
-  model?: string;
-};
-
-export type CommitPushResult = {
-  folderName: string;
-  dirPath: string;
-  branch: string;        // current branch (committed + pushed to)
-  commitSha: string;     // new HEAD SHA
-  commitMessage: string; // final message used for git commit
-  title: string;         // PR/MR title — e.g. "EV-123: Fix header alignment"
-  description: string;   // PR/MR body — summary of code changes (markdown)
-  filesChanged: string[];
-  pushed: boolean;
-  remoteUrl?: string;    // origin URL — useful for owner/repo parsing
-  error?: string;
-};
-
-export type CommitPushReposResult = SessionResult & {
-  repos: CommitPushResult[];
   error?: string;
 };
 

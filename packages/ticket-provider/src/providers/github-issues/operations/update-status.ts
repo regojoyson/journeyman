@@ -1,7 +1,7 @@
 import type { UpdateStatusOptions, UpdateStatusResult } from "@journeyman/core";
 import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 import { parseIssueId } from "../utils/parse-ids.ts";
-import { toTicket, type GitHubIssue } from "./create-ticket.ts";
+import { toIssue, type GitHubIssue } from "./create-issue.ts";
 
 const STATUS_LABEL_PREFIX = "status:";
 
@@ -33,7 +33,7 @@ export async function updateStatus(
       labels: nextLabels,
       state,
     });
-    return { ticket: toTicket(owner, repo, data as unknown as GitHubIssue) };
+    return { issue: toIssue(owner, repo, data as unknown as GitHubIssue) };
   } catch (err) {
     return { error: formatGitHubError("issues.update (status)", err) };
   }

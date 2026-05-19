@@ -1,0 +1,198 @@
+import { useMemo, useState } from "react";
+import type { JsonLogicExpr } from "@journeyman/core";
+import type { ConditionSuggestion } from "./condition-suggestions.ts";
+
+type Op = "==" | "!=" | "<" | "<=" | ">" | ">=" | "in";
+type Connector = "and" | "or";
+
+interface Row {
+  varPath: string;
+  op: Op;
+  value: string;
+}
+
+interface Props {
+  value: JsonLogicExpr | undefined;
+  suggestions: ConditionSuggestion[];
+  onChange: (expr: JsonLogicExpr | undefined) => void;
+}
+
+export function ConditionBuilder({ value, suggestions, onChange }: Props) {
+  const [showJson, setShowJson] = useState(false);
+
+  const initial = useMemo(() => exprToRows(value), [value]);
+  const [connector, setConnector] = useState<Connector>(initial.connector);
+  const [rows, setRows] = useState<Row[]>(initial.rows);
+
+  function commit(nextRows: Row[], nextConnector: Connector) {
+    setRows(nextRows);
+    setConnector(nextConnector);
+    onChange(rowsToExpr(nextRows, nextConnector, suggestions));
+  }
+
+  return (
+    <div className="je-condition-builder">
+      {showJson ? (
+        <pre className="je-condition-builder__json">
+          {JSON.stringify(value ?? null, null, 2)}
+        </pre>
+      ) : (
+        <>
+          <div className="je-condition-builder__connector">
+            <label>
+              <input
+                type="radio"
+                name="connector"
+                checked={connector === "and"}
+                onChange={() => commit(rows, "and")}
+              />
+              AND
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="connector"
+                checked={connector === "or"}
+                onChange={() => commit(rows, "or")}
+              />
+              OR
+            </label>
+          </div>
+          {rows.map((r, i) => (
+            <RowEditor
+              key={i}
+              row={r}
+              suggestions={suggestions}
+              onChange={(nr) => {
+                const next = rows.slice();
+                next[i] = nr;
+                commit(next, connector);
+              }}
+              onRemove={() => commit(rows.filter((_, j) => j !== i), connector)}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => commit([...rows, { varPath: "", op: "==", value: "" }], connector)}
+          >
+            + Add row
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        className="je-condition-builder__toggle"
+        onClick={() => setShowJson(s => !s)}
+      >
+        {showJson ? "Hide JSON" : "Show JSON"}
+      </button>
+    </div>
+  );
+}
+
+function RowEditor(p: {
+  row: Row;
+  suggestions: ConditionSuggestion[];
+  onChange: (r: Row) => void;
+  onRemove: () => void;
+}) {
+  const grouped = useMemo(() => {
+    const order: string[] = [];
+    const labelByGroup = new Map<string, string>();
+    const itemsByGroup = new Map<string, ConditionSuggestion[]>();
+    for (const s of p.suggestions) {
+      if (!itemsByGroup.has(s.group)) {
+        order.push(s.group);
+        labelByGroup.set(s.group, s.groupLabel);
+        itemsByGroup.set(s.group, []);
+      }
+      itemsByGroup.get(s.group)!.push(s);
+    }
+    return { order, labelByGroup, itemsByGroup };
+  }, [p.suggestions]);
+
+  const selected = p.suggestions.find(s => s.path === p.row.varPath);
+
+  return (
+    <div className="je-condition-row">
+      <select
+        value={p.row.varPath}
+        onChange={(e) => p.onChange({ ...p.row, varPath: e.target.value })}
+      >
+        <option value="">— pick a value —</option>
+        {grouped.order.map(group => (
+          <optgroup key={group} label={grouped.labelByGroup.get(group) ?? group}>
+            {grouped.itemsByGroup.get(group)!.map(s => (
+              <option key={s.path} value={s.path}>{s.fieldLabel}</option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <select
+        value={p.row.op}
+        onChange={(e) => p.onChange({ ...p.row, op: e.target.value as Op })}
+      >
+        {(["==","!=","<","<=",">",">=","in"] as Op[]).map(op => (
+          <option key={op} value={op}>{op}</option>
+        ))}
+      </select>
+      {selected?.type === "boolean" ? (
+        <select
+          value={p.row.value}
+          onChange={(e) => p.onChange({ ...p.row, value: e.target.value })}
+        >
+          <option value="">—</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      ) : (
+        <input
+          type={selected?.type === "number" ? "number" : "text"}
+          value={p.row.value}
+          onChange={(e) => p.onChange({ ...p.row, value: e.target.value })}
+        />
+      )}
+      <button type="button" onClick={p.onRemove} aria-label="Remove row">×</button>
+    </div>
+  );
+}
+
+function exprToRows(expr: JsonLogicExpr | undefined): { connector: Connector; rows: Row[] } {
+  if (expr === undefined || expr === null || typeof expr !== "object") {
+    return { connector: "and", rows: [] };
+  }
+  if ("and" in expr) return { connector: "and", rows: (expr.and as JsonLogicExpr[]).map(opToRow) };
+  if ("or"  in expr) return { connector: "or",  rows: (expr.or  as JsonLogicExpr[]).map(opToRow) };
+  return { connector: "and", rows: [opToRow(expr)] };
+}
+
+function opToRow(expr: JsonLogicExpr): Row {
+  if (typeof expr !== "object" || expr === null) return { varPath: "", op: "==", value: "" };
+  const keys = Object.keys(expr);
+  const op = keys[0] as Op;
+  const arr = (expr as Record<string, unknown>)[op] as [unknown, unknown];
+  if (!Array.isArray(arr) || arr.length !== 2) return { varPath: "", op: "==", value: "" };
+  const lhs = arr[0];
+  const rhs = arr[1];
+  const varPath = (lhs && typeof lhs === "object" && "var" in (lhs as object))
+    ? String((lhs as { var: string }).var)
+    : "";
+  return { varPath, op, value: rhs == null ? "" : String(rhs) };
+}
+
+function rowsToExpr(rows: Row[], connector: Connector, suggestions: ConditionSuggestion[]): JsonLogicExpr | undefined {
+  const valid = rows.filter(r => r.varPath);
+  if (valid.length === 0) return undefined;
+  const exprs = valid.map(r => rowToExpr(r, suggestions));
+  if (exprs.length === 1) return exprs[0];
+  return { [connector]: exprs } as JsonLogicExpr;
+}
+
+function rowToExpr(r: Row, suggestions: ConditionSuggestion[]): JsonLogicExpr {
+  const meta = suggestions.find(s => s.path === r.varPath);
+  let v: JsonLogicExpr;
+  if (meta?.type === "number") v = Number(r.value);
+  else if (meta?.type === "boolean") v = r.value === "true";
+  else v = r.value;
+  return { [r.op]: [{ var: r.varPath }, v] } as JsonLogicExpr;
+}

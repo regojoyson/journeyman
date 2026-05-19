@@ -1,0 +1,33 @@
+{
+  "name": "@journeyman/flow-editor",
+  "version": "0.1.0",
+  "description": "Pure React flow editor component for Journeyman. n8n-style canvas, properties panel, palette. No backend coupling.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "@journeyman/custom-phases": "*",
+    "@xyflow/react": "^12.3.5",
+    "lucide-react": "^0.400.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^6.0.3"
+  }
+}

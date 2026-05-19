@@ -1,0 +1,444 @@
+{
+  "edges": [
+    {
+      "id": "e_start_step_kjh1m1_8ujl",
+      "type": "default",
+      "source": "start",
+      "target": "step_kjh1m1"
+    },
+    {
+      "id": "e_step_kjh1m1_step_8slbou_yms6",
+      "type": "default",
+      "source": "step_kjh1m1",
+      "target": "step_8slbou"
+    },
+    {
+      "id": "e_step_8slbou_step_00433l_1ol1",
+      "type": "default",
+      "source": "step_8slbou",
+      "target": "step_00433l"
+    },
+    {
+      "id": "e_step_besh7s_end_eg9z",
+      "type": "default",
+      "source": "step_besh7s",
+      "target": "end"
+    },
+    {
+      "id": "e_step_nnylsj_step_besh7s_79h5",
+      "type": "default",
+      "source": "step_nnylsj",
+      "target": "step_besh7s"
+    },
+    {
+      "id": "e_step_ky644k_step_nnylsj_ju6o",
+      "type": "default",
+      "source": "step_ky644k",
+      "target": "step_nnylsj"
+    },
+    {
+      "id": "e_step_q5asju_step_ky644k_x2sr",
+      "type": "default",
+      "source": "step_q5asju",
+      "target": "step_ky644k"
+    },
+    {
+      "id": "e_step_tol1ks_step_q5asju_mesc",
+      "type": "default",
+      "source": "step_tol1ks",
+      "target": "step_q5asju"
+    },
+    {
+      "id": "e_step_t29cxr_step_tol1ks_oxhz",
+      "type": "default",
+      "source": "step_t29cxr",
+      "target": "step_tol1ks"
+    },
+    {
+      "id": "e_step_00433l_step_t29cxr_he58",
+      "type": "default",
+      "source": "step_00433l",
+      "target": "step_t29cxr"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "config": {
+        "runInputs": [
+          {
+            "name": "IssueRef",
+            "type": "string",
+            "required": true,
+            "description": "issue id"
+          }
+        ]
+      },
+      "position": {
+        "x": -153.77176205917175,
+        "y": 300.18789802535935
+      }
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "position": {
+        "x": 2266.4386228786498,
+        "y": 321.79705250141717
+      }
+    },
+    {
+      "id": "step_kjh1m1",
+      "type": "phase",
+      "config": {
+        "issueRef": ""
+      },
+      "inputs": {
+        "issueRef": {
+          "ref": "workflow.input.IssueRef",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 42.612630110658216,
+        "y": 292.01734651214304
+      },
+      "phaseType": "get-issue",
+      "displayName": "Get Issue",
+      "executorConfig": {
+        "provider": "jira"
+      },
+      "secretBindings": {
+        "GITHUB_ACCESS_TOKEN": {
+          "mode": "pinned",
+          "name": "SAM_GITHUB_ACCESS_TOKEN",
+          "scope": "user"
+        }
+      }
+    },
+    {
+      "id": "step_8slbou",
+      "type": "phase",
+      "config": {
+        "issueRef": ""
+      },
+      "inputs": {
+        "issueRef": {
+          "ref": "workflow.input.IssueRef",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 283.31648607608514,
+        "y": 298.65674527335807
+      },
+      "phaseType": "create-workspace",
+      "displayName": "Create Workspace",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {}
+    },
+    {
+      "id": "step_00433l",
+      "type": "phase",
+      "config": {
+        "repos": "https://github.com/regojoyson/agentic-ai-revolution.git"
+      },
+      "inputs": {
+        "workspaceDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 540.2366156747215,
+        "y": 301.9122052249072
+      },
+      "phaseType": "clone-repos",
+      "displayName": "Clone Repos",
+      "executorConfig": {
+        "provider": "github"
+      },
+      "secretBindings": {
+        "GITHUB_ACCESS_TOKEN": {
+          "mode": "pinned",
+          "name": "SAM_GITHUB_ACCESS_TOKEN",
+          "scope": "user"
+        }
+      }
+    },
+    {
+      "id": "step_t29cxr",
+      "type": "phase",
+      "config": {},
+      "inputs": {
+        "issue": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "repos": {
+          "ref": "step_00433l.output.repos",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 783.7008604360578,
+        "y": 303.1284788581168
+      },
+      "phaseType": "start-feature-branch",
+      "displayName": "Start Feature Branch",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {
+        "GITHUB_ACCESS_TOKEN": {
+          "mode": "auto"
+        }
+      }
+    },
+    {
+      "id": "step_tol1ks",
+      "type": "phase",
+      "config": {
+        "repoDir": "",
+        "issueContent": "test"
+      },
+      "inputs": {
+        "issue": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "repoDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        },
+        "issueContent": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "workspaceDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 1031.343690276949,
+        "y": 302.9310495017347
+      },
+      "phaseType": "analyze-repo",
+      "displayName": "Analyze Repo",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {
+        "ANTHROPIC_API_KEY": {
+          "mode": "auto"
+        }
+      }
+    },
+    {
+      "id": "step_q5asju",
+      "type": "phase",
+      "config": {
+        "repoDir": "",
+        "issueContent": "",
+        "analyzeReportPath": ""
+      },
+      "inputs": {
+        "issue": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "repoDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        },
+        "issueContent": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "workspaceDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        },
+        "analyzeReportPath": {
+          "ref": "step_tol1ks.output.analyzeReportPath",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 1278.8644678687679,
+        "y": 305.44196940483295
+      },
+      "phaseType": "plan-implementation",
+      "displayName": "Plan Implementation",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {
+        "ANTHROPIC_API_KEY": {
+          "mode": "auto"
+        }
+      }
+    },
+    {
+      "id": "step_ky644k",
+      "type": "phase",
+      "config": {
+        "repoDir": "",
+        "issueContent": "",
+        "planReportPath": "",
+        "analyzeReportPath": ""
+      },
+      "inputs": {
+        "issue": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "repoDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        },
+        "issueContent": {
+          "ref": "step_kjh1m1.output.issue",
+          "kind": "ref"
+        },
+        "workspaceDir": {
+          "ref": "step_8slbou.output.workspaceDir",
+          "kind": "ref"
+        },
+        "planReportPath": {
+          "ref": "step_q5asju.output.planReportPath",
+          "kind": "ref"
+        },
+        "analyzeReportPath": {
+          "ref": "step_tol1ks.output.analyzeReportPath",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 1534.1094434675256,
+        "y": 307.5640216539049
+      },
+      "phaseType": "implement-changes",
+      "displayName": "Implement Changes",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {
+        "ANTHROPIC_API_KEY": {
+          "mode": "auto"
+        }
+      }
+    },
+    {
+      "id": "step_nnylsj",
+      "type": "phase",
+      "config": {
+        "repos": "",
+        "branch": "test",
+        "message": ""
+      },
+      "inputs": {
+        "repos": {
+          "ref": "step_00433l.output.repos",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 1774.285033017711,
+        "y": 308.54367961239296
+      },
+      "phaseType": "commit-and-push",
+      "displayName": "Commit & Push",
+      "executorConfig": {
+        "provider": "claude"
+      },
+      "secretBindings": {
+        "GITHUB_ACCESS_TOKEN": {
+          "mode": "auto"
+        }
+      }
+    },
+    {
+      "id": "step_besh7s",
+      "type": "phase",
+      "config": {
+        "base": "main",
+        "body": "",
+        "head": "zcdfz",
+        "repo": "",
+        "owner": "system",
+        "title": ""
+      },
+      "inputs": {
+        "base": {
+          "ref": "step_00433l.input.branch",
+          "kind": "ref"
+        },
+        "body": {
+          "ref": "step_tol1ks.output.summary",
+          "kind": "ref"
+        },
+        "repo": {
+          "ref": "step_t29cxr.input.repos",
+          "kind": "ref"
+        },
+        "repos": {
+          "ref": "step_00433l.output.repos",
+          "kind": "ref"
+        },
+        "title": {
+          "ref": "step_kjh1m1.output.issue.title",
+          "kind": "ref"
+        },
+        "sourceBranch": {
+          "ref": "step_t29cxr.output.newBranch",
+          "kind": "ref"
+        }
+      },
+      "position": {
+        "x": 1997.064266090448,
+        "y": 315.53918631833943
+      },
+      "phaseType": "open-pull-request",
+      "displayName": "Open Pull Request",
+      "executorConfig": {
+        "provider": "github"
+      },
+      "secretBindings": {
+        "GITHUB_ACCESS_TOKEN": {
+          "mode": "auto"
+        }
+      }
+    }
+  ],
+  "defaults": {
+    "retry": {
+      "backoff": "exponential",
+      "enabled": true,
+      "onFailure": "error-edge",
+      "maxAttempts": 3,
+      "backoffSeconds": 5,
+      "timeoutSeconds": 600,
+      "backoffMultiplier": 2
+    },
+    "executorConfig": {
+      "coding-cli": {
+        "provider": "claude"
+      },
+      "git-provider": {
+        "provider": "github"
+      },
+      "notification": {
+        "provider": "console"
+      },
+      "issue-provider": {
+        "provider": "github-issues"
+      }
+    }
+  },
+  "schemaVersion": 1
+}

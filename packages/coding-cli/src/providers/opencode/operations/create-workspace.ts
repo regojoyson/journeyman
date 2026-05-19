@@ -12,27 +12,27 @@ function buildTimestamp(now: Date = new Date()): string {
 
 export async function createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
-  log.info({ sessionId, ticketId: opts.ticketId, parentDir: opts.parentDir }, "createWorkspace start");
+  log.info({ sessionId, issueRef: opts.issueRef, baseDir: opts.baseDir }, "createWorkspace start");
 
-  if (!opts.ticketId) {
-    log.error({ sessionId }, "createWorkspace missing ticketId");
-    return { folderName: "", dirPath: "", error: "ticketId is required", sessionId };
+  if (!opts.issueRef) {
+    log.error({ sessionId }, "createWorkspace missing issueRef");
+    return { folderName: "", repoDir: "", error: "issueRef is required", sessionId };
   }
-  if (!opts.parentDir) {
-    log.error({ sessionId }, "createWorkspace missing parentDir");
-    return { folderName: "", dirPath: "", error: "parentDir is required", sessionId };
+  if (!opts.baseDir) {
+    log.error({ sessionId }, "createWorkspace missing baseDir");
+    return { folderName: "", repoDir: "", error: "baseDir is required", sessionId };
   }
 
-  const folderName = `${opts.ticketId}-${buildTimestamp()}`;
-  const dirPath = resolve(opts.parentDir, folderName);
+  const folderName = `${opts.issueRef}-${buildTimestamp()}`;
+  const repoDir = resolve(opts.baseDir, folderName);
 
   try {
-    await mkdir(dirPath, { recursive: true });
-    log.info({ sessionId, dirPath }, "createWorkspace done");
-    return { folderName, dirPath, sessionId };
+    await mkdir(repoDir, { recursive: true });
+    log.info({ sessionId, repoDir }, "createWorkspace done");
+    return { folderName, repoDir, sessionId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ sessionId, dirPath, err: message }, "createWorkspace failed");
-    return { folderName, dirPath, error: message, sessionId };
+    log.error({ sessionId, repoDir, err: message }, "createWorkspace failed");
+    return { folderName, repoDir, error: message, sessionId };
   }
 }

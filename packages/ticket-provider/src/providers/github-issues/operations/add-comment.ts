@@ -1,7 +1,7 @@
 import type {
   AddCommentOptions,
   AddCommentResult,
-  TicketComment,
+  IssueComment,
 } from "@journeyman/core";
 import { formatGitHubError, type GitHubClient } from "@journeyman/github-api";
 import { parseIssueId } from "../utils/parse-ids.ts";
@@ -18,7 +18,7 @@ export async function addComment(
       issue_number: number,
       body: opts.body,
     });
-    const mapped: TicketComment = {
+    const mapped: IssueComment = {
       id: String(data.id),
       author: data.user?.login,
       body: data.body ?? "",

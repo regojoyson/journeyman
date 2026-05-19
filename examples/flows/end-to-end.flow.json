@@ -1,0 +1,142 @@
+{
+  "name": "end-to-end",
+  "description": "Full 10-phase pipeline: get-issue → create-workspace → clone-repos → start-feature-branch → analyze → plan → implement → commit/push → open-pr → cleanup.",
+  "definition": {
+    "schemaVersion": 1,
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "config": {
+          "runInputs": [
+            { "name": "issueRef",   "type": "string", "required": true },
+            { "name": "repoUrl",    "type": "string", "required": true },
+            { "name": "owner",      "type": "string", "required": true },
+            { "name": "repo",       "type": "string", "required": true },
+            { "name": "baseBranch", "type": "string", "required": true }
+          ]
+        }
+      },
+
+      {
+        "id": "n_get_issue",
+        "type": "phase",
+        "phaseType": "get-issue",
+        "inputs": {
+          "issueRef": { "kind": "ref", "ref": "workflow.input.issueRef" }
+        }
+      },
+
+      {
+        "id": "n_create_ws",
+        "type": "phase",
+        "phaseType": "create-workspace",
+        "inputs": {
+          "issueRef": { "kind": "ref", "ref": "workflow.input.issueRef" }
+        }
+      },
+
+      {
+        "id": "n_clone",
+        "type": "phase",
+        "phaseType": "clone-repos",
+        "config": { "repos": [] },
+        "inputs": {
+          "repos":        { "kind": "literal", "value": ["${workflow.input.repoUrl}"] },
+          "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" }
+        }
+      },
+
+      {
+        "id": "n_branch",
+        "type": "phase",
+        "phaseType": "start-feature-branch",
+        "inputs": {
+          "repos": { "kind": "ref", "ref": "n_clone.output.repos" },
+          "issue": { "kind": "ref", "ref": "n_get_issue.output.issue" }
+        }
+      },
+
+      {
+        "id": "n_analyze",
+        "type": "phase",
+        "phaseType": "analyze-repo",
+        "inputs": {
+          "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
+          "issue":        { "kind": "ref", "ref": "n_get_issue.output.issue" }
+        }
+      },
+
+      {
+        "id": "n_plan",
+        "type": "phase",
+        "phaseType": "plan-implementation",
+        "inputs": {
+          "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
+          "issue":             { "kind": "ref", "ref": "n_get_issue.output.issue" },
+          "analyzeReportPath": { "kind": "ref", "ref": "n_analyze.output.analyzeReportPath" }
+        }
+      },
+
+      {
+        "id": "n_implement",
+        "type": "phase",
+        "phaseType": "implement-changes",
+        "inputs": {
+          "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
+          "planReportPath":    { "kind": "ref", "ref": "n_plan.output.planReportPath" },
+          "analyzeReportPath": { "kind": "ref", "ref": "n_analyze.output.analyzeReportPath" },
+          "issue":             { "kind": "ref", "ref": "n_get_issue.output.issue" }
+        }
+      },
+
+      {
+        "id": "n_commit",
+        "type": "phase",
+        "phaseType": "commit-and-push",
+        "inputs": {
+          "repos": { "kind": "ref", "ref": "n_branch.output.repos" },
+          "issue": { "kind": "ref", "ref": "n_get_issue.output.issue" }
+        }
+      },
+
+      {
+        "id": "n_open_pr",
+        "type": "phase",
+        "phaseType": "open-pull-request",
+        "config": {
+          "title": "Automated PR",
+          "body": ""
+        },
+        "inputs": {
+          "repos":        { "kind": "ref", "ref": "n_branch.output.repos" },
+          "sourceBranch": { "kind": "ref", "ref": "n_branch.output.newBranch" }
+        }
+      },
+
+      {
+        "id": "n_cleanup",
+        "type": "phase",
+        "phaseType": "cleanup-workspace",
+        "inputs": {
+          "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" }
+        }
+      },
+
+      { "id": "end", "type": "end" }
+    ],
+    "edges": [
+      { "id": "e0",  "source": "start",        "target": "n_get_issue" },
+      { "id": "e1",  "source": "n_get_issue",  "target": "n_create_ws" },
+      { "id": "e2",  "source": "n_create_ws",  "target": "n_clone" },
+      { "id": "e3",  "source": "n_clone",      "target": "n_branch" },
+      { "id": "e4",  "source": "n_branch",     "target": "n_analyze" },
+      { "id": "e5",  "source": "n_analyze",    "target": "n_plan" },
+      { "id": "e6",  "source": "n_plan",       "target": "n_implement" },
+      { "id": "e7",  "source": "n_implement",  "target": "n_commit" },
+      { "id": "e8",  "source": "n_commit",     "target": "n_open_pr" },
+      { "id": "e9",  "source": "n_open_pr",    "target": "n_cleanup" },
+      { "id": "e10", "source": "n_cleanup",    "target": "end" }
+    ]
+  }
+}

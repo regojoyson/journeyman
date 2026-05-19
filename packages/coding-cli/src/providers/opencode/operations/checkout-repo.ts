@@ -17,13 +17,13 @@ const OUTPUT_SCHEMA = {
         type: "object",
         properties: {
           folderName: { type: "string" },
-          dirPath: { type: "string" },
+          repoDir: { type: "string" },
           baseBranch: { type: "string" },
           newBranch: { type: "string" },
           success: { type: "boolean" },
           error: { type: "string" },
         },
-        required: ["folderName", "dirPath", "baseBranch", "newBranch", "success"],
+        required: ["folderName", "repoDir", "baseBranch", "newBranch", "success"],
       },
     },
     error: { type: "string" },
@@ -36,28 +36,28 @@ const DEFAULT_TOOLS: Record<string, boolean> = { bash: true };
 function normalizeEntries(opts: CheckoutRepoOptions): CheckoutEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   return raw.map((r) =>
-    typeof r === "string" ? { dirPath: r, branch: opts.branch ?? "main" } : r,
+    typeof r === "string" ? { repoDir: r, branch: opts.branch ?? "main" } : r,
   );
 }
 
-function buildPrompt(entries: CheckoutEntry[], ticket: CheckoutRepoOptions["ticket"]): string {
+function buildPrompt(entries: CheckoutEntry[], issue: CheckoutRepoOptions["issue"]): string {
   const steps = entries
-    .map(({ dirPath, branch }) => `  - ${dirPath} → baseBranch: ${branch}`)
+    .map(({ repoDir, branch }) => `  - ${repoDir} → baseBranch: ${branch}`)
     .join("\n");
 
-  const namingRule = ticket
+  const namingRule = issue
     ? [
-        "BRANCH NAMING (ticket provided):",
+        "BRANCH NAMING (issue provided):",
         `  Format: "{id-lowercased}/{2-4-word-slug}_{unix-seconds}"`,
-        `  Ticket id: ${ticket.id}`,
-        `  Ticket title: ${ticket.title}`,
+        `  Issue id: ${issue.id}`,
+        `  Issue title: ${issue.title}`,
         `  Slug: lowercase ASCII, hyphen-separated, 2-4 meaningful words from the title`,
         `         (strip stopwords like "the", "a", "an", "on", "for", "to", "of", "and").`,
         `  Example: id "EV-12345", title "Fix header alignment bug on checkout page"`,
         `           → "ev-12345/fix-header-alignment_1713542400"`,
       ].join("\n")
     : [
-        "BRANCH NAMING (no ticket):",
+        "BRANCH NAMING (no issue):",
         `  Format: "{animal-themed-slug}_{unix-seconds}"`,
         `  Slug: lowercase ASCII, hyphen-separated, 2-3 words containing one animal name`,
         `         (e.g. "curious-otter-sprint", "swift-falcon-work").`,
@@ -73,20 +73,20 @@ function buildPrompt(entries: CheckoutEntry[], ticket: CheckoutRepoOptions["tick
     "  - The EXACT same branch name must be used for every repo.",
     "",
     "PER-REPO STEPS (run in order for each repo):",
-    "  1. git -C <dirPath> fetch origin",
-    "  2. git -C <dirPath> stash --include-untracked   (discard local changes)",
-    "  3. git -C <dirPath> checkout <baseBranch>",
-    "  4. git -C <dirPath> pull origin <baseBranch>",
-    "  5. git -C <dirPath> reset --hard origin/<baseBranch>",
-    "  6. git -C <dirPath> clean -fd",
-    "  7. git -C <dirPath> checkout -b <newBranch>",
+    "  1. git -C <repoDir> fetch origin",
+    "  2. git -C <repoDir> stash --include-untracked   (discard local changes)",
+    "  3. git -C <repoDir> checkout <baseBranch>",
+    "  4. git -C <repoDir> pull origin <baseBranch>",
+    "  5. git -C <repoDir> reset --hard origin/<baseBranch>",
+    "  6. git -C <repoDir> clean -fd",
+    "  7. git -C <repoDir> checkout -b <newBranch>",
     "",
     "Repos:",
     steps,
     "",
     "Return JSON with:",
     "  - newBranch (top-level): the generated branch name used for all repos",
-    "  - repos[]: { folderName, dirPath, baseBranch, newBranch, success, error? }",
+    "  - repos[]: { folderName, repoDir, baseBranch, newBranch, success, error? }",
     "  - error (top-level, optional): set only if everything failed before per-repo work started",
     "Capture per-repo errors in repos[].error and set success=false for that repo.",
   ].join("\n");
@@ -100,7 +100,7 @@ export async function checkoutRepo(
   const entries = normalizeEntries(opts);
   const sessionId = opts.sessionId ?? crypto.randomUUID();
   const EMPTY: CheckoutRepoResult = { repos: [], newBranch: "", sessionId };
-  log.info({ sessionId, repoCount: entries.length, ticketId: opts.ticket?.id }, "checkoutRepo start");
+  log.info({ sessionId, repoCount: entries.length, issueRef: opts.issue?.id }, "checkoutRepo start");
 
   if (entries.length === 0) {
     log.warn({ sessionId }, "checkoutRepo called with no repos");
@@ -113,7 +113,7 @@ export async function checkoutRepo(
 
   const result = await client.session.prompt({
     sessionID: sid,
-    parts: [{ type: "text", text: buildPrompt(entries, opts.ticket) }],
+    parts: [{ type: "text", text: buildPrompt(entries, opts.issue) }],
     model: config.model,
     tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },

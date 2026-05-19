@@ -78,15 +78,15 @@ curl -X POST https://your-host/api/trigger/prod-1 \
 
 **Authentication:** HMAC-256 signature via `X-Hub-Signature-256` header
 
+> For webhook security, HMAC verification, and dedup behavior, see [Webhooks](webhooks.md).
+
 ### Setup Steps
 
 1. Navigate to your GitHub repository
 2. Go to **Settings** → **Webhooks** → **Add webhook**
 3. **Payload URL:** `https://your-host/webhooks/github/<productId>`
 4. **Content type:** `application/json`
-5. **Secret:** Use the value from either:
-   - `products.<productId>.webhookSecrets.github` (per-product override), or
-   - Default env var (e.g., `GITHUB_WEBHOOK_SECRET`) if no per-product override
+5. **Secret:** Set to the value configured in your provider's `webhookSecret` field
 6. **Events:** Select:
    - **Issues** (for issue open/close)
    - **Pull requests** (for PR open/close/sync)
@@ -113,21 +113,13 @@ If `productConfig.ticketWorkflow.trigger.matchLabels` is set, the webhook only f
 
 The issue must have both `auto-run` AND `pipeline` labels or the trigger is ignored.
 
-### Signature Verification
-
-```
-X-Hub-Signature-256: sha256=<hex>
-```
-
-Server verifies: `hmac.update(rawBody).digest('hex') === <hex>`
-
 ---
 
 ## GitLab Webhook Trigger
 
 **Endpoint:** `POST /webhooks/gitlab/:productId`
 
-**Authentication:** `X-Gitlab-Token` header (constant-time comparison)
+**Authentication:** `X-Gitlab-Token` header (constant-time comparison) — see [Webhooks](webhooks.md) for verification details.
 
 ### Ticket Key Extraction
 
@@ -154,7 +146,7 @@ The webhook will ignore issues in `closed` state.
 1. Go to your GitLab project
 2. **Settings** → **Webhooks** → **Add webhook**
 3. **URL:** `https://your-host/webhooks/gitlab/<productId>`
-4. **Secret token:** Set to your token (will be checked against per-product override or default env var)
+4. **Secret token:** Set to the value configured in your provider's `webhookSecret` field
 5. **Events:** Issues, Merge requests
 6. **Save**
 
@@ -164,7 +156,7 @@ The webhook will ignore issues in `closed` state.
 
 **Endpoint:** `POST /webhooks/jira/:productId`
 
-**Authentication:** Bearer token in `Authorization` header
+**Authentication:** Bearer token in `Authorization` header — see [Webhooks](webhooks.md) for verification details.
 
 **Setup:** Create a Jira automation rule:
 

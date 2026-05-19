@@ -6,76 +6,28 @@ A **product** in Journeyman is one project/team that has its own repos, ticket s
 
 ## What you will do
 
-1. Add the product block to `pipeline.yaml`
+1. Add the product in the UI
 2. Set any new environment variables
 3. Configure the webhook in your Git/ticket platform
-4. Validate and reload
+4. Restart and test
 
-No code changes are required — everything is driven by config.
+No code changes are required — everything is driven by the UI and database config.
 
 ---
 
-## Step 1 — Add the product to `pipeline.yaml`
+## Step 1 — Add the product in the UI
 
-Open `config/pipeline.yaml` and add a new key under `products`. Each product key becomes the `:productId` segment in webhook and API URLs.
+Create the product in the web UI. Each product key becomes the `:productId` segment in webhook and API URLs. Configure:
 
-```yaml
-products:
-
-  # ── existing product ────────────────────────────────────────────────────────
-  existing-product:
-    # ... leave this untouched ...
-
-  # ── new product ─────────────────────────────────────────────────────────────
-  new-product:                          # ← choose a short, URL-safe key
-    flow: default                       # name of the flow YAML to run (config/flows/<name>.yaml)
-    workspace: ./workspaces/new-product # isolated directory for cloned repos and run state
-    concurrency: 1                      # max parallel runs for this product (optional, default unlimited)
-
-    repos:
-      - providerId: github              # "github" or "gitlab"
-        owner: my-org
-        repo: new-repo
-        url: https://github.com/my-org/new-repo
-        defaultBranch: main
-      # add more repos if the flow should clone multiple:
-      # - providerId: github
-      #   owner: my-org
-      #   repo: another-repo
-      #   url: https://github.com/my-org/another-repo
-      #   defaultBranch: develop
-
-    providerConfig:
-      ticket:
-        provider: github-issues         # or: jira, linear, monday, gitlab-issues
-        # Jira example:
-        # provider: jira
-        # host: https://myorg.atlassian.net
-        # projectKey: NEWPROJ
-        # userEnv: JIRA_USER
-        # tokenEnv: JIRA_TOKEN
-      git:
-        provider: github                # or: gitlab
-        tokenEnv: GITHUB_TOKEN          # reuse existing env var, or set a new one
-      # coding block is optional — ClaudeProvider ignores config and auths
-      # via ~/.claude/ session (if logged in) or ANTHROPIC_API_KEY env var.
-      notification:
-        provider: slack
-        tokenEnv: SLACK_BOT_TOKEN
-        channel: "#new-team-alerts"
-
-    ticketWorkflow:
-      trigger:
-        matchLabels: [journeyman]       # only process issues/PRs with this label
-        # matchStatus: ["To Do"]        # alternatively gate on ticket status
-      statuses:
-        inProgress: "In Progress"
-        review:     "In Review"
-        done:       "Done"
-
-    webhookSecrets:
-      github: NEW_PRODUCT_WEBHOOK_SECRET   # env var name — one secret per product is recommended
-```
+- **Repos** — list of repositories (`providerId`, owner, repo name, URL, default branch). Add more repos if the flow should clone multiple.
+- **Flow** — select from registered flows (create one first if needed).
+- **Concurrency** — max parallel runs (optional, default unlimited).
+- **Provider config** — per-category tokens/overrides:
+  - `ticket`: provider ID (`github-issues`, `jira`, `linear`, etc.) + connection options
+  - `git`: provider ID (`github`, `gitlab`) + `tokenEnv`
+  - `notification`: provider + channel
+- **Ticket workflow** — trigger labels/statuses + semantic-to-literal status mappings.
+- **Webhook secrets** — per-product webhook secret env var name (one secret per product is recommended).
 
 ### Provider options at a glance
 
@@ -124,13 +76,7 @@ If the new product reuses credentials already set (e.g. `GITHUB_TOKEN`, `ANTHROP
 
 ## Step 3 — Create a flow (if needed)
 
-If the new product needs different steps from the default, create a new flow file:
-
-```bash
-cp config/flows/default.yaml config/flows/new-product-flow.yaml
-```
-
-Edit `config/flows/new-product-flow.yaml` — change the `name` field and adjust steps:
+If the new product needs different steps from the default, create a new flow in the UI flow editor. You can clone an existing flow and adjust its steps. A typical custom flow:
 
 ```yaml
 name: new-product-flow    # must be unique
@@ -144,13 +90,6 @@ providers:
 steps:
   - id: get-ticket
     phase: getTicket
-
-  - id: require-label
-    phase: requireField
-    config:
-      field: labels
-      contains: journeyman
-    onFailure: block        # block (don't fail) if the label is missing
 
   - id: clone-repos
     phase: cloneRepos
@@ -174,38 +113,19 @@ steps:
     phase: cleanupRepos
 ```
 
-Then point the product at the new flow in `pipeline.yaml`:
-
-```yaml
-products:
-  new-product:
-    flow: new-product-flow   # ← changed from "default"
-```
+After saving the flow in the UI, assign it to the product in the product settings.
 
 ---
 
-## Step 4 — Validate the config
+## Step 4 — Validate
 
-Before restarting, validate that your YAML is well-formed and all providers/phases are known:
+Use the UI flow editor's built-in validation to check that all providers and phase references are correct before running. Common issues:
 
-```bash
-npm run validate
-npx tsx packages/pipeline/src/cli.ts validate-config --config path/to/pipeline.yaml
-```
-
-If validation passes you will see:
-```
-config ok — 2 products, 2 flows, 12 phases
-```
-
-Common validation errors:
-
-| Error | Fix |
+| Issue | Fix |
 |---|---|
-| `Unknown phase: X` | Typo in the `phase` field — check the phase name list below |
-| `Unknown provider: X` | `providers.*` in the flow doesn't match any provider ID |
-| `No repos defined for product X` | `repos` array is empty or missing |
-| `Flow "X" not found` | Flow file name doesn't match the `flow:` value in the product |
+| Unknown phase | Typo in the `phase` field — check available phase names |
+| Unknown provider | `providers.*` in the flow doesn't match any registered provider ID |
+| Missing required input | A phase requires an input that no upstream step produces |
 
 Available phase names: `getTicket`, `cloneRepos`, `analyze`, `plan`, `implement`, `commitPushRepos`, `createPR`, `cleanupRepos`, `addComment`, `updateStatus`, `review`, `requireField`.
 
@@ -222,7 +142,6 @@ pm2 restart journeyman
 # If running directly — Ctrl+C then use any of:
 npm start
 npx journeyman serve
-npx journeyman serve --config path/to/pipeline.yaml
 npx journeyman-server
 ```
 
@@ -359,10 +278,10 @@ If the new product should gate each major phase (`analyze`, `plan`, code review)
 ```yaml
 products:
   new-product:
-    flow: human-loop        # ships in config/flows/human-loop.yaml
+    flow: human-loop        # select the human-loop flow from the UI
 ```
 
-The flow ([config/flows/human-loop.yaml](../config/flows/human-loop.yaml)) inserts three `reviewLoop` gates after `analyze`, `plan`, and `createPR`. A reviewer drives the loop by changing the ticket status — the webhook dispatcher auto-resumes the blocked run (see [docs/triggers.md](./triggers.md#status-change-routing)). See [docs/flows.md](./flows.md#human-review-loops) for the full step list and config reference.
+The human-loop flow inserts three `reviewLoop` gates after `analyze`, `plan`, and `createPR`. A reviewer drives the loop by changing the ticket status — the webhook dispatcher auto-resumes the blocked run (see [docs/triggers.md](./triggers.md#status-change-routing)). See [docs/flows.md](./flows.md#human-review-loops) for the full step list and config reference.
 
 Add the semantic-to-literal status mapping required by the flow to the product's `ticketWorkflow.statuses`:
 

@@ -1,0 +1,26 @@
+{
+  "name": "@journeyman/migrations",
+  "version": "0.1.0",
+  "description": "SQL migrations for the Journeyman orchestration tables. Run via `npm run migrate`.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "bin": {
+    "journeyman-migrate": "./src/cli.ts"
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

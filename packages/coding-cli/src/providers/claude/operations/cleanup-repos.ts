@@ -15,7 +15,7 @@ export type { CleanupEntry, CleanupReposOptions, CleanupReposResult, CleanupRepo
 
 function normalizeEntries(opts: CleanupReposOptions): CleanupEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
-  return raw.map((r) => (typeof r === "string" ? { dirPath: r } : r));
+  return raw.map((r) => (typeof r === "string" ? { repoDir: r } : r));
 }
 
 function unsafeReason(absPath: string): string | null {
@@ -27,41 +27,41 @@ function unsafeReason(absPath: string): string | null {
 }
 
 async function cleanupOne(entry: CleanupEntry): Promise<CleanupRepoResult> {
-  const absPath = resolve(entry.dirPath);
+  const absPath = resolve(entry.repoDir);
   const folderName = basename(absPath);
 
   const refusal = unsafeReason(absPath);
   if (refusal) {
-    log.warn({ dirPath: absPath, reason: refusal }, "cleanup refused — unsafe path");
-    return { folderName, dirPath: absPath, success: false, error: refusal };
+    log.warn({ repoDir: absPath, reason: refusal }, "cleanup refused — unsafe path");
+    return { folderName, repoDir: absPath, success: false, error: refusal };
   }
 
   try {
     await rm(absPath, { recursive: true, force: true });
-    log.debug({ dirPath: absPath }, "cleanup removed");
-    return { folderName, dirPath: absPath, success: true };
+    log.debug({ repoDir: absPath }, "cleanup removed");
+    return { folderName, repoDir: absPath, success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ dirPath: absPath, err: message }, "cleanup failed");
-    return { folderName, dirPath: absPath, success: false, error: message };
+    log.error({ repoDir: absPath, err: message }, "cleanup failed");
+    return { folderName, repoDir: absPath, success: false, error: message };
   }
 }
 
 /**
  * Deletes each target directory entirely (recursive, force). Use as the final
- * step of a flow/ticket so the next run starts from a fresh workspace.
+ * step of a flow/issue so the next run starts from a fresh workspace.
  *
  * Idempotent: missing paths are reported as success. Refuses to delete `/`,
  * `$HOME`, or `process.cwd()` — those entries return success=false with an
  * explanatory error, while other entries still run.
  *
- * @param opts - Repos to delete. Strings are treated as dirPaths.
+ * @param opts - Repos to delete. Strings are treated as repoDirs.
  * @returns A CleanupReposResult with per-repo success/error details.
  *
  * @example
  * ```ts
  * const result = await cleanupRepos({
- *   repos: ["/tmp/workspace/ticket-123/api", "/tmp/workspace/ticket-123/web"],
+ *   repos: ["/tmp/workspace/issue-123/api", "/tmp/workspace/issue-123/web"],
  * });
  * ```
  */

@@ -2,7 +2,7 @@ export type IProviderMeta = {
   id: string;
   name: string;
   description: string;
-  category: "coding-cli" | "git" | "ticket" | "notification";
+  category: "coding-cli" | "git" | "issue" | "notification";
 };
 
 export type PhaseResult =
@@ -10,7 +10,7 @@ export type PhaseResult =
   | {
       status: "blocked";
       reason: string;
-      waitFor?: "ticket-comment" | "pr-comment" | "manual";
+      waitFor?: "issue-comment" | "pr-comment" | "manual";
       artifacts?: Record<string, unknown>;   // NEW — merged into run before blocking
     }
   | { status: "failed"; error: { message: string; code?: string; stack?: string } };
@@ -27,7 +27,9 @@ export type StepRecord = {
   output?: unknown;
   error?: { message: string; code?: string; stack?: string };
   blockedReason?: string;
-  waitFor?: "ticket-comment" | "pr-comment" | "manual";
+  waitFor?: "issue-comment" | "pr-comment" | "manual";
+  /** Per-field source: "node" = explicit on the phase node; "flow-default" = inherited from FlowGraph.defaults. */
+  inputSources?: Record<string, "node" | "flow-default">;
 };
 
 export type ArtifactHandle = {
@@ -48,7 +50,7 @@ export type ProductRepo = {
   defaultBranch: string;
 };
 
-export type TicketWorkflow = {
+export type IssueWorkflow = {
   trigger?: {
     matchLabels?: string[];
     matchStatus?: string[];
@@ -61,12 +63,12 @@ export type ProductConfig = {
   workspace: string;
   repos: ProductRepo[];
   providerConfig?: {
-    ticket?: Record<string, unknown>;
+    issue?: Record<string, unknown>;
     git?: Record<string, unknown>;
     coding?: Record<string, unknown>;
     notification?: Record<string, unknown>;
   };
-  ticketWorkflow?: TicketWorkflow;
+  issueWorkflow?: IssueWorkflow;
   webhookSecrets?: Record<string, string>;
   concurrency?: number;
 };
@@ -75,23 +77,27 @@ export type FlowStepDefinition = {
   id: string;                           // unique within flow
   phase: string;
   config?: Record<string, unknown>;
+  /** Per-step model override. Empty/undefined ⇒ use flow.defaultModel. */
+  model?: string;
   retry?: { attempts: number; backoffMs: number };
   timeoutMs?: number;
   onFailure?: "fail" | "skip" | "retry" | "block";  // default "fail"
-  retryable?: boolean;                  // opt-in gate for POST /retry API
+  requiredSecrets?: string[];           // env-var names; resolved before step exec
 };
 
 export type FlowDefinition = {
   name: string;
-  providers: { ticket: string; git: string; coding: string; notification: string };
+  providers: { issue: string; git: string; coding: string; notification: string };
+  /** Default model for AI phases. References coding_models.model_id for providers.coding. */
+  defaultModel?: string;
   steps: FlowStepDefinition[];
 };
 
 export type PipelineRun = {
   sessionId: string;
   productId: string;
-  ticketKey: string;                    // canonical id (e.g. "owner/repo#42")
-  ticketShortKey: string;               // short id for display ("42")
+  issueRef: string;                     // canonical id e.g. "jira:PROJ-123"
+  issueRefShort: string;                // short id for display e.g. "PROJ-123"
   flowName: string;
   flowSnapshot: FlowDefinition;         // frozen copy
   status: "queued" | "running" | "blocked" | "completed" | "failed" | "cancelling" | "cancelled";
@@ -133,17 +139,17 @@ export type PipelineConfig = {
 export type PipelineTrigger = {
   sourceId: string;
   productId: string;
-  ticketKey: string;
-  ticketShortKey: string;
+  issueRef: string;
+  issueRefShort: string;
   flowName?: string;
   rawPayload: unknown;
   receivedAt: string;
-  eventType?: "new-ticket" | "status-change" | "comment";   // NEW
+  eventType?: "new-issue" | "status-change" | "comment";   // NEW
   newStatus?: string;                                         // NEW — literal status value
 };
 
 export type PipelineEvent =
-  | { type: "runStarted";  sessionId: string; ticketKey: string; flowName: string; at: string }
+  | { type: "runStarted";  sessionId: string; issueRef: string; flowName: string; at: string }
   | { type: "stepStarted"; sessionId: string; stepId: string; phase: string; attempt: number; at: string }
   | { type: "stepEnded";   sessionId: string; stepId: string; phase: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
   | { type: "logLine";     sessionId: string; stepId: string; level: "info"|"warn"|"error"; line: string; at: string }

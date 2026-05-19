@@ -5,7 +5,7 @@ import {
   UPDATE_PROJECT_FIELD_TEXT,
   type GitHubClient,
 } from "@journeyman/github-api";
-import { getTicket } from "./get-ticket.ts";
+import { getIssue } from "./get-issue.ts";
 import { findField, findOptionId, getProjectFields } from "../utils/resolve-fields.ts";
 import { resolveProjectNodeId } from "../utils/resolve-project-id.ts";
 
@@ -46,7 +46,7 @@ export async function updateStatus(
       });
     }
 
-    return getTicket(client, { id: opts.id });
+    return getIssue(client, { id: opts.id });
   } catch (err) {
     return { error: formatGitHubError("graphql.updateProjectV2ItemFieldValue", err) };
   }

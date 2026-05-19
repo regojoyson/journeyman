@@ -1,0 +1,53 @@
+/*
+ * Journeyman theme tokens.
+ * Variables are declared as space-separated RGB triplets so Tailwind alpha
+ * modifiers (e.g. bg-surface/40) compose via rgb(var(--x) / <alpha-value>).
+ * --color-overlay is the exception: it carries its own alpha.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: 26 26 36;
+  --color-surface: 15 23 42;
+  --color-surface-raised: 30 41 59;
+  --color-surface-hover: 30 41 59;
+  --color-surface-active: 51 65 85;
+  --color-border: 51 65 85;
+  --color-border-strong: 71 85 105;
+  --color-text: 241 245 249;
+  --color-text-muted: 148 163 184;
+  --color-text-subtle: 100 116 139;
+  --color-accent: 99 102 241;
+  --color-accent-hover: 79 70 229;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-danger: 239 68 68;
+  --color-overlay: rgb(0 0 0 / 0.6);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: 255 255 255;
+  --color-surface: 248 250 252;
+  --color-surface-raised: 255 255 255;
+  --color-surface-hover: 241 245 249;
+  --color-surface-active: 226 232 240;
+  --color-border: 226 232 240;
+  --color-border-strong: 203 213 225;
+  --color-text: 15 23 42;
+  --color-text-muted: 71 85 105;
+  --color-text-subtle: 100 116 139;
+  --color-accent: 79 70 229;
+  --color-accent-hover: 67 56 202;
+  --color-success: 5 150 105;
+  --color-warning: 217 119 6;
+  --color-danger: 220 38 38;
+  --color-overlay: rgb(15 23 42 / 0.5);
+}
+
+html {
+  transition: background-color 150ms ease, color 150ms ease;
+}

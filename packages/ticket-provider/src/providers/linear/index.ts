@@ -1,28 +1,28 @@
-import type { ITicketProvider, IProviderMeta } from "@journeyman/core";
+import type { IIssueProvider, IProviderMeta } from "@journeyman/core";
 import type {
-  CreateTicketOptions, CreateTicketResult,
-  UpdateTicketOptions, UpdateTicketResult,
-  GetTicketOptions, GetTicketResult,
-  ListTicketsOptions, ListTicketsResult,
-  GetTicketSchemaOptions, GetTicketSchemaResult,
+  CreateIssueOptions, CreateIssueResult,
+  UpdateIssueOptions, UpdateIssueResult,
+  GetIssueOptions, GetIssueResult,
+  ListIssuesOptions, ListIssuesResult,
+  GetIssueSchemaOptions, GetIssueSchemaResult,
   AddCommentOptions, AddCommentResult,
   UpdateStatusOptions, UpdateStatusResult,
 } from "@journeyman/core";
 
-/** Linear ticket provider. Not yet implemented. */
-export class LinearProvider implements ITicketProvider {
+/** Linear issue provider. Not yet implemented. */
+export class LinearProvider implements IIssueProvider {
   static meta: IProviderMeta = {
     id: "linear",
     name: "Linear",
     description: "Linear issue tracker",
-    category: "ticket",
+    category: "issue",
   };
 
-  createTicket(_opts: CreateTicketOptions): Promise<CreateTicketResult> { throw new Error("LinearProvider.createTicket not implemented"); }
-  updateTicket(_opts: UpdateTicketOptions): Promise<UpdateTicketResult> { throw new Error("LinearProvider.updateTicket not implemented"); }
-  getTicket(_opts: GetTicketOptions): Promise<GetTicketResult> { throw new Error("LinearProvider.getTicket not implemented"); }
-  listTickets(_opts: ListTicketsOptions): Promise<ListTicketsResult> { throw new Error("LinearProvider.listTickets not implemented"); }
-  getTicketSchema(_opts: GetTicketSchemaOptions): Promise<GetTicketSchemaResult> { throw new Error("LinearProvider.getTicketSchema not implemented"); }
+  createIssue(_opts: CreateIssueOptions): Promise<CreateIssueResult> { throw new Error("LinearProvider.createIssue not implemented"); }
+  updateIssue(_opts: UpdateIssueOptions): Promise<UpdateIssueResult> { throw new Error("LinearProvider.updateIssue not implemented"); }
+  getIssue(_opts: GetIssueOptions): Promise<GetIssueResult> { throw new Error("LinearProvider.getIssue not implemented"); }
+  listIssues(_opts: ListIssuesOptions): Promise<ListIssuesResult> { throw new Error("LinearProvider.listIssues not implemented"); }
+  getIssueSchema(_opts: GetIssueSchemaOptions): Promise<GetIssueSchemaResult> { throw new Error("LinearProvider.getIssueSchema not implemented"); }
   addComment(_opts: AddCommentOptions): Promise<AddCommentResult> { throw new Error("LinearProvider.addComment not implemented"); }
   updateStatus(_opts: UpdateStatusOptions): Promise<UpdateStatusResult> { throw new Error("LinearProvider.updateStatus not implemented"); }
 }

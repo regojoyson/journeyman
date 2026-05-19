@@ -9,10 +9,8 @@ Complete installation and configuration — from a clean machine to a running pi
 1. [Prerequisites](#1-prerequisites)
 2. [Install the monorepo](#2-install-the-monorepo)
 3. [Environment variables](#3-environment-variables)
-4. [Instance-level config (`pipeline.yaml`)](#4-instance-level-config-pipelineyaml)
-5. [Default flow (`flows/default.yaml`)](#5-default-flow-flowsdefaultyaml)
-6. [Adding your first product](#6-adding-your-first-product)
-7. [Adding additional products](#7-adding-additional-products)
+4. [Adding your first product](#4-adding-your-first-product)
+5. [Adding additional products](#5-adding-additional-products)
 8. [Webhook setup per provider](#8-webhook-setup-per-provider)
 9. [Validate and run](#9-validate-and-run)
 10. [Deployment notes](#10-deployment-notes)
@@ -97,105 +95,17 @@ If one product needs its own GitHub App / webhook secret / Slack workspace, decl
 
 ### What's NOT an env var
 
-The following go in the YAML config, not env:
+The following are configured in the UI and stored in the database, not in env:
 
-- Webhook URL paths (default `/webhooks/github/:productId`, etc. — overridable per trigger).
 - Product ids, repo names, owners, default branches.
 - Flow step configs (timeouts, retry counts, status names).
+- Webhook URL paths (default `/webhooks/github/:productId`, etc. — overridable per trigger).
 
-## 4. Instance-level config (`pipeline.yaml`)
+## 4. Adding your first product
 
-Create `config/pipeline.yaml` at the repo root. This is the single source of truth for products, server settings, and webhooks.
+Products and flows are configured through the web UI and stored in the database. Create a flow first in the flow editor, then add a product that references it.
 
-```yaml
-defaultFlow: default
-
-# Products come later — start empty if you're setting up a fresh instance.
-products: {}
-
-server:
-  port: 3000
-  bearerTokenEnv: JOURNEYMAN_API_TOKEN
-  webhooks:
-    github: { secretEnv: GITHUB_WEBHOOK_SECRET }
-    # gitlab: { secretEnv: GITLAB_WEBHOOK_SECRET }
-    # jira:   { secretEnv: JIRA_WEBHOOK_SECRET }
-
-stateStorage:
-  type: file
-  directory: ./workspaces
-
-workspaces:
-  cleanupOn: ["completed", "cancelled"]
-  retentionDays: 14
-  keepFailed: true
-```
-
-Field notes:
-
-| Field | Purpose |
-|---|---|
-| `defaultFlow` | Which flow to use when a trigger doesn't specify one and no product matches. |
-| `stateStorage.type` | Backend for run state, traces, and artifacts. Only `file` is supported today. |
-| `stateStorage.directory` | Root dir for file-based state. Absolute or relative to the server CWD. Defaults to `./workspaces`. |
-| `products` | Map of productId → product config. We'll populate this in §6. |
-| `server.port` | HTTP port to listen on. |
-| `server.bearerTokenEnv` | Name of the env var holding the management API bearer. |
-| `server.webhooks` | Which webhook sources to mount. Omit a key to disable that source. |
-| `workspaces.cleanupOn` | After a run reaches one of these terminal states, the ephemeral `runs/<sessionId>/` dir is deleted. State + logs + artifacts are preserved separately. |
-| `workspaces.retentionDays` | `journeyman sweep` deletes run dirs older than this. |
-| `workspaces.keepFailed` | Preserve `failed` runs' work dirs for debugging. |
-
-For the full reference, see [configuration.md](configuration.md).
-
-## 5. Default flow (`flows/default.yaml`)
-
-Create `config/flows/default.yaml`. This is the flow `defaultFlow: default` references. A reasonable starting flow for GitHub Issues:
-
-```yaml
-name: default
-
-providers:
-  ticket:       github-issues
-  git:          github
-  coding:       claude
-  notification: slack        # no-op until SlackProvider is implemented; safe to leave
-
-steps:
-  - { id: fetch-ticket,     phase: getTicket }
-  - { id: clone,            phase: cloneRepos }
-  - { id: analyze,          phase: analyze,         timeoutMs: 900000 }
-  - { id: comment-analysis, phase: addComment,      config: { template: analysis-summary }, onFailure: skip }
-  - { id: mark-in-progress, phase: updateStatus,    config: { status: development-started } }
-  - { id: plan,             phase: plan,            timeoutMs: 900000 }
-  - { id: implement,        phase: implement,       timeoutMs: 1800000 }
-  - { id: commit-push,      phase: commitPushRepos, config: { pattern: "#{ticket} : {summary}", prSummaryStyle: detailed } }
-  - { id: open-pr,          phase: createPR }
-  - { id: mark-in-review,   phase: updateStatus,    config: { status: code-review }, onFailure: skip }
-  - { id: cleanup,          phase: cleanupRepos,    onFailure: skip }
-```
-
-What each step does, in one line each:
-
-| Step | What it does |
-|---|---|
-| `fetch-ticket` | Calls `ticket.getTicket` and saves `ticket` + `ticketMd` to artifacts. |
-| `clone` | Clones every repo in the product's `repos:` list under `workspaces/<product>/runs/<sessionId>/repos/`. |
-| `analyze` | Runs Claude analyse against the primary repo; persists `analyze-report.md` as an artifact. |
-| `comment-analysis` | Posts a summary comment on the ticket. Soft-fails (run continues if comment fails). |
-| `mark-in-progress` | Updates ticket status to the product's `development-started` literal. |
-| `plan` | Runs Claude plan; persists `plan-report.md`. |
-| `implement` | Runs Claude implement; edits files; persists `implement-report.md`. |
-| `commit-push` | Commits changes on a branch auto-named by the agent, pushes to the remote. Produces `commit` artifact with branch + sha + pre-formatted PR title/body. |
-| `open-pr` | Calls `git.createPR`. Idempotent: if an open PR already exists for the branch, reuses it. |
-| `mark-in-review` | Updates ticket status to the product's `code-review` literal. Soft-fails. |
-| `cleanup` | Removes local clones. Soft-fails. |
-
-For custom flows, see [flows.md](flows.md) and [phases.md](phases.md).
-
-## 6. Adding your first product
-
-Populate `products:` in `pipeline.yaml`. For a product called **edgereg** using one GitHub repo:
+For a product called **edgereg** using one GitHub repo, the product configuration includes:
 
 ```yaml
 products:
@@ -224,7 +134,7 @@ Required fields per product:
 
 | Field | Purpose |
 |---|---|
-| `flow` | Which flow to run. Must exist as `config/flows/<flow>.yaml`. |
+| `flow` | Which flow to run. Must be a flow registered in the database. |
 | `workspace` | Directory under which state / logs / artifacts / runs live. Must be a writable path. |
 | `repos[]` | At least one repo. Each needs `providerId`, `owner`, `repo`, `url`, `defaultBranch`. |
 
@@ -255,7 +165,7 @@ This lets **one flow file** serve many products with different status vocabulari
 
 The server validates at startup that every `updateStatus` step in every flow has a mapping in every product that uses that flow. A typo in your config is caught before any run starts.
 
-## 7. Adding additional products
+## 5. Adding additional products
 
 Just add another key under `products:`. Products are independent — separate workspace dirs, separate concurrency, independently overridable auth.
 
@@ -297,7 +207,7 @@ products:
     ticketWorkflow: { ... }
 ```
 
-Create `config/flows/cidms-secure.yaml` with the extra phases. The extra phases need to be registered in `packages/pipeline-server/src/main.ts` (see [phases.md](phases.md) for the "custom phase" section).
+Create the flow in the UI flow editor. The extra phases need to be registered in the phase catalog (see [phases.md](phases.md) for the "custom phase" section).
 
 ### Two products, different GitHub orgs / separate tokens
 
@@ -428,7 +338,6 @@ Then start with any of:
 ```bash
 npm start                          # simplest — from repo root
 npx journeyman serve               # via CLI
-npx journeyman serve --config path/to/pipeline.yaml   # custom config
 npx journeyman-server              # dedicated server bin
 ```
 
@@ -543,24 +452,21 @@ Brief overlap window where either old or new would verify is fine; HMAC compares
 
 ### Add a repo to an existing product
 
-1. Add an entry under `products.<id>.repos[]`.
+1. Add the repo to the product in the UI.
 2. Configure a GitHub webhook on the new repo pointing at the same URL.
-3. `npm run validate`.
-4. Restart server.
+3. Restart the worker if needed.
 
 ### Remove a product
 
-1. Delete its block from `pipeline.yaml`.
+1. Delete the product from the database (via the UI or API).
 2. Disable the corresponding GitHub/GitLab/Jira webhooks.
 3. `rm -rf workspaces/<productId>/` once all in-flight runs have completed (check `/api/runs?product=<id>&status=running`).
 4. Restart server.
 
 ### Change the default flow
 
-1. Edit `defaultFlow:` in `pipeline.yaml`.
-2. Make sure the new flow exists in `config/flows/`.
-3. `npm run validate`.
-4. Restart server.
+1. Update the default flow for the product in the UI.
+2. Restart the worker if needed.
 
 ### Clean up old run dirs
 
@@ -579,7 +485,25 @@ Or run it on a cron:
 ## Next steps
 
 - [Quickstart](quickstart.md) — 10-minute walkthrough.
-- [Configuration reference](configuration.md) — every `pipeline.yaml` field.
 - [Flows reference](flows.md) — authoring custom flows.
 - [Phases catalog](phases.md) — writing custom phases.
 - [Troubleshooting](troubleshooting.md) — when things go wrong.
+
+---
+
+## Secrets resolution: api-server vs cli-worker
+
+Two execution paths resolve secrets differently:
+
+- **api-server** (production / web-driven runs): uses `SecretsCredentialStore`,
+  resolving in the order **user > org > global**. User-scope and org-scope
+  secrets stored in Postgres are visible. Missing secrets fail the run with
+  `reason: "missing_secrets"` before any phase executes.
+
+- **cli-worker** (`packages/orchestrator/src/cli-worker.ts`): uses
+  `EnvCredentialStore`. **Only the global tier is resolved** —
+  `process.env.NAME` and `process.env.JM_GLOBAL_NAME`. User-scope and
+  org-scope rows in the database are not visible to the CLI worker.
+
+For local development against user/org secrets, run via api-server. The CLI
+worker is intended for global-tier flows and quick smoke tests.

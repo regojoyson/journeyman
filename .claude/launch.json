@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ui",
+      "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--workspace=packages/ui"],
+      "runtimeArgs": ["run", "dev", "--workspace=packages/web"],
       "port": 5173
     }
   ]
