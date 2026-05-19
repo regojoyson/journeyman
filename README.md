@@ -155,3 +155,12 @@ npm run infra:up      # start Postgres, Redis, Conductor
 npm run infra:down    # stop containers
 npm run infra:reset   # wipe volumes and restart
 ```
+
+## Deployment
+
+Journeyman ships two deployment paths sharing one `Dockerfile`:
+
+- **Docker Compose** — full stack on one host. `npm run compose:up` builds the four runtime images (`api-server`, `worker`, `web`, `migrations`) and starts everything including Postgres, Redis, and Conductor. The web UI is at <http://localhost:8081>.
+- **Kubernetes (any conforming cluster)** — Kustomize manifests in [`deploy/k8s/`](deploy/k8s/). `npm run k8s:up` builds images and applies the `local` overlay. See [`deploy/k8s/README.md`](deploy/k8s/README.md) for how to load locally-built images into kind/minikube and how to adapt the `example-registry/` overlay for remote registries.
+
+Design and specification: [`docs/superpowers/specs/2026-05-19-deployment-design.md`](docs/superpowers/specs/2026-05-19-deployment-design.md).
