@@ -10,10 +10,11 @@ spec:
       targetPort: 6379
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: redis
 spec:
+  serviceName: redis
   replicas: 1
   selector:
     matchLabels:
@@ -26,6 +27,7 @@ spec:
       containers:
         - name: redis
           image: redis:7-alpine
+          args: ["--appendonly", "yes"]
           ports:
             - containerPort: 6379
           readinessProbe:
@@ -33,3 +35,14 @@ spec:
               command: ["redis-cli", "ping"]
             initialDelaySeconds: 2
             periodSeconds: 5
+          volumeMounts:
+            - name: redisdata
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redisdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

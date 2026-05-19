@@ -216,12 +216,14 @@ npm run compose:up
 # 3. Open the web UI
 open http://localhost:8081
 
-# 4. Tear down (data volume `pgdata` persists)
+# 4a. Stop, KEEP data (postgres + redis volumes survive)
 npm run compose:down
 
-# Wipe persistent data too:
-docker compose down -v
+# 4b. Stop AND wipe data (drops `pgdata` and `redisdata`)
+npm run compose:reset
 ```
+
+Volumes live inside the Rancher Desktop VM at `/var/lib/docker/volumes/journeyman_pgdata/_data` and `/var/lib/docker/volumes/journeyman_redisdata/_data`.
 
 Port map (host → container):
 
@@ -279,9 +281,14 @@ kubectl -n journeyman rollout status deployment/api-server
 kubectl -n journeyman port-forward svc/web 18080:8080
 # Then: http://localhost:18080
 
-# 7. Tear down
+# 7a. Stop, KEEP data (postgres + redis PVCs survive)
 npm run k8s:down
+
+# 7b. Stop AND wipe data (also deletes PVCs)
+npm run k8s:reset
 ```
+
+PVCs live in the cluster's default StorageClass — for Rancher Desktop / k3s that's `local-path`, files at `/var/lib/rancher/k3s/storage/` inside the VM (`rdctl shell` to look).
 
 Deploying to a remote cluster: copy [`deploy/k8s/overlays/example-registry/`](deploy/k8s/overlays/example-registry/), replace the `ghcr.io/your-org/...` images and `REPLACE_ME` tags with your own, and swap the inherited Secret for one sourced from your secrets store (Sealed Secrets, External Secrets, Vault). See [`deploy/k8s/overlays/example-registry/README.md`](deploy/k8s/overlays/example-registry/README.md).
 
