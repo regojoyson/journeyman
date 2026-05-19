@@ -158,9 +158,139 @@ npm run infra:reset   # wipe volumes and restart
 
 ## Deployment
 
-Journeyman ships two deployment paths sharing one `Dockerfile`:
+Journeyman ships two deployment paths that share one `Dockerfile`:
 
-- **Docker Compose** — full stack on one host. `npm run compose:up` builds the four runtime images (`api-server`, `worker`, `web`, `migrations`) and starts everything including Postgres, Redis, and Conductor. The web UI is at <http://localhost:8081>.
-- **Kubernetes (any conforming cluster)** — Kustomize manifests in [`deploy/k8s/`](deploy/k8s/). `npm run k8s:up` builds images and applies the `local` overlay. See [`deploy/k8s/README.md`](deploy/k8s/README.md) for how to load locally-built images into kind/minikube and how to adapt the `example-registry/` overlay for remote registries.
+- **Docker Compose** — full stack on a single host. Best for local dev or a small single-node deploy.
+- **Kubernetes** — cluster-agnostic Kustomize manifests under [`deploy/k8s/`](deploy/k8s/). Tested against k3s / Rancher Desktop; works on kind, minikube, EKS, GKE, AKS, etc.
 
-Design and specification: [`docs/superpowers/specs/2026-05-19-deployment-design.md`](docs/superpowers/specs/2026-05-19-deployment-design.md).
+Design / specification: [`docs/superpowers/specs/2026-05-19-deployment-design.md`](docs/superpowers/specs/2026-05-19-deployment-design.md).
+
+### Container images
+
+A single multi-stage [`Dockerfile`](Dockerfile) produces four images via the `--target` flag:
+
+| Image | Stage | Purpose |
+|---|---|---|
+| `journeyman/api-server:dev` | `runtime-api` | Fastify REST + SSE on port `4000` |
+| `journeyman/worker:dev` | `runtime-worker` | Orchestrator worker (no exposed port) |
+| `journeyman/web:dev` | `runtime-web` | nginx serving the React build on port `8080`; proxies `/api` to `api-server:4000` |
+| `journeyman/migrations:dev` | `runtime-migrations` | One-shot DB schema migrator |
+
+Build all four:
+
+```bash
+npm run images:build      # ./scripts/build-images.sh
+```
+
+### Environment variables
+
+The same env contract drives both deployments. Required at runtime:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string |
+| `CONDUCTOR_BASE_URL` | Conductor REST endpoint |
+| `STORE_BACKEND` | `postgres` (or `memory` for dev) |
+| `IDENTITY_ENFORCE` | `true` to enforce JWT auth |
+| `JWT_SECRET` | JWT signing key (≥32 chars; `openssl rand -hex 32`) |
+| `JM_SECRET_ENCRYPTION_KEY` | AES key for the secrets vault (`openssl rand -hex 32`) |
+| `LOG_LEVEL` | pino log level (default `info`) |
+| `PORT` | api-server listen port (default `4000`) |
+
+Optional: `ANTHROPIC_API_KEY`, `GITHUB_ACCESS_TOKEN`, `JM_GLOBAL_*` secrets — see [`.env.example`](.env.example) for the full list.
+
+### Path 1: Docker Compose
+
+**Prerequisites:** Docker 24+ with Compose v2.
+
+```bash
+# 1. Seed an env file with dev secrets
+cp .env.example .env
+# Generate strong values for JWT_SECRET and JM_SECRET_ENCRYPTION_KEY:
+#   openssl rand -hex 32
+# Edit .env and paste them in.
+
+# 2. Bring up the full stack (builds images, then `docker compose up -d`)
+npm run compose:up
+
+# 3. Open the web UI
+open http://localhost:8081
+
+# 4. Tear down (data volume `pgdata` persists)
+npm run compose:down
+
+# Wipe persistent data too:
+docker compose down -v
+```
+
+Port map (host → container):
+
+| Host | Service | Notes |
+|---|---|---|
+| 8081 | web (nginx) | UI; also proxies `/api` to api-server |
+| 4000 | api-server | REST + SSE |
+| 8080 | conductor | Conductor REST |
+| 5001 | conductor | UI (5000 is taken by macOS AirPlay) |
+| 5433 | postgres | dev access |
+| 6380 | redis | dev access |
+
+The `migrations` service runs once, exits 0, and gates `api-server` + `worker` via `depends_on: service_completed_successfully`.
+
+### Path 2: Kubernetes (any conforming cluster)
+
+**Prerequisites:** `kubectl` configured against a working cluster; an ingress controller if you want hostname-based access (any class — `nginx`, `traefik`, etc.).
+
+Layout:
+
+```
+deploy/k8s/
+├── base/                       cluster-agnostic manifests
+└── overlays/
+    ├── local/                  single-replica dev (imagePullPolicy: IfNotPresent)
+    └── example-registry/       template for remote-registry clusters
+```
+
+Quick start:
+
+```bash
+# 1. Build images on your host
+npm run images:build
+
+# 2. Make images visible to the cluster (only some runtimes need this):
+#    Docker Desktop k8s / Rancher Desktop / k3s on this host  → nothing
+#    kind     → kind load docker-image journeyman/api-server:dev journeyman/worker:dev journeyman/web:dev journeyman/migrations:dev
+#    minikube → minikube image load journeyman/api-server:dev   (repeat per image)
+
+# 3. Seed dev secrets for the local overlay
+cp deploy/k8s/overlays/local/.env.secret.example deploy/k8s/overlays/local/.env.secret
+# Edit the file and paste real values for JWT_SECRET / JM_SECRET_ENCRYPTION_KEY.
+
+# 4. Apply (the script also rebuilds images and reminds you about the load step)
+npm run k8s:up
+
+# 5. Watch rollouts
+kubectl -n journeyman get pods -w
+kubectl -n journeyman rollout status deployment/web
+kubectl -n journeyman rollout status deployment/api-server
+
+# 6. Access the UI
+#    Via ingress: point `journeyman.local` at your ingress controller, then open http://journeyman.local
+#    Or port-forward:
+kubectl -n journeyman port-forward svc/web 18080:8080
+# Then: http://localhost:18080
+
+# 7. Tear down
+npm run k8s:down
+```
+
+Deploying to a remote cluster: copy [`deploy/k8s/overlays/example-registry/`](deploy/k8s/overlays/example-registry/), replace the `ghcr.io/your-org/...` images and `REPLACE_ME` tags with your own, and swap the inherited Secret for one sourced from your secrets store (Sealed Secrets, External Secrets, Vault). See [`deploy/k8s/overlays/example-registry/README.md`](deploy/k8s/overlays/example-registry/README.md).
+
+### Troubleshooting
+
+| Symptom | Cause / Fix |
+|---|---|
+| `web` container returns 502 from `/api/...` | api-server not yet listening — wait for `migrations` to complete and `api-server` to become Ready. Check `docker compose logs api-server`. |
+| K8s pods stuck `ImagePullBackOff` with `journeyman/*:dev` | Images aren't in the cluster's runtime. Run the `kind load` / `minikube image load` step above. |
+| `worker` pod in `Error` shortly after apply | Usually because Conductor is still starting (its readiness probe has `initialDelaySeconds: 30`). It restarts and stabilises automatically. |
+| api-server crashes with secret-related errors | `JWT_SECRET` or `JM_SECRET_ENCRYPTION_KEY` missing/too short. Generate with `openssl rand -hex 32`. |
+| Conductor image pull is very slow | `orkesio/orkes-conductor-community-standalone` is ~1.5 GB on first pull; subsequent runs are cached. |
