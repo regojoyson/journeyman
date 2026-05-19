@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - 'until pg_isready -h postgres -U postgres; do echo "waiting for postgres"; sleep 2; done'
+      containers:
+        - name: worker
+          image: journeyman/worker:dev
+          envFrom:
+            - configMapRef:
+                name: journeyman-config
+            - secretRef:
+                name: journeyman-secrets
