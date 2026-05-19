@@ -16,6 +16,8 @@
     "images:build": "./scripts/build-images.sh",
     "compose:up": "./scripts/compose-up.sh",
     "compose:down": "docker compose down",
+    "k8s:up": "./scripts/k8s-up.sh",
+    "k8s:down": "kubectl delete -k deploy/k8s/overlays/local --ignore-not-found",
     "migrate": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@localhost:5433/journeyman} npm run migrate -w @journeyman/migrations",
     "start:api-server": "npm start -w @journeyman/api-server",
     "start:worker": "tsx packages/orchestrator/src/cli-worker.ts",
