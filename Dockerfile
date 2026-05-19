@@ -13,6 +13,14 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Work around npm optional-deps bug for rollup native binaries on alpine/musl.
+# https://github.com/npm/cli/issues/4828
+RUN case "$(uname -m)" in \
+      aarch64|arm64) PKG="@rollup/rollup-linux-arm64-musl" ;; \
+      x86_64)        PKG="@rollup/rollup-linux-x64-musl" ;; \
+      *)             PKG="" ;; \
+    esac && \
+    if [ -n "$PKG" ]; then npm install --no-save "$PKG"; fi
 RUN npm run build -w @journeyman/web
 
 # ---------- runtime-api ----------
