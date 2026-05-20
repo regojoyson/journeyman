@@ -16,14 +16,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
 import { stepCatalog } from "@journeyman/steps/catalog";
-import type { FlowGraph } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 
 const file = process.argv[2];
 if (!file) {
   console.error("Usage: tsx scripts/dry-run-validate.ts <flow.json>");
   process.exit(2);
 }
-const raw = JSON.parse(readFileSync(resolve(file), "utf8")) as { definition: FlowGraph; name: string };
+const raw = JSON.parse(readFileSync(resolve(file), "utf8")) as { definition: WorkflowGraph; name: string };
 const def = raw.definition;
 
 const errors: string[] = [];
