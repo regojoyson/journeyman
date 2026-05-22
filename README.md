@@ -138,6 +138,18 @@ The visual canvas is powered by `@journeyman/flow-editor`, a React component bui
 | [Security](docs/security.md) | Threat model, token management, secret rotation, encryption |
 | [Troubleshooting](docs/troubleshooting.md) | Runbook for common failure modes |
 
+### Developer Guidelines
+
+| Doc | Description |
+|---|---|
+| [Constitution](docs/constitution/CONSTITUTION.md) | Non-negotiable operating principles for all contributors |
+| [Architecture](docs/constitution/ARCHITECTURE.md) | System and package layout, import boundaries |
+| [Code Review](docs/constitution/CODE_REVIEW.md) | Code review standards |
+| [Unit Testing](docs/constitution/UNIT_TESTING.md) | Test conventions and verification requirements |
+| [Deployment](docs/constitution/DEPLOYMENT.md) | Infra, migrations, and environment configuration |
+| [Security Guidelines](docs/constitution/SECURITY.md) | Auth, secrets, and input handling guidelines for developers |
+| [Version Management](docs/constitution/VERSION_MANAGEMENT.md) | Versioning, branching, and tagging conventions |
+
 ## Development
 
 ```bash

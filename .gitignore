@@ -9,3 +9,9 @@ dist/
 workspaces/
 .superpowers/
 deploy/k8s/overlays/local/.env.secret
+github:journeyman-user/
+.DS_Store
+.DS_Store?
+.idea/
+.vscode/
+*.log
