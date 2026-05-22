@@ -6,6 +6,18 @@
 
 A visual canvas editor (n8n-style) lets users drag-and-drop phase nodes, wire conditional branches, and configure retry/MCP/skills per node. Durable execution is backed by Conductor, with step retries and human-in-the-loop pause/resume.
 
+## Instruction index
+
+| Topic | Document | When to consult |
+|---|---|---|
+| Operating principles | [CONSTITUTION.md](docs/constitution/CONSTITUTION.md) | Always — non-negotiable rules. |
+| System & package layout | [ARCHITECTURE.md](docs/constitution/ARCHITECTURE.md) | Before adding packages, providers, or cross-cutting changes. |
+| Code review standards | [CODE_REVIEW.md](docs/constitution/CODE_REVIEW.md) | When reviewing or self-reviewing changes. |
+| Tests & verification | [UNIT_TESTING.md](docs/constitution/UNIT_TESTING.md) | When adding/changing tests or before claiming done. |
+| Infra, migrations, deploys | [DEPLOYMENT.md](docs/constitution/DEPLOYMENT.md) | When touching infra, migrations, or env config. |
+| Security | [SECURITY.md](docs/constitution/SECURITY.md) | When handling auth, secrets, user input, or external calls. |
+| Versioning & branches | [VERSION_MANAGEMENT.md](docs/constitution/VERSION_MANAGEMENT.md) | When bumping versions, branching, or tagging. |
+
 ## Architecture Layers
 
 | Layer | Role |
