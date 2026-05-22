@@ -24,6 +24,7 @@ journeyman/                  ← repo root
 ├── README.md
 ├── package.json             ← workspaces: ["packages/*"]
 ├── docs/                    ← architecture diagrams, quickstart, setup
+│   └── constitution/        ← developer guidelines (ARCHITECTURE, CONSTITUTION, SECURITY, …)
 ├── examples/
 ├── infra/                   ← docker-compose (Postgres, Redis, Conductor)
 ├── scripts/                 ← check-import-boundaries.mjs, etc.
