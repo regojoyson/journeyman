@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 660"
+     font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <defs>
+    <filter id="sh" x="-6%" y="-6%" width="112%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.07"/>
+    </filter>
+    <marker id="a"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#475569"/></marker>
+    <marker id="ag" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#059669"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#d97706"/></marker>
+    <marker id="ap" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7 L1.5,4Z" fill="#7c3aed"/></marker>
+  </defs>
+
+  <rect width="1100" height="660" fill="#f8fafc"/>
+
+  <!-- ── TITLE ── -->
+  <text x="550" y="36" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">From Ticket to Shipped PR — The AI-Powered Development Lifecycle</text>
+  <text x="550" y="57" text-anchor="middle" font-size="12" fill="#64748b">How Journeyman fits your team's existing workflow · No tool swap required</text>
+  <line x1="30" y1="68" x2="1070" y2="68" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ── SWIMLANE BACKGROUNDS ── -->
+
+  <!-- Lane 1: Business / PM -->
+  <rect x="18" y="76" width="1064" height="158" rx="0" fill="#dbeafe" opacity="0.45"/>
+  <!-- Lane 2: Journeyman AI Engine -->
+  <rect x="18" y="242" width="1064" height="210" rx="0" fill="#ede9fe" opacity="0.45"/>
+  <!-- Lane 3: Engineering -->
+  <rect x="18" y="460" width="1064" height="148" rx="0" fill="#dcfce7" opacity="0.45"/>
+
+  <!-- Pool outer border -->
+  <rect x="18" y="76" width="1064" height="532" rx="10" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <!-- Lane dividers -->
+  <line x1="18" y1="240" x2="1082" y2="240" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6,4"/>
+  <line x1="18" y1="458" x2="1082" y2="458" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6,4"/>
+  <!-- Lane label divider -->
+  <line x1="108" y1="76" x2="108" y2="608" stroke="#cbd5e1" stroke-width="1"/>
+
+  <!-- ── LANE LABELS ── -->
+  <!-- Lane 1 label box -->
+  <rect x="18" y="76" width="90" height="164" rx="10" fill="#1e40af" opacity="0.85"/>
+  <text transform="translate(63,158) rotate(-90)" text-anchor="middle" font-size="11" font-weight="700" fill="white">Business / PM</text>
+
+  <!-- Lane 2 label box -->
+  <rect x="18" y="242" width="90" height="214" rx="0" fill="#4c1d95" opacity="0.85"/>
+  <text transform="translate(63,349) rotate(-90)" text-anchor="middle" font-size="11" font-weight="700" fill="white">Journeyman AI Engine</text>
+
+  <!-- Lane 3 label box -->
+  <rect x="18" y="458" width="90" height="150" rx="0" fill="#14532d" opacity="0.85"/>
+  <rect x="18" y="448" width="90" height="10" fill="#14532d" opacity="0.85"/>
+  <text transform="translate(63,534) rotate(-90)" text-anchor="middle" font-size="11" font-weight="700" fill="white">Engineering</text>
+
+  <!-- ── LANE 1 NODES (Business / PM) lane midY = 158 ── -->
+
+  <!-- Node 1: Ticket Created (trigger) -->
+  <rect x="130" y="130" width="130" height="56" rx="8" fill="#2563eb" filter="url(#sh)"/>
+  <text x="195" y="155" text-anchor="middle" fill="white" font-weight="700" font-size="12">Ticket Created</text>
+  <text x="195" y="172" text-anchor="middle" fill="#bfdbfe" font-size="10">Jira · Linear · GitHub Issues</text>
+
+  <!-- Node 4: Review &amp; Approve -->
+  <rect x="628" y="130" width="140" height="56" rx="8" fill="#d97706" filter="url(#sh)"/>
+  <text x="698" y="152" text-anchor="middle" fill="white" font-weight="700" font-size="12">Review &amp; Approve</text>
+  <text x="698" y="168" text-anchor="middle" fill="#fef3c7" font-size="10">Team reviews AI plan</text>
+  <text x="698" y="182" text-anchor="middle" fill="#fef3c7" font-size="9">add comments or approve</text>
+
+  <!-- ── LANE 2 NODES (Journeyman AI) lane midY = 347 ── -->
+
+  <!-- Node 2: Analyze -->
+  <rect x="298" y="319" width="130" height="56" rx="8" fill="white" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="363" y="341" text-anchor="middle" fill="#4c1d95" font-weight="700" font-size="12">① Analyze</text>
+  <text x="363" y="357" text-anchor="middle" fill="#5b21b6" font-size="10">AI reads codebase</text>
+  <text x="363" y="370" text-anchor="middle" fill="#7c3aed" font-size="9">scores risk · flags gaps</text>
+
+  <!-- Node 3: Plan -->
+  <rect x="468" y="319" width="130" height="56" rx="8" fill="white" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="533" y="341" text-anchor="middle" fill="#4c1d95" font-weight="700" font-size="12">② Plan</text>
+  <text x="533" y="357" text-anchor="middle" fill="#5b21b6" font-size="10">AI drafts steps &amp; files</text>
+  <text x="533" y="370" text-anchor="middle" fill="#7c3aed" font-size="9">acceptance criteria · risks</text>
+
+  <!-- Node 5: Implement -->
+  <rect x="800" y="319" width="130" height="56" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="865" y="341" text-anchor="middle" fill="#14532d" font-weight="700" font-size="12">④ Implement</text>
+  <text x="865" y="357" text-anchor="middle" fill="#15803d" font-size="10">AI writes code · runs tests</text>
+  <text x="865" y="370" text-anchor="middle" fill="#166534" font-size="9">isolated workspace · audit log</text>
+
+  <!-- Node 6: Open PR -->
+  <rect x="960" y="319" width="120" height="56" rx="8" fill="#059669" filter="url(#sh)"/>
+  <text x="1020" y="341" text-anchor="middle" fill="white" font-weight="700" font-size="12">⑤ Open PR</text>
+  <text x="1020" y="357" text-anchor="middle" fill="#a7f3d0" font-size="10">Branch pushed</text>
+  <text x="1020" y="370" text-anchor="middle" fill="#a7f3d0" font-size="9">PR created on GitHub/GitLab</text>
+
+  <!-- ── LANE 3 NODES (Engineering) lane midY = 534 ── -->
+
+  <!-- Node 7: Code Review -->
+  <rect x="960" y="506" width="120" height="56" rx="8" fill="white" stroke="#16a34a" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="1020" y="528" text-anchor="middle" fill="#14532d" font-weight="700" font-size="12">Code Review</text>
+  <text x="1020" y="544" text-anchor="middle" fill="#15803d" font-size="10">Engineer approves diff</text>
+  <text x="1020" y="557" text-anchor="middle" fill="#166534" font-size="9">merge when ready</text>
+
+  <!-- ── FLOW ARROWS ── -->
+
+  <!-- 1 → 2 (Business → AI, down) : right of node1 → corner → left of node2 -->
+  <path d="M260,158 H279 V347 H298" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- 2 → 3 (same AI lane, horizontal) -->
+  <line x1="428" y1="347" x2="468" y2="347" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- 3 → 4 (AI → Business, up) : right of node3 → corner → left of node4 -->
+  <path d="M598,347 H613 V158 H628" fill="none" stroke="#d97706" stroke-width="1.5" marker-end="url(#ao)"/>
+
+  <!-- 4 → 5 (Business → AI, down) : right of node4 → corner → left of node5 -->
+  <path d="M768,158 H784 V347 H800" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- 5 → 6 (same AI lane, horizontal) -->
+  <line x1="930" y1="347" x2="960" y2="347" stroke="#059669" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- 6 → 7 (AI → Engineering, down) : bottom of node6 → top of node7 -->
+  <line x1="1020" y1="375" x2="1020" y2="506" stroke="#059669" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- ── FEEDBACK LOOP (dashed): Review &amp; Approve → back to Plan ── -->
+  <path d="M628,158 H540 V319" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <text x="562" y="242" font-size="10" fill="#b45309" font-style="italic">revision requested →</text>
+  <text x="562" y="255" font-size="10" fill="#b45309" font-style="italic">reviewer comments fed back</text>
+
+  <!-- ── CALLOUT: Human Gate annotation ── -->
+  <rect x="628" y="196" width="248" height="34" rx="6" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="752" y="210" text-anchor="middle" font-size="10" font-weight="600" fill="#78350f">No code written without team approval</text>
+  <text x="752" y="224" text-anchor="middle" font-size="9" fill="#b45309">Human gate blocks the workflow until a decision is made</text>
+  <line x1="698" y1="196" x2="698" y2="186" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- ── CALLOUT: Implement annotation ── -->
+  <rect x="800" y="390" width="200" height="28" rx="6" fill="#f0fdf4" stroke="#4ade80" stroke-width="1"/>
+  <text x="900" y="404" text-anchor="middle" font-size="9" fill="#15803d">Isolated workspace · all changes auditable</text>
+  <text x="900" y="415" text-anchor="middle" font-size="9" fill="#15803d">full step-by-step execution log</text>
+
+  <!-- ── LEGEND ── -->
+  <rect x="18" y="618" width="1064" height="36" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+
+  <line x1="36" y1="636" x2="56" y2="636" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="62" y="640" font-size="10" fill="#374151">Automated flow</text>
+
+  <line x1="176" y1="636" x2="196" y2="636" stroke="#d97706" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="202" y="640" font-size="10" fill="#374151">Human decision / approval</text>
+
+  <line x1="356" y1="636" x2="376" y2="636" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+  <text x="382" y="640" font-size="10" fill="#374151">Revision loop (reviewer feedback auto-fed to AI)</text>
+
+  <line x1="606" y1="636" x2="626" y2="636" stroke="#059669" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="632" y="640" font-size="10" fill="#374151">AI-generated output to Git / Engineering</text>
+
+  <rect x="808" y="628" width="10" height="10" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="824" y="638" font-size="10" fill="#374151">AI writes code in isolated workspace</text>
+
+  <rect x="956" y="628" width="10" height="10" rx="2" fill="#fffbeb" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="972" y="638" font-size="10" fill="#374151">Human review gate</text>
+</svg>
