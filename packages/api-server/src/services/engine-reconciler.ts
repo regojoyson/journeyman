@@ -1,4 +1,6 @@
 import type { Composition } from "../composition.ts";
+import type { HumanTaskNotifyConfig } from "@journeyman/core";
+import { notifyOnHumanTaskPause } from "./notify-on-human-task-pause.ts";
 
 export interface ReconcileResult {
   pendingNodeIds: string[];
@@ -45,6 +47,7 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
         prompt?: string;
         outputs?: Array<{ name: string }>;
         listensFor?: string[];
+        notify?: HumanTaskNotifyConfig;
         timeout?: { duration: string; defaults?: Record<string, unknown> };
       };
       await c.events.append({
@@ -57,6 +60,15 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
           listensFor: cfg.listensFor,
         },
       });
+
+      if (node?.type === "human-task" && cfg.notify) {
+        await notifyOnHumanTaskPause(c, {
+          workflowInstanceId,
+          nodeId,
+          notify: cfg.notify,
+          prompt: cfg.prompt,
+        });
+      }
 
       if (cfg.timeout) {
         const ms = parseDurationMsLite(cfg.timeout.duration);

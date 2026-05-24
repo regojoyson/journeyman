@@ -8,5 +8,6 @@ export const defaultControlCatalog: ControlNodeCatalog = [
   { nodeType: "loop",          label: "Loop",             category: "Control",  color: "#fdcb6e", icon: "↻",  description: "Iterate body while condition holds", comingSoon: true },
   { nodeType: "timer",         label: "Wait",             category: "Control",  color: "#fdcb6e", icon: "⏱",  description: "Pause for a duration or until a time", comingSoon: true },
   { nodeType: "subflow",       label: "Subflow",          category: "Subflows", color: "#a29bfe", icon: "⊞",  description: "Invoke another flow as a step", comingSoon: true },
-  { nodeType: "human-task",    label: "Human Task",       category: "Logic",    color: "#fbc531", icon: "⏳", description: "Pause for human input; emits declared output fields" },
+  { nodeType: "human-task",    label: "Human Task",       category: "Logic",    color: "#fbc531", icon: "⏳", description: "Pause for a person to fill a form; optionally notify them" },
+  { nodeType: "webhook-wait",  label: "Webhook Wait",     category: "Logic",    color: "#00a8ff", icon: "🔔", description: "Pause until a matching provider webhook arrives" },
 ];

@@ -14,6 +14,7 @@ export type WorkflowNodeType =
   | "end"
   | "step"
   | "human-task"
+  | "webhook-wait"
   // node types reserved for later step types — listed so the converter can reject
   // them in Phase 1 with a clear "not yet supported" error.
   | "gateway-xor"

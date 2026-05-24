@@ -21,6 +21,9 @@ export type * from "./types/notification.types.ts";
 export type * from "./types/session.types.ts";
 export type * from "./types/pipeline.types.ts";
 export type * from "./types/human-task.types.ts";
+export { HUMAN_TASK_RESERVED_KEYS } from "./types/human-task.types.ts";
+export type * from "./types/webhook-wait.types.ts";
+export { WEBHOOK_WAIT_RESERVED_KEYS } from "./types/webhook-wait.types.ts";
 export type * from "./types/secret-slot.types.ts";
 export * from "./types/identity.types.ts";
 // Logger

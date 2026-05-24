@@ -8,6 +8,7 @@ import { SubflowNode } from "./nodes/SubflowNode.tsx";
 import { IfNode } from "./nodes/IfNode.tsx";
 import { TimerNode } from "./nodes/TimerNode.tsx";
 import { HumanTaskNode } from "./nodes/HumanTaskNode.tsx";
+import { WebhookWaitNode } from "./nodes/WebhookWaitNode.tsx";
 import { DefaultEdge } from "./edges/DefaultEdge.tsx";
 import { ConditionalEdge } from "./edges/ConditionalEdge.tsx";
 import { ErrorEdge } from "./edges/ErrorEdge.tsx";
@@ -24,6 +25,7 @@ export const nodeTypes = {
   if: IfNode,
   timer: TimerNode,
   "human-task": HumanTaskNode,
+  "webhook-wait": WebhookWaitNode,
 };
 
 export const edgeTypes = {

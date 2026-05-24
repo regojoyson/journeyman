@@ -6,6 +6,7 @@ export {
   WorkflowValidationError,
 } from "./flow-json/conductor-converter.ts";
 export { parseRef, resolveInputs } from "./flow-json/resolve-inputs.ts";
+export { migrateHumanTaskToWebhookWait } from "./flow-json/migrate-human-task-to-webhook-wait.ts";
 export type {
   ConductorWorkflowDef,
   ConductorTaskDef,

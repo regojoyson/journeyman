@@ -73,6 +73,14 @@ export interface HumanTask {
     acceptIf?: unknown;             // JSONLogic expression — opaque at the engine layer
     timeoutDurationMs?: number;
     timeoutDefaults?: Record<string, unknown>;
+    /** Discriminator: "human-task" or "webhook-wait". */
+    kind?: "human-task" | "webhook-wait";
+    /** Webhook-wait: provider whose events resolve this node. */
+    provider?: string;
+    /** Webhook-wait: how the paused node binds to an incoming event. */
+    correlationKey?: "issueRef";
+    /** Human-task: notification config dispatched on pause. */
+    notify?: { channel: "slack" | "console"; target: string; message?: string };
   };
 }
 

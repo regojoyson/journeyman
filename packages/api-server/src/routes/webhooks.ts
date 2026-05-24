@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Composition } from "../composition.ts";
 import type { WebhookProvider } from "@journeyman/core";
-import { matchAndResolveHumanTasks } from "../services/match-human-tasks.ts";
+import { matchAndResolveWebhookWaits } from "../services/match-human-tasks.ts";
 
 const DELIVERY_HEADERS: Record<string, string> = {
   github: "x-github-delivery",
@@ -77,8 +77,8 @@ export function registerWebhookRoutes(app: FastifyInstance, c: Composition): voi
         );
       }
 
-      // First: try to resolve any pending human-task waiting on this issueRef.
-      const resolveResult = await matchAndResolveHumanTasks(c, {
+      // First: try to resolve any pending webhook-wait node waiting on this issueRef.
+      const resolveResult = await matchAndResolveWebhookWaits(c, {
         id: event.id,
         provider,
         eventType,

@@ -6,7 +6,7 @@ import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { WorkflowGraph, WorkflowScope, WorkflowInputValue } from "@journeyman/core";
-import { ConductorJsonConverter } from "@journeyman/orchestrator";
+import { ConductorJsonConverter, migrateHumanTaskToWebhookWait } from "@journeyman/orchestrator";
 import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
@@ -517,14 +517,16 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
     const version = await c.workflowVersions.getById(workflow.currentVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }
-    return { version };
+    const migrated = { ...version, definition: migrateHumanTaskToWebhookWait(version.definition as WorkflowGraph) };
+    return { version: migrated };
   });
 
   app.get("/workflow_versions/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const version = await c.workflowVersions.getById(id);
     if (!version) { reply.code(404); return { error: "not_found" }; }
-    return { version };
+    const migrated = { ...version, definition: migrateHumanTaskToWebhookWait(version.definition as WorkflowGraph) };
+    return { version: migrated };
   });
 
   app.post("/workflows/:id/publish", { preHandler: requireAuth() }, async (req, reply) => {

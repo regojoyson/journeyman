@@ -16,10 +16,10 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { ValuePicker } from "./ValuePicker.tsx";
-import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
+import { WebhookWaitConfigEditor } from "./WebhookWaitConfigEditor.tsx";
 
 interface Props {
   flow: WorkflowGraph;
@@ -134,6 +134,10 @@ export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) 
     return <HumanTaskConfigEditor node={node} onChange={onChange} readOnly={readOnly} />;
   }
 
+  if (node.type === "webhook-wait") {
+    return <WebhookWaitConfigEditor node={node} onChange={onChange} readOnly={readOnly} />;
+  }
+
   return null;
 }
 
@@ -150,15 +154,19 @@ interface HumanTaskOutputCfg {
   description?: string;
   required?: boolean;
   default?: unknown;
-  fromPath?: string;
+}
+
+interface HumanTaskNotifyCfg {
+  channel: "slack" | "console";
+  target: string;
+  message?: string;
 }
 
 function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProps) {
   const cfg = (node.config ?? {}) as {
     prompt?: string;
     outputs?: HumanTaskOutputCfg[];
-    listensFor?: string[];
-    acceptIf?: unknown;
+    notify?: HumanTaskNotifyCfg;
     timeout?: { duration: string; defaults?: Record<string, unknown> };
   };
   const outputs = cfg.outputs ?? [];
@@ -207,21 +215,14 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
       <div className="je-field">
         <label className="je-field__label">Outputs</label>
         <p className="je-hint">
-          What the human (or an incoming webhook) supplies to resolve this task. Each row is one value that later steps in this workflow can use.
+          Form fields the human fills in to resolve this task. Each row is one value that later steps in this workflow can use.
         </p>
         <div className="je-humantask__outputs">
           {outputs.length > 0 && (
             <div className="je-humantask__output-header" aria-hidden="true">
-              <span
-                className="spacer-name"
-                title="How downstream nodes will reference this output (e.g. human-task_X.<name>)."
-              >Name</span>
+              <span className="spacer-name" title="How downstream nodes will reference this output (e.g. human-task_X.<name>).">Name</span>
               <span title="Value type — controls how the form input renders and how the value is coerced.">Type</span>
               <span title="If checked, manual resolution must fill this field.">Req</span>
-              <span
-                className="spacer-payload"
-                title="Optional dot-path into the incoming webhook payload. When a webhook resolves this task, the value at this path becomes the output's value."
-              >Payload source</span>
               <span className="spacer-x" />
             </div>
           )}
@@ -258,15 +259,6 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
                 />
                 req
               </label>
-              <input
-                type="text"
-                value={o.fromPath ?? ""}
-                disabled={readOnly}
-                placeholder="e.g. issue.fields.status.name"
-                onChange={e => updateOutput(i, { fromPath: e.target.value || undefined })}
-                style={{ flex: 2 }}
-                title="Dot-path into the incoming webhook payload. The matcher reads this to fill the output automatically."
-              />
               {!readOnly && (
                 <button
                   type="button"
@@ -286,55 +278,43 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
       </div>
 
       <div className="je-field">
-        <label className="je-field__label">Listens for</label>
-        <input
-          type="text"
-          list={`listensfor-${node.id}`}
-          placeholder="e.g. jira:issue_updated, pull_request_review"
-          value={(cfg.listensFor ?? []).join(", ")}
-          disabled={readOnly}
-          title="Comma-separated. The webhook's event type must be in this list (or the list must be empty)."
-          onChange={e => update({
-            listensFor: e.target.value.split(",").map(s => s.trim()).filter(Boolean),
-          })}
-        />
-        <datalist id={`listensfor-${node.id}`}>
-          <option value="jira:issue_updated">Jira — issue updated</option>
-          <option value="jira:issue_created">Jira — issue created</option>
-          <option value="jira:issue_deleted">Jira — issue deleted</option>
-          <option value="pull_request">GitHub — pull request</option>
-          <option value="pull_request_review">GitHub — PR review submitted</option>
-          <option value="issues">GitHub — issue activity</option>
-          <option value="issue_comment">GitHub — issue/PR comment</option>
-          <option value="create">Linear — created</option>
-          <option value="update">Linear — updated</option>
-          <option value="remove">Linear — removed</option>
-        </datalist>
-        <p className="je-hint">
-          Which webhook event types will resolve this task. Empty means any event type is accepted.
-          Type the exact value the provider sends — pick from the list as a starting point.
-        </p>
-      </div>
-
-      <div className="je-field">
-        <label className="je-field__label">Accept if (optional)</label>
-        <AcceptIfBuilder
-          value={cfg.acceptIf}
-          knownPaths={Array.from(new Set(
-            outputs.map(o => o.fromPath?.trim()).filter((p): p is string => !!p)
-          ))}
-          readOnly={readOnly}
-          datalistId={`acceptif-paths-${node.id}`}
-          onChange={next => update({ acceptIf: next })}
-        />
-        <datalist id={`acceptif-paths-${node.id}`}>
-          {Array.from(new Set(
-            outputs.map(o => o.fromPath?.trim()).filter((p): p is string => !!p)
-          )).map(p => <option key={p} value={p} />)}
-        </datalist>
-        <p className="je-hint">
-          Filter incoming webhooks by payload values. Use the visual builder or switch to JSON for advanced expressions.
-        </p>
+        <label className="je-field__label">Notify (optional)</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select
+            value={cfg.notify?.channel ?? ""}
+            disabled={readOnly}
+            onChange={e => {
+              const channel = e.target.value as "slack" | "console" | "";
+              if (!channel) return update({ notify: undefined });
+              update({ notify: { channel, target: cfg.notify?.target ?? "", message: cfg.notify?.message } });
+            }}
+          >
+            <option value="">— none —</option>
+            <option value="slack">Slack DM</option>
+            <option value="console">Console (debug)</option>
+          </select>
+          {cfg.notify && (
+            <input
+              type="text"
+              value={cfg.notify.target}
+              disabled={readOnly}
+              placeholder={cfg.notify.channel === "slack" ? "@user or #channel" : "any identifier"}
+              onChange={e => update({ notify: { ...cfg.notify!, target: e.target.value } })}
+              style={{ flex: 1 }}
+            />
+          )}
+        </div>
+        {cfg.notify && (
+          <textarea
+            rows={2}
+            value={cfg.notify.message ?? ""}
+            disabled={readOnly}
+            placeholder="Optional message body. A link to the resolve page is always appended."
+            onChange={e => update({ notify: { ...cfg.notify!, message: e.target.value || undefined } })}
+            style={{ marginTop: 6, width: "100%" }}
+          />
+        )}
+        <p className="je-hint">When the task pauses, a notification is sent. Delivery failure does not fail the run.</p>
       </div>
 
       <div className="je-field">

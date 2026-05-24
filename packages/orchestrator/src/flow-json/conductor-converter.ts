@@ -12,6 +12,7 @@ import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomStepShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
+import { migrateHumanTaskToWebhookWait } from "./migrate-human-task-to-webhook-wait.ts";
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -60,14 +61,17 @@ class ConvertCtx {
   readonly outgoing: Map<string, WorkflowEdge[]>;
   emitted = new Set<string>();
 
+  public flow: WorkflowGraph;
+
   constructor(
-    public flow: WorkflowGraph,
+    flow: WorkflowGraph,
     private catalog?: Map<string, CatalogShapeEntry>,
     private customStepDefs?: Map<string, CustomStepShapeEntry>,
   ) {
-    this.nodes = new Map(flow.nodes.map(n => [n.id, n]));
+    this.flow = migrateHumanTaskToWebhookWait(flow);
+    this.nodes = new Map(this.flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
-    for (const e of flow.edges) {
+    for (const e of this.flow.edges) {
       const arr = this.outgoing.get(e.source) ?? [];
       arr.push(e);
       this.outgoing.set(e.source, arr);
@@ -198,6 +202,7 @@ class ConvertCtx {
       case "timer":        return this.emitWait(node);
       case "subflow":      return this.emitSubflow(node);
       case "human-task":   return this.emitHumanTask(node);
+      case "webhook-wait": return this.emitWebhookWait(node);
       case "retry-block":
       case "try-catch":    throw new UnsupportedNodeTypeError(node.type);
       default:             throw new UnsupportedNodeTypeError(node.type);
@@ -304,32 +309,37 @@ class ConvertCtx {
     return { tasks: [task], nextNodeId: convergence };
   }
 
-  emitHumanTask(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
-    const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
-
-    const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    const reserved = new Set(["source", "actor", "resolvedAt", "payload"]);
-    const seenNames = new Set<string>();
+  private validateOutputNames(
+    node: WorkflowNode,
+    outputs: ReadonlyArray<{ name: string }>,
+    reserved: readonly string[],
+    label: string,
+  ): void {
+    const reservedSet = new Set(reserved);
+    const seen = new Set<string>();
     for (const o of outputs) {
       if (!o.name || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(o.name)) {
         throw new WorkflowValidationError(
-          `Human-task ${this.label(node)} output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
+          `${label} ${this.label(node)} output name '${o.name}' is invalid (must be alphanumeric / underscore, not start with digit)`,
         );
       }
-      if (reserved.has(o.name)) {
+      if (reservedSet.has(o.name)) {
         throw new WorkflowValidationError(
-          `Human-task ${this.label(node)} output name '${o.name}' collides with a reserved meta key`,
+          `${label} ${this.label(node)} output name '${o.name}' collides with a reserved meta key`,
         );
       }
-      if (seenNames.has(o.name)) {
-        throw new WorkflowValidationError(`Human-task ${this.label(node)} has duplicate output name '${o.name}'`);
+      if (seen.has(o.name)) {
+        throw new WorkflowValidationError(`${label} ${this.label(node)} has duplicate output name '${o.name}'`);
       }
-      seenNames.add(o.name);
+      seen.add(o.name);
     }
+  }
 
-    // The HUMAN task pauses until externally completed via Conductor's
-    // POST /tasks endpoint. Branching is the responsibility of a downstream
-    // `if` / `gateway-xor` node reading the human-task's declared outputs.
+  emitHumanTask(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
+    const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+    this.validateOutputNames(node, outputs, ["source", "actor", "resolvedAt", "payload"], "Human-task");
+
     const human: import("./conductor-types.ts").HumanTask = {
       type: "HUMAN",
       name: `human_${node.id}`,
@@ -337,12 +347,43 @@ class ConvertCtx {
       inputParameters: {
         outputs,
         ...(cfg.prompt !== undefined ? { prompt: cfg.prompt } : {}),
+        ...(cfg.notify ? { notify: cfg.notify } : {}),
+        ...(cfg.timeout ? {
+          timeoutDurationMs: parseDurationMs(cfg.timeout.duration),
+          ...(cfg.timeout.defaults ? { timeoutDefaults: cfg.timeout.defaults } : {}),
+        } : {}),
+        kind: "human-task",
+      },
+    };
+
+    return { tasks: [human], nextNodeId: this.successor(node.id) };
+  }
+
+  emitWebhookWait(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").WebhookWaitConfig>;
+
+    if (!cfg.provider) {
+      throw new WorkflowValidationError(`Webhook-wait ${this.label(node)} must declare a provider`);
+    }
+
+    const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+    this.validateOutputNames(node, outputs, ["source", "resolvedAt", "webhookEventId", "payload"], "Webhook-wait");
+
+    const human: import("./conductor-types.ts").HumanTask = {
+      type: "HUMAN",
+      name: `webhookwait_${node.id}`,
+      taskReferenceName: node.id,
+      inputParameters: {
+        outputs,
+        provider: cfg.provider,
+        correlationKey: cfg.correlationKey ?? "issueRef",
         ...(cfg.listensFor ? { listensFor: cfg.listensFor } : {}),
         ...(cfg.acceptIf ? { acceptIf: cfg.acceptIf } : {}),
         ...(cfg.timeout ? {
           timeoutDurationMs: parseDurationMs(cfg.timeout.duration),
           ...(cfg.timeout.defaults ? { timeoutDefaults: cfg.timeout.defaults } : {}),
         } : {}),
+        kind: "webhook-wait",
       },
     };
 

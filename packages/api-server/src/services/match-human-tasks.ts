@@ -1,5 +1,5 @@
 import type { Composition } from "../composition.ts";
-import type { HumanTaskConfig, HumanTaskOutputField } from "@journeyman/core";
+import type { WebhookWaitConfig, WebhookWaitOutputField } from "@journeyman/core";
 import { getByPath } from "./jsonpath.ts";
 import { resolveHumanTask } from "./resolve-human-task.ts";
 import { reconcileWorkflowInstance } from "./engine-reconciler.ts";
@@ -14,7 +14,7 @@ export interface WebhookEventInfo {
 
 export interface MatchResult { matched: number; }
 
-export async function matchAndResolveHumanTasks(c: Composition, ev: WebhookEventInfo): Promise<MatchResult> {
+export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEventInfo): Promise<MatchResult> {
   if (!ev.issueRef) return { matched: 0 };
 
   // Reconcile any active workflow instance on this issueRef so the DB reflects current
@@ -34,9 +34,9 @@ export async function matchAndResolveHumanTasks(c: Composition, ev: WebhookEvent
     if (!exec) continue;
 
     const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
-    if (!node || node.type !== "human-task") continue;
+    if (!node || node.type !== "webhook-wait") continue;
 
-    const cfg = (node.config ?? {}) as unknown as HumanTaskConfig;
+    const cfg = (node.config ?? {}) as unknown as WebhookWaitConfig;
 
     // Filter 1: event type whitelist.
     if (cfg.listensFor && ev.eventType && !cfg.listensFor.includes(ev.eventType)) continue;
@@ -49,7 +49,7 @@ export async function matchAndResolveHumanTasks(c: Composition, ev: WebhookEvent
     }
 
     // Extract declared outputs from the payload via fromPath.
-    const outputs: HumanTaskOutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+    const outputs: WebhookWaitOutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
     const values: Record<string, unknown> = {};
     for (const o of outputs) {
       if (!o.fromPath) continue;
@@ -90,7 +90,7 @@ function pickActor(payload: unknown): string | null {
   return null;
 }
 
-function coerce(value: unknown, type: HumanTaskOutputField["type"]): unknown {
+function coerce(value: unknown, type: WebhookWaitOutputField["type"]): unknown {
   switch (type) {
     case "string":  return typeof value === "string" ? value : String(value);
     case "number":  return typeof value === "number" ? value : Number(value);

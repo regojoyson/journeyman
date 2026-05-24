@@ -1,11 +1,6 @@
-import type { JsonLogicExpr } from "./flow-condition.types.ts";
-
 /**
- * A field the human-task produces. Each declared output becomes a top-level
- * artifact on the node (e.g. `humanTask1.<name>`). Filled by:
- *   - the manual resolve form (one input per output, typed),
- *   - or webhook payload extraction via `fromPath` (dot-path),
- *   - or `timeout.defaults[name]` if the task auto-resolves.
+ * A field the human-task asks the person to fill in. Each declared output
+ * becomes a top-level artifact on the node (e.g. `humanTask1.<name>`).
  *
  * The `name` must be unique per node and not collide with the reserved meta
  * keys: "source", "actor", "resolvedAt", "payload".
@@ -17,30 +12,27 @@ export interface HumanTaskOutputField {
   description?: string;
   required?: boolean;
   default?: unknown;
-  /** Dot-path into the webhook payload to extract this field's value. */
-  fromPath?: string;
+}
+
+/** Where/how to notify a human when the task pauses. */
+export interface HumanTaskNotifyConfig {
+  /** Notification provider channel — currently "slack" or "console". */
+  channel: "slack" | "console";
+  /** Free-form target — Slack user id, channel, or email depending on channel. */
+  target: string;
+  /** Optional override of the message body. The resolve-page link is always appended. */
+  message?: string;
 }
 
 export interface HumanTaskConfig {
-  /** Shown to the human in the UI / notification. */
+  /** Question/instructions shown to the human. */
   prompt?: string;
 
-  /**
-   * Fields the human-task produces. Each becomes a top-level artifact.
-   * Empty array is allowed — task still pauses + can be resolved with no
-   * structured outputs (only meta keys are emitted).
-   */
+  /** Form fields the human fills in. Empty array is allowed (no structured outputs). */
   outputs: HumanTaskOutputField[];
 
-  /** Provider event filter — only events matching these types resolve the task. */
-  listensFor?: string[];
-
-  /**
-   * JSONLogic expression evaluated against the webhook payload. Event is
-   * accepted only when this evaluates truthy. Combine with `and`/`or`/`==`/
-   * `in` etc. — the same expression language used by `if` gateways.
-   */
-  acceptIf?: JsonLogicExpr;
+  /** Optional notification dispatched when the task pauses. Best-effort delivery. */
+  notify?: HumanTaskNotifyConfig;
 
   /** Optional auto-resolve. Off by default. */
   timeout?: {
@@ -50,7 +42,7 @@ export interface HumanTaskConfig {
   };
 }
 
-export type HumanTaskSource = "webhook" | "manual" | "timeout";
+export type HumanTaskSource = "manual" | "timeout";
 
 /**
  * Reserved meta keys that always appear on the resolved node output. Output
@@ -60,15 +52,10 @@ export type HumanTaskSource = "webhook" | "manual" | "timeout";
 export const HUMAN_TASK_RESERVED_KEYS = ["source", "actor", "resolvedAt", "payload"] as const;
 export type HumanTaskReservedKey = typeof HUMAN_TASK_RESERVED_KEYS[number];
 
-/**
- * Shape of the artifact emitted by a resolved human-task. Declared output
- * fields are spread at the top level; meta keys are also at the top level
- * under reserved names.
- */
 export type HumanTaskOutput = {
   source: HumanTaskSource;
   actor: string | null;
   resolvedAt: string;
-  /** Raw webhook payload (or `{ ...form values }` for manual / `{}` for timeout). */
+  /** `{ ...form values }` for manual; `{}` for timeout. */
   payload: Record<string, unknown>;
 } & Record<string, unknown>;

@@ -1,5 +1,10 @@
 import type { Composition } from "../composition.ts";
-import type { HumanTaskConfig, HumanTaskOutputField, HumanTaskSource } from "@journeyman/core";
+
+/**
+ * Resolution source for a paused node. `manual` and `timeout` apply to
+ * `human-task` nodes; `webhook` and `timeout` apply to `webhook-wait` nodes.
+ */
+export type ResolveSource = "manual" | "webhook" | "timeout";
 
 export interface ResolveHumanTaskInput {
   workflowInstanceId: string;
@@ -13,7 +18,7 @@ export interface ResolveHumanTaskInput {
   /** Free-form payload kept on the artifact (raw webhook body, or { values } for manual). */
   payload?: Record<string, unknown>;
   actor: string | null;
-  source: HumanTaskSource;
+  source: ResolveSource;
   webhookEventId?: string | null;
 }
 
@@ -36,12 +41,20 @@ export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskIn
   if (!workflowInstance) throw new Error(`workflowInstance ${input.workflowInstanceId} not found`);
 
   const node = workflowInstance.definitionSnapshot.nodes.find(n => n.id === input.nodeId);
-  if (!node || node.type !== "human-task") {
-    throw new Error(`node ${input.nodeId} on workflowInstance ${input.workflowInstanceId} is not a human-task`);
+  if (!node || (node.type !== "human-task" && node.type !== "webhook-wait")) {
+    throw new Error(`node ${input.nodeId} on workflowInstance ${input.workflowInstanceId} is not resolvable (type=${node?.type ?? "missing"})`);
   }
 
-  const cfg = (node.config ?? {}) as unknown as HumanTaskConfig;
-  const outputs: HumanTaskOutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+  if (node.type === "human-task" && input.source === "webhook") {
+    throw new Error(`human-task ${input.nodeId} cannot be resolved by webhook`);
+  }
+  if (node.type === "webhook-wait" && input.source === "manual") {
+    throw new Error(`webhook-wait ${input.nodeId} cannot be resolved manually`);
+  }
+
+  type OutputField = { name: string; type: "string" | "number" | "boolean" | "json" | "date"; required?: boolean; default?: unknown };
+  const cfg = (node.config ?? {}) as { outputs?: OutputField[] };
+  const outputs: OutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
 
   // Apply defaults for any field not present in values.
   const filled: Record<string, unknown> = { ...input.values };
