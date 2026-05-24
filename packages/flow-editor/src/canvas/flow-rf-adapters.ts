@@ -3,7 +3,8 @@ import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, Workf
 
 export const KNOWN_NODE_TYPES = new Set([
   "start", "end", "step",
-  "gateway-xor", "gateway-and", "loop", "subflow", "if", "timer",
+  "gateway-xor", "gateway-and", "join", "loop", "subflow", "if", "timer",
+  "human-task", "webhook-wait",
 ]);
 
 export function toReactWorkflowEdges(flow: WorkflowGraph): Edge[] {

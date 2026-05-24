@@ -9,6 +9,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
+import { edgesForForkJoinPair } from "./edge-highlighting.ts";
 import { newStepNode, newEdge } from "../state/flow-graph.ts";
 import { autoPopulateCustomAiDefaults } from "./auto-populate-defaults.ts";
 import type { StepRunState } from "../step-definition.ts";
@@ -398,11 +399,24 @@ function CanvasInner(p: CanvasProps) {
   const stableNodeTypes = useMemo(() => nodeTypes, []);
   const stableEdgeTypes = useMemo(() => edgeTypes, []);
 
+  const highlightedEdgeIds = useMemo(
+    () => edgesForForkJoinPair(p.flow, p.selectedNodeId ?? null),
+    [p.flow, p.selectedNodeId],
+  );
+  const decoratedEdges = useMemo(
+    () => edges.map(e => ({
+      ...e,
+      className: [e.className, highlightedEdgeIds.has(e.id) ? "je-edge--pair-highlight" : ""]
+        .filter(Boolean).join(" "),
+    })),
+    [edges, highlightedEdgeIds],
+  );
+
   return (
     <div ref={wrapper} className="je-editor__canvas" onDrop={handleDrop} onDragOver={handleDragOver}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={decoratedEdges}
         nodeTypes={stableNodeTypes}
         edgeTypes={stableEdgeTypes}
         onNodesChange={handleNodesChange}

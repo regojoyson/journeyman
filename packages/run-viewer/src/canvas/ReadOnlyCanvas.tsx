@@ -52,7 +52,7 @@ function isAnimatedEdge(
 function CanvasInner(p: ReadOnlyCanvasProps) {
   const rfNodes: Node[] = useMemo(() => p.workflow.nodes.map(n => ({
     id: n.id,
-    type: n.type === "step" ? "step" : (n.type === "start" ? "start" : (n.type === "end" ? "end": "step")),
+    type: n.type in wrappedNodeTypes ? n.type : "step",
     position: n.position ?? { x: 0, y: 0 },
     data: {
       displayName: n.displayName ?? n.stepType ?? n.type,

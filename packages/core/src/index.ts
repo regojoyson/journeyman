@@ -24,6 +24,13 @@ export type * from "./types/human-task.types.ts";
 export { HUMAN_TASK_RESERVED_KEYS } from "./types/human-task.types.ts";
 export type * from "./types/webhook-wait.types.ts";
 export { WEBHOOK_WAIT_RESERVED_KEYS } from "./types/webhook-wait.types.ts";
+export type {
+  JoinErrorMode,
+  ForkConfig,
+  JoinConfig,
+  JoinBranchResult,
+  JoinNodeOutput,
+} from "./types/parallel.types.ts";
 export type * from "./types/secret-slot.types.ts";
 export * from "./types/identity.types.ts";
 // Logger
@@ -116,6 +123,8 @@ export type {
 export {
   validateForPublish,
 } from "./validation/validate-for-publish.ts";
+export { validateForkJoinPairs } from "./validation/validate-fork-join-pairs.ts";
+export type { ForkJoinPairError } from "./validation/validate-fork-join-pairs.ts";
 export type {
   PublishError, PublishValidationResult, PublishValidationContext,
   StepConfigIssue, StepConfigValidator,

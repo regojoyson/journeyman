@@ -3,6 +3,7 @@ import type { SecretBinding } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
 import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
 import { extractTemplateRefs } from "../utils/template-refs.ts";
+import { validateForkJoinPairs } from "./validate-fork-join-pairs.ts";
 
 export type PublishError = {
   severity?: "error" | "warning"; // absent means "error"
@@ -61,6 +62,14 @@ export function validateForPublish(
   }
 
   pushOrphanErrors(flow, errors);
+
+  for (const e of validateForkJoinPairs(flow)) {
+    errors.push({
+      code: "graph_invalid",
+      message: e.message,
+      nodeId: e.nodeId,
+    });
+  }
 
   for (const node of flow.nodes) {
     pushNodeErrors(flow, node, ctx, errors);

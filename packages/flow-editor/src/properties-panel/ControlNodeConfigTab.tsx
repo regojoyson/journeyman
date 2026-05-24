@@ -20,6 +20,8 @@ import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 import { WebhookWaitConfigEditor } from "./WebhookWaitConfigEditor.tsx";
+import { ForkConfigEditor } from "./ForkConfigEditor.tsx";
+import { JoinConfigEditor } from "./JoinConfigEditor.tsx";
 
 interface Props {
   flow: WorkflowGraph;
@@ -136,6 +138,14 @@ export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) 
 
   if (node.type === "webhook-wait") {
     return <WebhookWaitConfigEditor node={node} onChange={onChange} readOnly={readOnly} />;
+  }
+
+  if (node.type === "gateway-and") {
+    return <ForkConfigEditor flow={flow} node={node} onChange={onChange} readOnly={readOnly} />;
+  }
+
+  if (node.type === "join") {
+    return <JoinConfigEditor flow={flow} node={node} onChange={onChange} readOnly={readOnly} />;
   }
 
   return null;

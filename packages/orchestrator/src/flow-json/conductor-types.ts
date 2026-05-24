@@ -36,6 +36,18 @@ export interface JoinTask {
   name: string;
   taskReferenceName: string;
   joinOn: string[];
+  inputParameters?: {
+    /** Error / completion mode resolved from the Join node config. */
+    errorMode?: "fail-fast" | "wait-all" | "wait-all-strict" | "first-wins";
+    /**
+     * For first-wins: every branch's full task-reference-name list. The
+     * first-wins controller uses this to know which sibling tasks to cancel
+     * when a winner is determined.
+     */
+    branchTaskRefs?: string[][];
+    /** Optional Join node description, surfaced in run-viewer tooltips. */
+    description?: string;
+  };
 }
 
 export interface DoWhileTask {

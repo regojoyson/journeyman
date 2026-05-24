@@ -19,6 +19,7 @@ export type WorkflowNodeType =
   // them in Phase 1 with a clear "not yet supported" error.
   | "gateway-xor"
   | "gateway-and"
+  | "join"
   | "loop"
   | "subflow"
   | "if"

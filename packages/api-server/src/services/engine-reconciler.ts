@@ -1,5 +1,6 @@
 import type { Composition } from "../composition.ts";
 import type { HumanTaskNotifyConfig } from "@journeyman/core";
+import { applyFirstWinsCancellation } from "@journeyman/orchestrator";
 import { notifyOnHumanTaskPause } from "./notify-on-human-task-pause.ts";
 
 export interface ReconcileResult {
@@ -97,6 +98,12 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
 
   if (humanInProgress.length > 0 && workflowInstance.status !== "paused") {
     await c.workflowInstances.setStatus(workflowInstanceId, "paused");
+  }
+
+  try {
+    await applyFirstWinsCancellation(c.conductorClient, workflowInstance.engineWorkflowId);
+  } catch {
+    // Best-effort — never let cancellation failure break reconciliation.
   }
 
   return { pendingNodeIds };

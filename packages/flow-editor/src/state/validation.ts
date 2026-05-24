@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
-import { isJsonLogicExpr } from "@journeyman/core";
+import { isJsonLogicExpr, validateForkJoinPairs } from "@journeyman/core";
 
 export interface ValidationResult { ok: boolean; errors: string[]; }
 
@@ -31,9 +31,6 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
     if (n.type === "gateway-xor" || n.type === "if") {
       if ((out.get(n.id) ?? 0) < 2) errors.push(`Gateway/If ${nodeLabel(n)} needs at least 2 branches`);
     }
-    if (n.type === "gateway-and") {
-      if ((out.get(n.id) ?? 0) < 2) errors.push(`gateway-and ${nodeLabel(n)} needs at least 2 branches`);
-    }
     if (n.type === "step" && !n.stepType) {
       errors.push(`Step node ${nodeLabel(n)} is missing a step type`);
     }
@@ -61,6 +58,10 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
         errors.push(`Edge ${e.id} on gateway ${nodeLabel(node)} has an invalid condition shape`);
       }
     }
+  }
+
+  for (const e of validateForkJoinPairs(flow)) {
+    errors.push(e.message);
   }
 
   if (starts.length === 1) {

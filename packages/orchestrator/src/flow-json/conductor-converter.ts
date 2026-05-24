@@ -198,6 +198,7 @@ class ConvertCtx {
       case "gateway-xor":
       case "if":           return this.emitSwitch(node);
       case "gateway-and":  return this.emitForkJoin(node);
+      case "join":         return this.emitJoin(node);
       case "loop":         return this.emitDoWhile(node);
       case "timer":        return this.emitWait(node);
       case "subflow":      return this.emitSubflow(node);
@@ -393,16 +394,27 @@ class ConvertCtx {
   emitForkJoin(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const outs = this.outsOf(node.id);
     if (outs.length < 2) {
-      throw new WorkflowValidationError(`gateway-and ${this.label(node)} must have at least 2 outgoing edges`);
+      throw new WorkflowValidationError(`Fork ${this.label(node)} must have at least 2 outgoing edges`);
     }
-    const branchTargets = outs.map(e => e.target);
-    const convergence = coreFindConvergence(branchTargets, this.outgoing);
-    if (!convergence) {
-      throw new WorkflowValidationError(`gateway-and ${this.label(node)} branches must converge on a single join node`);
-    }
-    const stopAt = new Set([convergence]);
 
-    const forkTasks: ConductorTaskDef[][] = outs.map(e => this.buildSequence(e.target, stopAt));
+    const joinIds = new Set<string>();
+    const branches: Array<{ head: string; stopAt: Set<string> }> = [];
+    for (const e of outs) {
+      const join = this.findJoinAlongBranch(e.target);
+      if (!join) {
+        throw new WorkflowValidationError(`Fork ${this.label(node)} branch starting at ${e.target} does not reach a join`);
+      }
+      joinIds.add(join);
+      branches.push({ head: e.target, stopAt: new Set([join]) });
+    }
+    if (joinIds.size !== 1) {
+      throw new WorkflowValidationError(
+        `Fork ${this.label(node)} branches converge on multiple joins: ${[...joinIds].join(", ")}`,
+      );
+    }
+    const joinId = [...joinIds][0];
+
+    const forkTasks: ConductorTaskDef[][] = branches.map(b => this.buildSequence(b.head, b.stopAt));
 
     const fork: ForkJoinTask = {
       type: "FORK_JOIN",
@@ -410,15 +422,89 @@ class ConvertCtx {
       taskReferenceName: node.id,
       forkTasks,
     };
+    return { tasks: [fork], nextNodeId: joinId };
+  }
+
+  private findJoinAlongBranch(start: string): string | null {
+    const visited = new Set<string>();
+    let cur: string | null = start;
+    while (cur !== null && !visited.has(cur)) {
+      const here: string = cur;
+      visited.add(here);
+      const n = this.nodes.get(here);
+      if (!n) return null;
+      if (n.type === "join") return here;
+      const nexts: WorkflowEdge[] = this.outgoing.get(here) ?? [];
+      cur = nexts.length > 0 ? nexts[0].target : null;
+    }
+    return null;
+  }
+
+  emitJoin(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    const ins = this.flow.edges.filter(e => e.target === node.id);
+    if (ins.length < 2) {
+      throw new WorkflowValidationError(`Join ${this.label(node)} must have at least 2 incoming edges`);
+    }
+
+    const joinOn = ins.map(e => e.source);
+
+    const forkId = this.findMatchingFork(node.id);
+    if (!forkId) {
+      throw new WorkflowValidationError(`Join ${this.label(node)} has no matching fork`);
+    }
+
+    const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").JoinConfig>;
+    const errorMode = cfg.errorMode ?? "fail-fast";
+
+    const branchTaskRefs: string[][] = (this.outgoing.get(forkId) ?? []).map(e => {
+      const chain: string[] = [];
+      let cur: string | null = e.target;
+      const visited = new Set<string>();
+      while (cur !== null && !visited.has(cur) && cur !== node.id) {
+        const here: string = cur;
+        visited.add(here);
+        chain.push(here);
+        const nexts: WorkflowEdge[] = this.outgoing.get(here) ?? [];
+        cur = nexts.length > 0 ? nexts[0].target : null;
+      }
+      return chain;
+    });
+
     const join: JoinTask = {
       type: "JOIN",
       name: `join_${node.id}`,
-      taskReferenceName: `${node.id}_join`,
-      joinOn: forkTasks
-        .map(branch => branch.at(-1)?.taskReferenceName)
-        .filter((x): x is string => !!x),
+      taskReferenceName: node.id,
+      joinOn,
+      inputParameters: {
+        errorMode,
+        branchTaskRefs,
+        ...(cfg.description ? { description: cfg.description } : {}),
+      },
     };
-    return { tasks: [fork, join], nextNodeId: convergence };
+
+    return { tasks: [join], nextNodeId: this.successor(node.id) };
+  }
+
+  private findMatchingFork(joinId: string): string | null {
+    for (const n of this.flow.nodes) {
+      if (n.type !== "gateway-and") continue;
+      const branchHeads = (this.outgoing.get(n.id) ?? []).map(e => e.target);
+      if (branchHeads.length < 2) continue;
+      const allReach = branchHeads.every(head => {
+        const visited = new Set<string>();
+        let cur: string | null = head;
+        while (cur !== null && !visited.has(cur)) {
+          const here: string = cur;
+          visited.add(here);
+          if (here === joinId) return true;
+          const nexts: WorkflowEdge[] = this.outgoing.get(here) ?? [];
+          cur = nexts.length > 0 ? nexts[0].target : null;
+        }
+        return false;
+      });
+      if (allReach) return n.id;
+    }
+    return null;
   }
 
   emitDoWhile(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {

@@ -9,6 +9,7 @@ import { IfNode } from "./nodes/IfNode.tsx";
 import { TimerNode } from "./nodes/TimerNode.tsx";
 import { HumanTaskNode } from "./nodes/HumanTaskNode.tsx";
 import { WebhookWaitNode } from "./nodes/WebhookWaitNode.tsx";
+import { JoinNode } from "./nodes/JoinNode.tsx";
 import { DefaultEdge } from "./edges/DefaultEdge.tsx";
 import { ConditionalEdge } from "./edges/ConditionalEdge.tsx";
 import { ErrorEdge } from "./edges/ErrorEdge.tsx";
@@ -26,6 +27,7 @@ export const nodeTypes = {
   timer: TimerNode,
   "human-task": HumanTaskNode,
   "webhook-wait": WebhookWaitNode,
+  "join": JoinNode,
 };
 
 export const edgeTypes = {
