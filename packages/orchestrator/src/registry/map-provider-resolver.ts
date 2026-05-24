@@ -14,7 +14,7 @@ export class ProviderNotImplementedError extends Error {
 export interface MapProviderResolverOptions<T> {
   /** Display name of the executor kind, used in error messages. */
   kind: string;
-  /** Key used when the phase input does not specify a provider. */
+  /** Key used when the step input does not specify a provider. */
   defaultKey: string;
   /** Map from provider key (dropdown `value`) to instance. */
   providers: Record<string, T>;

@@ -2,19 +2,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { PaletteItem } from "./PaletteItem.tsx";
 import type { ControlNodeCatalog } from "../types.ts";
-import type { PhaseDefinition } from "../phase-definition.ts";
+import type { StepDefinition } from "../step-definition.ts";
 
 const COMING_SOON_LS_KEY = "flow-editor.palette.comingSoon";
 
 export interface PaletteProps {
-  phases: PhaseDefinition<any>[];
+  steps: StepDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
 }
 
 type AnyEntry =
   | {
-      kind: "phase";
-      phaseType: string;
+      kind: "step";
+      stepType: string;
       label: string;
       category: string;
       color: string;
@@ -34,22 +34,22 @@ type AnyEntry =
     };
 
 function entryKey(e: AnyEntry): string {
-  return e.kind === "phase" ? `phase:${e.phaseType}` : `control:${e.nodeType}`;
+  return e.kind === "step" ? `step:${e.stepType}` : `control:${e.nodeType}`;
 }
 
 function entryDragMime(e: AnyEntry): string {
-  return e.kind === "phase"
-    ? "application/journeyman-phase"
+  return e.kind === "step"
+    ? "application/journeyman-step"
     : "application/journeyman-control";
 }
 
-export function Palette({ phases, controlCatalog }: PaletteProps) {
+export function Palette({ steps, controlCatalog }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
-    ...phases
+    ...steps
       .filter((p) => !p.hiddenFromPalette)
       .map((p): AnyEntry => ({
-        kind: "phase",
-        phaseType: p.phaseType,
+        kind: "step",
+        stepType: p.stepType,
         label: p.label,
         category: p.category,
         color: p.color,
@@ -67,7 +67,7 @@ export function Palette({ phases, controlCatalog }: PaletteProps) {
       description: c.description,
       comingSoon: c.comingSoon === true,
     })),
-  ], [phases, controlCatalog]);
+  ], [steps, controlCatalog]);
 
   const available = useMemo(
     () => entries.filter(e => !e.comingSoon),
@@ -114,7 +114,7 @@ export function Palette({ phases, controlCatalog }: PaletteProps) {
         className="je-palette__title"
         style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}
       >
-        Phases
+        Steps
       </div>
 
       {grouped.map(([cat, items]) => (

@@ -12,7 +12,7 @@ import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IPhaseRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWorkspaceProvider,
+  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -38,7 +38,7 @@ import {
   MemoryWebhookEventStore,
   MemoryHumanTaskResolutionStore,
   DirectoryWorkspaceProvider,
-  InMemoryPhaseRegistry,
+  InMemoryStepRegistry,
   JsonLogicEvaluator,
   createPool,
   type IHumanTaskResolutionStore,
@@ -61,7 +61,7 @@ export interface Composition {
   humanTaskTimeouts: HumanTaskTimeoutService;
   conductorClient: ConductorClient;
   orchestrator: IOrchestratorEngine;
-  registry: IPhaseRegistry;
+  registry: IStepRegistry;
   workspace: IWorkspaceProvider;
   auth: IAuthProvider;
   conditions: IConditionEvaluator;
@@ -128,7 +128,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     events,
   });
 
-  const registry = new InMemoryPhaseRegistry();
+  const registry = new InMemoryStepRegistry();
   const workspace = new DirectoryWorkspaceProvider();
   const auth: IAuthProvider = {
     async authenticate(_req: FastifyRequest) {

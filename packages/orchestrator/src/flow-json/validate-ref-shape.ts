@@ -3,17 +3,17 @@ import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
- * Minimal catalog-shape used by validation. Compatible with @journeyman/phases'
- * PhaseCatalogEntry — passed in from the caller to avoid an upstream dep.
+ * Minimal catalog-shape used by validation. Compatible with @journeyman/steps'
+ * StepCatalogEntry — passed in from the caller to avoid an upstream dep.
  */
 export interface CatalogShapeEntry {
-  phaseType: string;
+  stepType: string;
   inputFields: InputFields;
   outputSchema: OutputSchema | null;
 }
 
-/** Shape view of a saved custom phase (built via `customPhaseToShape`). */
-export interface CustomPhaseShapeEntry {
+/** Shape view of a saved custom step (built via `customStepToShape`). */
+export interface CustomStepShapeEntry {
   inputFields: InputFields;
   outputSchema: OutputSchema | null;
 }
@@ -28,7 +28,7 @@ export function resolveRefShape(
   flow: WorkflowGraph,
   ref: string,
   catalog: Map<string, CatalogShapeEntry>,
-  customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+  customStepDefs?: Map<string, CustomStepShapeEntry>,
 ): RefShapeResult {
   const parsed = parseRef(ref);
   if (!parsed) return { ok: false, error: `Unparseable ref '${ref}'` };
@@ -50,25 +50,25 @@ export function resolveRefShape(
 
   const node = flow.nodes.find(n => n.id === parsed.source);
   if (!node) return { ok: false, error: `Node ${labelNode(undefined, parsed.source)} not found` };
-  if (node.type !== "phase" || !node.phaseType) return { ok: false, error: `Node ${labelNode(node, parsed.source)} is not a phase` };
+  if (node.type !== "step" || !node.stepType) return { ok: false, error: `Node ${labelNode(node, parsed.source)} is not a step` };
 
   let inputFields: InputFields | undefined;
   let outputSchema: OutputSchema | null | undefined;
 
-  if (node.phaseType === "custom-ai") {
-    const customId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+  if (node.stepType === "custom-ai") {
+    const customId = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
     if (typeof customId !== "string" || !customId) {
-      return { ok: false, error: `Node ${labelNode(node, parsed.source)} has no customPhaseId` };
+      return { ok: false, error: `Node ${labelNode(node, parsed.source)} has no customStepId` };
     }
-    const def = customPhaseDefs?.get(customId);
+    const def = customStepDefs?.get(customId);
     if (!def) {
-      return { ok: false, error: `Custom phase definition not loaded for node ${labelNode(node, parsed.source)}` };
+      return { ok: false, error: `Custom step definition not loaded for node ${labelNode(node, parsed.source)}` };
     }
     inputFields = def.inputFields;
     outputSchema = def.outputSchema;
   } else {
-    const entry = catalog.get(node.phaseType);
-    if (!entry) return { ok: false, error: `Unknown phase type '${node.phaseType}'` };
+    const entry = catalog.get(node.stepType);
+    if (!entry) return { ok: false, error: `Unknown step type '${node.stepType}'` };
     inputFields = entry.inputFields;
     outputSchema = entry.outputSchema;
   }
@@ -88,9 +88,9 @@ export function validateRefShapeAgainst(
   ref: string,
   expected: Shape,
   catalog: Map<string, CatalogShapeEntry>,
-  customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+  customStepDefs?: Map<string, CustomStepShapeEntry>,
 ): { ok: boolean; error?: string } {
-  const r = resolveRefShape(flow, ref, catalog, customPhaseDefs);
+  const r = resolveRefShape(flow, ref, catalog, customStepDefs);
   if (!r.ok || !r.shape) return { ok: false, error: r.error };
   let ok = false;
   try {
@@ -109,8 +109,8 @@ export function validateRefShapeAgainst(
 
 /**
  * Wildcard match: when the *expected* shape is an object with no declared
- * fields (e.g. a custom-phase input typed as plain `object`), accept any
- * object as the actual shape. Lets custom phases declare generic object
+ * fields (e.g. a custom-step input typed as plain `object`), accept any
+ * object as the actual shape. Lets custom steps declare generic object
  * inputs without naming every nested field.
  */
 function isWildcardMatch(actual: Shape, expected: Shape): boolean {
@@ -137,8 +137,8 @@ function describeShape(s: Shape): string {
   }
 }
 
-export function isPhaseNode(n: WorkflowNode): n is WorkflowNode & { type: "phase"; phaseType: string } {
-  return n.type === "phase" && !!n.phaseType;
+export function isStepNode(n: WorkflowNode): n is WorkflowNode & { type: "step"; stepType: string } {
+  return n.type === "step" && !!n.stepType;
 }
 
 /**

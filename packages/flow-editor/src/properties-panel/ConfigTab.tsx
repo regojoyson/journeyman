@@ -2,16 +2,16 @@
 import { useState, useEffect } from "react";
 import type { WorkflowDefaults, WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
 import { CodingModelSelect } from "../components/CodingModelSelect.tsx";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
-import { useUpstreamSources, collectCustomPhaseIds } from "./use-upstream-sources.ts";
-import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
-import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
+import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
+import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
+import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 import { useNodeWarningsByKey } from "../state/validation-context.tsx";
 
 export interface ConfigTabProps {
@@ -24,29 +24,29 @@ export interface ConfigTabProps {
 }
 
 export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefaults }: ConfigTabProps) {
-  const registry = usePhaseRegistry();
-  const definition = registry.get(node.phaseType);
+  const registry = useStepRegistry();
+  const definition = registry.get(node.stepType);
   const config = (node.config ?? {}) as Record<string, unknown>;
   const executorConfig = node.executorConfig ?? {};
 
-  const catalog = usePhaseCatalog();
-  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(flow));
-  const sources = useUpstreamSources(flow, node.id, catalog, customPhaseDefs);
+  const catalog = useStepCatalog();
+  const customStepDefs = useCustomStepDefs(collectCustomStepIds(flow));
+  const sources = useUpstreamSources(flow, node.id, catalog, customStepDefs);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const nodeWarningsByKey = useNodeWarningsByKey(node.id);
 
-  // Strip stale keys that are no longer declared in the phase definition.
-  // Runs once per node selection or phase type change, but only after the
+  // Strip stale keys that are no longer declared in the step definition.
+  // Runs once per node selection or step type change, but only after the
   // async catalog has loaded — otherwise knownInputKeys would be empty and
   // every binding would be incorrectly treated as stale.
   useEffect(() => {
-    if (node.phaseType && !catalogEntry) return;
+    if (node.stepType && !catalogEntry) return;
 
     const currentInputs = (node.inputs ?? {}) as Record<string, unknown>;
     const currentConfig = (node.config ?? {}) as Record<string, unknown>;
 
     // Only sweep inputs when the catalog declares at least one input field.
-    // Phases like `custom-ai` have empty static inputFields (the real ones
+    // Steps like `custom-ai` have empty static inputFields (the real ones
     // live per-instance in the DB) — for those, leave node.inputs alone.
     const declaredInputFields = catalogEntry?.inputFields ?? {};
     const knownInputKeys = Object.keys(declaredInputFields).length > 0
@@ -74,7 +74,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
 
     onChange({ ...node, inputs: cleanedInputs as WorkflowNode["inputs"], config: cleanedConfig });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node.id, node.phaseType]);
+  }, [node.id, node.stepType]);
 
   const handlePick = (fieldKey: string, ref: string) => {
     const clean = sanitizeRef(ref);
@@ -108,7 +108,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   );
 
   // Fields declared in the catalog as bindable-only (no typed UI). Shown as a separate "Required bindings" section.
-  const catalogEntry = node.phaseType ? catalog[node.phaseType] : undefined;
+  const catalogEntry = node.stepType ? catalog[node.stepType] : undefined;
   const configFieldKeys = new Set(definition?.configFields ? Object.keys(definition.configFields) : []);
   const bindOnlyFields = Object.entries(catalogEntry?.inputFields ?? {}).filter(
     ([key, meta]) => (meta as { bindOnly?: boolean }).bindOnly === true && !configFieldKeys.has(key),
@@ -150,9 +150,9 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   return (
     <div>
       <div className="je-props__field">
-        <label>Phase type</label>
+        <label>Step type</label>
         <span className="je-props__readonly-value">
-          {registry.get(node.phaseType ?? "")?.label ?? node.phaseType ?? "—"}
+          {registry.get(node.stepType ?? "")?.label ?? node.stepType ?? "—"}
         </span>
       </div>
 
@@ -297,7 +297,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
       )}
 
       {definition?.description && (
-        <div className="je-props__phase-desc">{definition.description}</div>
+        <div className="je-props__step-desc">{definition.description}</div>
       )}
     </div>
   );

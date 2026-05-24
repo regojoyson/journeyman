@@ -2,9 +2,9 @@
 
 /**
  * Resolves a provider instance from a string key (the value chosen in the
- * flow editor's provider dropdown, threaded through PhaseInput.provider).
+ * flow editor's provider dropdown, threaded through StepInput.provider).
  *
- * Used to route a phase to the right concrete provider at run time without
+ * Used to route a step to the right concrete provider at run time without
  * the handler needing to know which providers exist.
  */
 export interface ProviderResolver<T> {
@@ -20,7 +20,7 @@ export interface ProviderResolver<T> {
 
 /**
  * Per-call factory: produces a provider instance from a routing key + the
- * resolved env (slot-keyed credential bag) for that run. Used by phase
+ * resolved env (slot-keyed credential bag) for that run. Used by step
  * handlers to construct providers fresh per invocation, so user/org-scope
  * secrets resolved per-run can flow through.
  */

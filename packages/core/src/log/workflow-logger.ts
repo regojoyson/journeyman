@@ -3,7 +3,7 @@ import type pino from "pino";
 export interface WorkflowLogCtx {
   workflowInstanceId: string;
   nodeId: string;
-  phaseType: string;
+  stepType: string;
   attempt: number;
   taskId: string;
   workerId: string;

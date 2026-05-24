@@ -9,12 +9,12 @@ export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
 export type * from "./types/coding-models.types.ts";
 export * from "./types/coding-tools.types.ts";
-export type * from "./types/custom-phases.types.ts";
+export type * from "./types/custom-steps.types.ts";
 export {
-  CUSTOM_PHASE_EXPORT_KIND,
-  CUSTOM_PHASE_EXPORT_VERSION,
-} from "./types/custom-phases.types.ts";
-export * from "./types/custom-phase-icons.ts";
+  CUSTOM_STEP_EXPORT_KIND,
+  CUSTOM_STEP_EXPORT_VERSION,
+} from "./types/custom-steps.types.ts";
+export * from "./types/custom-step-icons.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";
 export type * from "./types/notification.types.ts";
@@ -30,12 +30,12 @@ export {
   serializeError, type SerializedError,
   redactString, redactObject,
   LogTail,
-  appendPhaseEvent, type MinimalEventBus,
+  appendStepEvent, type MinimalEventBus,
 } from "./logger.ts";
 
 export type {
   PipelineContext,
-  IPhase,
+  IStep,
   IStateStore,
   ITraceLogger,
   IArtifactStore,
@@ -67,8 +67,8 @@ export type {
   IEventBus, AppendEventArgs,
 } from "./interfaces/event-bus.interface.ts";
 export type {
-  IPhaseHandler, IPhaseRegistry, PhaseRunResult,
-} from "./interfaces/phase-registry.interface.ts";
+  IStepHandler, IStepRegistry, StepRunResult,
+} from "./interfaces/step-registry.interface.ts";
 export type {
   IWorkspace, IWorkspaceProvider,
 } from "./interfaces/workspace-provider.interface.ts";
@@ -83,7 +83,7 @@ export {
   implementedProvidersForKind,
   defaultProviderForKind,
   PHASE_KIND_MAP,
-  kindForPhaseType,
+  kindForStepType,
 } from "./registries/provider-catalog.ts";
 export type { ProviderEntry } from "./registries/provider-catalog.ts";
 // Aliased to avoid colliding with flow-editor's own ExecutorKind (which includes "control").
@@ -115,7 +115,7 @@ export {
 } from "./validation/validate-for-publish.ts";
 export type {
   PublishError, PublishValidationResult, PublishValidationContext,
-  PhaseConfigIssue, PhaseConfigValidator,
+  StepConfigIssue, StepConfigValidator,
 } from "./validation/validate-for-publish.ts";
 export type {
   WorkflowInstanceGrant, WorkflowInstanceGrantPrincipalType, WorkflowInstanceGrantRole,
@@ -128,9 +128,9 @@ export type {
 export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
 export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
-  PhaseContext, PhaseFailure, PhaseInput, PhaseOutput,
+  StepContext, StepFailure, StepInput, StepOutput,
   OutputSchema,
-} from "./types/phase-handler.types.ts";
+} from "./types/step-handler.types.ts";
 export type { Shape, InputField, InputFields } from "./types/shape.types.ts";
 export {
   IssueShape, RepoShape, PullRequestShape, WorkspaceShape,
@@ -160,7 +160,7 @@ export type {
   BindingCheck,
   ValidationCatalog,
   ValidationCatalogEntry,
-  CustomPhaseValidationEntry,
+  CustomStepValidationEntry,
 } from "./utils/validate-workflow.ts";
 export type {
   WebhookEvent,

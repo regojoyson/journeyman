@@ -182,7 +182,6 @@ function ModelForm(props: {
                 {CODING_PROVIDERS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label}
-                    {!p.implemented ? " (not yet implemented)" : ""}
                   </option>
                 ))}
               </select>

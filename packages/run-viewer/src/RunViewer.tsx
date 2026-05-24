@@ -6,7 +6,7 @@ import { WorkflowInstanceTopbar } from "./topbar/RunTopbar.tsx";
 import { WorkflowLogsPanel } from "./logs/WorkflowLogsPanel.tsx";
 import { computeNodeStatuses } from "./status/compute-node-status.ts";
 import type { WorkflowInstanceViewerProps } from "./types.ts";
-// Pull in flow-editor styles so PhaseNode (`je-node*`) and ReactFlow handle/edge
+// Pull in flow-editor styles so StepNode (`je-node*`) and ReactFlow handle/edge
 // overrides render correctly — WorkflowInstanceViewer reuses the editor's node components.
 import "@journeyman/flow-editor/styles.css";
 import "./styles.css";
@@ -70,7 +70,7 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
   }), [props.workflow, props.events, props.executions, props.workflowInstance.status]);
 
   const selectedNode = props.workflow.nodes.find(n => n.id === selectedNodeId) ?? null;
-  const selectedDisplayName = selectedNode?.displayName ?? selectedNode?.phaseType ?? selectedNode?.type ?? null;
+  const selectedDisplayName = selectedNode?.displayName ?? selectedNode?.stepType ?? selectedNode?.type ?? null;
 
   const eventsForSelected = useMemo(
     () => selectedNodeId ? props.events.filter(e => e.nodeId === selectedNodeId) : [],

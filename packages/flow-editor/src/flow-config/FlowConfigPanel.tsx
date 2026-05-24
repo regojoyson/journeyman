@@ -26,7 +26,7 @@ export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfi
         </button>
       </div>
       <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
-        Values set here are inherited by all phase nodes. Each node can override individual fields.
+        Values set here are inherited by all step nodes. Each node can override individual fields.
       </div>
 
       <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />

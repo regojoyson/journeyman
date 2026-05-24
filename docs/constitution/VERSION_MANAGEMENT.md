@@ -18,7 +18,7 @@ The repository follows [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`.
 | Bump | When |
 |---|---|
 | MAJOR | Breaking change to a public interface in `@journeyman/core`, an HTTP API contract, or a DB schema that requires a coordinated client update. |
-| MINOR | Backwards-compatible new feature, new provider, new phase, new optional field. |
+| MINOR | Backwards-compatible new feature, new provider, new step, new optional field. |
 | PATCH | Bug fix, internal refactor, docs, dependency bump with no behavior change. |
 
 Pre-release tags: `X.Y.Z-rc.N`, `X.Y.Z-beta.N`.

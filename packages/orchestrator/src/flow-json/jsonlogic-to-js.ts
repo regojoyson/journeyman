@@ -1,6 +1,6 @@
 import type { JsonLogicExpr, WorkflowEdge } from "@journeyman/core";
 
-const PHASE_PATH    = /^([A-Za-z_][\w-]*)\.output(?:\.(.+))?$/;
+const STEP_PATH    = /^([A-Za-z_][\w-]*)\.output(?:\.(.+))?$/;
 const WORKFLOW_PATH = /^workflow\.input(?:\.(.+))?$/;
 
 export interface CompileResult {
@@ -22,9 +22,9 @@ function walk(expr: JsonLogicExpr, roots: Set<string>): string {
 
   if ("var" in expr) {
     const path = expr.var;
-    const phase = path.match(PHASE_PATH);
-    if (phase) {
-      const [, root, rest] = phase;
+    const stepRef = path.match(STEP_PATH);
+    if (stepRef) {
+      const [, root, rest] = stepRef;
       roots.add(root!);
       return rest ? `$.${root}.${rest}` : `$.${root}`;
     }

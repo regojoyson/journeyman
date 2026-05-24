@@ -3,10 +3,10 @@ import { useEffect, useState, useMemo } from "react";
 import { PROVIDER_CATALOG } from "@journeyman/core";
 import type { WorkflowGraph, WorkflowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
-import type { SecretSlotDef } from "../phase-definition.ts";
-import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
+import type { SecretSlotDef } from "../step-definition.ts";
+import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 
 export interface RequiredSecretsTabProps {
   flow: WorkflowGraph;
@@ -64,10 +64,10 @@ function workflowScope(flow: WorkflowGraph): "user" | "org" | "global" | null {
 }
 
 export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: RequiredSecretsTabProps) {
-  const registry = usePhaseRegistry();
-  const phaseDef = node.phaseType ? registry.get(node.phaseType) : undefined;
+  const registry = useStepRegistry();
+  const stepDef = node.stepType ? registry.get(node.stepType) : undefined;
 
-  const kind = phaseDef?.executor.kind;
+  const kind = stepDef?.executor.kind;
   const effectiveProvider =
     node.executorConfig?.provider ??
     (kind && kind !== "control"
@@ -76,11 +76,11 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     (kind ? defaultProviderFor(kind) : undefined);
   const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
 
-  // Kind-override slots: when the phase declares `slotsFromKind`, look up the
+  // Kind-override slots: when the step declares `slotsFromKind`, look up the
   // slot list from the workflow's catalog entry for that kind (e.g. the
-  // git-provider). Lets a coding-cli phase borrow credentials from a different
+  // git-provider). Lets a coding-cli step borrow credentials from a different
   // provider kind without hardcoding slot names.
-  const slotsFromKind = phaseDef?.slotsFromKind;
+  const slotsFromKind = stepDef?.slotsFromKind;
   const executorConfig = flow.defaults?.executorConfig as
     | Record<string, { provider?: string } | undefined>
     | undefined;
@@ -89,25 +89,25 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     ? (PROVIDER_CATALOG.find(p => p.kind === slotsFromKind && p.value === kindProvider)?.slots ?? [])
     : [];
 
-  // Custom-AI nodes carry their slots on the DB-backed phase definition, not
+  // Custom-AI nodes carry their slots on the DB-backed step definition, not
   // the static registry entry. Fetch the def and prefer its slots when present.
-  const customPhaseId =
-    node.phaseType === "custom-ai"
-      ? ((node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId as string | undefined)
+  const customStepId =
+    node.stepType === "custom-ai"
+      ? ((node.config as { customStepId?: unknown } | undefined)?.customStepId as string | undefined)
       : undefined;
-  const customPhaseIds = useMemo(() => (customPhaseId ? [customPhaseId] : []), [customPhaseId]);
-  const customDefs = useCustomPhaseDefs(customPhaseIds);
-  const customSlots: SecretSlotDef[] = customPhaseId ? (customDefs[customPhaseId]?.slots ?? []) : [];
+  const customStepIds = useMemo(() => (customStepId ? [customStepId] : []), [customStepId]);
+  const customDefs = useCustomStepDefs(customStepIds);
+  const customSlots: SecretSlotDef[] = customStepId ? (customDefs[customStepId]?.slots ?? []) : [];
 
   // For custom-ai nodes: union of
   //   - provider-level slots (e.g. ANTHROPIC_API_KEY for coding-cli/claude)
-  //   - the static phase-definition slots
-  //   - the user-declared slots on the DB-backed custom phase
-  // Later sources win on name collisions, so a custom-phase slot can override
-  // a provider-level default if the phase author wants different metadata.
+  //   - the static step-definition slots
+  //   - the user-declared slots on the DB-backed custom step
+  // Later sources win on name collisions, so a custom-step slot can override
+  // a provider-level default if the step author wants different metadata.
   const slots: SecretSlotDef[] = (() => {
-    if (node.phaseType === "custom-ai") {
-      const base = [...providerSlots, ...(phaseDef?.slots ?? [])];
+    if (node.stepType === "custom-ai") {
+      const base = [...providerSlots, ...(stepDef?.slots ?? [])];
       const overrides = new Map(customSlots.map(s => [s.name, s]));
       const merged: SecretSlotDef[] = base.map(s => overrides.get(s.name) ?? s);
       for (const s of customSlots) {
@@ -116,7 +116,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
       return merged;
     }
     if (kindOverrideSlots.length > 0) return kindOverrideSlots;
-    return phaseDef?.slots?.length ? phaseDef.slots : providerSlots;
+    return stepDef?.slots?.length ? stepDef.slots : providerSlots;
   })();
 
   const [visible, setVisible] = useState<VisibleSecret[]>([]);
@@ -159,7 +159,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
       return (
         <div className="je-props__field">
           <div style={{ color: "#f0c97a", fontSize: 11 }}>
-            This phase needs the workflow's <code>{slotsFromKind}</code> credentials.
+            This step needs the workflow's <code>{slotsFromKind}</code> credentials.
             Pick a {slotsFromKind} in Workflow settings to see the required slot.
           </div>
         </div>
@@ -168,7 +168,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     return (
       <div className="je-props__field">
         <div style={{ color: "#888", fontSize: 11, fontStyle: "italic" }}>
-          This phase doesn't need any secrets.
+          This step doesn't need any secrets.
         </div>
       </div>
     );
@@ -333,7 +333,7 @@ function Preview({ slot, binding, autoTier, exists, loaded }: PreviewProps) {
       return <div style={style("#7fc480")}>✓ Will use: {slot.name} from {SCOPE_LABEL[autoTier]}</div>;
     }
     if (slot.optional) {
-      return <div style={style("#9aaab9")}>ℹ Optional. None found — phase will use its own default.</div>;
+      return <div style={style("#9aaab9")}>ℹ Optional. None found — step will use its own default.</div>;
     }
     return <div style={style("#f0c97a")}>⚠ No secret named {slot.name} in any tier. Run will fail.</div>;
   }

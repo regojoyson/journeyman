@@ -17,7 +17,7 @@ export type PublishError = {
   message: string;
   nodeId?: string;
   /** Human-readable label for the offending node — UI chip text. Resolved from
-   *  `displayName` ?? prettified `phaseType` ?? capitalized `type`. */
+   *  `displayName` ?? prettified `stepType` ?? capitalized `type`. */
   nodeLabel?: string;
   fieldPath?: string;
 };
@@ -27,22 +27,22 @@ export type PublishValidationResult = {
   errors: PublishError[];
 };
 
-export type PhaseConfigIssue = { path: (string | number)[]; message: string };
-export type PhaseConfigValidator = (config: unknown) => PhaseConfigIssue[];
+export type StepConfigIssue = { path: (string | number)[]; message: string };
+export type StepConfigValidator = (config: unknown) => StepConfigIssue[];
 
 export interface PublishValidationContext {
   visibleSecretNames?: Set<string>;
   visibleMcpInstanceIds?: Set<string>;
   visibleSkillIds?: Set<string>;
   hasTrigger: boolean;
-  /** Per-phase config validators keyed by phaseType. Empty issues array means valid. */
-  phaseConfigValidators?: Map<string, PhaseConfigValidator>;
+  /** Per-step config validators keyed by stepType. Empty issues array means valid. */
+  stepConfigValidators?: Map<string, StepConfigValidator>;
   /**
-   * Defaults for custom-ai phases referenced by `custom-ai` nodes, keyed by phase id.
+   * Defaults for custom-ai steps referenced by `custom-ai` nodes, keyed by step id.
    * Used to compute effective tools when a node hasn't overridden `config.tools`.
    * Caller (api-server) pre-loads these from the DB before validating.
    */
-  customAiPhaseDefaults?: Map<string, { defaultTools?: readonly CanonicalTool[] }>;
+  customAiStepDefaults?: Map<string, { defaultTools?: readonly CanonicalTool[] }>;
 }
 
 export function validateForPublish(
@@ -79,10 +79,10 @@ function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
     errors.push({ code: "graph_invalid", message: "Flow must have at least one end node" });
   }
   for (const node of flow.nodes) {
-    if (node.type === "phase" && !node.phaseType) {
+    if (node.type === "step" && !node.stepType) {
       errors.push({
         code: "graph_invalid",
-        message: `Phase node is missing a phase type`,
+        message: `Step node is missing a step type`,
         nodeId: node.id,
         nodeLabel: nodeLabelFor(node),
       });
@@ -169,12 +169,12 @@ function pushNodeErrors(
     }
   }
 
-  if (node.type === "phase" && node.phaseType === "custom-ai") {
-    const cfg = (node.config ?? {}) as { tools?: unknown; customPhaseId?: unknown };
+  if (node.type === "step" && node.stepType === "custom-ai") {
+    const cfg = (node.config ?? {}) as { tools?: unknown; customStepId?: unknown };
     const nodeTools = Array.isArray(cfg.tools) ? (cfg.tools as CanonicalTool[]) : undefined;
     let effectiveTools: readonly CanonicalTool[] | undefined = nodeTools;
-    if (!effectiveTools && typeof cfg.customPhaseId === "string" && ctx.customAiPhaseDefaults) {
-      effectiveTools = ctx.customAiPhaseDefaults.get(cfg.customPhaseId)?.defaultTools;
+    if (!effectiveTools && typeof cfg.customStepId === "string" && ctx.customAiStepDefaults) {
+      effectiveTools = ctx.customAiStepDefaults.get(cfg.customStepId)?.defaultTools;
     }
     if (effectiveTools && toolsRequireWorkspace(effectiveTools)) {
       const inputs = node.inputs ?? {};
@@ -182,7 +182,7 @@ function pushNodeErrors(
         errors.push({
           code: "missing_config",
           message:
-            "Custom phase selected workspace tools (bash/read-file/write-file/edit-file/search) " +
+            "Custom step selected workspace tools (bash/read-file/write-file/edit-file/search) " +
             "but no workspaceDir input is wired on this node",
           nodeId: node.id,
           nodeLabel: nodeLabelFor(node),
@@ -192,8 +192,8 @@ function pushNodeErrors(
     }
   }
 
-  if (node.type === "phase" && node.phaseType && ctx.phaseConfigValidators) {
-    const validator = ctx.phaseConfigValidators.get(node.phaseType);
+  if (node.type === "step" && node.stepType && ctx.stepConfigValidators) {
+    const validator = ctx.stepConfigValidators.get(node.stepType);
     if (validator) {
       // Keys that are bound via node.inputs satisfy the runtime; their
       // config slots may legitimately be empty. Don't surface schema issues
@@ -294,12 +294,12 @@ function parseRefNodeId(ref: string): string | null {
 
 function nodeLabelFor(node: WorkflowNode): string {
   if (node.displayName && node.displayName.trim().length > 0) return node.displayName;
-  if (node.type === "phase" && node.phaseType) return prettifyPhaseType(node.phaseType);
+  if (node.type === "step" && node.stepType) return prettifyStepType(node.stepType);
   return capitalize(node.type);
 }
 
-function prettifyPhaseType(phaseType: string): string {
-  return phaseType
+function prettifyStepType(stepType: string): string {
+  return stepType
     .split(/[-_]/)
     .filter(s => s.length > 0)
     .map(s => s.charAt(0).toUpperCase() + s.slice(1))

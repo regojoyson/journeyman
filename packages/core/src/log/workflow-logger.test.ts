@@ -12,7 +12,7 @@ describe("createWorkflowLogger", () => {
   it("pre-binds correlation fields onto every log line", () => {
     const { logger, lines } = captureLogs();
     const ctx: WorkflowLogCtx = {
-      workflowInstanceId: "wf-1", nodeId: "n-1", phaseType: "clone-repos",
+      workflowInstanceId: "wf-1", nodeId: "n-1", stepType: "clone-repos",
       attempt: 1, taskId: "t-1", workerId: "w-1",
     };
     const child = createWorkflowLogger(logger, ctx);
@@ -30,7 +30,7 @@ describe("loggerForRun", () => {
     const { logger, lines } = captureLogs();
     logger.level = "info";
     const child = loggerForRun(logger, {
-      workflowInstanceId: "wf-1", nodeId: "n", phaseType: "p", attempt: 1, taskId: "t", workerId: "w",
+      workflowInstanceId: "wf-1", nodeId: "n", stepType: "p", attempt: 1, taskId: "t", workerId: "w",
     });
     child.debug("debug-line");
     child.info("info-line");
@@ -44,7 +44,7 @@ describe("loggerForRun", () => {
     const { logger, lines } = captureLogs();
     logger.level = "info";
     const child = loggerForRun(logger, {
-      workflowInstanceId: "wf-1", nodeId: "n", phaseType: "p", attempt: 1, taskId: "t", workerId: "w",
+      workflowInstanceId: "wf-1", nodeId: "n", stepType: "p", attempt: 1, taskId: "t", workerId: "w",
     });
     child.debug("debug-line");
     const msgs = lines.map(l => l.msg);

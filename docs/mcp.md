@@ -40,9 +40,9 @@ A static catalog of well-known MCP servers is bundled with the package. Instance
 
 ## Using MCPs in Flows
 
-1. Open the flow editor and select a phase node on the canvas.
+1. Open the flow editor and select a step node on the canvas.
 2. In the properties panel, open the **MCP Tools** tab.
-3. Check the MCP instances you want available to that phase. The visible list is fetched from `/api/orgs/{orgId}/mcp-instances/visible`, which merges your user-scoped and org-scoped instances.
+3. Check the MCP instances you want available to that step. The visible list is fetched from `/api/orgs/{orgId}/mcp-instances/visible`, which merges your user-scoped and org-scoped instances.
 4. Save the node. The selected instance IDs are stored as `mcpInstanceIds` in the node config.
 
 At runtime the worker resolves those IDs to full `ResolvedMcpInstance[]` before spawning the AI agent.
@@ -58,7 +58,7 @@ At runtime the worker resolves those IDs to full `ResolvedMcpInstance[]` before 
 The `@journeyman/mcp/sdk-adapter` subpath export provides two helpers for passing those configs into the Claude Agent SDK `query()` call:
 
 - **`toMcpServerConfigs(instances)`** — converts `ResolvedMcpInstance[]` to the shape expected by the SDK's `mcpServers` option.
-- **`mergeSystemPrompts(instances)`** — collects any system prompt extensions declared by each MCP server and merges them into a single string to prepend to the phase prompt.
+- **`mergeSystemPrompts(instances)`** — collects any system prompt extensions declared by each MCP server and merges them into a single string to prepend to the step prompt.
 
 ## Package Reference
 

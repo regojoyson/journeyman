@@ -5,7 +5,7 @@ import { ZodError } from "zod";
 import type { Composition } from "./composition.ts";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { registerWorkflowRoutes } from "./routes/flows.ts";
-import { registerPhasesRoutes } from "./routes/phases.ts";
+import { registerStepsRoutes } from "./routes/steps.ts";
 import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
@@ -14,7 +14,7 @@ import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
 import { registerSkillRoutes } from "@journeyman/skills";
-import { registerCustomPhaseRoutes } from "@journeyman/custom-phases";
+import { registerCustomStepRoutes } from "@journeyman/custom-steps";
 import { registerCodingModelRoutes } from "@journeyman/coding-models";
 
 export async function buildServer(c: Composition): Promise<FastifyInstance> {
@@ -36,11 +36,11 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerSecretsRoutes(app, c.pool);
     await registerMcpRoutes(app, c.pool);
     await registerSkillRoutes(app, c.pool);
-    await registerCustomPhaseRoutes(app, c.pool);
+    await registerCustomStepRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);
   }
   registerWorkflowRoutes(app, c);
-  registerPhasesRoutes(app);
+  registerStepsRoutes(app);
   registerWorkflowGrantsRoutes(app, c);
   registerWorkflowInstanceRoutes(app, c);
   registerWebhookRoutes(app, c);

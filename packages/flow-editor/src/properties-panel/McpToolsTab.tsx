@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { WorkflowNode, CanonicalTool, CustomAiPhase } from "@journeyman/core";
+import type { WorkflowNode, CanonicalTool, CustomAiStep } from "@journeyman/core";
 import { CANONICAL_TOOLS, toolsRequireWorkspace } from "@journeyman/core";
 
 interface VisibleMcp {
@@ -28,9 +28,9 @@ function setSelectedIds(node: WorkflowNode, ids: string[]): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), mcpInstanceIds: ids } };
 }
 
-function getCustomPhaseId(node: WorkflowNode): string | undefined {
-  const cfg = (node.config ?? {}) as { customPhaseId?: unknown };
-  return typeof cfg.customPhaseId === "string" ? cfg.customPhaseId : undefined;
+function getCustomStepId(node: WorkflowNode): string | undefined {
+  const cfg = (node.config ?? {}) as { customStepId?: unknown };
+  return typeof cfg.customStepId === "string" ? cfg.customStepId : undefined;
 }
 
 function getToolsOverride(node: WorkflowNode): CanonicalTool[] | undefined {
@@ -49,24 +49,24 @@ function setToolsOverride(node: WorkflowNode, tools: CanonicalTool[] | undefined
 export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProps) {
   const [available, setAvailable] = useState<VisibleMcp[]>([]);
   const [loading, setLoading] = useState(true);
-  const [phase, setPhase] = useState<CustomAiPhase | null>(null);
+  const [step, setStep] = useState<CustomAiStep | null>(null);
   const selected = getSelectedIds(node);
   const enabledIds = new Set(selected);
-  const customPhaseId = getCustomPhaseId(node);
+  const customStepId = getCustomStepId(node);
 
   useEffect(() => {
-    if (!customPhaseId || !orgId) { setPhase(null); return; }
+    if (!customStepId || !orgId) { setStep(null); return; }
     let alive = true;
-    fetch(`/api/orgs/${orgId}/users/me/custom-phases/${customPhaseId}`, { credentials: "include" })
+    fetch(`/api/orgs/${orgId}/users/me/custom-steps/${customStepId}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .catch(() =>
-        fetch(`/api/orgs/${orgId}/custom-phases/${customPhaseId}`, { credentials: "include" })
+        fetch(`/api/orgs/${orgId}/custom-steps/${customStepId}`, { credentials: "include" })
           .then((r) => (r.ok ? r.json() : Promise.reject(r))),
       )
-      .then((p) => { if (alive) setPhase(p as CustomAiPhase); })
-      .catch(() => { if (alive) setPhase(null); });
+      .then((p) => { if (alive) setStep(p as CustomAiStep); })
+      .catch(() => { if (alive) setStep(null); });
     return () => { alive = false; };
-  }, [orgId, customPhaseId]);
+  }, [orgId, customStepId]);
 
   useEffect(() => {
     let alive = true;
@@ -98,7 +98,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
   };
 
   const toolsOverride = getToolsOverride(node);
-  const effectiveTools: CanonicalTool[] = toolsOverride ?? phase?.defaultTools ?? [];
+  const effectiveTools: CanonicalTool[] = toolsOverride ?? step?.defaultTools ?? [];
   const overriding = toolsOverride !== undefined;
   const needsWs = toolsRequireWorkspace(effectiveTools);
 
@@ -114,7 +114,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
       <div className="je-props__field">
         <label>MCPs</label>
         <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
-          MCPs to attach when this phase runs. Manage your MCPs at{" "}
+          MCPs to attach when this step runs. Manage your MCPs at{" "}
           <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/mcps</a>{" "}
           or{" "}
           <a href="/admin/mcps" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/admin/mcps</a>.
@@ -160,7 +160,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
         )}
       </div>
 
-      {customPhaseId && (
+      {customStepId && (
         <div className="je-props__field">
           <label>
             Tools{" "}

@@ -49,7 +49,7 @@ export function DefaultsModelSection({ defaults, onChange, readOnly }: Props) {
             </div>
           )}
           <div className="je-props__field-help">
-            Applied to AI phases that don't set their own model. Each phase can override per-node.
+            Applied to AI steps that don't set their own model. Each step can override per-node.
           </div>
         </div>
       )}

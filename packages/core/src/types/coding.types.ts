@@ -4,13 +4,13 @@ import type { CanonicalTool } from "./coding-tools.types.ts";
 
 /**
  * Optional callback invoked for each AI provider SDK message during a coding-CLI
- * operation. The phase handler typically wires this to `ctx.log` so SDK events
- * are surfaced to the run-viewer UI as `phase.log` events.
+ * operation. The step handler typically wires this to `ctx.log` so SDK events
+ * are surfaced to the run-viewer UI as `step.log` events.
  */
 export type CodingCliLogFn = (line: string, meta?: Record<string, unknown>) => void;
 
 /**
- * Verbosity of agent SDK logs streamed to the run-viewer / persisted as `phase.log` events.
+ * Verbosity of agent SDK logs streamed to the run-viewer / persisted as `step.log` events.
  *  - "none":   no agent SDK lines (handler's own start/end lines still fire). Default.
  *  - "light":  only the final result line.
  *  - "medium": result + tool calls (no assistant text, no tool result content).
@@ -22,7 +22,7 @@ export type AgentLogLevel = "none" | "light" | "medium" | "all";
 // Provider config — shared across all coding-CLI providers
 // ---------------------------------------------------------------------------
 
-export type CodingCLIPhase =
+export type CodingCLIStep =
   | "scanRepos"
   | "checkoutRepo"
   | "cleanupRepos"
@@ -30,16 +30,16 @@ export type CodingCLIPhase =
   | "runCustomPrompt";
 
 export interface CodingCLIProviderConfig {
-  /** Fallback model for any phase not listed in `models`. */
+  /** Fallback model for any step not listed in `models`. */
   defaultModel?: string;
-  /** Per-phase model overrides. Takes precedence over defaultModel. */
-  models?: Partial<Record<CodingCLIPhase, string>>;
+  /** Per-step model overrides. Takes precedence over defaultModel. */
+  models?: Partial<Record<CodingCLIStep, string>>;
   /** Optional API key. When unset, the SDK uses its ambient credentials (env). */
   apiKey?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Custom AI phase — generic prompt runner
+// Custom AI step — generic prompt runner
 // ---------------------------------------------------------------------------
 
 export interface RunCustomPromptOptions {
@@ -51,12 +51,12 @@ export interface RunCustomPromptOptions {
   skills?: ResolvedSkillPackage[];
   /**
    * Canonical Journeyman tool names. Each provider translates to its native
-   * tool names. Empty/undefined means a pure-prompt phase (no tools).
+   * tool names. Empty/undefined means a pure-prompt step (no tools).
    */
   tools?: CanonicalTool[];
   /**
    * Slot-keyed env values to inject into shell-tool child processes.
-   * Resolved from FlowNode.secretBindings against the phase's declared slots.
+   * Resolved from FlowNode.secretBindings against the step's declared slots.
    * Provider passes this to its Bash-equivalent tool only; never substituted
    * into the prompt text.
    */

@@ -43,7 +43,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
 
   const rawDef = flowDefaults?.retry;
   // When the flow has retry defaults configured, fill missing fields with system
-  // defaults so phases can show FROM FLOW chips for every field.
+  // defaults so steps can show FROM FLOW chips for every field.
   const def = rawDef ? { ...RETRY_SYSTEM_DEFAULTS, ...rawDef } : rawDef;
 
   const enabledState    = useFieldInheritance(node.retry?.enabled,          def?.enabled);
@@ -74,7 +74,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
             <span className="je-switch__label">Retry enabled</span>
           </label>
           {chipFor(enabledState.state, () => set({ ...r, enabled: undefined }), enabledState.resolvedValue)}
-          <FieldInfo text="When enabled, the phase re-runs automatically on failure before the flow gives up." />
+          <FieldInfo text="When enabled, the step re-runs automatically on failure before the flow gives up." />
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export function RetryTab({ node, onChange, readOnly, flowDefaults }: RetryTabPro
         <div className="je-props__field-label-row">
           <FieldLabel
             label="Max attempts"
-            info="Total number of times this phase can run, including the first attempt. A value of 3 means one initial run plus two retries."
+            info="Total number of times this step can run, including the first attempt. A value of 3 means one initial run plus two retries."
           />
           {chipFor(maxState.state, () => set({ ...r, maxAttempts: undefined }), maxState.resolvedValue)}
         </div>

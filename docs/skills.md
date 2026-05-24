@@ -2,7 +2,7 @@
 
 ## Overview
 
-Skills are reusable AI behaviour bundles packaged as git repositories. Each skill package contains skill definitions — prompts, tool configs, and examples — that AI phases can load at runtime. Attaching a skill package to a flow node makes those skills available to the AI agent running that phase, without duplicating prompt logic across flows.
+Skills are reusable AI behaviour bundles packaged as git repositories. Each skill package contains skill definitions — prompts, tool configs, and examples — that AI steps can load at runtime. Attaching a skill package to a flow node makes those skills available to the AI agent running that step, without duplicating prompt logic across flows.
 
 ## Scopes
 
@@ -43,7 +43,7 @@ A built-in catalog of curated skill packages is bundled with the package and bro
 
 ## Using Skills in Flows
 
-1. Open the flow editor and select a phase node on the canvas.
+1. Open the flow editor and select a step node on the canvas.
 2. In the properties panel, open the **Skills** tab.
 3. Check the skill packages to attach. The visible list is fetched from `/api/orgs/{orgId}/skill-packages/visible`, which merges user-scoped and org-scoped packages.
 4. Save the node. The selected package IDs are stored as `skillPackageIds` in the node config.

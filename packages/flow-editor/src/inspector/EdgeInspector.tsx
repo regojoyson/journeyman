@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr, OutputSchema, CustomAiPhase } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr, OutputSchema, CustomAiStep } from "@journeyman/core";
 import { ConditionBuilder } from "./ConditionBuilder.tsx";
 import {
   buildConditionSuggestions,
-  collectUpstreamPhases,
+  collectUpstreamSteps,
   customAiOutputSchemaFromJsonSchema,
 } from "./condition-suggestions.ts";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { useOrgId } from "../state/org-context.tsx";
 
 interface Props {
@@ -15,17 +15,17 @@ interface Props {
   onChange: (next: WorkflowEdge) => void;
 }
 
-interface CustomPhaseFetchTarget {
-  phaseId: string;
-  customPhaseId: string;
+interface CustomStepFetchTarget {
+  stepId: string;
+  customStepId: string;
 }
 
 export function EdgeInspector({ flow, edge, onChange }: Props) {
-  const registry = usePhaseRegistry();
+  const registry = useStepRegistry();
   const orgId = useOrgId();
   const catalog = useMemo(
     () => ({
-      outputSchemaFor: (phaseType: string) => registry.get(phaseType)?.outputSchema ?? null,
+      outputSchemaFor: (stepType: string) => registry.get(stepType)?.outputSchema ?? null,
     }),
     [registry],
   );
@@ -33,24 +33,24 @@ export function EdgeInspector({ flow, edge, onChange }: Props) {
   const sourceNode = flow.nodes.find(n => n.id === edge.source);
   const isXor = sourceNode?.type === "gateway-xor" || sourceNode?.type === "if";
 
-  const customTargets = useMemo<CustomPhaseFetchTarget[]>(() => {
+  const customTargets = useMemo<CustomStepFetchTarget[]>(() => {
     if (!isXor) return [];
-    const upstream = collectUpstreamPhases(flow, edge.source);
-    const targets: CustomPhaseFetchTarget[] = [];
-    for (const phaseId of upstream) {
-      const node = flow.nodes.find(n => n.id === phaseId);
+    const upstream = collectUpstreamSteps(flow, edge.source);
+    const targets: CustomStepFetchTarget[] = [];
+    for (const stepId of upstream) {
+      const node = flow.nodes.find(n => n.id === stepId);
       if (!node) continue;
-      const isCustom = node.phaseType === "custom-ai" || node.phaseType?.startsWith("custom-ai:");
+      const isCustom = node.stepType === "custom-ai" || node.stepType?.startsWith("custom-ai:");
       if (!isCustom) continue;
-      const cfg = (node.config ?? {}) as { customPhaseId?: unknown };
-      if (typeof cfg.customPhaseId === "string" && cfg.customPhaseId) {
-        targets.push({ phaseId, customPhaseId: cfg.customPhaseId });
+      const cfg = (node.config ?? {}) as { customStepId?: unknown };
+      if (typeof cfg.customStepId === "string" && cfg.customStepId) {
+        targets.push({ stepId, customStepId: cfg.customStepId });
       }
     }
     return targets;
   }, [flow, edge.source, isXor]);
 
-  const targetsKey = customTargets.map(t => `${t.phaseId}:${t.customPhaseId}`).sort().join(",");
+  const targetsKey = customTargets.map(t => `${t.stepId}:${t.customStepId}`).sort().join(",");
 
   const [extraSchemas, setExtraSchemas] = useState<Map<string, OutputSchema>>(new Map());
   const [loadingExtras, setLoadingExtras] = useState(false);
@@ -70,21 +70,21 @@ export function EdgeInspector({ flow, edge, onChange }: Props) {
     const fetches = customTargets.map(async (t): Promise<[string, OutputSchema | null]> => {
       try {
         let res = await fetch(
-          `/api/orgs/${orgId}/users/me/custom-phases/${t.customPhaseId}`,
+          `/api/orgs/${orgId}/users/me/custom-steps/${t.customStepId}`,
           { credentials: "include" },
         );
         if (!res.ok) {
           res = await fetch(
-            `/api/orgs/${orgId}/custom-phases/${t.customPhaseId}`,
+            `/api/orgs/${orgId}/custom-steps/${t.customStepId}`,
             { credentials: "include" },
           );
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const phase = (await res.json()) as CustomAiPhase;
-        return [t.phaseId, customAiOutputSchemaFromJsonSchema(phase)];
+        const step = (await res.json()) as CustomAiStep;
+        return [t.stepId, customAiOutputSchemaFromJsonSchema(step)];
       } catch (err) {
-        console.warn(`[EdgeInspector] failed to load custom phase ${t.customPhaseId}:`, err);
-        return [t.phaseId, null];
+        console.warn(`[EdgeInspector] failed to load custom step ${t.customStepId}:`, err);
+        return [t.stepId, null];
       }
     });
 
@@ -92,8 +92,8 @@ export function EdgeInspector({ flow, edge, onChange }: Props) {
       if (!alive) return;
       const next = new Map<string, OutputSchema>();
       let anyError = false;
-      for (const [phaseId, schema] of results) {
-        if (schema) next.set(phaseId, schema);
+      for (const [stepId, schema] of results) {
+        if (schema) next.set(stepId, schema);
         else anyError = true;
       }
       setExtraSchemas(next);
@@ -112,14 +112,14 @@ export function EdgeInspector({ flow, edge, onChange }: Props) {
         path: "__loading__",
         group: "__status__",
         groupLabel: "Status",
-        fieldLabel: "Loading custom phase outputs…",
+        fieldLabel: "Loading custom step outputs…",
       });
     } else if (extrasErrored) {
       base.unshift({
         path: "__error__",
         group: "__status__",
         groupLabel: "Status",
-        fieldLabel: "(failed to load some custom-phase outputs)",
+        fieldLabel: "(failed to load some custom-step outputs)",
       });
     }
     return base;

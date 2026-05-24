@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { resolvePhaseIcon } from "../icons/resolve.tsx";
+import { resolveStepIcon } from "../icons/resolve.tsx";
 
 export interface PaletteItemEntryLike {
   label: string;
   description?: string;
   color: string;
   icon: string;
-  phaseType?: string;
+  stepType?: string;
   nodeType?: string;
   dragMime: string;
 }
@@ -28,7 +28,7 @@ export function PaletteItem({ entry, disabled = false }: PaletteItemProps) {
       ev.preventDefault();
       return;
     }
-    const value = entry.phaseType ?? entry.nodeType ?? "";
+    const value = entry.stepType ?? entry.nodeType ?? "";
     ev.dataTransfer.setData(entry.dragMime, value);
     ev.dataTransfer.effectAllowed = "move";
     setPopPos(null);
@@ -59,7 +59,7 @@ export function PaletteItem({ entry, disabled = false }: PaletteItemProps) {
       aria-disabled={disabled || undefined}
     >
       <div className="je-palette__icon" style={{ background: entry.color }}>
-        {resolvePhaseIcon(entry.icon, { size: 16, className: "je-palette__icon-svg" })}
+        {resolveStepIcon(entry.icon, { size: 16, className: "je-palette__icon-svg" })}
       </div>
       <span className="je-palette__label">{entry.label}</span>
       {entry.description && (

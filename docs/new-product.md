@@ -89,28 +89,28 @@ providers:
 
 steps:
   - id: get-ticket
-    phase: getTicket
+    stepType: getTicket
 
   - id: clone-repos
-    phase: cloneRepos
+    stepType: cloneRepos
     timeoutMs: 120000
 
   - id: analyze
-    phase: analyze
+    stepType: analyze
 
   - id: implement
-    phase: implement
+    stepType: implement
     timeoutMs: 600000
 
   - id: commit-push
-    phase: commitPushRepos
+    stepType: commitPushRepos
 
   - id: create-pr
-    phase: createPR
+    stepType: createPR
     onFailure: skip
 
   - id: cleanup
-    phase: cleanupRepos
+    stepType: cleanupRepos
 ```
 
 After saving the flow in the UI, assign it to the product in the product settings.
@@ -119,15 +119,15 @@ After saving the flow in the UI, assign it to the product in the product setting
 
 ## Step 4 — Validate
 
-Use the UI flow editor's built-in validation to check that all providers and phase references are correct before running. Common issues:
+Use the UI flow editor's built-in validation to check that all providers and step references are correct before running. Common issues:
 
 | Issue | Fix |
 |---|---|
-| Unknown phase | Typo in the `phase` field — check available phase names |
+| Unknown step | Typo in the `stepType` field — check available step names |
 | Unknown provider | `providers.*` in the flow doesn't match any registered provider ID |
-| Missing required input | A phase requires an input that no upstream step produces |
+| Missing required input | A step requires an input that no upstream step produces |
 
-Available phase names: `getTicket`, `cloneRepos`, `analyze`, `plan`, `implement`, `commitPushRepos`, `createPR`, `cleanupRepos`, `addComment`, `updateStatus`, `review`, `requireField`.
+Available step names: `getTicket`, `cloneRepos`, `analyze`, `plan`, `implement`, `commitPushRepos`, `createPR`, `cleanupRepos`, `addComment`, `updateStatus`, `review`, `requireField`.
 
 ---
 
@@ -149,7 +149,7 @@ Verify the new product appears:
 
 ```bash
 curl -s http://localhost:3000/api/health | jq .
-# Check that flow/phase counts increased
+# Check that flow/step counts increased
 
 curl -s -H "Authorization: Bearer $JOURNEYMAN_API_TOKEN" \
   http://localhost:3000/api/flows | jq '.[].name'
@@ -273,7 +273,7 @@ products:
 
 ## Using the human-loop flow
 
-If the new product should gate each major phase (`analyze`, `plan`, code review) on human approval with bounded rework cycles, point it at the ready-made `human-loop` flow instead of writing a custom flow:
+If the new product should gate each major step (`analyze`, `plan`, code review) on human approval with bounded rework cycles, point it at the ready-made `human-loop` flow instead of writing a custom flow:
 
 ```yaml
 products:

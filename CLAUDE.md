@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-**Journeyman** is a configurable, phase-based AI pipeline that automates ticket → code → PR workflows. It's an npm workspaces monorepo built around a provider-pattern: AI coding CLIs (Claude, Gemini, Codex), git hosts (GitHub, GitLab), ticket trackers (Jira, Linear, Monday, GitHub Issues/Projects), and notification channels (Slack) are all swappable behind interfaces defined in `@journeyman/core`.
+**Journeyman** is a configurable, step-based AI pipeline that automates ticket → code → PR workflows. It's an npm workspaces monorepo built around a provider-pattern: AI coding CLIs (Claude, Gemini, Codex), git hosts (GitHub, GitLab), ticket trackers (Jira, Linear, Monday, GitHub Issues/Projects), and notification channels (Slack) are all swappable behind interfaces defined in `@journeyman/core`.
 
-A visual canvas editor (n8n-style) lets users drag-and-drop phase nodes, wire conditional branches, and configure retry/MCP/skills per node. Durable execution is backed by Conductor, with step retries and human-in-the-loop pause/resume.
+A visual canvas editor (n8n-style) lets users drag-and-drop step nodes, wire conditional branches, and configure retry/MCP/skills per node. Durable execution is backed by Conductor, with step retries and human-in-the-loop pause/resume.
 
 ## Architecture Layers
 
@@ -13,7 +13,7 @@ A visual canvas editor (n8n-style) lets users drag-and-drop phase nodes, wire co
 | **Web UI** | Visual canvas editor, live run monitoring, runs history |
 | **API Gateway** | Fastify REST + SSE; auth, validation, routing |
 | **Orchestrator** | Conductor adapter, worker harness, durable execution |
-| **Phases & Providers** | Per-node execution logic — AI coding, git, tickets, notifications |
+| **Steps & Providers** | Per-node execution logic — AI coding, git, tickets, notifications |
 | **Storage** | PostgreSQL (persistence) + Redis (job queue) |
 
 ## Monorepo Structure
@@ -46,8 +46,8 @@ journeyman/                  ← repo root
     ├── secrets/             ← user/org secret vault (AES encryption)
     ├── migrations/          ← SQL migrations (journeyman-migrate CLI)
     │
-    ├── phases/              ← built-in phase catalog
-    ├── custom-phases/       ← user-defined AI phases with prompt templates
+    ├── steps/              ← built-in step catalog
+    ├── custom-steps/       ← user-defined AI steps with prompt templates
     │
     ├── coding-cli/          ← Claude/Gemini/Codex providers (analyze, plan, implement, git)
     ├── coding-models/       ← AI model provider configuration
@@ -88,12 +88,12 @@ journeyman/                  ← repo root
 | `@journeyman/secrets` | User- and org-scoped secret vault with AES encryption. |
 | `@journeyman/migrations` | SQL migrations (`journeyman-migrate` CLI). |
 
-### Phases
+### Steps
 
 | Package | Scope |
 |---|---|
-| `@journeyman/phases` | Built-in phase catalog (getTicket, analyze, plan, implement, createPR, …). |
-| `@journeyman/custom-phases` | User-defined AI phase registration with prompt templates. |
+| `@journeyman/steps` | Built-in step catalog (getTicket, analyze, plan, implement, createPR, …). |
+| `@journeyman/custom-steps` | User-defined AI step registration with prompt templates. |
 
 ### Providers
 
@@ -228,7 +228,7 @@ npm run build:web
 | `analyze` / `plan` / `implement` consume `mcps?: ResolvedMcpInstance[]` | Implemented |
 | Flow-editor MCP picker UI + worker pre-resolution of `mcpInstanceIds` | Implemented |
 | Legacy `config.mcp` / `config.allowedTools` migration (load-time strip) | Implemented |
-| `PhaseDefinition.supportsMcp` flag | Removed (replaced by `tabs.mcp`) |
+| `StepDefinition.supportsMcp` flag | Removed (replaced by `tabs.mcp`) |
 
 ## Adding a New Provider
 

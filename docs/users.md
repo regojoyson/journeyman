@@ -63,13 +63,13 @@ Admins manage users via the UI at `/admin/users` or via the following endpoints:
 
 | Role | Capabilities |
 |---|---|
-| `user` | Create and edit own flows, runs, secrets, MCPs, skills, and custom phases |
+| `user` | Create and edit own flows, runs, secrets, MCPs, skills, and custom steps |
 | `admin` | All `user` permissions, plus manage org users, org-scoped resources, and org settings |
 | Platform admin | Cross-org access; assigned via the bootstrap CLI only — not manageable through the normal user API |
 
 ## Orgs
 
-Each Journeyman deployment can host multiple orgs. A user belongs to one org. Org-scoped resources — secrets, MCP instances, skills, and custom phases — are shared among all members of that org.
+Each Journeyman deployment can host multiple orgs. A user belongs to one org. Org-scoped resources — secrets, MCP instances, skills, and custom steps — are shared among all members of that org.
 
 Org management endpoints are available under `/orgs` and are accessible to platform admins and, for their own org, to org admins.
 

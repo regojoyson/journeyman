@@ -7,11 +7,11 @@ import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { WorkflowGraph, WorkflowScope, WorkflowInputValue } from "@journeyman/core";
 import { ConductorJsonConverter } from "@journeyman/orchestrator";
-import { phaseCatalog, buildPhaseConfigValidators } from "@journeyman/phases/catalog";
+import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
-import { getCustomAiPhase } from "@journeyman/custom-phases";
-import { customPhaseToShape, type CustomPhaseShape } from "@journeyman/custom-phases/shape-adapter";
+import { getCustomAiStep } from "@journeyman/custom-steps";
+import { customStepToShape, type CustomStepShape } from "@journeyman/custom-steps/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { WorkflowSaveWarning, SecretBinding, SecretScope, SecretSlotDef } from "@journeyman/core";
@@ -41,18 +41,18 @@ async function computeSaveWarnings(
   const crossScope: Array<{ nodeId: string; slot: string; pinnedScope: SecretScope; workflowScope: WorkflowScope }> = [];
   const orphans: Array<{ nodeId: string; slot: string }> = [];
 
-  // Pre-load slot definitions for any custom-ai phases referenced by the workflow.
+  // Pre-load slot definitions for any custom-ai steps referenced by the workflow.
   const customSlotsById = new Map<string, SecretSlotDef[]>();
   const customIds = new Set<string>();
   for (const node of definition.nodes) {
-    if (node.phaseType === "custom-ai") {
-      const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (node.stepType === "custom-ai") {
+      const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
       if (typeof id === "string" && id) customIds.add(id);
     }
   }
   for (const id of customIds) {
-    const phase = await getCustomAiPhase(c.pool, id);
-    if (phase) customSlotsById.set(id, phase.slots ?? []);
+    const step = await getCustomAiStep(c.pool, id);
+    if (step) customSlotsById.set(id, step.slots ?? []);
   }
 
   for (const node of definition.nodes) {
@@ -60,11 +60,11 @@ async function computeSaveWarnings(
 
     // Build the declared-slot name set for orphan detection on custom-ai nodes.
     // Union of:
-    //   1. DB custom phase slots (per-definition, e.g. user-declared)
+    //   1. DB custom step slots (per-definition, e.g. user-declared)
     //   2. Provider catalog slots (executor-level, e.g. ANTHROPIC_API_KEY for coding-cli/claude)
     let declaredSlotNames: Set<string> | null = null;
-    if (node.phaseType === "custom-ai") {
-      const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (node.stepType === "custom-ai") {
+      const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
       const dbSlots = typeof id === "string" ? customSlotsById.get(id) ?? [] : [];
       const providerValue =
         node.executorConfig?.provider ??
@@ -88,7 +88,7 @@ async function computeSaveWarnings(
 
     for (const [slotName, binding] of Object.entries(bindings)) {
       // Orphan binding (custom-ai only): slot exists in node config but
-      // is no longer declared on the phase definition.
+      // is no longer declared on the step definition.
       if (declaredSlotNames && !declaredSlotNames.has(slotName)) {
         orphans.push({ nodeId: node.id, slot: slotName });
         continue;
@@ -130,7 +130,7 @@ async function computeSaveWarnings(
   if (orphans.length > 0) {
     warnings.push({
       code: "orphan_secret_binding",
-      message: `${orphans.length} secret binding(s) reference slots that are no longer declared on the custom phase.`,
+      message: `${orphans.length} secret binding(s) reference slots that are no longer declared on the custom step.`,
       entries: orphans,
     });
   }
@@ -143,7 +143,7 @@ async function computeSaveWarnings(
       refs.push({ location: "workflow-default", modelId: definition.defaults.defaultModel });
     }
     for (const node of definition.nodes) {
-      if (node.type === "phase" && typeof node.model === "string" && node.model) {
+      if (node.type === "step" && typeof node.model === "string" && node.model) {
         refs.push({ location: "node", nodeId: node.id, modelId: node.model });
       }
     }
@@ -191,12 +191,12 @@ export interface WorkflowValidationReport {
 }
 
 /** Pure function — does not mutate any reply. Returns the full report.
- *  `customPhaseShapes` maps a customPhaseId to its declared inputFields and
+ *  `customStepShapes` maps a customStepId to its declared inputFields and
  *  outputSchema, so custom-ai nodes get per-instance validation on both
  *  consumer side (required fields) and source side (ref output resolution). */
 export function computeValidationReport(
   definition: WorkflowGraph,
-  customPhaseShapes: Map<string, CustomPhaseShape> = new Map(),
+  customStepShapes: Map<string, CustomStepShape> = new Map(),
 ): WorkflowValidationReport {
   const errors: string[] = [];
   const missing: string[] = [];
@@ -208,22 +208,22 @@ export function computeValidationReport(
     errors.push(e instanceof Error ? e.message : String(e));
   }
 
-  const inputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.inputFields ?? {}]));
+  const inputsByStep = new Map(stepCatalog.map((p) => [p.stepType, p.inputFields ?? {}]));
 
   function declaredInputsFor(node: WorkflowGraph["nodes"][number]): Record<string, unknown> {
-    if (node.phaseType === "custom-ai") {
-      const cfg = (node.config ?? {}) as { customPhaseId?: string };
-      const id = cfg.customPhaseId;
-      if (id && customPhaseShapes.has(id)) {
-        return customPhaseShapes.get(id)!.inputFields as Record<string, unknown>;
+    if (node.stepType === "custom-ai") {
+      const cfg = (node.config ?? {}) as { customStepId?: string };
+      const id = cfg.customStepId;
+      if (id && customStepShapes.has(id)) {
+        return customStepShapes.get(id)!.inputFields as Record<string, unknown>;
       }
     }
-    return inputsByPhase.get(node.phaseType ?? "") ?? {};
+    return inputsByStep.get(node.stepType ?? "") ?? {};
   }
 
-  // Check 1: required input fields are satisfied (typed value or binding) on every phase node.
+  // Check 1: required input fields are satisfied (typed value or binding) on every step node.
   for (const node of definition.nodes) {
-    if (node.type !== "phase" || !node.phaseType) continue;
+    if (node.type !== "step" || !node.stepType) continue;
     const declared = declaredInputsFor(node);
     const config = (node.config ?? {}) as Record<string, unknown>;
     const inputs = (node.inputs ?? {}) as Record<string, { kind?: string }>;
@@ -234,33 +234,33 @@ export function computeValidationReport(
       const cv = config[fieldName];
       const hasTyped = cv !== undefined && cv !== null && cv !== "";
       if (!hasBinding && !hasTyped) {
-        missing.push(`'${node.displayName ?? node.id}' (${node.phaseType}) is missing required input '${fieldName}'`);
+        missing.push(`'${node.displayName ?? node.id}' (${node.stepType}) is missing required input '${fieldName}'`);
       }
     }
   }
 
   // Check 2: shape-aware ref + binding validation (delegates to @journeyman/core).
-  // Walks every phase node, validates each input against its catalog declaration:
+  // Walks every step node, validates each input against its catalog declaration:
   // shape-mismatch, dangling-ref-node, dangling-ref-path, missing-input-shape.
   // missing-required is already handled by Check 1 above (which produces a
   // hard-blocking `missing[]` signal — keep that contract intact).
   const validationCatalog: ValidationCatalog = {};
-  for (const entry of phaseCatalog) {
-    validationCatalog[entry.phaseType] = {
+  for (const entry of stepCatalog) {
+    validationCatalog[entry.stepType] = {
       inputFields: entry.inputFields,
       outputSchema: entry.outputSchema,
     };
   }
-  // Per-customPhaseId overlay on the "custom-ai" entry. The core validator
+  // Per-customStepId overlay on the "custom-ai" entry. The core validator
   // resolves a node's effective inputFields/outputSchema by checking
-  // customPhases[customPhaseId] on both the consumer side and source side
-  // (refs into a custom-ai node's output). No phaseType rewrite needed.
-  if (customPhaseShapes.size > 0) {
+  // customSteps[customStepId] on both the consumer side and source side
+  // (refs into a custom-ai node's output). No stepType rewrite needed.
+  if (customStepShapes.size > 0) {
     const existing = validationCatalog["custom-ai"] ?? {};
-    const customPhases: NonNullable<ValidationCatalog[string]["customPhases"]> = { ...(existing.customPhases ?? {}) };
-    for (const [id, shape] of customPhaseShapes) {
-      const prior = customPhases[id];
-      customPhases[id] = {
+    const customSteps: NonNullable<ValidationCatalog[string]["customSteps"]> = { ...(existing.customSteps ?? {}) };
+    for (const [id, shape] of customStepShapes) {
+      const prior = customSteps[id];
+      customSteps[id] = {
         name: prior?.name ?? id,
         requiresSkills: prior?.requiresSkills ?? false,
         defaultSkillIds: prior?.defaultSkillIds ?? [],
@@ -270,7 +270,7 @@ export function computeValidationReport(
         outputSchema: shape.outputSchema,
       };
     }
-    validationCatalog["custom-ai"] = { ...existing, customPhases };
+    validationCatalog["custom-ai"] = { ...existing, customSteps };
   }
   const inputWarnings = validateWorkflowInputs(definition, validationCatalog);
   for (const w of inputWarnings) {
@@ -281,22 +281,22 @@ export function computeValidationReport(
   return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };
 }
 
-async function loadCustomPhaseShapes(
+async function loadCustomStepShapes(
   c: Composition,
   graph: WorkflowGraph,
-): Promise<Map<string, CustomPhaseShape>> {
-  const map = new Map<string, CustomPhaseShape>();
+): Promise<Map<string, CustomStepShape>> {
+  const map = new Map<string, CustomStepShape>();
   if (!c.pool) return map;
   const ids = new Set<string>();
   for (const n of graph.nodes) {
-    if (n.type === "phase" && n.phaseType === "custom-ai") {
-      const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
+    if (n.type === "step" && n.stepType === "custom-ai") {
+      const id = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
       if (typeof id === "string" && id) ids.add(id);
     }
   }
   for (const id of ids) {
-    const phase = await getCustomAiPhase(c.pool, id);
-    if (phase) map.set(id, customPhaseToShape(phase));
+    const step = await getCustomAiStep(c.pool, id);
+    if (step) map.set(id, customStepToShape(step));
   }
   return map;
 }
@@ -330,8 +330,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       reply.code(400);
       return { error: "bad_request", message: "definition is required" };
     }
-    const customPhaseShapes = await loadCustomPhaseShapes(c, body.definition);
-    const report = computeValidationReport(body.definition, customPhaseShapes);
+    const customStepShapes = await loadCustomStepShapes(c, body.definition);
+    const report = computeValidationReport(body.definition, customStepShapes);
     const callerScope: WorkflowScope = "user";
     const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
 
@@ -340,25 +340,25 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     // without the user having to attempt a publish to see them.
     const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
     const visibleSecretNames = new Set(visible.map((v) => v.name));
-    const customAiPhaseDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
+    const customAiStepDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
     if (c.pool) {
-      const customPhaseIds = new Set<string>();
+      const customStepIds = new Set<string>();
       for (const node of body.definition.nodes) {
-        if (node.type === "phase" && node.phaseType === "custom-ai") {
-          const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-          if (typeof id === "string" && id) customPhaseIds.add(id);
+        if (node.type === "step" && node.stepType === "custom-ai") {
+          const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+          if (typeof id === "string" && id) customStepIds.add(id);
         }
       }
-      for (const id of customPhaseIds) {
-        const phase = await getCustomAiPhase(c.pool, id);
-        if (phase) customAiPhaseDefaults.set(id, { defaultTools: phase.defaultTools });
+      for (const id of customStepIds) {
+        const step = await getCustomAiStep(c.pool, id);
+        if (step) customAiStepDefaults.set(id, { defaultTools: step.defaultTools });
       }
     }
     const publishResult = validateForPublish(body.definition, {
       hasTrigger: hasWorkflowTrigger(body.definition),
       visibleSecretNames,
-      phaseConfigValidators: buildPhaseConfigValidators(phaseCatalog),
-      customAiPhaseDefaults,
+      stepConfigValidators: buildStepConfigValidators(stepCatalog),
+      customAiStepDefaults,
     });
     const seenErrors = new Set(report.errors);
     const seenMissing = new Set(report.missing);
@@ -374,13 +374,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
         if (!seenErrors.has(msg)) { report.errors.push(msg); seenErrors.add(msg); }
       }
     }
-    const customPhaseDefs = await loadCustomPhaseShapes(c, body.definition);
-    const catalogMap = new Map(phaseCatalog.map(p => [
-      p.phaseType,
-      { phaseType: p.phaseType, inputFields: p.inputFields, outputSchema: p.outputSchema },
+    const customStepDefs = await loadCustomStepShapes(c, body.definition);
+    const catalogMap = new Map(stepCatalog.map(p => [
+      p.stepType,
+      { stepType: p.stepType, inputFields: p.inputFields, outputSchema: p.outputSchema },
     ]));
     try {
-      ConductorJsonConverter.validateGraph(body.definition, catalogMap, customPhaseDefs);
+      ConductorJsonConverter.validateGraph(body.definition, catalogMap, customStepDefs);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (!seenErrors.has(msg)) {
@@ -542,28 +542,28 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
     const visibleSecretNames = new Set(visible.map(v => v.name));
 
-    const customAiPhaseDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
+    const customAiStepDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
     if (c.pool) {
-      const customPhaseIds = new Set<string>();
+      const customStepIds = new Set<string>();
       for (const node of version.definition.nodes) {
-        if (node.type === "phase" && node.phaseType === "custom-ai") {
-          const id = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-          if (typeof id === "string" && id) customPhaseIds.add(id);
+        if (node.type === "step" && node.stepType === "custom-ai") {
+          const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+          if (typeof id === "string" && id) customStepIds.add(id);
         }
       }
-      for (const id of customPhaseIds) {
-        const phase = await getCustomAiPhase(c.pool, id);
-        if (phase) customAiPhaseDefaults.set(id, { defaultTools: phase.defaultTools });
+      for (const id of customStepIds) {
+        const step = await getCustomAiStep(c.pool, id);
+        if (step) customAiStepDefaults.set(id, { defaultTools: step.defaultTools });
       }
     }
 
     try {
-      const customPhaseDefs = await loadCustomPhaseShapes(c, version.definition);
-      const catalogMap = new Map(phaseCatalog.map(p => [
-        p.phaseType,
-        { phaseType: p.phaseType, inputFields: p.inputFields, outputSchema: p.outputSchema },
+      const customStepDefs = await loadCustomStepShapes(c, version.definition);
+      const catalogMap = new Map(stepCatalog.map(p => [
+        p.stepType,
+        { stepType: p.stepType, inputFields: p.inputFields, outputSchema: p.outputSchema },
       ]));
-      ConductorJsonConverter.validateGraph(version.definition, catalogMap, customPhaseDefs);
+      ConductorJsonConverter.validateGraph(version.definition, catalogMap, customStepDefs);
     } catch (e) {
       reply.code(400);
       return { errors: [{ code: "shape_mismatch", message: e instanceof Error ? e.message : String(e) }] };
@@ -572,8 +572,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const result = validateForPublish(version.definition, {
       hasTrigger: hasWorkflowTrigger(version.definition),
       visibleSecretNames,
-      phaseConfigValidators: buildPhaseConfigValidators(phaseCatalog),
-      customAiPhaseDefaults,
+      stepConfigValidators: buildStepConfigValidators(stepCatalog),
+      customAiStepDefaults,
     });
     if (!result.ok) { reply.code(400); return { errors: result.errors.filter(e => !e.severity || e.severity === "error") }; }
 

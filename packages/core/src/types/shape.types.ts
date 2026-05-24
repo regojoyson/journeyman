@@ -1,6 +1,6 @@
 /**
  * Shape — the runtime-resolved type of a value flowing through the pipeline.
- * Phase outputs and inputs declare shapes; the flow editor uses them to render
+ * Step outputs and inputs declare shapes; the flow editor uses them to render
  * the value picker and validate ref bindings at flow-save time.
  *
  * Discriminated union; resolveShape() flattens "ref" entries against the

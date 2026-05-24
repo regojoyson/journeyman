@@ -1,10 +1,10 @@
 import type { WorkflowGraph, Shape } from "@journeyman/core";
 import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
-import type { PhaseCatalogEntry } from "../catalogs/use-phase-catalog.ts";
+import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 
 /**
  * When the *expected* input shape is `object` with no declared fields (custom
- * phases that declare a plain `object` input), accept any object as actual.
+ * steps that declare a plain `object` input), accept any object as actual.
  */
 function isWildcardMatch(actual: Shape, expected: Shape): boolean {
   const ra = resolveShape(actual);
@@ -20,7 +20,7 @@ export function validateRefShape(
   flow: WorkflowGraph,
   ref: string,
   expected: Shape,
-  catalog: Record<string, PhaseCatalogEntry>,
+  catalog: Record<string, StepCatalogEntry>,
 ): { ok: boolean; error?: string } {
   const m =
     /^([^.]+)\.(input|output)\.(.+)$/.exec(ref)
@@ -50,8 +50,8 @@ export function validateRefShape(
   }
 
   const node = flow.nodes.find(n => n.id === source);
-  if (!node || node.type !== "phase" || !node.phaseType) return { ok: false, error: `Bad node '${source}'` };
-  const entry = catalog[node.phaseType];
+  if (!node || node.type !== "step" || !node.stepType) return { ok: false, error: `Bad node '${source}'` };
+  const entry = catalog[node.stepType];
   root = scope === "output" ? entry?.outputSchema?.[path[0]] : entry?.inputFields?.[path[0]]?.shape;
   if (!root) return { ok: false, error: `Field '${scope}.${path[0]}' not on '${source}'` };
 

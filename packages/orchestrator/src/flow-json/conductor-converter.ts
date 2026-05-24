@@ -10,7 +10,7 @@ import type {
 import { resolveInputs, parseRef } from "./resolve-inputs.ts";
 import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
-import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomPhaseShapeEntry } from "./validate-ref-shape.ts";
+import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomStepShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
 
 export class UnsupportedNodeTypeError extends Error {
@@ -28,9 +28,9 @@ export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorW
   static validateGraph(
     graph: WorkflowGraph,
     catalog?: Map<string, CatalogShapeEntry>,
-    customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+    customStepDefs?: Map<string, CustomStepShapeEntry>,
   ): void {
-    new ConvertCtx(graph, catalog, customPhaseDefs).validate();
+    new ConvertCtx(graph, catalog, customStepDefs).validate();
   }
 
   toEngineJson(def: WorkflowGraph, opts: {
@@ -63,7 +63,7 @@ class ConvertCtx {
   constructor(
     public flow: WorkflowGraph,
     private catalog?: Map<string, CatalogShapeEntry>,
-    private customPhaseDefs?: Map<string, CustomPhaseShapeEntry>,
+    private customStepDefs?: Map<string, CustomStepShapeEntry>,
   ) {
     this.nodes = new Map(flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
@@ -134,17 +134,17 @@ class ConvertCtx {
             );
           }
           // Shape compatibility (only when a catalog is supplied).
-          if (enforceShape && this.catalog && node.type === "phase" && node.phaseType) {
+          if (enforceShape && this.catalog && node.type === "step" && node.stepType) {
             let expected: Shape | undefined;
-            if (node.phaseType === "custom-ai") {
-              const customId = (node.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-              const def = typeof customId === "string" && customId ? this.customPhaseDefs?.get(customId) : undefined;
+            if (node.stepType === "custom-ai") {
+              const customId = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+              const def = typeof customId === "string" && customId ? this.customStepDefs?.get(customId) : undefined;
               expected = def?.inputFields?.[field]?.shape;
             } else {
-              expected = this.catalog.get(node.phaseType)?.inputFields?.[field]?.shape;
+              expected = this.catalog.get(node.stepType)?.inputFields?.[field]?.shape;
             }
             if (expected) {
-              const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog, this.customPhaseDefs);
+              const result = validateRefShapeAgainst(this.flow, ref, expected, this.catalog, this.customStepDefs);
               if (!result.ok) {
                 throw new WorkflowValidationError(
                   `Node ${this.label(node)} input '${field}': ${result.error}`,
@@ -190,7 +190,7 @@ class ConvertCtx {
 
   emitNode(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     switch (node.type) {
-      case "phase":        return this.emitPhase(node);
+      case "step":        return this.emitStep(node);
       case "gateway-xor":
       case "if":           return this.emitSwitch(node);
       case "gateway-and":  return this.emitForkJoin(node);
@@ -204,15 +204,15 @@ class ConvertCtx {
     }
   }
 
-  emitPhase(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
-    if (!node.phaseType) throw new WorkflowValidationError(`Phase node ${this.label(node)} missing phaseType`);
+  emitStep(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
+    if (!node.stepType) throw new WorkflowValidationError(`Step node ${this.label(node)} missing stepType`);
     const { resolved: resolvedNode, sources: defaultSources } = applyWorkflowDefaults(node, this.flow.defaults);
     const r = resolvedNode.retry ?? {};
     const enabled = r.enabled === true;
 
     const task: SimpleTask = {
       type: "SIMPLE",
-      name: resolvedNode.phaseType!,
+      name: resolvedNode.stepType!,
       taskReferenceName: resolvedNode.id,
       inputParameters: (() => {
         const bindings = resolvedNode.secretBindings ?? {};

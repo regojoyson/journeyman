@@ -1,6 +1,6 @@
 import { StartNode } from "./nodes/StartNode.tsx";
 import { EndNode } from "./nodes/EndNode.tsx";
-import { PhaseNode } from "./nodes/PhaseNode.tsx";
+import { StepNode } from "./nodes/StepNode.tsx";
 import { GatewayXorNode } from "./nodes/GatewayXorNode.tsx";
 import { GatewayAndNode } from "./nodes/GatewayAndNode.tsx";
 import { LoopNode } from "./nodes/LoopNode.tsx";
@@ -16,7 +16,7 @@ import { ElseEdge } from "./edges/ElseEdge.tsx";
 export const nodeTypes = {
   start: StartNode,
   end: EndNode,
-  phase: PhaseNode,
+  step: StepNode,
   "gateway-xor": GatewayXorNode,
   "gateway-and": GatewayAndNode,
   loop: LoopNode,

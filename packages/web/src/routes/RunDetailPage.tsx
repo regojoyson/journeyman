@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { WorkflowInstanceViewer as RunViewer } from "@journeyman/run-viewer";
-import { PhaseRegistryProvider, OrgIdProvider } from "@journeyman/flow-editor";
-import { builtInPhases } from "@journeyman/phases";
+import { StepRegistryProvider, OrgIdProvider } from "@journeyman/flow-editor";
+import { builtInSteps } from "@journeyman/steps";
 import type { WorkflowInstanceEvent } from "@journeyman/core";
 import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
 import { useRunActions } from "../hooks/useRunActions.ts";
@@ -105,7 +105,7 @@ export function RunDetailPage() {
         </div>
       )}
       <OrgIdProvider orgId={activeOrgId ?? ""}>
-      <PhaseRegistryProvider phases={builtInPhases}>
+      <StepRegistryProvider steps={builtInSteps}>
       <RunViewer
         workflow={detailQ.data.workflowInstance.definitionSnapshot}
         workflowName={
@@ -124,7 +124,7 @@ export function RunDetailPage() {
         onFork={isViewer ? undefined : () => actions.fork.mutate()}
         onRefresh={() => { setLiveEvents([]); detailQ.refetch(); }}
       />
-      </PhaseRegistryProvider>
+      </StepRegistryProvider>
       </OrgIdProvider>
       {busy && (
         <div style={{ position: "fixed", bottom: 16, left: 16, color: "#888", fontSize: 11 }}>

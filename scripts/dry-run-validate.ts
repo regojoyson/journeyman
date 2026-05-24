@@ -3,7 +3,7 @@
  *
  * Runs the same checks the api-server uses on save:
  *   1) ConductorJsonConverter.validateGraph (graph structure, ref reachability)
- *   2) Required-input check against @journeyman/phases catalog
+ *   2) Required-input check against @journeyman/steps catalog
  *   3) Ref-shape check (refs point at declared input/output fields)
  *
  * Also attempts a full toEngineJson() conversion to confirm the flow compiles
@@ -15,15 +15,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ConductorJsonConverter, parseRef } from "@journeyman/orchestrator";
-import { phaseCatalog } from "@journeyman/phases/catalog";
-import type { FlowGraph } from "@journeyman/core";
+import { stepCatalog } from "@journeyman/steps/catalog";
+import type { WorkflowGraph } from "@journeyman/core";
 
 const file = process.argv[2];
 if (!file) {
   console.error("Usage: tsx scripts/dry-run-validate.ts <flow.json>");
   process.exit(2);
 }
-const raw = JSON.parse(readFileSync(resolve(file), "utf8")) as { definition: FlowGraph; name: string };
+const raw = JSON.parse(readFileSync(resolve(file), "utf8")) as { definition: WorkflowGraph; name: string };
 const def = raw.definition;
 
 const errors: string[] = [];
@@ -36,14 +36,14 @@ try {
   errors.push(e instanceof Error ? e.message : String(e));
 }
 
-const outputsByPhase = new Map(phaseCatalog.map((p) => [p.phaseType, p.outputSchema ?? {}]));
-const inputsByPhase  = new Map(phaseCatalog.map((p) => [p.phaseType, p.inputFields  ?? {}]));
+const outputsByStep = new Map(stepCatalog.map((p) => [p.stepType, p.outputSchema ?? {}]));
+const inputsByStep  = new Map(stepCatalog.map((p) => [p.stepType, p.inputFields  ?? {}]));
 
 for (const node of def.nodes) {
-  if (node.type !== "phase" || !node.phaseType) continue;
-  const declared = inputsByPhase.get(node.phaseType);
+  if (node.type !== "step" || !node.stepType) continue;
+  const declared = inputsByStep.get(node.stepType);
   if (!declared) {
-    errors.push(`unknown phase type '${node.phaseType}' on node '${node.id}'`);
+    errors.push(`unknown step type '${node.stepType}' on node '${node.id}'`);
     continue;
   }
   const config = (node.config ?? {}) as Record<string, unknown>;
@@ -54,7 +54,7 @@ for (const node of def.nodes) {
     const cv = config[field];
     const hasTyped = cv !== undefined && cv !== null && cv !== "";
     if (!hasBinding && !hasTyped) {
-      missing.push(`'${node.id}' (${node.phaseType}) missing required input '${field}'`);
+      missing.push(`'${node.id}' (${node.stepType}) missing required input '${field}'`);
     }
   }
 }
@@ -65,12 +65,12 @@ for (const node of def.nodes) {
     const parsed = parseRef((v as { ref: string }).ref);
     if (!parsed || parsed.scope === "workflow.input") continue;
     const upstream = def.nodes.find((n) => n.id === parsed.source);
-    if (!upstream?.phaseType) continue;
+    if (!upstream?.stepType) continue;
     const declared = parsed.scope === "input"
-      ? (inputsByPhase.get(upstream.phaseType) ?? {})
-      : (outputsByPhase.get(upstream.phaseType) ?? {});
+      ? (inputsByStep.get(upstream.stepType) ?? {})
+      : (outputsByStep.get(upstream.stepType) ?? {});
     if (!(parsed.field in declared)) {
-      warnings.push(`'${node.id}.${field}' refs undeclared ${parsed.scope} field '${parsed.field}' on '${upstream.phaseType}'`);
+      warnings.push(`'${node.id}.${field}' refs undeclared ${parsed.scope} field '${parsed.field}' on '${upstream.stepType}'`);
     }
   }
 }

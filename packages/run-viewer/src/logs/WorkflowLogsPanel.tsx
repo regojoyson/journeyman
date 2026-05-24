@@ -34,15 +34,15 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     assistant: true, tool: true, tool_result: true,
     result_ok: true, result_err: true, other: true,
   });
-  const [activePhases, setActivePhases] = useState<Set<string>>(new Set());
+  const [activeSteps, setActiveSteps] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState<string>("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  const phaseChips = useMemo(() => {
+  const stepChips = useMemo(() => {
     const seen = new Map<string, string>();
     for (const l of allLogs) {
-      if (l.nodeId && !seen.has(l.nodeId)) seen.set(l.nodeId, l.phaseName);
+      if (l.nodeId && !seen.has(l.nodeId)) seen.set(l.nodeId, l.stepName);
     }
     return Array.from(seen, ([id, name]) => ({ id, name }));
   }, [allLogs]);
@@ -51,13 +51,13 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     const q = search.trim().toLowerCase();
     return allLogs.filter(l => {
       if (!activeKinds[l.kind]) return false;
-      if (activePhases.size > 0) {
-        if (!l.nodeId || !activePhases.has(l.nodeId)) return false;
+      if (activeSteps.size > 0) {
+        if (!l.nodeId || !activeSteps.has(l.nodeId)) return false;
       }
       if (q && !l.line.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [allLogs, activeKinds, activePhases, search]);
+  }, [allLogs, activeKinds, activeSteps, search]);
 
   const kindCounts = useMemo(() => {
     const c: Partial<Record<LogKind, number>> = {};
@@ -110,15 +110,15 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
   const toggleKind = (k: LogKind) =>
     setActiveKinds(prev => ({ ...prev, [k]: !prev[k] }));
 
-  const togglePhase = (nodeId: string) =>
-    setActivePhases(prev => {
+  const toggleStep = (nodeId: string) =>
+    setActiveSteps(prev => {
       const next = new Set(prev);
       if (next.has(nodeId)) next.delete(nodeId);
       else next.add(nodeId);
       return next;
     });
 
-  const clearPhases = () => setActivePhases(new Set());
+  const clearSteps = () => setActiveSteps(new Set());
 
   const toggleExpand = (id: number) =>
     setExpanded(prev => {
@@ -139,7 +139,7 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
   const copyAll = async () => {
     const text = filtered
       .map(l => {
-        const head = `[${fmtTime(l.ts)}] [${l.phaseName}] ${l.line}`;
+        const head = `[${fmtTime(l.ts)}] [${l.stepName}] ${l.line}`;
         const sub = l.meta && Object.keys(l.meta).length > 0
           ? `\n${JSON.stringify(l.meta, null, 2)}`
           : "";
@@ -231,33 +231,33 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
         </div>
       )}
 
-      {phaseChips.length > 0 && (
+      {stepChips.length > 0 && (
         <div className="je-runview__log-filters">
           <button
             type="button"
-            onClick={clearPhases}
-            className={`je-runview__log-chip${activePhases.size === 0 ? " je-runview__log-chip--on" : ""}`}
+            onClick={clearSteps}
+            className={`je-runview__log-chip${activeSteps.size === 0 ? " je-runview__log-chip--on" : ""}`}
             style={{
               borderColor: "#888",
-              color: activePhases.size === 0 ? "#1a1a24" : "#aaa",
-              background: activePhases.size === 0 ? "#888" : "transparent",
+              color: activeSteps.size === 0 ? "#1a1a24" : "#aaa",
+              background: activeSteps.size === 0 ? "#888" : "transparent",
             }}
-            title="Show all phases"
-          >All phases</button>
-          {phaseChips.map(p => {
-            const on = activePhases.has(p.id);
+            title="Show all steps"
+          >All steps</button>
+          {stepChips.map(p => {
+            const on = activeSteps.has(p.id);
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => togglePhase(p.id)}
+                onClick={() => toggleStep(p.id)}
                 className={`je-runview__log-chip${on ? " je-runview__log-chip--on" : ""}`}
                 style={{
                   borderColor: "#7d8aff",
                   color: on ? "#1a1a24" : "#7d8aff",
                   background: on ? "#7d8aff" : "transparent",
                 }}
-                title={`Toggle phase ${p.name}`}
+                title={`Toggle step ${p.name}`}
               >{p.name}</button>
             );
           })}
@@ -285,14 +285,14 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
               >
                 <span className="je-runview__log-time">{fmtTime(l.ts)}</span>
                 <span
-                  className="je-runview__log-phase"
+                  className="je-runview__log-step"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (l.nodeId) setActivePhases(new Set([l.nodeId]));
+                    if (l.nodeId) setActiveSteps(new Set([l.nodeId]));
                   }}
-                  title={l.nodeId ? `Filter to phase: ${l.phaseName}` : undefined}
+                  title={l.nodeId ? `Filter to step: ${l.stepName}` : undefined}
                   style={{ cursor: l.nodeId ? "pointer" : "default" }}
-                >{l.phaseName}</span>
+                >{l.stepName}</span>
                 {hasMeta && (
                   <span className="je-runview__log-caret">{isExpanded ? "▾" : "▸"}</span>
                 )}

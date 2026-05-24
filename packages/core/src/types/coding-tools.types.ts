@@ -1,4 +1,4 @@
-// Canonical, provider-agnostic tool vocabulary used by custom AI phases.
+// Canonical, provider-agnostic tool vocabulary used by custom AI steps.
 // Each coding-cli provider owns a mapping from these names to its native tool
 // names. See packages/coding-cli/src/providers/*/tool-mapping.ts.
 

@@ -9,10 +9,10 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
-import { newPhaseNode, newEdge } from "../state/flow-graph.ts";
+import { newStepNode, newEdge } from "../state/flow-graph.ts";
 import { autoPopulateCustomAiDefaults } from "./auto-populate-defaults.ts";
-import type { PhaseRunState } from "../phase-definition.ts";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import type { StepRunState } from "../step-definition.ts";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 import {
   KNOWN_NODE_TYPES,
   toReactWorkflowEdges,
@@ -21,43 +21,43 @@ import {
 } from "./flow-rf-adapters.ts";
 import { HelpPanel } from "./HelpPanel.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
-import { usePhaseCatalog } from "../catalogs/use-phase-catalog.ts";
-import { useCustomPhaseDefs } from "../catalogs/use-custom-phase-defs.ts";
-import { collectCustomPhaseIds } from "../properties-panel/use-upstream-sources.ts";
-import { customPhaseToShape } from "@journeyman/custom-phases/shape-adapter";
-import type { CustomAiPhase, InputFields } from "@journeyman/core";
+import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
+import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
+import { collectCustomStepIds } from "../properties-panel/use-upstream-sources.ts";
+import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
+import type { CustomAiStep, InputFields } from "@journeyman/core";
 
 /**
- * Best-effort: for each required input field on `newNode`, scan existing phase
+ * Best-effort: for each required input field on `newNode`, scan existing step
  * nodes for one whose outputSchema declares a field of the same name. If
  * exactly one match exists, bind. If 0 or >1, skip — user picks manually.
  */
 function autoBindNewNode(
   newNode: WorkflowNode,
   existingNodes: WorkflowNode[],
-  catalog: ReturnType<typeof usePhaseCatalog>,
-  customPhaseDefs?: Record<string, CustomAiPhase | null>,
+  catalog: ReturnType<typeof useStepCatalog>,
+  customStepDefs?: Record<string, CustomAiStep | null>,
 ): WorkflowNode {
-  if (newNode.type !== "phase" || !newNode.phaseType) return newNode;
+  if (newNode.type !== "step" || !newNode.stepType) return newNode;
 
   let required: InputFields = {};
   const outputSchemaForCandidate = (n: WorkflowNode): Record<string, unknown> => {
-    if (n.type !== "phase" || !n.phaseType) return {};
-    if (n.phaseType === "custom-ai") {
-      const id = (n.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-      const def = typeof id === "string" && id ? customPhaseDefs?.[id] : undefined;
-      return def ? (customPhaseToShape(def).outputSchema ?? {}) : {};
+    if (n.type !== "step" || !n.stepType) return {};
+    if (n.stepType === "custom-ai") {
+      const id = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
+      const def = typeof id === "string" && id ? customStepDefs?.[id] : undefined;
+      return def ? (customStepToShape(def).outputSchema ?? {}) : {};
     }
-    return catalog[n.phaseType]?.outputSchema ?? {};
+    return catalog[n.stepType]?.outputSchema ?? {};
   };
 
-  if (newNode.phaseType === "custom-ai") {
-    const customId = (newNode.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-    const def = typeof customId === "string" && customId ? customPhaseDefs?.[customId] : undefined;
+  if (newNode.stepType === "custom-ai") {
+    const customId = (newNode.config as { customStepId?: unknown } | undefined)?.customStepId;
+    const def = typeof customId === "string" && customId ? customStepDefs?.[customId] : undefined;
     if (!def) return newNode; // def not loaded yet — skip auto-bind, user can connect manually
-    required = customPhaseToShape(def).inputFields;
+    required = customStepToShape(def).inputFields;
   } else {
-    required = catalog[newNode.phaseType]?.inputFields ?? {};
+    required = catalog[newNode.stepType]?.inputFields ?? {};
   }
 
   const inputs: Record<string, { kind: "ref"; ref: string }> = {
@@ -86,22 +86,22 @@ export interface CanvasProps {
   onSelect: (nodeId: string | null) => void;
   onEdgeSelect?: (edgeId: string | null) => void;
   readOnly?: boolean;
-  phaseRunStates?: Record<string, PhaseRunState>;
+  stepRunStates?: Record<string, StepRunState>;
 }
 
 function toReactWorkflowNodes(
   flow: WorkflowGraph,
   selectedId: string | null,
-  runStates?: Record<string, PhaseRunState>,
+  runStates?: Record<string, StepRunState>,
 ): Node[] {
   return flow.nodes.map(n => ({
     id: n.id,
-    type: KNOWN_NODE_TYPES.has(n.type) ? n.type : "phase",
+    type: KNOWN_NODE_TYPES.has(n.type) ? n.type : "step",
     position: n.position ?? { x: 0, y: 0 },
-    data: n.type === "phase"
+    data: n.type === "step"
       ? {
-          displayName: n.displayName ?? n.phaseType ?? "Phase",
-          phaseType: n.phaseType ?? "",
+          displayName: n.displayName ?? n.stepType ?? "Step",
+          stepType: n.stepType ?? "",
           config: n.config ?? {},
           inputs: n.inputs ?? {},
           runState: runStates?.[n.id],
@@ -117,10 +117,10 @@ function toReactWorkflowNodes(
 }
 
 function CanvasInner(p: CanvasProps) {
-  const catalog = usePhaseCatalog();
-  const customPhaseDefs = useCustomPhaseDefs(collectCustomPhaseIds(p.flow));
+  const catalog = useStepCatalog();
+  const customStepDefs = useCustomStepDefs(collectCustomStepIds(p.flow));
   const wrapper = useRef<HTMLDivElement>(null);
-  const registry = usePhaseRegistry();
+  const registry = useStepRegistry();
   const { screenToFlowPosition } = useReactFlow();
 
   // Mount log
@@ -137,17 +137,17 @@ function CanvasInner(p: CanvasProps) {
   const readOnlyRef = useRef(p.readOnly);
   const flowRef = useRef(p.flow);
   const selectedNodeIdRef = useRef(p.selectedNodeId);
-  const phaseRunStatesRef = useRef(p.phaseRunStates);
+  const stepRunStatesRef = useRef(p.stepRunStates);
   onChangeRef.current = p.onChange;
   onSelectRef.current = p.onSelect;
   onEdgeSelectRef.current = p.onEdgeSelect;
   readOnlyRef.current = p.readOnly;
   flowRef.current = p.flow;
   selectedNodeIdRef.current = p.selectedNodeId;
-  phaseRunStatesRef.current = p.phaseRunStates;
+  stepRunStatesRef.current = p.stepRunStates;
 
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState<Node>(
-    toReactWorkflowNodes(p.flow, p.selectedNodeId, p.phaseRunStates),
+    toReactWorkflowNodes(p.flow, p.selectedNodeId, p.stepRunStates),
   );
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState<Edge>(
     toReactWorkflowEdges(p.flow),
@@ -216,10 +216,10 @@ function CanvasInner(p: CanvasProps) {
       });
       lastSigRef.current = sig;
       lastSelectedRef.current = p.selectedNodeId;
-      setNodes(toReactWorkflowNodes(p.flow, p.selectedNodeId, p.phaseRunStates));
+      setNodes(toReactWorkflowNodes(p.flow, p.selectedNodeId, p.stepRunStates));
       setEdges(toReactWorkflowEdges(p.flow));
     }
-  }, [p.flow, p.selectedNodeId, p.phaseRunStates, setNodes, setEdges]);
+  }, [p.flow, p.selectedNodeId, p.stepRunStates, setNodes, setEdges]);
 
   /** Build a fresh WorkflowGraph from current internal RF state + previous flow's metadata. */
   const buildFlow = useCallback(
@@ -242,7 +242,7 @@ function CanvasInner(p: CanvasProps) {
    * from echoing the change back and undoing the internal update.
    */
   const applyExternalChange = useCallback((next: WorkflowGraph) => {
-    setNodes(toReactWorkflowNodes(next, selectedNodeIdRef.current, phaseRunStatesRef.current));
+    setNodes(toReactWorkflowNodes(next, selectedNodeIdRef.current, stepRunStatesRef.current));
     setEdges(toReactWorkflowEdges(next));
     propagate(next);
   }, [setNodes, setEdges, propagate]);
@@ -318,21 +318,21 @@ function CanvasInner(p: CanvasProps) {
   const handleDrop = useCallback((ev: React.DragEvent) => {
     if (readOnlyRef.current) return;
     ev.preventDefault();
-    const phaseType = ev.dataTransfer.getData("application/journeyman-phase");
+    const stepType = ev.dataTransfer.getData("application/journeyman-step");
     const controlType = ev.dataTransfer.getData("application/journeyman-control");
     const position = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     let newNode: WorkflowNode | null = null;
-    if (phaseType) {
-      const def = registry.get(phaseType);
-      // Synthetic palette entries for custom AI phases use a unique
-      // `custom-ai:<uuid>` phaseType to avoid collisions in the palette.
-      // The runtime only knows the bare `custom-ai` phase — strip the
+    if (stepType) {
+      const def = registry.get(stepType);
+      // Synthetic palette entries for custom AI steps use a unique
+      // `custom-ai:<uuid>` stepType to avoid collisions in the palette.
+      // The runtime only knows the bare `custom-ai` step — strip the
       // suffix so the node submits as the registered task type.
-      const runtimePhaseType = phaseType.startsWith("custom-ai:") ? "custom-ai" : phaseType;
-      const base = newPhaseNode({
-        phaseType: runtimePhaseType,
-        displayName: def?.label ?? runtimePhaseType,
+      const runtimeStepType = stepType.startsWith("custom-ai:") ? "custom-ai" : stepType;
+      const base = newStepNode({
+        stepType: runtimeStepType,
+        displayName: def?.label ?? runtimeStepType,
         position,
       });
       newNode = def
@@ -362,10 +362,10 @@ function CanvasInner(p: CanvasProps) {
 
     const flow = flowRef.current;
     const t0 = performance.now();
-    newNode = autoBindNewNode(newNode, flow.nodes, catalog, customPhaseDefs);
-    if (newNode && newNode.phaseType === "custom-ai") {
-      const cpId = (newNode.config as { customPhaseId?: unknown } | undefined)?.customPhaseId;
-      const cpDef = typeof cpId === "string" ? customPhaseDefs[cpId] ?? null : null;
+    newNode = autoBindNewNode(newNode, flow.nodes, catalog, customStepDefs);
+    if (newNode && newNode.stepType === "custom-ai") {
+      const cpId = (newNode.config as { customStepId?: unknown } | undefined)?.customStepId;
+      const cpDef = typeof cpId === "string" ? customStepDefs[cpId] ?? null : null;
       newNode = autoPopulateCustomAiDefaults(newNode, cpDef);
     }
     const tBind = performance.now();
@@ -373,7 +373,7 @@ function CanvasInner(p: CanvasProps) {
     console.log("[flow-editor] add node", {
       id: newNode.id,
       type: newNode.type,
-      phaseType: newNode.phaseType,
+      stepType: newNode.stepType,
       nodesBefore: flow.nodes.length,
       edgesBefore: flow.edges.length,
       autoBindMs: +(tBind - t0).toFixed(2),

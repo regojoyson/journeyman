@@ -1,6 +1,6 @@
 {
   "name": "end-to-end",
-  "description": "Full 10-phase pipeline: get-issue → create-workspace → clone-repos → start-feature-branch → analyze → plan → implement → commit/push → open-pr → cleanup.",
+  "description": "Full 10-step pipeline: get-issue → create-workspace → clone-repos → start-feature-branch → analyze → plan → implement → commit/push → open-pr → cleanup.",
   "definition": {
     "schemaVersion": 1,
     "nodes": [
@@ -20,8 +20,8 @@
 
       {
         "id": "n_get_issue",
-        "type": "phase",
-        "phaseType": "get-issue",
+        "type":"step",
+        "stepType": "get-issue",
         "inputs": {
           "issueRef": { "kind": "ref", "ref": "workflow.input.issueRef" }
         }
@@ -29,8 +29,8 @@
 
       {
         "id": "n_create_ws",
-        "type": "phase",
-        "phaseType": "create-workspace",
+        "type":"step",
+        "stepType": "create-workspace",
         "inputs": {
           "issueRef": { "kind": "ref", "ref": "workflow.input.issueRef" }
         }
@@ -38,8 +38,8 @@
 
       {
         "id": "n_clone",
-        "type": "phase",
-        "phaseType": "clone-repos",
+        "type":"step",
+        "stepType": "clone-repos",
         "config": { "repos": [] },
         "inputs": {
           "repos":        { "kind": "literal", "value": ["${workflow.input.repoUrl}"] },
@@ -49,8 +49,8 @@
 
       {
         "id": "n_branch",
-        "type": "phase",
-        "phaseType": "start-feature-branch",
+        "type":"step",
+        "stepType": "start-feature-branch",
         "inputs": {
           "repos": { "kind": "ref", "ref": "n_clone.output.repos" },
           "issue": { "kind": "ref", "ref": "n_get_issue.output.issue" }
@@ -59,8 +59,8 @@
 
       {
         "id": "n_analyze",
-        "type": "phase",
-        "phaseType": "analyze-repo",
+        "type":"step",
+        "stepType": "analyze-repo",
         "inputs": {
           "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
           "issue":        { "kind": "ref", "ref": "n_get_issue.output.issue" }
@@ -69,8 +69,8 @@
 
       {
         "id": "n_plan",
-        "type": "phase",
-        "phaseType": "plan-implementation",
+        "type":"step",
+        "stepType": "plan-implementation",
         "inputs": {
           "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
           "issue":             { "kind": "ref", "ref": "n_get_issue.output.issue" },
@@ -80,8 +80,8 @@
 
       {
         "id": "n_implement",
-        "type": "phase",
-        "phaseType": "implement-changes",
+        "type":"step",
+        "stepType": "implement-changes",
         "inputs": {
           "workspaceDir":      { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" },
           "planReportPath":    { "kind": "ref", "ref": "n_plan.output.planReportPath" },
@@ -92,8 +92,8 @@
 
       {
         "id": "n_commit",
-        "type": "phase",
-        "phaseType": "commit-and-push",
+        "type":"step",
+        "stepType": "commit-and-push",
         "inputs": {
           "repos": { "kind": "ref", "ref": "n_branch.output.repos" },
           "issue": { "kind": "ref", "ref": "n_get_issue.output.issue" }
@@ -102,8 +102,8 @@
 
       {
         "id": "n_open_pr",
-        "type": "phase",
-        "phaseType": "open-pull-request",
+        "type":"step",
+        "stepType": "open-pull-request",
         "config": {
           "title": "Automated PR",
           "body": ""
@@ -116,8 +116,8 @@
 
       {
         "id": "n_cleanup",
-        "type": "phase",
-        "phaseType": "cleanup-workspace",
+        "type":"step",
+        "stepType": "cleanup-workspace",
         "inputs": {
           "workspaceDir": { "kind": "ref", "ref": "n_create_ws.output.workspaceDir" }
         }

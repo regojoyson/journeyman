@@ -5,7 +5,7 @@ import type {
   CleanupReposOptions, CleanupReposResult,
   CreateWorkspaceOptions, CreateWorkspaceResult,
   IProviderMeta,
-  CodingCLIPhase,
+  CodingCLIStep,
   CodingCLIProviderConfig,
 } from "@journeyman/core";
 import type {
@@ -27,8 +27,8 @@ export class ClaudeProvider implements ICodingCLI {
 
   constructor(private config: CodingCLIProviderConfig = {}) {}
 
-  private resolveModel(phase: CodingCLIPhase): string | undefined {
-    return this.config.models?.[phase] ?? this.config.defaultModel;
+  private resolveModel(step: CodingCLIStep): string | undefined {
+    return this.config.models?.[step] ?? this.config.defaultModel;
   }
 
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type {
   ArtifactHandle, FlowDefinition, PipelineConfig, PipelineEvent, PipelineRun,
-  PipelineTrigger, PhaseResult, ProductConfig, TraceLine,
+  PipelineTrigger, StepResult, ProductConfig, TraceLine,
 } from "../types/pipeline.types.ts";
 import type { ICodingCLI } from "./coding-cli.interface.ts";
 import type { IGitProvider } from "./git-provider.interface.ts";
@@ -31,9 +31,9 @@ export interface PipelineContext {
   currentStepId: string;                       // NEW
 }
 
-export interface IPhase {
+export interface IStep {
   readonly name: string;
-  run(ctx: PipelineContext, stepConfig: unknown): Promise<PhaseResult>;
+  run(ctx: PipelineContext, stepConfig: unknown): Promise<StepResult>;
 }
 
 export interface IStateStore {

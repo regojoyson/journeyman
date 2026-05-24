@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Standalone worker process. Polls Conductor for tasks of the registered
- * phase types and dispatches them to handlers.
+ * step types and dispatches them to handlers.
  */
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
@@ -22,27 +22,27 @@ import { resolveSkillPackagesByIds } from "@journeyman/skills";
 import { findDefaultCodingModel } from "@journeyman/coding-models";
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
-import { InMemoryPhaseRegistry } from "./registry/in-memory-phase-registry.ts";
+import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
 import { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";
 import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
-import { CreateWorkspacePhaseHandler } from "./workers/phases/create-workspace-phase-handler.ts";
-import { StartFeatureBranchPhaseHandler } from "./workers/phases/start-feature-branch-phase-handler.ts";
-import { CloneReposPhaseHandler } from "./workers/phases/clone-repos-phase-handler.ts";
-import { GetIssuePhaseHandler } from "./workers/phases/get-issue-phase-handler.ts";
-import { TransitionIssuePhaseHandler } from "./workers/phases/transition-issue-phase-handler.ts";
-import { ListWorkspaceFilesPhaseHandler } from "./workers/phases/list-workspace-files-phase-handler.ts";
-import { CleanupWorkspacePhaseHandler } from "./workers/phases/cleanup-workspace-phase-handler.ts";
-import { GetRepositoryPhaseHandler } from "./workers/phases/get-repository-phase-handler.ts";
-import { OpenPullRequestPhaseHandler } from "./workers/phases/open-pull-request-phase-handler.ts";
-import { ListPullRequestsPhaseHandler } from "./workers/phases/list-pull-requests-phase-handler.ts";
-import { ListPullRequestCommentsPhaseHandler } from "./workers/phases/list-pull-request-comments-phase-handler.ts";
-import { CreateIssuePhaseHandler } from "./workers/phases/create-issue-phase-handler.ts";
-import { UpdateIssueFieldsPhaseHandler } from "./workers/phases/update-issue-fields-phase-handler.ts";
-import { CommentOnIssuePhaseHandler } from "./workers/phases/comment-on-issue-phase-handler.ts";
-import { SendMessagePhaseHandler } from "./workers/phases/send-message-phase-handler.ts";
-import { CustomAiPhaseHandler } from "./workers/phases/custom-ai-phase-handler.ts";
+import { CreateWorkspaceStepHandler } from "./workers/steps/create-workspace-step-handler.ts";
+import { StartFeatureBranchStepHandler } from "./workers/steps/start-feature-branch-step-handler.ts";
+import { CloneReposStepHandler } from "./workers/steps/clone-repos-step-handler.ts";
+import { GetIssueStepHandler } from "./workers/steps/get-issue-step-handler.ts";
+import { TransitionIssueStepHandler } from "./workers/steps/transition-issue-step-handler.ts";
+import { ListWorkspaceFilesStepHandler } from "./workers/steps/list-workspace-files-step-handler.ts";
+import { CleanupWorkspaceStepHandler } from "./workers/steps/cleanup-workspace-step-handler.ts";
+import { GetRepositoryStepHandler } from "./workers/steps/get-repository-step-handler.ts";
+import { OpenPullRequestStepHandler } from "./workers/steps/open-pull-request-step-handler.ts";
+import { ListPullRequestsStepHandler } from "./workers/steps/list-pull-requests-step-handler.ts";
+import { ListPullRequestCommentsStepHandler } from "./workers/steps/list-pull-request-comments-step-handler.ts";
+import { CreateIssueStepHandler } from "./workers/steps/create-issue-step-handler.ts";
+import { UpdateIssueFieldsStepHandler } from "./workers/steps/update-issue-fields-step-handler.ts";
+import { CommentOnIssueStepHandler } from "./workers/steps/comment-on-issue-step-handler.ts";
+import { SendMessageStepHandler } from "./workers/steps/send-message-step-handler.ts";
+import { CustomAiStepHandler } from "./workers/steps/custom-ai-step-handler.ts";
 
 const log = createLogger("worker:cli");
 const envFile = resolve(process.cwd(), ".env");
@@ -60,7 +60,7 @@ if (pool) {
 const baseUrl = process.env.CONDUCTOR_BASE_URL ?? "http://localhost:8080/api";
 const client = new ConductorClient({ baseUrl });
 
-const registry = new InMemoryPhaseRegistry();
+const registry = new InMemoryStepRegistry();
 
 const coding: ProviderFactory<ICodingCLI> = (key, env) => {
   switch (key ?? "claude") {
@@ -74,14 +74,14 @@ const coding: ProviderFactory<ICodingCLI> = (key, env) => {
   }
 };
 const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
-registry.register(new CreateWorkspacePhaseHandler({ coding, baseDir: workspaceBaseDir }));
-registry.register(new StartFeatureBranchPhaseHandler({ coding }));
-registry.register(new ListWorkspaceFilesPhaseHandler({ coding }));
-registry.register(new CleanupWorkspacePhaseHandler({ coding }));
+registry.register(new CreateWorkspaceStepHandler({ coding, baseDir: workspaceBaseDir }));
+registry.register(new StartFeatureBranchStepHandler({ coding }));
+registry.register(new ListWorkspaceFilesStepHandler({ coding }));
+registry.register(new CleanupWorkspaceStepHandler({ coding }));
 if (pool) {
   // cliBindingResolver is declared later in this file; wrap in a thunk so the
   // reference is captured lazily and avoids the temporal dead zone.
-  registry.register(new CustomAiPhaseHandler({
+  registry.register(new CustomAiStepHandler({
     coding,
     pool,
     bindingResolver: (input) => cliBindingResolver(input),
@@ -99,11 +99,11 @@ const git: ProviderFactory<IGitProvider> = (key, env) => {
     }
   }
 };
-registry.register(new CloneReposPhaseHandler({ git }));
-registry.register(new GetRepositoryPhaseHandler({ git }));
-registry.register(new OpenPullRequestPhaseHandler({ git }));
-registry.register(new ListPullRequestsPhaseHandler({ git }));
-registry.register(new ListPullRequestCommentsPhaseHandler({ git }));
+registry.register(new CloneReposStepHandler({ git }));
+registry.register(new GetRepositoryStepHandler({ git }));
+registry.register(new OpenPullRequestStepHandler({ git }));
+registry.register(new ListPullRequestsStepHandler({ git }));
+registry.register(new ListPullRequestCommentsStepHandler({ git }));
 
 const issue: ProviderFactory<IIssueProvider> = (key, env) => {
   switch (key ?? "jira") {
@@ -124,11 +124,11 @@ const issue: ProviderFactory<IIssueProvider> = (key, env) => {
     }
   }
 };
-registry.register(new GetIssuePhaseHandler({ issue }));
-registry.register(new TransitionIssuePhaseHandler({ issue }));
-registry.register(new CreateIssuePhaseHandler({ issue }));
-registry.register(new UpdateIssueFieldsPhaseHandler({ issue }));
-registry.register(new CommentOnIssuePhaseHandler({ issue }));
+registry.register(new GetIssueStepHandler({ issue }));
+registry.register(new TransitionIssueStepHandler({ issue }));
+registry.register(new CreateIssueStepHandler({ issue }));
+registry.register(new UpdateIssueFieldsStepHandler({ issue }));
+registry.register(new CommentOnIssueStepHandler({ issue }));
 
 const notification: ProviderFactory<INotificationProvider> = (key, _env) => {
   switch (key ?? "console") {
@@ -141,7 +141,7 @@ const notification: ProviderFactory<INotificationProvider> = (key, _env) => {
     }
   }
 };
-registry.register(new SendMessagePhaseHandler({ notification }));
+registry.register(new SendMessageStepHandler({ notification }));
 
 // Register matching task definitions (idempotent).
 // retryCount here is a catalog-level cap. Per-flow retry policy (defaults.retry)
@@ -149,7 +149,7 @@ registry.register(new SendMessagePhaseHandler({ notification }));
 // Keeping it at 10 gives flows enough headroom while preventing runaway retries.
 for (const handler of registry.list()) {
   await client.putTaskDef({
-    name: handler.phaseType,
+    name: handler.stepType,
     retryCount: 10,
     timeoutSeconds: 600,
     timeoutPolicy: "TIME_OUT_WF",
@@ -221,11 +221,11 @@ const cliBindingResolver = async (input: {
   return out;
 };
 
-// Use the same Postgres event bus as the api-server so phase events are visible
+// Use the same Postgres event bus as the api-server so step events are visible
 // in the run viewer. Fall back to in-memory only when DATABASE_URL isn't set.
 const events = pool ? new PostgresEventBus(pool) : new MemoryEventBus();
 if (!pool) {
-  log.warn("DATABASE_URL not set — phase events will be in-memory only and invisible to the workflow instance viewer");
+  log.warn("DATABASE_URL not set — step events will be in-memory only and invisible to the workflow instance viewer");
 }
 
 const harness = new WorkerHarness({
@@ -251,5 +251,5 @@ const harness = new WorkerHarness({
   },
 });
 
-log.info({ phases: registry.list().map(h => h.phaseType) }, "worker starting");
-await harness.start(registry.list().map(h => h.phaseType));
+log.info({ steps: registry.list().map(h => h.stepType) }, "worker starting");
+await harness.start(registry.list().map(h => h.stepType));

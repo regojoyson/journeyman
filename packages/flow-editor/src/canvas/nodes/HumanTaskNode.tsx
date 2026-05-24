@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
-import type { PhaseRunState } from "../../phase-definition.ts";
+import type { StepRunState } from "../../step-definition.ts";
 
 export interface HumanTaskNodeData {
   displayName?: string;
@@ -13,7 +13,7 @@ export interface HumanTaskNodeData {
    * when the node-execution row is in `waiting` status to render the waiting
    * visual treatment.
    */
-  runState?: PhaseRunState;
+  runState?: StepRunState;
   [key: string]: unknown;
 }
 

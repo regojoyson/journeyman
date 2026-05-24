@@ -1,30 +1,30 @@
-import type { CustomAiPhase, CanonicalTool } from "@journeyman/core";
+import type { CustomAiStep, CanonicalTool } from "@journeyman/core";
 
 /**
- * Synthetic phase-catalog entries derived from visible custom phases.
- * The flow editor's palette can merge these alongside built-in phases under a
+ * Synthetic step-catalog entries derived from visible custom steps.
+ * The flow editor's palette can merge these alongside built-in steps under a
  * "Custom" category. Each entry creates a `custom-ai` node when dropped, with
- * the customPhaseId and definition defaults baked in.
+ * the customStepId and definition defaults baked in.
  */
-export interface CustomPhaseCatalogEntry {
-  phaseType: "custom-ai";
-  customPhaseId: string;
+export interface CustomStepCatalogEntry {
+  stepType: "custom-ai";
+  customStepId: string;
   category: "Custom";
   badge: "user" | "org";
   label: string;
   description: string;
-  inputFields: CustomAiPhase["inputFields"];
-  outputMode: CustomAiPhase["outputMode"];
+  inputFields: CustomAiStep["inputFields"];
+  outputMode: CustomAiStep["outputMode"];
   outputSchema: Record<string, unknown>;
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
   defaultSkillIds: string[];
 }
 
-export function toCatalogEntries(phases: CustomAiPhase[]): CustomPhaseCatalogEntry[] {
-  return phases.map((p) => ({
-    phaseType: "custom-ai" as const,
-    customPhaseId: p.id,
+export function toCatalogEntries(steps: CustomAiStep[]): CustomStepCatalogEntry[] {
+  return steps.map((p) => ({
+    stepType: "custom-ai" as const,
+    customStepId: p.id,
     category: "Custom" as const,
     badge: p.scope,
     label: p.name,

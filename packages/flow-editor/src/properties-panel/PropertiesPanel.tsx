@@ -42,7 +42,7 @@ import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
 import { FlowSettingsView } from "./FlowSettingsView.tsx";
 import { ControlNodeConfigTab } from "./ControlNodeConfigTab.tsx";
-import { usePhaseRegistry } from "../state/phase-registry-context.tsx";
+import { useStepRegistry } from "../state/step-registry-context.tsx";
 
 export interface PropertiesPanelProps {
   flow: WorkflowGraph;
@@ -63,7 +63,7 @@ const DEFAULT_VISIBILITY: TabsVisibility = {
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { flow, node, mcpCatalog, orgId, onChange, readOnly } = props;
-  const registry = usePhaseRegistry();
+  const registry = useStepRegistry();
   const [active, setActive] = useState<TabId>("config");
 
   if (!node) {
@@ -82,8 +82,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
     );
   }
 
-  const isPhase = node.type === "phase";
-  const definition = isPhase ? registry.get(node.phaseType) : undefined;
+  const isStep = node.type === "step";
+  const definition = isStep ? registry.get(node.stepType) : undefined;
   const visibility: TabsVisibility = definition
     ? {
         io: definition.tabs.io,
@@ -110,7 +110,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   return (
     <aside className="je-editor__props">
       <div className="je-props__title">{node.displayName ?? node.type}</div>
-      {isPhase ? (
+      {isStep ? (
         <TabsShell
           active={effectiveActive}
           onChange={setActive}

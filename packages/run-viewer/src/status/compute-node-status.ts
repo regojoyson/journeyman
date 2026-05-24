@@ -25,7 +25,7 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
     if (!cur) continue;
 
     switch (ev.eventType) {
-      case "phase.started": {
+      case "step.started": {
         cur.status = "running";
         const a = (ev.payload as { attempt?: number }).attempt;
         if (typeof a === "number") cur.attempt = a;
@@ -33,10 +33,10 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
         cur.startedAt ??= new Date(ev.ts);
         break;
       }
-      case "phase.retrying":
+      case "step.retrying":
         cur.status = "retry-backoff";
         break;
-      case "phase.failed":
+      case "step.failed":
         cur.status = "failed";
         cur.completedAt = new Date(ev.ts);
         cur.errorClass = (ev.payload as { error?: { errorClass?: string } }).error?.errorClass;
@@ -44,14 +44,14 @@ export function computeNodeStatuses(args: ComputeArgs): Map<string, ResolvedNode
           cur.durationMs = cur.completedAt.getTime() - cur.startedAt.getTime();
         }
         break;
-      case "phase.completed":
+      case "step.completed":
         cur.status = "completed";
         cur.completedAt = new Date(ev.ts);
         if (cur.startedAt && cur.completedAt) {
           cur.durationMs = cur.completedAt.getTime() - cur.startedAt.getTime();
         }
         break;
-      case "phase.skipped":
+      case "step.skipped":
         cur.status = "skipped";
         cur.completedAt = new Date(ev.ts);
         break;

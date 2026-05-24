@@ -4,7 +4,7 @@ import {
   implementedProvidersForKind,
   defaultProviderForKind,
 } from "@journeyman/core";
-import type { ExecutorKind } from "./phase-definition.ts";
+import type { ExecutorKind } from "./step-definition.ts";
 
 export interface ProviderOption {
   value: string;

@@ -1,12 +1,12 @@
-import { kindForPhaseType } from "@journeyman/core";
+import { kindForStepType } from "@journeyman/core";
 import type { WorkflowNode, WorkflowDefaults, RetryPolicy } from "@journeyman/core";
 
 export type FieldSources = Record<string, "node" | "workflow-default">;
 
 /**
- * Merge workflow-level defaults into a single phase node.
+ * Merge workflow-level defaults into a single step node.
  * Returns the resolved node and a sources map for traceability.
- * Only called for `phase` nodes — start/end/gateway nodes are unaffected.
+ * Only called for `step` nodes — start/end/gateway nodes are unaffected.
  */
 export function applyWorkflowDefaults(
   node: WorkflowNode,
@@ -16,8 +16,8 @@ export function applyWorkflowDefaults(
 
   const sources: FieldSources = {};
 
-  const phaseKind      = node.phaseType ? kindForPhaseType(node.phaseType) : undefined;
-  const kindDefault    = phaseKind ? defaults.executorConfig?.[phaseKind] : undefined;
+  const stepKind      = node.stepType ? kindForStepType(node.stepType) : undefined;
+  const kindDefault    = stepKind ? defaults.executorConfig?.[stepKind] : undefined;
 
   const retry          = mergeRetry(node.retry, defaults.retry, sources);
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);

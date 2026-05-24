@@ -26,8 +26,8 @@ export interface ParsedRef {
 /**
  * Parse a Conductor reference string. Supported forms:
  *   - "workflow.input.X"     → run-input value
- *   - "<nodeId>.input.X"     → upstream phase's resolved input
- *   - "<nodeId>.output.X"    → upstream phase's output
+ *   - "<nodeId>.input.X"     → upstream step's resolved input
+ *   - "<nodeId>.output.X"    → upstream step's output
  */
 /**
  * Strip markdown autolink syntax `[text](url)` that some clients introduce when

@@ -1,12 +1,12 @@
 # Journeyman
 
-Configurable, phase-based AI pipeline that automates ticket → code → PR workflows.
+Configurable, step-based AI pipeline that automates ticket → code → PR workflows.
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Node](https://img.shields.io/badge/node-%3E%3D18-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 
 ## What is Journeyman?
 
-Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs configurable AI-powered flows that clone repos, analyze the ticket, write code, and open PRs — all without manual intervention. A visual, n8n-style canvas editor lets you drag-and-drop phase nodes, wire conditional branches, and configure retry policies without touching code. The provider pattern means you can swap any AI coding tool (Claude, Gemini, Codex), git host (GitHub, GitLab), ticket tracker, or notification channel without changing your flow definitions. Durable execution is backed by Conductor, with support for step retries and human-in-the-loop pause/resume gates.
+Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs configurable AI-powered flows that clone repos, analyze the ticket, write code, and open PRs — all without manual intervention. A visual, n8n-style canvas editor lets you drag-and-drop step nodes, wire conditional branches, and configure retry policies without touching code. The provider pattern means you can swap any AI coding tool (Claude, Gemini, Codex), git host (GitHub, GitLab), ticket tracker, or notification channel without changing your flow definitions. Durable execution is backed by Conductor, with support for step retries and human-in-the-loop pause/resume gates.
 
 ## Architecture
 
@@ -17,7 +17,7 @@ Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs co
 | **Web UI** | Visual canvas editor, live run monitoring, runs history |
 | **API Gateway** | Fastify REST + SSE; auth, validation, routing |
 | **Orchestrator** | Conductor adapter, worker harness, durable execution |
-| **Phases & Providers** | Execution logic per flow node — AI coding, git, tickets, notifications |
+| **Steps & Providers** | Execution logic per flow node — AI coding, git, tickets, notifications |
 | **Storage** | PostgreSQL (persistence) + Redis (job queue) |
 
 ## Packages
@@ -47,12 +47,12 @@ Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs co
 | `@journeyman/secrets` | User- and org-scoped secret vault with AES encryption |
 | `@journeyman/migrations` | SQL migrations (`journeyman-migrate` CLI) |
 
-### Phases
+### Steps
 
 | Package | Description |
 |---|---|
-| `@journeyman/phases` | Built-in phase catalog (getTicket, analyze, plan, implement, createPR, …) |
-| `@journeyman/custom-phases` | User-defined AI phase registration with prompt templates |
+| `@journeyman/steps` | Built-in step catalog (getTicket, analyze, plan, implement, createPR, …) |
+| `@journeyman/custom-steps` | User-defined AI step registration with prompt templates |
 
 ### Providers
 
@@ -99,7 +99,7 @@ npm run dev:web
 
 ## Flow Editor
 
-The visual canvas is powered by `@journeyman/flow-editor`, a React component built on XYFlow. Nodes represent phases (built-in or custom); edges carry JSON Logic conditions for conditional branching between them. The properties panel lets you configure node inputs, retry/backoff policy, MCP tools, skill packages, and secret bindings per node. Flows can be authored in the UI, validated, and published — the same JSON schema is used by the orchestrator at runtime.
+The visual canvas is powered by `@journeyman/flow-editor`, a React component built on XYFlow. Nodes represent steps (built-in or custom); edges carry JSON Logic conditions for conditional branching between them. The properties panel lets you configure node inputs, retry/backoff policy, MCP tools, skill packages, and secret bindings per node. Flows can be authored in the UI, validated, and published — the same JSON schema is used by the orchestrator at runtime.
 
 → [Flow authoring guide](docs/flows.md)
 
@@ -114,8 +114,8 @@ The visual canvas is powered by `@journeyman/flow-editor`, a React component bui
 | [Products](docs/products.md) | Logical tenants — isolate flows, repos, and concurrency per team |
 | [New Product](docs/new-product.md) | Add a new product via the UI without touching code |
 | [Flows](docs/flows.md) | Author flows in the visual editor or YAML: nodes, edges, conditions, retries |
-| [Phases](docs/phases.md) | Built-in phase catalog and the `IPhaseHandler` interface |
-| [Custom Phases](docs/custom-phases.md) | Register user-defined AI phases with custom prompts and tools |
+| [Steps](docs/steps.md) | Built-in step catalog and the `IStepHandler` interface |
+| [Custom Steps](docs/custom-steps.md) | Register user-defined AI steps with custom prompts and tools |
 | [Providers](docs/providers.md) | Configure coding, git, ticket, and notification providers |
 | [Triggers](docs/triggers.md) | API, GitHub, GitLab, and Jira webhook trigger sources |
 | [Artifacts](docs/artifacts.md) | Shared artifact bag: how data flows between steps |
@@ -125,8 +125,8 @@ The visual canvas is powered by `@journeyman/flow-editor`, a React component bui
 
 | Doc | Description |
 |---|---|
-| [MCP](docs/mcp.md) | Connect Model Context Protocol servers to flows and AI phases |
-| [Skills](docs/skills.md) | Enable reusable skill bundles for AI phases |
+| [MCP](docs/mcp.md) | Connect Model Context Protocol servers to flows and AI steps |
+| [Skills](docs/skills.md) | Enable reusable skill bundles for AI steps |
 | [Secrets](docs/secrets.md) | User- and org-scoped secret vault with flow bindings |
 | [Users & Roles](docs/users.md) | Authentication, user management, and role-based access |
 | [Webhooks](docs/webhooks.md) | Inbound webhook verification, HMAC signing, and dedup |

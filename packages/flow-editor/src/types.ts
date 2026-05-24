@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNodeType, WorkflowSaveWarning, WorkflowStatus, McpTransport, PublishError } from "@journeyman/core";
-import type { PhaseDefinition, PhaseRunState } from "./phase-definition.ts";
+import type { StepDefinition, StepRunState } from "./step-definition.ts";
 import type { UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 
 export interface ControlNodeCatalogEntry {
@@ -33,12 +33,12 @@ export interface FlowEditorProps {
   flowName: string;
   /** Active org id of the caller — used to scope visible-secret lookups. */
   orgId: string;
-  /** Built-in or extension phase definitions, used to power the palette, properties panel, and canvas. */
-  phases: PhaseDefinition<any>[];
+  /** Built-in or extension step definitions, used to power the palette, properties panel, and canvas. */
+  steps: StepDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
   mcpCatalog?: McpCatalog;
   /** Optional runtime status keyed by node id. When undefined, no status badge is rendered. */
-  phaseRunStates?: Record<string, PhaseRunState>;
+  stepRunStates?: Record<string, StepRunState>;
   onChange: (flow: WorkflowGraph) => void;
   onSave?: (flow: WorkflowGraph) => void | Promise<void>;
   onRun?: (flow: WorkflowGraph) => void | Promise<void>;

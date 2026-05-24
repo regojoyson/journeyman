@@ -17,7 +17,7 @@ export async function emitRoutingEvents(
     if (t.status === "SKIPPED") {
       await events.append({
         workflowInstanceId, nodeId: t.referenceTaskName,
-        eventType: "phase.skipped",
+        eventType: "step.skipped",
         payload: { reason: "engine_skipped", taskType: t.taskType },
       });
       continue;

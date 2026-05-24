@@ -73,7 +73,7 @@ export function DefaultsExecutorSection({ defaults, onChange, readOnly }: Props)
             );
           })}
           <div className="je-props__field-help">
-            Applied to phases that don't set their own provider. Each phase can override per-node.
+            Applied to steps that do not set their own provider. Each step can override per-node.
           </div>
         </div>
       )}

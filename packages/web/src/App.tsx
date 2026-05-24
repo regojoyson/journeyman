@@ -11,8 +11,8 @@ import { MyMcpsPage } from "./routes/MyMcpsPage.tsx";
 import { AdminMcpsPage } from "./routes/AdminMcpsPage.tsx";
 import { MySkillsPage } from "./routes/MySkillsPage.tsx";
 import { AdminSkillsPage } from "./routes/AdminSkillsPage.tsx";
-import { MyCustomPhasesPage } from "./routes/MyCustomPhasesPage.tsx";
-import { AdminCustomPhasesPage } from "./routes/AdminCustomPhasesPage.tsx";
+import { MyCustomStepsPage } from "./routes/MyCustomStepsPage.tsx";
+import { AdminCustomStepsPage } from "./routes/AdminCustomStepsPage.tsx";
 import { AdminCodingModelsPage } from "./routes/AdminCodingModelsPage.tsx";
 import { AdminUsersPage } from "./routes/AdminUsersPage.tsx";
 import { AdminFlowsPage } from "./routes/AdminFlowsPage.tsx";
@@ -34,12 +34,12 @@ export default function App() {
         <Route path="/me/secrets" element={<MySecretsPage orgId={activeOrgId} />} />
         <Route path="/me/mcps" element={<MyMcpsPage orgId={activeOrgId} />} />
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
-        <Route path="/me/custom-phases" element={<MyCustomPhasesPage orgId={activeOrgId} />} />
+        <Route path="/me/custom-steps" element={<MyCustomStepsPage orgId={activeOrgId} />} />
         <Route path="/me/password" element={<ChangePasswordPage />} />
         <Route path="/admin/secrets" element={role === "admin" ? <AdminSecretsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/mcps" element={role === "admin" ? <AdminMcpsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/skills" element={role === "admin" ? <AdminSkillsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
-        <Route path="/admin/custom-phases" element={role === "admin" ? <AdminCustomPhasesPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
+        <Route path="/admin/custom-steps" element={role === "admin" ? <AdminCustomStepsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/coding-models" element={role === "admin" ? <AdminCodingModelsPage /> : <Navigate to="/" replace />} />
         <Route path="/admin/users" element={role === "admin" ? <AdminUsersPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/workflows" element={role === "admin" ? <AdminFlowsPage /> : <Navigate to="/" replace />} />

@@ -4,7 +4,7 @@ import { WorkerHarness } from "./worker-harness.ts";
 function fakeTask(overrides: Partial<any> = {}): any {
   return {
     taskId: "t-1",
-    taskDefName: "test-phase",
+    taskDefName: "test-step",
     referenceTaskName: "node-1",
     workflowInstanceId: "engine-wf-1",
     retryCount: 0,
@@ -40,13 +40,13 @@ describe("WorkerHarness.processOnce — pickup", () => {
     deps.registry.get.mockReturnValue({ run: vi.fn().mockResolvedValue({ kind: "success", output: {} }) });
 
     const harness = new WorkerHarness(deps);
-    await harness.processOnce("test-phase");
+    await harness.processOnce("test-step");
 
     const polled = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "task.polled");
     expect(polled).toBeDefined();
     expect(polled[0]).toMatchObject({
       workflowInstanceId: "wf-1", nodeId: "node-1",
-      payload: expect.objectContaining({ taskId: "t-1", attempt: 1, workerId: "worker-1", phaseType: "test-phase" }),
+      payload: expect.objectContaining({ taskId: "t-1", attempt: 1, workerId: "worker-1", stepType: "test-step" }),
     });
   });
 });
@@ -62,7 +62,7 @@ describe("WorkerHarness.processOnce — heartbeat", () => {
       run: () => new Promise(r => setTimeout(() => r({ kind: "success", output: {} }), 180)),
     });
     const harness = new WorkerHarness(deps);
-    await harness.processOnce("test-phase");
+    await harness.processOnce("test-step");
     const beats = deps.events.append.mock.calls.filter((c: any) => c[0].eventType === "worker.heartbeat");
     expect(beats.length).toBeGreaterThanOrEqual(2);
     expect(beats[0][0].payload.elapsedMs).toBeGreaterThanOrEqual(50);
@@ -70,7 +70,7 @@ describe("WorkerHarness.processOnce — heartbeat", () => {
 });
 
 describe("WorkerHarness.processOnce — error enrichment", () => {
-  it("attaches log tail (last 20 lines) to phase.failed payload", async () => {
+  it("attaches log tail (last 20 lines) to step.failed payload", async () => {
     const deps: any = makeDeps();
     deps.client.pollTask.mockResolvedValue(fakeTask());
     deps.registry.get.mockReturnValue({
@@ -80,9 +80,9 @@ describe("WorkerHarness.processOnce — error enrichment", () => {
       },
     });
     const harness = new WorkerHarness(deps);
-    await harness.processOnce("test-phase");
+    await harness.processOnce("test-step");
 
-    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "phase.failed");
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
     expect(failed).toBeDefined();
     const tail: string[] = failed[0].payload.tail;
     expect(tail).toHaveLength(20);
@@ -100,8 +100,8 @@ describe("WorkerHarness.processOnce — error enrichment", () => {
       },
     });
     const harness = new WorkerHarness(deps);
-    await harness.processOnce("test-phase");
-    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "phase.failed");
+    await harness.processOnce("test-step");
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
     expect(failed[0].payload).toMatchObject({
       reason: "unhandled",
       error: { errorClass: "Error", message: "top", cause: { message: "root" } },
@@ -110,15 +110,15 @@ describe("WorkerHarness.processOnce — error enrichment", () => {
 });
 
 describe("WorkerHarness.processOnce — durations", () => {
-  it("includes durationMs on phase.completed payload", async () => {
+  it("includes durationMs on step.completed payload", async () => {
     const deps: any = makeDeps();
     deps.client.pollTask.mockResolvedValue(fakeTask());
     deps.registry.get.mockReturnValue({
       run: () => new Promise(r => setTimeout(() => r({ kind: "success", output: { ok: 1 } }), 30)),
     });
     const harness = new WorkerHarness(deps);
-    await harness.processOnce("test-phase");
-    const completed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "phase.completed");
+    await harness.processOnce("test-step");
+    const completed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.completed");
     expect(completed[0].payload.durationMs).toBeGreaterThanOrEqual(30);
   });
 });

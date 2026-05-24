@@ -145,7 +145,7 @@ Optional fields:
 | `concurrency` | Max parallel runs for this product. Default: unlimited. |
 | `ticketWorkflow.trigger.matchLabels` | GitHub-only: trigger fires only if ticket has one of these labels. Unset = no gating. |
 | `ticketWorkflow.trigger.matchStatus` | GitLab/Jira: trigger fires only on transition to one of these statuses. |
-| `ticketWorkflow.statuses` | Semantic → literal mapping for `updateStatus` phases. Required if any flow step uses `updateStatus`. |
+| `ticketWorkflow.statuses` | Semantic → literal mapping for `updateStatus` steps. Required if any flow step uses `updateStatus`. |
 | `providerConfig` | Per-category provider options (see §7 for multi-tenant patterns). |
 | `webhookSecrets` | Per-product webhook secret override. |
 
@@ -154,10 +154,10 @@ Optional fields:
 A flow uses semantic names (`development-started`, `code-review`) in its YAML:
 
 ```yaml
-- { id: mark-in-progress, phase: updateStatus, config: { status: development-started } }
+- { id: mark-in-progress, stepType: updateStatus, config: { status: development-started } }
 ```
 
-At runtime, `UpdateStatusPhase` looks up `development-started` in the product's `ticketWorkflow.statuses` map and passes the resolved literal value (`"in-development"` for edgereg) to `ticket.updateStatus`.
+At runtime, `UpdateStatusStep` looks up `development-started` in the product's `ticketWorkflow.statuses` map and passes the resolved literal value (`"in-development"` for edgereg) to `ticket.updateStatus`.
 
 This lets **one flow file** serve many products with different status vocabularies. Jira product might map `development-started: "In Progress"`; GitHub Issues product might map it to `"in-development"` (which becomes a `status:in-development` label).
 
@@ -201,13 +201,13 @@ products:
     ticketWorkflow: { ... }
 
   cidms:
-    flow: cidms-secure      # custom flow with security-scan + compliance-check phases
+    flow: cidms-secure      # custom flow with security-scan + compliance-check steps
     workspace: ./workspaces/cidms
     repos: [...]
     ticketWorkflow: { ... }
 ```
 
-Create the flow in the UI flow editor. The extra phases need to be registered in the phase catalog (see [phases.md](phases.md) for the "custom phase" section).
+Create the flow in the UI flow editor. The extra steps need to be registered in the step catalog (see [steps.md](steps.md) for the "custom step" section).
 
 ### Two products, different GitHub orgs / separate tokens
 
@@ -486,7 +486,7 @@ Or run it on a cron:
 
 - [Quickstart](quickstart.md) — 10-minute walkthrough.
 - [Flows reference](flows.md) — authoring custom flows.
-- [Phases catalog](phases.md) — writing custom phases.
+- [Steps catalog](steps.md) — writing custom steps.
 - [Troubleshooting](troubleshooting.md) — when things go wrong.
 
 ---
@@ -498,7 +498,7 @@ Two execution paths resolve secrets differently:
 - **api-server** (production / web-driven runs): uses `SecretsCredentialStore`,
   resolving in the order **user > org > global**. User-scope and org-scope
   secrets stored in Postgres are visible. Missing secrets fail the run with
-  `reason: "missing_secrets"` before any phase executes.
+  `reason: "missing_secrets"` before any step executes.
 
 - **cli-worker** (`packages/orchestrator/src/cli-worker.ts`): uses
   `EnvCredentialStore`. **Only the global tier is resolved** —

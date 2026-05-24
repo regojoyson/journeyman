@@ -31,4 +31,4 @@ export { createWorkflowLogger, loggerForRun, type WorkflowLogCtx } from "./log/w
 export { serializeError, type SerializedError } from "./log/serialize-error.ts";
 export { redactString, redactObject } from "./log/redact.ts";
 export { LogTail } from "./log/log-tail.ts";
-export { appendPhaseEvent, type MinimalEventBus } from "./log/append-phase-event.ts";
+export { appendStepEvent, type MinimalEventBus } from "./log/append-step-event.ts";

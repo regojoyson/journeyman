@@ -4,7 +4,7 @@ import type { WorkflowGraph, WorkflowInstanceEvent } from "@journeyman/core";
 
 const wf: WorkflowGraph = {
   nodes: [
-    { id: "n", type: "phase", config: {} } as any,
+    { id: "n", type: "step", config: {} } as any,
   ],
   edges: [],
 } as any;
@@ -14,10 +14,10 @@ function ev(eventType: any, nodeId: string, payload: any = {}, id = 1): Workflow
 }
 
 describe("computeNodeStatuses — new event types", () => {
-  it("marks a node as skipped on phase.skipped", () => {
+  it("marks a node as skipped on step.skipped", () => {
     const map = computeNodeStatuses({
       workflow: wf,
-      events: [ev("phase.skipped", "n", {})],
+      events: [ev("step.skipped", "n", {})],
       executions: [],
       workflowInstanceStatus: "running",
     });

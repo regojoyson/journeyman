@@ -10,7 +10,7 @@ function classifyLine(line: string): LogKind {
   return "other";
 }
 
-function resolvePhaseName(
+function resolveStepName(
   nodeId: string | null,
   nameByNodeId: Map<string, string>,
 ): string {
@@ -21,7 +21,7 @@ function resolvePhaseName(
 function buildNameMap(nodes: WorkflowNode[]): Map<string, string> {
   const m = new Map<string, string>();
   for (const n of nodes) {
-    const name = n.displayName ?? n.phaseType ?? n.type ?? n.id;
+    const name = n.displayName ?? n.stepType ?? n.type ?? n.id;
     m.set(n.id, name);
   }
   return m;
@@ -38,16 +38,16 @@ function formatWorkflowEvent(ev: WorkflowInstanceEvent): string {
       return `❌ workflow failed${typeof p.error === "string" ? `: ${p.error}` : ""}`;
     case "workflow_instance.cancelled":
       return "⏹ workflow cancelled";
-    case "phase.started":
-      return "▶ phase started";
-    case "phase.completed":
-      return "✅ phase completed";
-    case "phase.failed":
-      return `❌ phase failed${typeof p.error === "string" ? `: ${p.error}` : ""}`;
-    case "phase.retrying":
-      return `↻ phase retrying${typeof p.attempt === "number" ? ` (attempt ${p.attempt})` : ""}`;
-    case "phase.skipped":
-      return "⤼ phase skipped";
+    case "step.started":
+      return "▶ step started";
+    case "step.completed":
+      return "✅ step completed";
+    case "step.failed":
+      return `❌ step failed${typeof p.error === "string" ? `: ${p.error}` : ""}`;
+    case "step.retrying":
+      return `↻ step retrying${typeof p.attempt === "number" ? ` (attempt ${p.attempt})` : ""}`;
+    case "step.skipped":
+      return "⤼ step skipped";
     case "node.cycled":
       return "↻ node cycled";
     case "node.waiting":
@@ -75,14 +75,14 @@ export function parseLogs(
 ): ParsedLog[] {
   const nameByNodeId = buildNameMap(nodes);
   return events.map((ev): ParsedLog => {
-    if (ev.eventType === "phase.log") {
+    if (ev.eventType === "step.log") {
       const payload = ev.payload as { line?: string; meta?: Record<string, unknown> };
       const line = payload.line ?? JSON.stringify(payload);
       return {
         id: ev.id,
         ts: ev.ts,
         nodeId: ev.nodeId,
-        phaseName: resolvePhaseName(ev.nodeId, nameByNodeId),
+        stepName: resolveStepName(ev.nodeId, nameByNodeId),
         line,
         kind: classifyLine(line),
         meta: payload.meta,
@@ -92,7 +92,7 @@ export function parseLogs(
       id: ev.id,
       ts: ev.ts,
       nodeId: ev.nodeId,
-      phaseName: resolvePhaseName(ev.nodeId, nameByNodeId),
+      stepName: resolveStepName(ev.nodeId, nameByNodeId),
       line: formatWorkflowEvent(ev),
       kind: "other",
       meta: ev.payload as Record<string, unknown>,

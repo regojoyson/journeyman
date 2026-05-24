@@ -7,25 +7,25 @@ export type {
   McpCatalog, McpCatalogEntry,
 } from "./types.ts";
 export type {
-  PhaseDefinition,
-  PhaseRunState,
-  PhaseFormProps,
-  PhaseSummaryCtx,
+  StepDefinition,
+  StepRunState,
+  StepFormProps,
+  StepSummaryCtx,
   FieldMeta,
   TabVisibility,
   ExecutorKind,
   SecretSlotDef,
-} from "./phase-definition.ts";
-export { formatRefShort, summaryValue } from "./phase-definition.ts";
+} from "./step-definition.ts";
+export { formatRefShort, summaryValue } from "./step-definition.ts";
 export { executorCommonConfig, defaultProviderFor } from "./executor-common-config.ts";
-export { PhaseRegistry } from "./state/phase-registry.ts";
+export { StepRegistry } from "./state/step-registry.ts";
 export { defaultControlCatalog } from "./palette/built-in-categories.ts";
 export { defaultMcpCatalog } from "./catalogs/built-in-mcp-catalog.ts";
 export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
-export { PhaseRegistryProvider } from "./state/phase-registry-context.tsx";
+export { StepRegistryProvider } from "./state/step-registry-context.tsx";
 export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
 export { ValuePicker } from "./properties-panel/ValuePicker.tsx";
 export { PanelResizer } from "./canvas/PanelResizer.tsx";
 export type { UpstreamSource, UpstreamField } from "./properties-panel/use-upstream-sources.ts";
-export { resolvePhaseIcon } from "./icons/resolve.tsx";
-export { CUSTOM_PHASE_ICON_COMPONENTS } from "./icons/custom-phase-icons.tsx";
+export { resolveStepIcon } from "./icons/resolve.tsx";
+export { CUSTOM_STEP_ICON_COMPONENTS } from "./icons/custom-step-icons.tsx";

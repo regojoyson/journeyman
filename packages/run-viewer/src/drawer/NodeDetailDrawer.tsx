@@ -68,12 +68,12 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
   }
   const lastExec = [...p.executions].sort((a, b) => b.attempt - a.attempt)[0] ?? null;
 
-  // Worker-harness phases do not write NodeExecution rows; their input/output
-  // live on phase.started / phase.completed events. Fall back to those when
+  // Worker-harness steps do not write NodeExecution rows; their input/output
+  // live on step.started / step.completed events. Fall back to those when
   // the execution row is missing or has empty fields.
   const nodeEvents = p.events.filter(e => e.nodeId === p.nodeId);
-  const lastStarted = [...nodeEvents].reverse().find(e => e.eventType === "phase.started");
-  const lastCompleted = [...nodeEvents].reverse().find(e => e.eventType === "phase.completed");
+  const lastStarted = [...nodeEvents].reverse().find(e => e.eventType === "step.started");
+  const lastCompleted = [...nodeEvents].reverse().find(e => e.eventType === "step.completed");
   const startedInput = (lastStarted?.payload as { input?: unknown } | undefined)?.input;
   const completedOutput = (lastCompleted?.payload as { output?: unknown } | undefined)?.output;
 

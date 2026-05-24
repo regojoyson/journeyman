@@ -14,7 +14,7 @@
     "@journeyman/coding-cli": "*",
     "@journeyman/core": "*",
     "@journeyman/flow-editor": "*",
-    "@journeyman/phases": "*",
+    "@journeyman/steps": "*",
     "@journeyman/run-viewer": "*",
     "@journeyman/runs-list": "*",
     "@journeyman/theme": "*",

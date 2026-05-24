@@ -1,14 +1,14 @@
-import type { WorkflowNode, CustomAiPhase } from "@journeyman/core";
+import type { WorkflowNode, CustomAiStep } from "@journeyman/core";
 
 /**
- * Copy a custom phase definition's defaults into a freshly created node.
+ * Copy a custom step definition's defaults into a freshly created node.
  * Only fills `skillPackageIds` if the node has none yet — never overrides an existing pick.
  */
 export function autoPopulateCustomAiDefaults(
   node: WorkflowNode,
-  def: CustomAiPhase | null,
+  def: CustomAiStep | null,
 ): WorkflowNode {
-  if (node.type !== "phase" || node.phaseType !== "custom-ai") return node;
+  if (node.type !== "step" || node.stepType !== "custom-ai") return node;
   if (!def) return node;
   const cfg = (node.config ?? {}) as { skillPackageIds?: unknown };
   const hasSkills = Array.isArray(cfg.skillPackageIds) && cfg.skillPackageIds.length > 0;
