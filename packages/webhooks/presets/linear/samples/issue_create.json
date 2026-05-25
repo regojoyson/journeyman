@@ -1,0 +1,13 @@
+{
+  "action": "create",
+  "type": "Issue",
+  "createdAt": "2026-01-01T12:00:00.000Z",
+  "data": {
+    "id": "abcdef",
+    "identifier": "ENG-7",
+    "title": "Fix login",
+    "state": { "name": "Todo" },
+    "team": { "id": "team_1", "name": "Engineering" }
+  },
+  "url": "https://linear.app/acme/issue/ENG-7"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "linear",
+  "name": "Linear",
+  "kind": "ticket",
+  "icon": "linear.svg",
+  "docsUrl": "https://developers.linear.app/docs/graphql/webhooks",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "linear-signature",
+    "secretRef": ""
+  },
+  "eventTypePath": "$.type",
+  "deliveryIdHeader": "linear-delivery",
+  "knownEventTypes": ["Issue", "Comment", "Project", "Cycle"],
+  "correlationSuggestions": [
+    { "key": "issueIdentifier", "path": "$.data.identifier" },
+    { "key": "teamId",          "path": "$.data.team.id" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "issue_create": "./samples/issue_create.json" }
+}

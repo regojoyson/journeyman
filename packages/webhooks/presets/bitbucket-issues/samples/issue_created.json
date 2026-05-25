@@ -1,0 +1,5 @@
+{
+  "repository": { "full_name": "acme/demo" },
+  "issue": { "id": 11, "title": "Login bug", "state": "new", "kind": "bug", "priority": "major" },
+  "actor": { "display_name": "Alice" }
+}

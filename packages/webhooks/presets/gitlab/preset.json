@@ -1,0 +1,17 @@
+{
+  "id": "gitlab",
+  "name": "GitLab (code events)",
+  "kind": "git",
+  "icon": "gitlab.svg",
+  "docsUrl": "https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html",
+  "auth": { "mode": "header-equals", "header": "x-gitlab-token", "valueRef": "" },
+  "eventTypePath": "$.object_kind",
+  "knownEventTypes": ["push", "tag_push", "merge_request", "note", "pipeline", "job"],
+  "correlationSuggestions": [
+    { "key": "mrIid",     "path": "$.object_attributes.iid" },
+    { "key": "commitSha", "path": "$.checkout_sha" },
+    { "key": "branch",    "path": "$.ref" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "push": "./samples/push.json" }
+}

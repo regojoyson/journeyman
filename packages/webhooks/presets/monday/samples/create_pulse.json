@@ -1,0 +1,10 @@
+{
+  "event": {
+    "type": "create_pulse",
+    "boardId": 1234,
+    "pulseId": 5678,
+    "pulseName": "New task",
+    "groupId": "topics",
+    "userId": 99
+  }
+}

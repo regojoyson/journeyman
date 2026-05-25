@@ -1,0 +1,16 @@
+{
+  "id": "gitlab-issues",
+  "name": "GitLab (issues)",
+  "kind": "ticket",
+  "icon": "gitlab.svg",
+  "docsUrl": "https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html#issue-events",
+  "auth": { "mode": "header-equals", "header": "x-gitlab-token", "valueRef": "" },
+  "eventTypePath": "$.object_kind",
+  "knownEventTypes": ["issue", "note"],
+  "correlationSuggestions": [
+    { "key": "issueIid",  "path": "$.object_attributes.iid" },
+    { "key": "projectId", "path": "$.project.id" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "issue": "./samples/issue.json" }
+}

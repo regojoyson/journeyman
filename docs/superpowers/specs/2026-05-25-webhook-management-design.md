@@ -492,24 +492,24 @@ packages/webhooks/
 
 - No code changes. Webhook auth references existing secret slots.
 
-## Testing strategy
+## Verification strategy
 
-- **Auth modules** — unit tests per mode: valid signature passes, bad
-  signature fails, missing header fails, timing-safe-compare confirmed.
-  Replay (timestamp out of tolerance) rejected.
-- **Preset loader** — every shipped preset loads, validates its own schema,
-  and parses a real sample event.
-- **Schema inference** — golden tests on representative samples.
-- **Ingest flow** — integration tests against an in-process Fastify app:
-  preset webhook receives a real GitHub sample, signature verifies, event
-  stored, matching `webhook-wait` resumes.
-- **Dedup** — same delivery id twice → second is `ignored`.
-- **Legacy compat** — `POST /webhooks/github` resolves to default webhook
-  and behaves identically to existing tests.
-- **Migration** — apply migration on a snapshot DB with existing events;
-  verify default webhooks are provisioned and events get `webhook_id` filled.
-- **Editor** — component tests for the webhook picker, schema-driven
-  autocomplete, publish-time validation.
+Per project convention for this work: **no unit tests written**. Verification
+is done at the end by running:
+
+```bash
+npm run check          # typecheck + import boundaries
+npm run typecheck
+npm run check:boundaries
+```
+
+All new packages must pass type-checking cleanly and respect the import
+boundaries defined in `scripts/check-import-boundaries.mjs`. Manual smoke
+verification — creating a webhook, sending a real signed event from GitHub,
+seeing a `webhook-wait` node resume — is the functional gate. Existing
+test suites that already cover legacy `/webhooks/:provider` behavior must
+continue to pass without modification (the legacy shim preserves their
+contract).
 
 ## Acceptance criteria
 

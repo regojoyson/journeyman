@@ -1,0 +1,8 @@
+{
+  "id": "generic",
+  "name": "Generic (custom)",
+  "kind": "ticket",
+  "auth": { "mode": "none" },
+  "knownEventTypes": [],
+  "correlationSuggestions": []
+}

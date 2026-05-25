@@ -1,0 +1,14 @@
+{
+  "action": "opened",
+  "repository": { "id": 1, "name": "demo", "full_name": "acme/demo", "owner": { "login": "acme" } },
+  "pull_request": {
+    "number": 42,
+    "title": "Add feature X",
+    "state": "open",
+    "merged": false,
+    "user": { "login": "alice" },
+    "head": { "ref": "feat/x", "sha": "deadbeef" },
+    "base": { "ref": "main",   "sha": "cafebabe" }
+  },
+  "sender": { "login": "alice" }
+}

@@ -1,0 +1,13 @@
+{
+  "action": "edited",
+  "projects_v2_item": {
+    "id": 12345,
+    "node_id": "PVTI_abc",
+    "project_node_id": "PVT_xyz",
+    "content_type": "Issue",
+    "content_node_id": "I_kw"
+  },
+  "changes": { "field_value": { "field_node_id": "PVTF_status" } },
+  "sender":  { "login": "alice" },
+  "organization": { "login": "acme" }
+}

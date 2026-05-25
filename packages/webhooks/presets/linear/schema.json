@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "action":     { "type": "string" },
+    "type":       { "type": "string" },
+    "createdAt":  { "type": "string" },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":         { "type": "string" },
+        "identifier": { "type": "string" },
+        "title":      { "type": "string" },
+        "state":      { "type": "object", "additionalProperties": true },
+        "team":       { "type": "object", "additionalProperties": true },
+        "assignee":   { "type": ["object", "null"], "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "url": { "type": "string" }
+  },
+  "additionalProperties": true
+}

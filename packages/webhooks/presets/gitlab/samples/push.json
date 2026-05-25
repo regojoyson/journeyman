@@ -1,0 +1,8 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "ref": "refs/heads/main",
+  "checkout_sha": "abc1234",
+  "project": { "id": 1, "name": "demo", "path_with_namespace": "acme/demo" },
+  "user": { "username": "alice" }
+}

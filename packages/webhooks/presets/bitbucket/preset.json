@@ -1,0 +1,29 @@
+{
+  "id": "bitbucket",
+  "name": "Bitbucket (code events)",
+  "kind": "git",
+  "icon": "bitbucket.svg",
+  "docsUrl": "https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "x-hub-signature",
+    "prefix": "sha256=",
+    "secretRef": ""
+  },
+  "eventTypePath": "header:x-event-key",
+  "deliveryIdHeader": "x-request-uuid",
+  "knownEventTypes": [
+    "repo:push",
+    "pullrequest:created", "pullrequest:updated",
+    "pullrequest:approved", "pullrequest:fulfilled", "pullrequest:rejected"
+  ],
+  "correlationSuggestions": [
+    { "key": "prId",      "path": "$.pullrequest.id" },
+    { "key": "commitSha", "path": "$.push.changes[0].new.target.hash" },
+    { "key": "branch",    "path": "$.push.changes[0].new.name" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "pullrequest_created": "./samples/pullrequest_created.json" }
+}

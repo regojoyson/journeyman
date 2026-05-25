@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "repository": {
+      "type": "object",
+      "properties": { "full_name": { "type": "string" }, "name": { "type": "string" } },
+      "additionalProperties": true
+    },
+    "pullrequest": {
+      "type": "object",
+      "properties": {
+        "id":    { "type": "integer" },
+        "title": { "type": "string" },
+        "state": { "type": "string" },
+        "author": { "type": "object", "additionalProperties": true },
+        "source": { "type": "object", "additionalProperties": true },
+        "destination": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "push": { "type": "object", "additionalProperties": true },
+    "actor": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

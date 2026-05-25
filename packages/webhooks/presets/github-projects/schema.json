@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "action": { "type": "string" },
+    "projects_v2_item": {
+      "type": "object",
+      "properties": {
+        "id":               { "type": "integer" },
+        "node_id":          { "type": "string" },
+        "project_node_id":  { "type": "string" },
+        "content_type":     { "type": "string" },
+        "content_node_id":  { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "changes":    { "type": "object", "additionalProperties": true },
+    "sender":     { "type": "object", "additionalProperties": true },
+    "organization": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

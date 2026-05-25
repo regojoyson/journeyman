@@ -1,0 +1,25 @@
+{
+  "id": "monday",
+  "name": "monday.com",
+  "kind": "ticket",
+  "icon": "monday.svg",
+  "docsUrl": "https://developer.monday.com/apps/docs/webhook",
+  "auth": {
+    "mode": "jwt",
+    "algo": "HS256",
+    "header": "authorization",
+    "stripPrefix": "",
+    "signingKeyRef": ""
+  },
+  "eventTypePath": "$.event.type",
+  "knownEventTypes": [
+    "create_pulse", "change_column_value", "update_column_value",
+    "create_update", "change_status_column_value"
+  ],
+  "correlationSuggestions": [
+    { "key": "pulseId", "path": "$.event.pulseId" },
+    { "key": "boardId", "path": "$.event.boardId" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "create_pulse": "./samples/create_pulse.json" }
+}

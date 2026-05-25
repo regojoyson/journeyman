@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "object_kind": { "type": "string" },
+    "event_type":  { "type": "string" },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id":                  { "type": "integer" },
+        "path_with_namespace": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "object_attributes": {
+      "type": "object",
+      "properties": {
+        "id":          { "type": "integer" },
+        "iid":         { "type": "integer" },
+        "title":       { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "state":       { "type": "string" },
+        "noteable_type": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "user": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

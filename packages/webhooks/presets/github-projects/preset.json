@@ -1,0 +1,24 @@
+{
+  "id": "github-projects",
+  "name": "GitHub (projects v2)",
+  "kind": "ticket",
+  "icon": "github.svg",
+  "docsUrl": "https://docs.github.com/en/webhooks/webhook-events-and-payloads#projects_v2_item",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "x-hub-signature-256",
+    "prefix": "sha256=",
+    "secretRef": ""
+  },
+  "eventTypePath": "header:x-github-event",
+  "deliveryIdHeader": "x-github-delivery",
+  "knownEventTypes": ["projects_v2_item", "projects_v2"],
+  "correlationSuggestions": [
+    { "key": "projectId", "path": "$.projects_v2_item.project_node_id" },
+    { "key": "itemId",    "path": "$.projects_v2_item.node_id" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "projects_v2_item": "./samples/projects_v2_item.json" }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "github-issues",
+  "name": "GitHub (issues)",
+  "kind": "ticket",
+  "icon": "github.svg",
+  "docsUrl": "https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "x-hub-signature-256",
+    "prefix": "sha256=",
+    "secretRef": ""
+  },
+  "eventTypePath": "header:x-github-event",
+  "deliveryIdHeader": "x-github-delivery",
+  "knownEventTypes": ["issues", "issue_comment", "label", "milestone"],
+  "correlationSuggestions": [
+    { "key": "issueRef", "path": "$.repository.full_name" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "issues": "./samples/issues.json" }
+}

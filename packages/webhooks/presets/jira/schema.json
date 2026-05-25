@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "webhookEvent": { "type": "string" },
+    "timestamp":    { "type": "integer" },
+    "issue": {
+      "type": "object",
+      "properties": {
+        "id":  { "type": "string" },
+        "key": { "type": "string" },
+        "fields": {
+          "type": "object",
+          "properties": {
+            "summary":     { "type": "string" },
+            "status":      { "type": "object", "additionalProperties": true },
+            "issuetype":   { "type": "object", "additionalProperties": true },
+            "assignee":    { "type": ["object", "null"], "additionalProperties": true },
+            "reporter":    { "type": ["object", "null"], "additionalProperties": true },
+            "description": { "type": ["string", "null"] }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "user":    { "type": "object", "additionalProperties": true },
+    "comment": { "type": "object", "additionalProperties": true },
+    "changelog": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

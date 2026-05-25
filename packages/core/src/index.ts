@@ -179,5 +179,11 @@ export type {
   WebhookEventStatus,
   WebhookProvider,
   CreateWebhookEventArgs,
+  Webhook,
+  WebhookAuthConfig,
+  WebhookCorrelationSuggestion,
+  WebhookKind,
+  WebhookScope,
+  PresetId,
 } from "./types/webhook.types.ts";
 export type { IWebhookEventStore } from "./interfaces/webhook-event-store.interface.ts";

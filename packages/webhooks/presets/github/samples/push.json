@@ -1,0 +1,7 @@
+{
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "abc1234abc1234abc1234abc1234abc1234abc12",
+  "repository": { "id": 1, "name": "demo", "full_name": "acme/demo", "owner": { "login": "acme" } },
+  "sender": { "login": "alice" }
+}

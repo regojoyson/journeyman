@@ -1,0 +1,13 @@
+{
+  "action": "opened",
+  "issue": {
+    "number": 7,
+    "title": "Bug: button does not click",
+    "state": "open",
+    "body": "Steps to reproduce...",
+    "user": { "login": "alice" },
+    "labels": [{ "name": "bug" }]
+  },
+  "repository": { "full_name": "acme/demo" },
+  "sender": { "login": "alice" }
+}

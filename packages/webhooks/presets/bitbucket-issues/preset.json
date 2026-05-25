@@ -1,0 +1,23 @@
+{
+  "id": "bitbucket-issues",
+  "name": "Bitbucket (issues)",
+  "kind": "ticket",
+  "icon": "bitbucket.svg",
+  "docsUrl": "https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/#Issue",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "x-hub-signature",
+    "prefix": "sha256=",
+    "secretRef": ""
+  },
+  "eventTypePath": "header:x-event-key",
+  "deliveryIdHeader": "x-request-uuid",
+  "knownEventTypes": ["issue:created", "issue:updated", "issue:comment_created"],
+  "correlationSuggestions": [
+    { "key": "issueId", "path": "$.issue.id" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "issue_created": "./samples/issue_created.json" }
+}

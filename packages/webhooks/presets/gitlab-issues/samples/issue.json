@@ -1,0 +1,7 @@
+{
+  "object_kind": "issue",
+  "event_type": "issue",
+  "project": { "id": 1, "path_with_namespace": "acme/demo" },
+  "object_attributes": { "id": 99, "iid": 7, "title": "Demo issue", "description": "...", "state": "opened" },
+  "user": { "username": "alice" }
+}

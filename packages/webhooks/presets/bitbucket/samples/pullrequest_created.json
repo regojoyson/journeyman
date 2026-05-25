@@ -1,0 +1,12 @@
+{
+  "repository": { "full_name": "acme/demo", "name": "demo" },
+  "pullrequest": {
+    "id": 5,
+    "title": "Add feature X",
+    "state": "OPEN",
+    "author": { "display_name": "Alice" },
+    "source": { "branch": { "name": "feat/x" } },
+    "destination": { "branch": { "name": "main" } }
+  },
+  "actor": { "display_name": "Alice" }
+}

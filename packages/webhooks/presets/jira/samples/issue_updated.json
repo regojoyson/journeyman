@@ -1,0 +1,17 @@
+{
+  "webhookEvent": "jira:issue_updated",
+  "timestamp": 1700000000000,
+  "issue": {
+    "id": "10001",
+    "key": "DEMO-7",
+    "fields": {
+      "summary": "Fix login button",
+      "status": { "name": "In Progress" },
+      "issuetype": { "name": "Bug" },
+      "assignee": { "displayName": "Alice" },
+      "reporter": { "displayName": "Bob" }
+    }
+  },
+  "user": { "displayName": "Bob" },
+  "changelog": { "items": [{ "field": "status", "fromString": "To Do", "toString": "In Progress" }] }
+}

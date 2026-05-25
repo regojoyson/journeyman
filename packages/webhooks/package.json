@@ -1,0 +1,25 @@
+{
+  "name": "@journeyman/webhooks",
+  "version": "0.1.0",
+  "description": "Webhook auth, schema, and preset library for Journeyman",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./presets/*": "./presets/*"
+  },
+  "files": ["src", "presets"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3"
+  }
+}

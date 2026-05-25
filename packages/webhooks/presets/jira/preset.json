@@ -1,0 +1,20 @@
+{
+  "id": "jira",
+  "name": "Jira Cloud",
+  "kind": "ticket",
+  "icon": "jira.svg",
+  "docsUrl": "https://developer.atlassian.com/cloud/jira/platform/webhooks/",
+  "auth": { "mode": "header-equals", "header": "authorization", "valueRef": "" },
+  "eventTypePath": "$.webhookEvent",
+  "deliveryIdHeader": "x-atlassian-webhook-identifier",
+  "knownEventTypes": [
+    "jira:issue_created", "jira:issue_updated", "jira:issue_deleted",
+    "comment_created", "comment_updated", "comment_deleted",
+    "worklog_created", "worklog_updated"
+  ],
+  "correlationSuggestions": [
+    { "key": "issueKey", "path": "$.issue.key" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": { "issue_updated": "./samples/issue_updated.json" }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "github",
+  "name": "GitHub (code events)",
+  "kind": "git",
+  "icon": "github.svg",
+  "docsUrl": "https://docs.github.com/en/webhooks/webhook-events-and-payloads",
+  "auth": {
+    "mode": "hmac",
+    "algo": "sha256",
+    "encoding": "hex",
+    "header": "x-hub-signature-256",
+    "prefix": "sha256=",
+    "secretRef": ""
+  },
+  "eventTypePath": "header:x-github-event",
+  "deliveryIdHeader": "x-github-delivery",
+  "knownEventTypes": [
+    "push", "pull_request", "pull_request_review", "pull_request_review_comment",
+    "create", "delete", "release", "workflow_run", "check_run", "check_suite"
+  ],
+  "correlationSuggestions": [
+    { "key": "issueRef",  "path": "$.repository.full_name" },
+    { "key": "commitSha", "path": "$.after" },
+    { "key": "branch",    "path": "$.ref" }
+  ],
+  "payloadSchemaRef": "./schema.json",
+  "sampleEvents": {
+    "push": "./samples/push.json",
+    "pull_request": "./samples/pull_request.json"
+  }
+}
