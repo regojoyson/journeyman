@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
   { to: "/me/custom-steps", icon: "🧩", label: "My Custom Steps" },
+  { to: "/me/webhooks", icon: "📡", label: "My Webhooks" },
 ];
 
 const ADMIN_ITEMS = [
@@ -19,6 +20,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/mcps",    icon: "🔌", label: "Org MCPs"    },
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
   { to: "/admin/custom-steps", icon: "🧩", label: "Org Custom Steps" },
+  { to: "/admin/webhooks", icon: "📡", label: "Org Webhooks" },
   { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
   { to: "/admin/workflows", icon: "📋", label: "Admin Workflows" },
 ];

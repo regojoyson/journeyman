@@ -9,6 +9,8 @@ import { registerStepsRoutes } from "./routes/steps.ts";
 import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
+import { registerWebhookManagementRoutes } from "./routes/webhooks-management.ts";
+import { registerWebhookPresetRoutes } from "./routes/webhook-presets.ts";
 import { registerHumanTaskRoutes } from "./routes/human-tasks.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
@@ -44,6 +46,10 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   registerWorkflowGrantsRoutes(app, c);
   registerWorkflowInstanceRoutes(app, c);
   registerWebhookRoutes(app, c);
+  if (c.pool) {
+    registerWebhookManagementRoutes(app, c);
+    registerWebhookPresetRoutes(app, c);
+  }
   registerHumanTaskRoutes(app, c);
   return app;
 }

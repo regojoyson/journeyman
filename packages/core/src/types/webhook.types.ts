@@ -90,8 +90,8 @@ export type Webhook = {
 export type WebhookEvent = {
   id: string;
   receivedAt: Date;
-  /** FK to jm_webhooks; nullable for legacy events created before the registry. */
-  webhookId?: string | null;
+  /** FK to jm_webhooks; null for legacy events created before the registry. */
+  webhookId: string | null;
   provider: WebhookProvider;
   eventType: string | null;
   deliveryId: string | null;

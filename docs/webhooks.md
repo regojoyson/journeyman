@@ -2,7 +2,12 @@
 
 ## Overview
 
-Inbound webhooks from GitHub, GitLab, Jira, Monday, and Linear are received at `POST /webhooks/:provider`. Each provider signs its payloads differently; Journeyman verifies signatures before processing to prevent spoofing.
+Inbound webhooks from GitHub, GitLab, Jira, Monday, and Linear are received at:
+
+- `POST /webhooks/:provider` — legacy per-provider endpoint (still supported)
+- `POST /webhooks/in/:tenantToken` — universal endpoint resolving the webhook from the registry
+
+Both go through the same internal router. Each provider signs its payloads differently; Journeyman verifies signatures before processing to prevent spoofing.
 
 ---
 
@@ -75,9 +80,11 @@ After signature verification, the webhook handler processes each event as follow
    - Monday: `monday:<pulseId>`
    - Linear: `linear:<identifier>`
 
-2. **Check for a pending human-task** — if a human-task step in an active run is waiting on that issue reference, the handler resolves it immediately and resumes the blocked run.
+2. **Check for a pending `webhook-wait`** — if a `webhook-wait` node in an active workflow is waiting on that issue reference, the handler matches it against the node's `listensFor` + `acceptIf` rules, extracts declared outputs via `fromPath`, and resumes the blocked workflow. (Pure `human-task` nodes are **never** resolved by webhooks — they are person-driven only.)
 
-3. **Fall through to flow matching** — if no human-task matches, the handler applies normal flow trigger matching to decide whether to start a new run.
+3. **Fall through to workflow trigger matching** — if no `webhook-wait` matches, the handler applies normal workflow trigger matching to decide whether to start a new workflow instance.
+
+See [parallel-and-pauses.md](parallel-and-pauses.md) for details on `human-task` vs `webhook-wait` and the parallel `gateway-and` / `join` node types.
 
 The following fields are examined when extracting event types from the payload:
 

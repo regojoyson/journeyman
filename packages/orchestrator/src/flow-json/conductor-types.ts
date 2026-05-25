@@ -87,8 +87,8 @@ export interface HumanTask {
     timeoutDefaults?: Record<string, unknown>;
     /** Discriminator: "human-task" or "webhook-wait". */
     kind?: "human-task" | "webhook-wait";
-    /** Webhook-wait: provider whose events resolve this node. */
-    provider?: string;
+    /** Webhook-wait: registered webhook this node listens to. */
+    webhookId?: string;
     /** Webhook-wait: how the paused node binds to an incoming event. */
     correlationKey?: "issueRef";
     /** Human-task: notification config dispatched on pause. */

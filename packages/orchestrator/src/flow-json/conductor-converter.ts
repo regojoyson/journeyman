@@ -12,7 +12,6 @@ import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomStepShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
-import { migrateHumanTaskToWebhookWait } from "./migrate-human-task-to-webhook-wait.ts";
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -68,7 +67,7 @@ class ConvertCtx {
     private catalog?: Map<string, CatalogShapeEntry>,
     private customStepDefs?: Map<string, CustomStepShapeEntry>,
   ) {
-    this.flow = migrateHumanTaskToWebhookWait(flow);
+    this.flow = flow;
     this.nodes = new Map(this.flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
     for (const e of this.flow.edges) {
@@ -363,8 +362,8 @@ class ConvertCtx {
   emitWebhookWait(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").WebhookWaitConfig>;
 
-    if (!cfg.provider) {
-      throw new WorkflowValidationError(`Webhook-wait ${this.label(node)} must declare a provider`);
+    if (!cfg.webhookId) {
+      throw new WorkflowValidationError(`Webhook-wait ${this.label(node)} must reference a webhookId`);
     }
 
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
@@ -376,7 +375,7 @@ class ConvertCtx {
       taskReferenceName: node.id,
       inputParameters: {
         outputs,
-        provider: cfg.provider,
+        webhookId: cfg.webhookId,
         correlationKey: cfg.correlationKey ?? "issueRef",
         ...(cfg.listensFor ? { listensFor: cfg.listensFor } : {}),
         ...(cfg.acceptIf ? { acceptIf: cfg.acceptIf } : {}),

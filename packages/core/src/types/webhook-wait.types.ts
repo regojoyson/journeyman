@@ -1,5 +1,4 @@
 import type { JsonLogicExpr } from "./flow-condition.types.ts";
-import type { WebhookProvider } from "./webhook.types.ts";
 
 export interface WebhookWaitOutputField {
   name: string;
@@ -13,8 +12,8 @@ export interface WebhookWaitOutputField {
 }
 
 export interface WebhookWaitConfig {
-  /** Which provider's events this node listens to. */
-  provider: WebhookProvider;
+  /** Registered webhook this node listens to. Required at publish time. */
+  webhookId: string;
   /** Event-type allowlist; empty/undefined means accept any event type. */
   listensFor?: string[];
   /** JSONLogic predicate evaluated against the raw payload; must be truthy to match. */

@@ -10,6 +10,7 @@ function rowToEvent(row: any): WebhookEvent {
   return {
     id: row.id,
     receivedAt: new Date(row.received_at),
+    webhookId: row.webhook_id ?? null,
     provider: row.provider,
     eventType: row.event_type,
     deliveryId: row.delivery_id,
@@ -28,10 +29,11 @@ export class PostgresWebhookEventStore implements IWebhookEventStore {
   async create(args: CreateWebhookEventArgs): Promise<WebhookEvent> {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_webhook_events
-         (provider, event_type, delivery_id, issue_ref, product_id, raw_headers, raw_payload)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+         (webhook_id, provider, event_type, delivery_id, issue_ref, product_id, raw_headers, raw_payload)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
        RETURNING *`,
       [
+        args.webhookId ?? null,
         args.provider,
         args.eventType ?? null,
         args.deliveryId ?? null,

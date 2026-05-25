@@ -184,3 +184,27 @@ export async function fetchPinnedOrgSecret(
   if (!row) return null;
   return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
 }
+
+/**
+ * Fetch and decrypt the caller's user-scope secret by (userId, name). Does
+ * not constrain by org_id — used by the promote-to-org route where the
+ * caller's active org may differ from the org under which the user-scope
+ * row was originally created.
+ */
+export async function fetchOwnUserSecret(
+  pool: Pool,
+  userId: string,
+  name: string,
+): Promise<string | null> {
+  validateName(name);
+  const r = await pool.query(
+    `SELECT ciphertext, iv, auth_tag
+       FROM jm_secrets
+      WHERE user_id = $1 AND name = $2
+      LIMIT 1`,
+    [userId, name],
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+}

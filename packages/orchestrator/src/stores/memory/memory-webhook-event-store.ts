@@ -13,6 +13,7 @@ export class MemoryWebhookEventStore implements IWebhookEventStore {
     const event: WebhookEvent = {
       id: randomUUID(),
       receivedAt: new Date(),
+      webhookId: args.webhookId ?? null,
       provider: args.provider,
       eventType: args.eventType ?? null,
       deliveryId: args.deliveryId ?? null,

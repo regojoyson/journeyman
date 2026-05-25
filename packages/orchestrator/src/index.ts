@@ -6,7 +6,6 @@ export {
   WorkflowValidationError,
 } from "./flow-json/conductor-converter.ts";
 export { parseRef, resolveInputs } from "./flow-json/resolve-inputs.ts";
-export { migrateHumanTaskToWebhookWait } from "./flow-json/migrate-human-task-to-webhook-wait.ts";
 export { findForkJoinPairs } from "./flow-json/find-fork-join-pairs.ts";
 export { applyFirstWinsCancellation } from "./sync/first-wins-controller.ts";
 export type { ForkJoinPair, PairDetectionResult } from "./flow-json/find-fork-join-pairs.ts";
@@ -74,3 +73,5 @@ export { MemoryWorkflowInstanceGrantsStore } from "./stores/memory/memory-workfl
 export { PostgresWorkflowInstanceGrantsStore } from "./stores/postgres/postgres-workflow-instance-grants-store.ts";
 export { PostgresWebhookEventStore } from "./stores/postgres/postgres-webhook-event-store.ts";
 export { MemoryWebhookEventStore } from "./stores/memory/memory-webhook-event-store.ts";
+export { PostgresWebhookStore } from "./stores/postgres/postgres-webhook-store.ts";
+export { MemoryWebhookStore } from "./stores/memory/memory-webhook-store.ts";

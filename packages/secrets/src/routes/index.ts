@@ -5,6 +5,7 @@ import { registerUserSecretRoutes } from "./user-secrets.ts";
 import { registerGlobalSecretRoutes } from "./global-secrets.ts";
 import { registerResolveRoutes } from "./resolve.ts";
 import { registerVisibleNamesRoutes } from "./visible-names.ts";
+import { registerPromoteSecretRoute } from "./promote.ts";
 
 export async function registerSecretsRoutes(app: FastifyInstance, pool: Pool) {
   await registerOrgSecretRoutes(app, pool);
@@ -12,4 +13,5 @@ export async function registerSecretsRoutes(app: FastifyInstance, pool: Pool) {
   await registerGlobalSecretRoutes(app, pool);
   await registerResolveRoutes(app, pool);
   await registerVisibleNamesRoutes(app, pool);
+  await registerPromoteSecretRoute(app, pool);
 }

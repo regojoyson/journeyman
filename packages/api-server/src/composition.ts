@@ -12,7 +12,7 @@ import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWorkspaceProvider,
+  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -27,6 +27,7 @@ import {
   PostgresNodeExecutionStore,
   PostgresEventBus,
   PostgresWebhookEventStore,
+  PostgresWebhookStore,
   PostgresHumanTaskResolutionStore,
   MemoryWorkflowGrantsStore,
   MemoryWorkflowInstanceGrantsStore,
@@ -36,6 +37,7 @@ import {
   MemoryNodeExecutionStore,
   MemoryEventBus,
   MemoryWebhookEventStore,
+  MemoryWebhookStore,
   MemoryHumanTaskResolutionStore,
   DirectoryWorkspaceProvider,
   InMemoryStepRegistry,
@@ -57,6 +59,7 @@ export interface Composition {
   nodeExecutions: INodeExecutionStore;
   events: IEventBus;
   webhookEvents: IWebhookEventStore;
+  webhooks: IWebhookStore;
   humanTaskResolutions: IHumanTaskResolutionStore;
   humanTaskTimeouts: HumanTaskTimeoutService;
   conductorClient: ConductorClient;
@@ -89,6 +92,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   let nodeExecutions: INodeExecutionStore;
   let events: IEventBus;
   let webhookEvents: IWebhookEventStore;
+  let webhooks: IWebhookStore;
   let humanTaskResolutions: IHumanTaskResolutionStore;
   let pool: Pool | null = null;
 
@@ -102,6 +106,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     nodeExecutions = new MemoryNodeExecutionStore();
     events = new MemoryEventBus();
     webhookEvents = new MemoryWebhookEventStore();
+    webhooks = new MemoryWebhookStore();
     humanTaskResolutions = new MemoryHumanTaskResolutionStore();
   } else {
     pool = createPool({ connectionString: cfg.databaseUrl });
@@ -114,6 +119,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     nodeExecutions = new PostgresNodeExecutionStore(pool);
     events = new PostgresEventBus(pool);
     webhookEvents = new PostgresWebhookEventStore(pool);
+    webhooks = new PostgresWebhookStore(pool);
     humanTaskResolutions = new PostgresHumanTaskResolutionStore(pool);
   }
 
@@ -139,7 +145,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   return {
     workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
-    nodeExecutions, events, webhookEvents,
+    nodeExecutions, events, webhookEvents, webhooks,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,

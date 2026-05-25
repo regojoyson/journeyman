@@ -187,3 +187,8 @@ export type {
   PresetId,
 } from "./types/webhook.types.ts";
 export type { IWebhookEventStore } from "./interfaces/webhook-event-store.interface.ts";
+export type {
+  IWebhookStore,
+  CreateWebhookArgs,
+  UpdateWebhookArgs,
+} from "./interfaces/webhook-store.interface.ts";

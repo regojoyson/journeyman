@@ -6,7 +6,7 @@ Configurable, step-based AI pipeline that automates ticket → code → PR workf
 
 ## What is Journeyman?
 
-Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs configurable AI-powered flows that clone repos, analyze the ticket, write code, and open PRs — all without manual intervention. A visual, n8n-style canvas editor lets you drag-and-drop step nodes, wire conditional branches, and configure retry policies without touching code. The provider pattern means you can swap any AI coding tool (Claude, Gemini, Codex), git host (GitHub, GitLab), ticket tracker, or notification channel without changing your flow definitions. Durable execution is backed by Conductor, with support for step retries and human-in-the-loop pause/resume gates.
+Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs configurable AI-powered flows that clone repos, analyze the ticket, write code, and open PRs — all without manual intervention. A visual, n8n-style canvas editor lets you drag-and-drop step nodes, wire conditional branches, run branches in parallel (Fork/Join with `fail-fast`, `wait-all`, `wait-all-strict`, or `first-wins` semantics), and configure retry policies without touching code. Pause for human approvals or provider webhooks at any point in the flow. The provider pattern means you can swap any AI coding tool (Claude, Gemini, Codex), git host (GitHub, GitLab), ticket tracker, or notification channel without changing your flow definitions. Durable execution is backed by Conductor.
 
 ## Architecture
 
@@ -101,7 +101,25 @@ npm run dev:web
 
 The visual canvas is powered by `@journeyman/flow-editor`, a React component built on XYFlow. Nodes represent steps (built-in or custom); edges carry JSON Logic conditions for conditional branching between them. The properties panel lets you configure node inputs, retry/backoff policy, MCP tools, skill packages, and secret bindings per node. Flows can be authored in the UI, validated, and published — the same JSON schema is used by the orchestrator at runtime.
 
+### Node types
+
+In addition to **step** nodes, the editor supports first-class control-flow nodes:
+
+| Node | Purpose |
+|---|---|
+| **Human Task** (`human-task`) | Pause for a person to fill a form. Optional Slack notify; optional timeout. |
+| **Webhook Wait** (`webhook-wait`) | Pause until a matching provider webhook (Jira / GitHub / GitLab / Monday / Linear) arrives. Uses `listensFor` + `acceptIf` (JSONLogic) + `fromPath` extraction. |
+| **Fork** (`gateway-and`) | Split flow into parallel branches. |
+| **Join** (`join`) | Wait for the branches with one of four error modes: `fail-fast`, `wait-all`, `wait-all-strict`, `first-wins`. |
+| **If / XOR Gateway** | Branch on a JSONLogic condition. |
+| **Timer / Loop / Subflow** | Time-based wait, iterative body, and subflow invocation (subset still landing). |
+
+Human Task and Webhook Wait are **separate** node types — one is person-driven, the other is system-driven. They share the same underlying Conductor pause primitive but have completely independent configuration surfaces.
+
+`first-wins` lets you race two pause nodes (e.g. *"continue when the human approves OR Jira moves to Done, whichever first"*); the losing branch is cancelled cleanly. In v1, `first-wins` branches may contain only pause nodes — see the [parallel-and-pauses](docs/parallel-and-pauses.md) doc for the full rule set and examples.
+
 → [Flow authoring guide](docs/flows.md)
+→ [Parallel branches and pause nodes](docs/parallel-and-pauses.md)
 
 ## Docs
 
@@ -114,6 +132,7 @@ The visual canvas is powered by `@journeyman/flow-editor`, a React component bui
 | [Products](docs/products.md) | Logical tenants — isolate flows, repos, and concurrency per team |
 | [New Product](docs/new-product.md) | Add a new product via the UI without touching code |
 | [Flows](docs/flows.md) | Author flows in the visual editor or YAML: nodes, edges, conditions, retries |
+| [Parallel & Pauses](docs/parallel-and-pauses.md) | Human Task, Webhook Wait, Fork (`gateway-and`), and Join with 4 error modes including `first-wins` |
 | [Steps](docs/steps.md) | Built-in step catalog and the `IStepHandler` interface |
 | [Custom Steps](docs/custom-steps.md) | Register user-defined AI steps with custom prompts and tools |
 | [Providers](docs/providers.md) | Configure coding, git, ticket, and notification providers |

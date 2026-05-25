@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { btnDanger, btnPrimary, card, codePill, inputCls } from "./admin-styles.ts";
+import { promoteSecretToOrg } from "../api/secrets.ts";
+import { useAuth } from "../AuthContext.tsx";
 
 interface SecretRow {
   id: string;
@@ -49,6 +51,28 @@ export function MySecretsPage(props: { orgId: string }) {
     if (r.ok) refresh();
   }
 
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [promoting, setPromoting] = useState<string | null>(null);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
+
+  async function promote(secretName: string) {
+    if (!confirm(`Copy "${secretName}" into the org-scope vault? The personal secret will remain unchanged.`)) return;
+    setPromoteError(null);
+    setPromoting(secretName);
+    try {
+      await promoteSecretToOrg(props.orgId, secretName);
+      alert(`Promoted ${secretName} to org scope.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/409/.test(msg)) setPromoteError(`Org-scope secret "${secretName}" already exists.`);
+      else if (/403/.test(msg)) setPromoteError("Org admin permission required.");
+      else setPromoteError(msg);
+    } finally {
+      setPromoting(null);
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
@@ -92,6 +116,12 @@ export function MySecretsPage(props: { orgId: string }) {
           </form>
         </section>
 
+        {promoteError && (
+          <div className="rounded border border-red-700/40 bg-red-900/10 p-3 text-sm text-red-200">
+            {promoteError}
+          </div>
+        )}
+
         <section className={`${card} overflow-hidden`}>
           <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
             <h2 className="text-base font-medium text-slate-100">
@@ -123,7 +153,18 @@ export function MySecretsPage(props: { orgId: string }) {
                     </td>
                     <td className="px-6 py-3 text-slate-400">{new Date(r.updatedAt).toLocaleString()}</td>
                     <td className="px-6 py-3 text-right">
-                      <button onClick={() => remove(r.id, r.name)} className={btnDanger}>Delete</button>
+                      <div className="flex gap-2 justify-end">
+                        {isAdmin && (
+                          <button
+                            onClick={() => promote(r.name)}
+                            disabled={promoting === r.name}
+                            className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 disabled:opacity-50"
+                          >
+                            {promoting === r.name ? "Promoting…" : "Promote to org →"}
+                          </button>
+                        )}
+                        <button onClick={() => remove(r.id, r.name)} className={btnDanger}>Delete</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
