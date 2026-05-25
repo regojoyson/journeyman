@@ -2,6 +2,7 @@ import type { Composition } from "../composition.ts";
 import type { HumanTaskNotifyConfig } from "@journeyman/core";
 import { applyFirstWinsCancellation } from "@journeyman/orchestrator";
 import { notifyOnHumanTaskPause } from "./notify-on-human-task-pause.ts";
+import { parseDurationMs } from "./parse-duration.ts";
 
 export interface ReconcileResult {
   pendingNodeIds: string[];
@@ -72,7 +73,7 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
       }
 
       if (cfg.timeout) {
-        const ms = parseDurationMsLite(cfg.timeout.duration);
+        const ms = parseDurationMs(cfg.timeout.duration);
         const defaults = cfg.timeout.defaults ?? {};
         if (ms > 0) {
           c.humanTaskTimeouts.schedule(workflowInstanceId, nodeId, ms, async () => {
@@ -109,9 +110,3 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
   return { pendingNodeIds };
 }
 
-function parseDurationMsLite(input: string): number {
-  const m = /^(\d+)\s*(ms|s|m|h|d)$/.exec(input.trim());
-  if (!m) return 0;
-  const n = Number(m[1]);
-  return n * ({ ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const)[m[2] as "ms"];
-}
