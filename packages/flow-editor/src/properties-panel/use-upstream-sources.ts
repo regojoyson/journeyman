@@ -30,8 +30,12 @@ export function useUpstreamSources(
 ): UpstreamSource[] {
   return useMemo(() => {
     const _t0 = performance.now();
-    const startNode = graph.nodes.find(n => n.type === "start");
-    const runInputs = getStartWorkflowInputs(startNode?.config);
+    const startNode = graph.nodes.find(n =>
+      n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+    );
+    const runInputs = (graph.inputDefs && graph.inputDefs.length > 0)
+      ? graph.inputDefs
+      : getStartWorkflowInputs(startNode?.config);
 
     const allIds = new Set(graph.nodes.map(n => n.id));
     const start = startNode?.id;

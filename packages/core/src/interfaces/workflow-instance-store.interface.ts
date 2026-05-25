@@ -15,6 +15,12 @@ export interface CreateWorkflowInstanceArgs {
   startedByOrgId: string | null;
   inputs: Record<string, unknown>;
   webhookEventId?: string | null;
+  /** Id of the trigger node that started this instance. */
+  triggerNodeId?: string | null;
+  /** When started via trigger-human, the originating form submission id. */
+  formSubmissionId?: string | null;
+  /** Optional issueRef for cross-instance correlation. */
+  issueRef?: string | null;
 }
 
 export interface IWorkflowInstanceStore {

@@ -2,7 +2,7 @@ import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 
 export const KNOWN_NODE_TYPES = new Set([
-  "start", "end", "step",
+  "trigger-manual", "trigger-webhook", "trigger-human", "end", "step",
   "gateway-xor", "gateway-and", "join", "loop", "subflow", "if", "timer",
   "human-task", "webhook-wait",
 ]);

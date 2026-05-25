@@ -106,8 +106,14 @@ function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
 }
 
 function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
-  const start = flow.nodes.find((n) => n.type === "start");
-  return getStartWorkflowInputs(start?.config);
+  // Post-v2: inputs live on the graph itself (lifted off the legacy start node).
+  // Legacy v1 fallback: read from any trigger node's config.workflowInputs (the converter
+  // should already have lifted these, but this keeps callers robust).
+  if (flow.inputDefs && flow.inputDefs.length > 0) return flow.inputDefs;
+  const triggerWithLegacyInputs = flow.nodes.find(
+    (n) => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  );
+  return getStartWorkflowInputs(triggerWithLegacyInputs?.config);
 }
 
 /**

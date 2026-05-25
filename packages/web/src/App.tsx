@@ -20,6 +20,8 @@ import { MyWebhooksPage } from "./routes/MyWebhooksPage.tsx";
 import { AdminWebhooksPage } from "./routes/AdminWebhooksPage.tsx";
 import { WebhookDetailPage } from "./routes/WebhookDetailPage.tsx";
 import { ChangePasswordPage } from "./routes/ChangePasswordPage.tsx";
+import { FormsInventoryPage } from "./routes/forms/FormsInventoryPage.tsx";
+import { RunFormPage } from "./routes/forms/RunFormPage.tsx";
 import { useAuth } from "./AuthContext.tsx";
 
 export default function App() {
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/workflows" element={<FlowsListPage />} />
         <Route path="/workflows/new" element={<NewFlowPage />} />
         <Route path="/workflows/:id/edit" element={<FlowEditorPage />} />
+        <Route path="/forms" element={<FormsInventoryPage />} />
+        <Route path="/workflows/:id/form" element={<RunFormPage />} />
         <Route path="/workflow-instances" element={<RunsListPage />} />
         <Route path="/workflow-instances/:id" element={<RunDetailPage />} />
         <Route path="/me/secrets" element={<MySecretsPage orgId={activeOrgId} />} />

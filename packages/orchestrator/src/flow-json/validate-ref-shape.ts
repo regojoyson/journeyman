@@ -36,8 +36,11 @@ export function resolveRefShape(
   const path = parsed.field.split(".");
 
   if (parsed.scope === "workflow.input") {
-    const startNode = flow.nodes.find(n => n.type === "start");
-    const workflowInputs = getStartWorkflowInputs(startNode?.config);
+    const workflowInputs = (flow.inputDefs && flow.inputDefs.length > 0)
+      ? flow.inputDefs
+      : getStartWorkflowInputs(
+          flow.nodes.find(n => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human")?.config,
+        );
     const decl = workflowInputs.find(r => r.name === path[0]);
     if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
     const root: Shape =

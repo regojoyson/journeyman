@@ -24,6 +24,8 @@ function rowToWorkflowInstance(row: any): WorkflowInstance {
     outputs: row.outputs,
     attemptNumber: row.attempt_number ?? 1,
     webhookEventId: row.webhook_event_id ?? null,
+    triggerNodeId: row.trigger_node_id ?? null,
+    formSubmissionId: row.form_submission_id ?? null,
   };
 }
 
@@ -72,8 +74,9 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_workflow_instances
          (workflow_id, workflow_version_id, workflow_name_snapshot, workflow_scope_snapshot, definition_snapshot,
-          status, trigger_source, started_by_user_id, inputs, webhook_event_id)
-       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9)
+          status, trigger_source, started_by_user_id, inputs, webhook_event_id,
+          trigger_node_id, form_submission_id)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9, $10, $11)
        RETURNING *`,
       [
         args.workflowId, args.workflowVersionId,
@@ -82,6 +85,8 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
         args.triggerSource, args.startedByUserId,
         JSON.stringify(args.inputs),
         args.webhookEventId ?? null,
+        args.triggerNodeId ?? null,
+        args.formSubmissionId ?? null,
       ],
     );
     return rowToWorkflowInstance(rows[0]);

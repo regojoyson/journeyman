@@ -12,6 +12,8 @@ import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerWebhookManagementRoutes } from "./routes/webhooks-management.ts";
 import { registerWebhookPresetRoutes } from "./routes/webhook-presets.ts";
 import { registerHumanTaskRoutes } from "./routes/human-tasks.ts";
+import { registerFormRoutes } from "./routes/forms.ts";
+import { registerWorkflowTriggersRoute } from "./routes/workflow-triggers.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
@@ -51,5 +53,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     registerWebhookPresetRoutes(app, c);
   }
   registerHumanTaskRoutes(app, c);
+  registerFormRoutes(app, c);
+  registerWorkflowTriggersRoute(app, c);
   return app;
 }

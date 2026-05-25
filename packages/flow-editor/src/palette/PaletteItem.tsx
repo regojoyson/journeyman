@@ -9,6 +9,7 @@ export interface PaletteItemEntryLike {
   icon: string;
   stepType?: string;
   nodeType?: string;
+  triggerType?: string;
   dragMime: string;
 }
 
@@ -28,7 +29,7 @@ export function PaletteItem({ entry, disabled = false }: PaletteItemProps) {
       ev.preventDefault();
       return;
     }
-    const value = entry.stepType ?? entry.nodeType ?? "";
+    const value = entry.stepType ?? entry.nodeType ?? entry.triggerType ?? "";
     ev.dataTransfer.setData(entry.dragMime, value);
     ev.dataTransfer.effectAllowed = "move";
     setPopPos(null);

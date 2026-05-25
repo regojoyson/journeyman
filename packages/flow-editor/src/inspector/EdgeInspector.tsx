@@ -13,6 +13,7 @@ interface Props {
   flow: WorkflowGraph;
   edge: WorkflowEdge;
   onChange: (next: WorkflowEdge) => void;
+  onClose?: () => void;
 }
 
 interface CustomStepFetchTarget {
@@ -20,7 +21,7 @@ interface CustomStepFetchTarget {
   customStepId: string;
 }
 
-export function EdgeInspector({ flow, edge, onChange }: Props) {
+export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
   const registry = useStepRegistry();
   const orgId = useOrgId();
   const catalog = useMemo(
@@ -155,7 +156,10 @@ export function EdgeInspector({ flow, edge, onChange }: Props) {
   return (
     <div className="je-edge-inspector">
       <div className="je-edge-inspector__header">
-        Edge: {edge.source} → {edge.target}
+        <span>Edge: {edge.source} → {edge.target}</span>
+        {onClose ? (
+          <button type="button" className="je-props__close" onClick={onClose} aria-label="Close">×</button>
+        ) : null}
       </div>
 
       <label className="je-edge-inspector__field">

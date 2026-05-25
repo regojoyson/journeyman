@@ -109,6 +109,7 @@ function toReactWorkflowNodes(
         }
       : {
           displayName: n.displayName ?? n.type,
+          ...(n.type === "end" ? { outcome: n.outcome } : {}),
           ...(n.config ?? {}),
         },
     selected: n.id === selectedId,
@@ -261,9 +262,16 @@ function CanvasInner(p: CanvasProps) {
       if (c.type !== "remove") return true;
       const node = flowNodes.find(n => n.id === c.id);
       if (!node) return true;
-      if (node.type === "start") {
-        blockedRemoval = { id: c.id, reason: "Cannot delete the start node — every flow needs exactly one." };
-        return false;
+      if (node.type === "trigger-manual" || node.type === "trigger-webhook" || node.type === "trigger-human") {
+        // Allow deletion only if at least one other trigger remains.
+        const remainingTriggers = flowNodes.filter((n) =>
+          n.id !== node.id &&
+          (n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human"),
+        );
+        if (remainingTriggers.length === 0) {
+          blockedRemoval = { id: c.id, reason: "Cannot delete the only trigger — every flow needs at least one." };
+          return false;
+        }
       }
       if (node.type === "end" && endCount <= 1) {
         blockedRemoval = { id: c.id, reason: "Cannot delete the only end node — flows need at least one terminal." };
@@ -321,6 +329,7 @@ function CanvasInner(p: CanvasProps) {
     ev.preventDefault();
     const stepType = ev.dataTransfer.getData("application/journeyman-step");
     const controlType = ev.dataTransfer.getData("application/journeyman-control");
+    const triggerType = ev.dataTransfer.getData("application/journeyman-trigger");
     const position = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     let newNode: WorkflowNode | null = null;
@@ -355,6 +364,27 @@ function CanvasInner(p: CanvasProps) {
         id: `${controlType}_${Math.random().toString(36).slice(2, 8)}`,
         type: controlType as WorkflowNodeType,
         displayName: controlType,
+        config: {},
+        position,
+      };
+    } else if (triggerType) {
+      // Only one manual trigger is allowed per workflow.
+      if (triggerType === "trigger-manual") {
+        const flow = flowRef.current;
+        if (flow.nodes.some(n => n.type === "trigger-manual")) {
+          // eslint-disable-next-line no-console
+          console.warn("[flow-editor] only one manual trigger is allowed per workflow");
+          return;
+        }
+      }
+      const defaultName =
+        triggerType === "trigger-manual"  ? "Manual"
+        : triggerType === "trigger-webhook" ? "Webhook"
+        : "Human form";
+      newNode = {
+        id: `${triggerType}_${Math.random().toString(36).slice(2, 8)}`,
+        type: triggerType as WorkflowNodeType,
+        displayName: defaultName,
         config: {},
         position,
       };

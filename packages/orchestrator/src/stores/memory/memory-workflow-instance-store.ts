@@ -28,6 +28,8 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
       outputs: null,
       attemptNumber: 1,
       webhookEventId: args.webhookEventId ?? null,
+      triggerNodeId: args.triggerNodeId ?? null,
+      formSubmissionId: args.formSubmissionId ?? null,
     };
     this.rows.set(instance.id, instance);
     return instance;

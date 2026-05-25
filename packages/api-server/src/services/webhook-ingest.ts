@@ -10,6 +10,7 @@ import {
 import type { Composition } from "../composition.ts";
 import { matchAndResolveWebhookWaits } from "./match-human-tasks.ts";
 import { resolveWebhookSecret, secretRefFromAuth } from "./webhook-secret-lookup.ts";
+import { fireWebhookTriggers } from "./webhook-trigger-fire.ts";
 
 const BLOCKED_HEADERS = new Set([
   "authorization", "cookie",
@@ -158,7 +159,20 @@ export async function ingestForWebhook(
       return { status: "resolved", matched: result.matched, eventId: event.id };
     }
 
-    // 7. No waiters → mark ignored (start-of-flow triggers handled in plan 3).
+    // 7. No waiters → try start-of-flow triggers (resume-wins precedence).
+    const tr = await fireWebhookTriggers(c, {
+      webhook,
+      eventId: event.id,
+      eventType,
+      rawPayload: input.rawPayload,
+    });
+    if (tr.fired > 0) {
+      await c.webhookEvents.setStatus(event.id, "processed");
+      void c.webhooks.touchLastEvent(webhook.id);
+      return { status: "resolved", matched: tr.fired, eventId: event.id };
+    }
+
+    // 8. Nothing matched → mark ignored.
     await c.webhookEvents.setStatus(event.id, "ignored");
     void c.webhooks.touchLastEvent(webhook.id);
     return { status: "ignored", eventId: event.id };

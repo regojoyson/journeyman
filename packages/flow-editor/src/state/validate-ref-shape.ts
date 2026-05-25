@@ -31,8 +31,11 @@ export function validateRefShape(
 
   let root: Shape | undefined;
   if (source === "workflow") {
-    const startNode = flow.nodes.find(n => n.type === "start");
-    const decls = getStartWorkflowInputs(startNode?.config);
+    const decls = (flow.inputDefs && flow.inputDefs.length > 0)
+      ? flow.inputDefs
+      : getStartWorkflowInputs(
+          flow.nodes.find(n => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human")?.config,
+        );
     const decl = decls.find(r => r.name === path[0]);
     root = decl
       ? ((decl.type === "number" || decl.type === "boolean" || decl.type === "string"

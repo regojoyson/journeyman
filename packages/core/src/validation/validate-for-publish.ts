@@ -1,5 +1,6 @@
 import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
+import { findTriggerNodes, isTriggerNode } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
 import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
 import { extractTemplateRefs } from "../utils/template-refs.ts";
@@ -80,9 +81,42 @@ export function validateForPublish(
 }
 
 function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
-  const starts = flow.nodes.filter(n => n.type === "start");
-  if (starts.length !== 1) {
-    errors.push({ code: "graph_invalid", message: "Flow must have exactly one start node" });
+  const triggers = findTriggerNodes(flow);
+  if (triggers.length === 0) {
+    errors.push({
+      code: "no_trigger",
+      message: "Workflow must declare at least one trigger node (manual, webhook, or human form).",
+    });
+  }
+  for (const t of triggers) {
+    const hasInbound = flow.edges.some(e => e.target === t.id);
+    if (hasInbound) {
+      errors.push({
+        code: "graph_invalid",
+        message: `Trigger node must not have inbound edges`,
+        nodeId: t.id,
+        nodeLabel: nodeLabelFor(t),
+      });
+    }
+    if (t.type === "trigger-webhook") {
+      const webhookId = (t.config as { webhookId?: string } | undefined)?.webhookId;
+      if (!webhookId) {
+        errors.push({
+          code: "missing_config",
+          message: `trigger-webhook must reference a webhookId`,
+          nodeId: t.id,
+          nodeLabel: nodeLabelFor(t),
+        });
+      }
+    }
+  }
+  // Only one manual trigger per workflow (the Run button has exactly one target).
+  const manualCount = triggers.filter(t => t.type === "trigger-manual").length;
+  if (manualCount > 1) {
+    errors.push({
+      code: "graph_invalid",
+      message: "Workflow may declare at most one manual trigger",
+    });
   }
   if (flow.nodes.filter(n => n.type === "end").length === 0) {
     errors.push({ code: "graph_invalid", message: "Flow must have at least one end node" });
@@ -100,10 +134,14 @@ function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
 }
 
 function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
-  const start = flow.nodes.find(n => n.type === "start");
-  if (!start) return;
-  const reachable = new Set<string>([start.id]);
-  const stack = [start.id];
+  const triggers = findTriggerNodes(flow);
+  if (triggers.length === 0) return;
+  const reachable = new Set<string>();
+  const stack: string[] = [];
+  for (const t of triggers) {
+    reachable.add(t.id);
+    stack.push(t.id);
+  }
   while (stack.length) {
     const cur = stack.pop()!;
     for (const e of flow.edges) {
@@ -117,7 +155,7 @@ function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
     if (!reachable.has(n.id)) {
       errors.push({
         code: "orphan_node",
-        message: `Node is unreachable from start`,
+        message: `Node is unreachable from any trigger`,
         nodeId: n.id,
         nodeLabel: nodeLabelFor(n),
       });

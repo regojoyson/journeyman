@@ -74,6 +74,12 @@ export type {
 } from "./interfaces/workflow-instance-store.interface.ts";
 export type { IWorkflowInstanceGrantsStore } from "./interfaces/workflow-instance-grants-store.interface.ts";
 export type {
+  IWorkflowTriggerStore,
+  WorkflowTriggerIndexRow,
+  WorkflowTriggerKind,
+  UpsertWorkflowTriggerArgs,
+} from "./interfaces/workflow-trigger-store.interface.ts";
+export type {
   IEventBus, AppendEventArgs,
 } from "./interfaces/event-bus.interface.ts";
 export type {
@@ -109,7 +115,17 @@ export type {
   SecretBinding,
   WorkflowDefaults,
 } from "./types/flow.types.ts";
-export { WORKFLOW_SCHEMA_VERSION } from "./types/flow.types.ts";
+export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode } from "./types/flow.types.ts";
+export type { WorkflowTriggerNodeType } from "./types/flow.types.ts";
+export type {
+  TriggerInputMapping,
+  TriggerInputMappingType,
+  TriggerManualConfig,
+  TriggerWebhookConfig,
+  TriggerHumanConfig,
+  TriggerHumanFieldOverride,
+  TriggerHumanFieldWidget,
+} from "./types/workflow-trigger.types.ts";
 export type {
   JsonLogicExpr, JsonLogicVar, JsonLogicLiteral,
 } from "./types/flow-condition.types.ts";

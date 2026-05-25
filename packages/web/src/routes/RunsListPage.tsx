@@ -42,8 +42,13 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     enabled: !!flowId,
   });
 
-  const startNode = versionQ.data?.definition.nodes.find(n => n.type === "start");
-  const inputDefs: WorkflowInputDef[] = getStartWorkflowInputs(startNode?.config);
+  const def = versionQ.data?.definition;
+  const startNode = def?.nodes.find(n =>
+    n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  );
+  const inputDefs: WorkflowInputDef[] = (def?.inputDefs && def.inputDefs.length > 0)
+    ? def.inputDefs
+    : getStartWorkflowInputs(startNode?.config);
   // The dedicated Issue Ref block above already collects `issueRef` via the
   // provider+id pair. Skip it in the dynamic loop to avoid a duplicate field
   // and to keep the provider-built value from being overwritten by an empty

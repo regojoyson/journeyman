@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
-import { isJsonLogicExpr, validateForkJoinPairs } from "@journeyman/core";
+import { isJsonLogicExpr, isTriggerNode, validateForkJoinPairs } from "@journeyman/core";
 
 export interface ValidationResult { ok: boolean; errors: string[]; }
 
@@ -12,8 +12,10 @@ function nodeLabel(n: WorkflowNode): string {
 export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
   const _t0 = performance.now();
   const errors: string[] = [];
-  const starts = flow.nodes.filter(n => n.type === "start");
-  if (starts.length !== 1) errors.push("Flow must have exactly one start node");
+  const starts = flow.nodes.filter(n => isTriggerNode(n));
+  if (starts.length === 0) errors.push("Flow must have at least one trigger node");
+  const manualCount = starts.filter(n => n.type === "trigger-manual").length;
+  if (manualCount > 1) errors.push("Flow may declare at most one manual trigger");
   if (flow.nodes.filter(n => n.type === "end").length === 0) {
     errors.push("Flow must have at least one end node");
   }
