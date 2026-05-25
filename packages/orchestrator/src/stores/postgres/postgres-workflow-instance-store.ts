@@ -329,4 +329,20 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
     );
     return rows[0] ? rowToExec(rows[0]) : null;
   }
+
+  async listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]> {
+    const { rows } = await this.pool.query(
+      `SELECT ne.*
+       FROM jm_node_executions ne
+       JOIN jm_workflow_instances wi ON wi.id = ne.workflow_instance_id
+       WHERE ne.status = 'waiting'
+         AND wi.status = 'paused'
+         AND ne.started_at IS NOT NULL
+         AND ne.started_at < now() - make_interval(secs => $1::numeric / 1000)
+       ORDER BY ne.started_at ASC
+       LIMIT $2`,
+      [maxAgeMs, limit],
+    );
+    return rows.map(rowToExec);
+  }
 }

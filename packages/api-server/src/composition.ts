@@ -106,8 +106,9 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     workflowGrants = new MemoryWorkflowGrantsStore();
     workflowInstanceGrants = new MemoryWorkflowInstanceGrantsStore();
     workflows = new MemoryWorkflowStore(v, workflowGrants);
-    workflowInstances = new MemoryWorkflowInstanceStore();
-    nodeExecutions = new MemoryNodeExecutionStore();
+    const memoryInstances = new MemoryWorkflowInstanceStore();
+    workflowInstances = memoryInstances;
+    nodeExecutions = new MemoryNodeExecutionStore(memoryInstances);
     events = new MemoryEventBus();
     webhookEvents = new MemoryWebhookEventStore();
     webhooks = new MemoryWebhookStore();

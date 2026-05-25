@@ -122,11 +122,18 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
       && (r.inputs as { issueRef?: unknown })?.issueRef === issueRef,
     );
   }
+
+  /** Internal helper used by MemoryNodeExecutionStore to filter by instance status. */
+  allInstances(): IterableIterator<WorkflowInstance> {
+    return this.rows.values();
+  }
 }
 
 export class MemoryNodeExecutionStore implements INodeExecutionStore {
   private rows = new Map<string, NodeExecution>();
   private nextId = 1;
+
+  constructor(private readonly instances?: MemoryWorkflowInstanceStore) {}
 
   async upsert(execution: NodeExecution): Promise<void> {
     this.rows.set(execution.id, execution);
@@ -176,5 +183,22 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
       .filter(r => r.workflowInstanceId === workflowInstanceId && r.status === "waiting")
       .sort((a, b) => +(b.startedAt ?? 0) - +(a.startedAt ?? 0));
     return list[0] ?? null;
+  }
+
+  async listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]> {
+    if (!this.instances) return [];
+    const cutoff = Date.now() - maxAgeMs;
+    const pausedInstanceIds = new Set(
+      [...this.instances.allInstances()].filter(i => i.status === "paused").map(i => i.id),
+    );
+    return [...this.rows.values()]
+      .filter(e =>
+        e.status === "waiting" &&
+        pausedInstanceIds.has(e.workflowInstanceId) &&
+        e.startedAt != null &&
+        e.startedAt.getTime() < cutoff,
+      )
+      .sort((a, b) => +(a.startedAt ?? 0) - +(b.startedAt ?? 0))
+      .slice(0, limit);
   }
 }

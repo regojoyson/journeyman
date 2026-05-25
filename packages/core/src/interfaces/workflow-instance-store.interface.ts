@@ -63,4 +63,12 @@ export interface INodeExecutionStore {
   markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution>;
   latestForNode(workflowInstanceId: string, nodeId: string): Promise<NodeExecution | null>;
   latestWaitingForInstance(workflowInstanceId: string): Promise<NodeExecution | null>;
+  /**
+   * Find paused-instance node executions in `waiting` status older than
+   * `maxAgeMs`. Used by the webhook-wait max-age sweeper. Returns up to
+   * `limit` rows ordered by started_at ASC. Callers must still verify
+   * `node.type === "webhook-wait"` against the instance's definition snapshot
+   * since this row does not carry the node type.
+   */
+  listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]>;
 }
