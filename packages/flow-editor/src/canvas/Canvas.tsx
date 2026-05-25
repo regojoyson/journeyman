@@ -170,12 +170,23 @@ function CanvasInner(p: CanvasProps) {
   // .stringify on the whole flow on every render — 200×/s during autoPan.
   const propagatedSigRef = useRef<string | null>(null);
   const lastSigRef = useRef<string | null>(null);
+  // Full signature including positions — used to drop no-op propagations
+  // emitted by React Flow during initial measurement/fitView where the
+  // rebuilt flow is identical to what we already sent up. Without this,
+  // each such no-op still creates a new parent state ref and re-renders.
+  const propagatedFullSigRef = useRef<string | null>(null);
   if (propagatedSigRef.current === null) {
     const sig = structuralSig(p.flow);
     propagatedSigRef.current = sig;
     lastSigRef.current = sig;
+    propagatedFullSigRef.current = JSON.stringify(p.flow);
   }
   const lastSelectedRef = useRef<string | null>(p.selectedNodeId);
+  // Track which nodes are currently in a user-initiated drag. RF emits
+  // position changes during fitView / measurement with `dragging: false`
+  // too, which would otherwise look like a "drag commit" and propagate.
+  // We only commit a position when we previously saw dragging:true.
+  const draggingNodesRef = useRef<Set<string>>(new Set());
 
   // Render-loop detector: if this resync effect fires too many times in quick
   // succession, log a warning so we can see runaway state propagation in the
@@ -218,6 +229,10 @@ function CanvasInner(p: CanvasProps) {
       });
       lastSigRef.current = sig;
       lastSelectedRef.current = p.selectedNodeId;
+      // Sync the full-sig ref to the external flow so the next propagate
+      // call from RF (echoing back the same content) is recognized as a
+      // no-op and skipped.
+      propagatedFullSigRef.current = JSON.stringify(p.flow);
       setNodes(toReactWorkflowNodes(p.flow, p.selectedNodeId, p.stepRunStates));
       setEdges(toReactWorkflowEdges(p.flow));
     }
@@ -231,6 +246,9 @@ function CanvasInner(p: CanvasProps) {
 
   /** Propagate a change to the parent and remember its sig so the resync effect skips the echo. */
   const propagate = useCallback((next: WorkflowGraph) => {
+    const fullSig = JSON.stringify(next);
+    if (fullSig === propagatedFullSigRef.current) return;
+    propagatedFullSigRef.current = fullSig;
     propagatedSigRef.current = structuralSig(next);
     onChangeRef.current(next);
   }, []);
@@ -285,11 +303,22 @@ function CanvasInner(p: CanvasProps) {
 
     onNodesChangeInternal(filtered);
 
-    const meaningful = filtered.some(c => {
-      if (c.type === "position") return (c as { dragging?: boolean }).dragging === false;
-      if (c.type === "remove") return true;
-      return false;
-    });
+    // Update per-node drag tracking. Only treat position-with-dragging:false
+    // as meaningful if we previously observed dragging:true for that node —
+    // otherwise it's a fitView / measurement echo, not a user commit.
+    let meaningful = false;
+    for (const c of filtered) {
+      if (c.type === "remove") { meaningful = true; continue; }
+      if (c.type !== "position") continue;
+      const pc = c as { id?: string; dragging?: boolean };
+      if (!pc.id) continue;
+      if (pc.dragging === true) {
+        draggingNodesRef.current.add(pc.id);
+      } else if (pc.dragging === false && draggingNodesRef.current.has(pc.id)) {
+        draggingNodesRef.current.delete(pc.id);
+        meaningful = true;
+      }
+    }
     if (!meaningful) return;
 
     setNodes(curr => {
