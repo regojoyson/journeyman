@@ -51,6 +51,9 @@ import {
   InMemoryHumanTaskTimeoutService,
   type HumanTaskTimeoutService,
 } from "./services/human-task-timeout.ts";
+import { WebhookWaitSweeper } from "./services/webhook-wait-sweeper.ts";
+import { parseDurationMs } from "./services/parse-duration.ts";
+import { resolveHumanTask } from "./services/resolve-human-task.ts";
 
 export interface Composition {
   workflowGrants: IWorkflowGrantsStore;
@@ -65,6 +68,7 @@ export interface Composition {
   workflowTriggers: IWorkflowTriggerStore;
   humanTaskResolutions: IHumanTaskResolutionStore;
   humanTaskTimeouts: HumanTaskTimeoutService;
+  webhookWaitSweeper: WebhookWaitSweeper;
   conductorClient: ConductorClient;
   orchestrator: IOrchestratorEngine;
   registry: IStepRegistry;
@@ -150,12 +154,51 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   };
   const conditions = new JsonLogicEvaluator();
 
-  return {
+  const composition: Composition = {
     workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
     nodeExecutions, events, webhookEvents, webhooks, workflowTriggers,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,
+    // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.
+    webhookWaitSweeper: null as unknown as WebhookWaitSweeper,
     shutdown: async () => { if (pool) await pool.end(); },
   };
+
+  const maxAgeStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE ?? "30d").trim();
+  const intervalStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_SWEEP_INTERVAL ?? "5m").trim();
+
+  const sweeperDisabled = maxAgeStr === "" || maxAgeStr.toLowerCase() === "off";
+  const maxAgeMs = sweeperDisabled ? 0 : parseDurationMs(maxAgeStr);
+  if (!sweeperDisabled && maxAgeMs === 0) {
+    throw new Error(
+      `Invalid JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE: "${maxAgeStr}". Use a duration like "30d", "12h", "90m", or "off".`,
+    );
+  }
+  const intervalMs = parseDurationMs(intervalStr) || 5 * 60_000;
+
+  composition.webhookWaitSweeper = new WebhookWaitSweeper({
+    maxAgeMs,
+    intervalMs,
+    batchSize: 500,
+    nodeExecutions,
+    workflowInstances,
+    fire: async ({ workflowInstanceId, nodeId, defaults }) => {
+      try {
+        await resolveHumanTask(composition, {
+          workflowInstanceId,
+          nodeId,
+          values: defaults,
+          payload: {},
+          actor: null,
+          source: "timeout",
+          resolvedBy: "max_age_sweep",
+        });
+      } catch {
+        // Already resolved by webhook/manual or instance cancelled — not an error.
+      }
+    },
+  });
+
+  return composition;
 }
