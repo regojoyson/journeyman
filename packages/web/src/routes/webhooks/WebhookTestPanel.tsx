@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Webhook } from "@journeyman/core";
 import { getPresetDetail, testWebhook, type TestDeliveryResult } from "../../api/webhooks.ts";
+import { skeletonFromSchema } from "./schema-skeleton.ts";
 
 export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
   const [samples, setSamples] = useState<Record<string, unknown>>({});
+  const [schema, setSchema] = useState<unknown>(null);
   const [selected, setSelected] = useState<string>("");
   const [customPayload, setCustomPayload] = useState<string>("");
   const [result, setResult] = useState<TestDeliveryResult | null>(null);
@@ -15,11 +17,25 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
       .then((d) => {
         const s = (d.samples ?? {}) as Record<string, unknown>;
         setSamples(s);
+        setSchema(d.payloadSchema ?? null);
         const keys = Object.keys(s);
         if (keys.length > 0) setSelected(keys[0]!);
       })
       .catch(() => { /* preset may not exist (generic); leave empty */ });
   }, [webhook.preset]);
+
+  function loadSampleIntoTextarea() {
+    if (!selected) return;
+    const sample = samples[selected];
+    if (sample === undefined) return;
+    setCustomPayload(JSON.stringify(sample, null, 2));
+  }
+
+  function loadSchemaSkeletonIntoTextarea() {
+    if (!schema) return;
+    const skeleton = skeletonFromSchema(schema);
+    setCustomPayload(JSON.stringify(skeleton, null, 2));
+  }
 
   async function send() {
     setError(null);
@@ -44,6 +60,7 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
   }
 
   const sampleKeys = Object.keys(samples);
+  const hasSchema = schema != null;
   return (
     <div className="space-y-3 text-sm">
       <p className="text-slate-400">
@@ -61,6 +78,26 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
           </select>
         </label>
       )}
+      <div className="flex gap-2">
+        {sampleKeys.length > 0 && (
+          <button
+            type="button"
+            onClick={loadSampleIntoTextarea}
+            className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs"
+          >
+            Load sample
+          </button>
+        )}
+        {hasSchema && (
+          <button
+            type="button"
+            onClick={loadSchemaSkeletonIntoTextarea}
+            className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs"
+          >
+            Generate from schema
+          </button>
+        )}
+      </div>
       <label className="block">
         <span className="block text-xs text-slate-400 mb-1">Or paste a custom payload (overrides sample)</span>
         <textarea
