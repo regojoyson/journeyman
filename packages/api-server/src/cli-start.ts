@@ -51,6 +51,7 @@ const syncer = new WorkflowInstanceSyncer({
   intervalMs: Number(process.env.RUN_SYNC_INTERVAL_MS ?? 1500),
 });
 syncer.start();
+composition.webhookWaitSweeper.start();
 
 const server = await buildServer(composition);
 const port = Number(process.env.PORT ?? 4000);
@@ -60,6 +61,7 @@ log.info({ port }, "api-server listening");
 const shutdown = async () => {
   log.info("shutting down");
   syncer.stop();
+  composition.webhookWaitSweeper.stop();
   await server.close();
   await composition.shutdown();
   process.exit(0);
