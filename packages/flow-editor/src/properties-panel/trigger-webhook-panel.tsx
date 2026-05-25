@@ -1,4 +1,5 @@
 // packages/flow-editor/src/properties-panel/trigger-webhook-panel.tsx
+import { useMemo } from "react";
 import type {
   TriggerInputMapping,
   TriggerInputMappingType,
@@ -6,10 +7,15 @@ import type {
   WorkflowGraph,
   WorkflowNode,
 } from "@journeyman/core";
+import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
+import { ListensForPicker } from "./ListensForPicker.tsx";
+import { pathsFromSchema } from "./useWebhooksForPicker.ts";
 
 export interface WebhookOption {
   id: string;
   name: string;
+  knownEventTypes?: string[];
+  payloadSchema?: unknown;
 }
 
 export interface TriggerWebhookPanelProps {
@@ -17,6 +23,7 @@ export interface TriggerWebhookPanelProps {
   graph: WorkflowGraph;
   webhooks: WebhookOption[];
   onPatchConfig: (patch: Partial<TriggerWebhookConfig>) => void;
+  readOnly?: boolean;
 }
 
 export function TriggerWebhookPanel({
@@ -24,19 +31,31 @@ export function TriggerWebhookPanel({
   graph,
   webhooks,
   onPatchConfig,
+  readOnly,
 }: TriggerWebhookPanelProps): JSX.Element {
   const cfg = (node.config ?? {}) as unknown as TriggerWebhookConfig;
   const inputs = graph.inputDefs ?? [];
   const mapping: Record<string, TriggerInputMapping> = cfg.inputsMapping ?? {};
 
+  const selectedWebhook = useMemo(
+    () => webhooks.find((w) => w.id === cfg.webhookId),
+    [webhooks, cfg.webhookId],
+  );
+  const knownPaths = useMemo(
+    () => (selectedWebhook ? pathsFromSchema(selectedWebhook.payloadSchema) : []),
+    [selectedWebhook],
+  );
+  const eventTypeOptions = selectedWebhook?.knownEventTypes ?? [];
+
   return (
-    <div className="jm-properties-panel-section">
+    <div className="jm-properties-panel-section je-humantask">
       <h3>Webhook trigger</h3>
 
       <label>
         Webhook
         <select
           value={cfg.webhookId ?? ""}
+          disabled={readOnly}
           onChange={(e) => onPatchConfig({ webhookId: e.target.value || undefined as unknown as string })}
         >
           <option value="">— select —</option>
@@ -46,34 +65,35 @@ export function TriggerWebhookPanel({
         </select>
       </label>
 
-      <label>
-        Listens for (event types, comma-separated; empty = all)
-        <input
-          type="text"
-          value={(cfg.listensFor ?? []).join(", ")}
-          onChange={(e) => {
-            const v = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
-            onPatchConfig({ listensFor: v.length ? v : undefined });
-          }}
+      <div className="je-field">
+        <label className="je-field__label">Listens for</label>
+        <ListensForPicker
+          value={cfg.listensFor ?? []}
+          knownEventTypes={eventTypeOptions}
+          webhookPicked={!!selectedWebhook}
+          readOnly={readOnly}
+          onChange={(next) => onPatchConfig({ listensFor: next.length > 0 ? next : undefined })}
         />
-      </label>
+        <p className="je-hint">
+          Empty means any event type. Custom values are allowed for event types not in the preset.
+        </p>
+      </div>
 
-      <label>
-        Accept-if (JSONLogic — JSON)
-        <textarea
-          rows={4}
-          defaultValue={cfg.acceptIf ? JSON.stringify(cfg.acceptIf, null, 2) : ""}
-          onBlur={(e) => {
-            try {
-              onPatchConfig({ acceptIf: e.target.value ? JSON.parse(e.target.value) : undefined });
-            } catch {
-              /* keep last good value */
-            }
-          }}
+      <div className="je-field">
+        <label className="je-field__label">Accept if (optional)</label>
+        <AcceptIfBuilder
+          value={cfg.acceptIf}
+          knownPaths={knownPaths}
+          readOnly={readOnly}
+          datalistId={`trigger-acceptif-paths-${node.id}`}
+          onChange={(next) => onPatchConfig({ acceptIf: next as TriggerWebhookConfig["acceptIf"] })}
         />
-      </label>
+      </div>
 
       <h4>Inputs mapping</h4>
+      <datalist id={`trigger-input-paths-${node.id}`}>
+        {knownPaths.map((p) => <option key={p} value={p} />)}
+      </datalist>
       {inputs.length === 0 ? (
         <p>No workflow inputs declared. Add inputs in the Inputs tab first.</p>
       ) : (
@@ -90,8 +110,10 @@ export function TriggerWebhookPanel({
                   <td>
                     <input
                       type="text"
+                      list={`trigger-input-paths-${node.id}`}
                       placeholder="$.path.to.value"
                       value={m?.fromPath ?? ""}
+                      disabled={readOnly}
                       onChange={(e) => {
                         const next = { ...mapping };
                         next[inp.name] = {
@@ -105,6 +127,7 @@ export function TriggerWebhookPanel({
                   <td>
                     <select
                       value={m?.type ?? inp.type}
+                      disabled={readOnly}
                       onChange={(e) => {
                         const next = { ...mapping };
                         next[inp.name] = {
@@ -131,7 +154,9 @@ export function TriggerWebhookPanel({
         IssueRef from path (optional)
         <input
           type="text"
+          list={`trigger-input-paths-${node.id}`}
           value={cfg.issueRefFromPath ?? ""}
+          disabled={readOnly}
           onChange={(e) => onPatchConfig({ issueRefFromPath: e.target.value || undefined })}
         />
       </label>

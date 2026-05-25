@@ -522,62 +522,58 @@ label.je-switch,
 }
 .je-switch__label { font-weight: 500; }
 
-/* Phase 4 — Gateway nodes (BPMN-standard diamond with label-below-shape).
-   The diamond is a small clean shape with a single prominent marker glyph
-   centered inside. The text label sits BELOW the shape in normal orientation
-   — never inside the rotated container. This is the BPMN.io / Camunda
-   Modeler convention. */
+/* Phase 4 — Gateway nodes (step-style rectangle with diamond accent chip).
+   Visually consistent with step nodes — same height, same font sizing,
+   same handle placement. The diamond chip on the left preserves the
+   BPMN "this is a branching point" cue without making the whole node a
+   special shape. */
 .je-node--gateway {
-  /* Visible diamond */
-  width: 60px; height: 60px;
-  padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  transform: rotate(45deg);
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
   border-width: 2px;
   background: rgb(42 42 62 / 1);
-  min-width: 0; max-width: none;
-  /* Allow the absolute-positioned label to overflow the diamond bounds */
-  overflow: visible;
+  border-radius: 8px;
+  min-width: 140px;
   position: relative;
 }
 
-/* Counter-rotate the marker so it reads upright inside the diamond. */
+/* Icon chip — small square with marker glyph, color-coded per gateway type. */
 .je-node--gateway .je-node__icon {
-  transform: rotate(-45deg);
-  width: auto; height: auto;
-  background: transparent;
-  font-size: 22px;
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  background: rgb(0 0 0 / 0.25);
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1;
-  color: #fff;
 }
 
-/* Text block sits BELOW the diamond, in normal (un-rotated) orientation. */
 .je-node--gateway .je-node__text {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: rotate(-45deg) translate(-50%, 14px);
-  transform-origin: top left;
-  text-align: center;
-  white-space: nowrap;
-  pointer-events: none;
-  /* The outer parent is rotated 45deg; we counter-rotate AND translate so the
-     label appears centered horizontally below the diamond. */
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 .je-node--gateway .je-node__label {
-  font-size: 11px;
   font-weight: 600;
+  font-size: 13px;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.2;
 }
 .je-node--gateway .je-node__subtitle {
-  font-size: 10px;
+  font-size: 11px;
   color: #aaa;
-  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.2;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 /* Per-type accent colors. Marker glyph color matches border. */

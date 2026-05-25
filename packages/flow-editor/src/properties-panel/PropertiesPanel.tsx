@@ -56,14 +56,21 @@ function TriggerWebhookPanelWrapper(props: {
   node: WorkflowNode;
   graph: WorkflowGraph;
   onPatchConfig: (patch: Partial<TriggerWebhookConfig>) => void;
+  readOnly?: boolean;
 }): JSX.Element {
   const { webhooks } = useWebhooksForPicker();
   return (
     <TriggerWebhookPanel
       node={props.node}
       graph={props.graph}
-      webhooks={webhooks.map((w) => ({ id: w.id, name: w.name }))}
+      webhooks={webhooks.map((w) => ({
+        id: w.id,
+        name: w.name,
+        knownEventTypes: w.knownEventTypes,
+        payloadSchema: w.payloadSchema,
+      }))}
       onPatchConfig={props.onPatchConfig}
+      readOnly={props.readOnly}
     />
   );
 }
@@ -120,6 +127,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             node={node}
             graph={flow}
             onPatchConfig={(p) => { if (!readOnly) patchCfg(p); }}
+            readOnly={readOnly}
           />
         ) : (
           <TriggerHumanPanel

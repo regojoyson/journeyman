@@ -22,6 +22,7 @@ import {
 } from "./flow-rf-adapters.ts";
 import { HelpPanel } from "./HelpPanel.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
+import { defaultControlCatalog } from "../palette/built-in-categories.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 import { collectCustomStepIds } from "../properties-panel/use-upstream-sources.ts";
@@ -389,10 +390,11 @@ function CanvasInner(p: CanvasProps) {
           }
         : base;
     } else if (controlType) {
+      const controlDef = defaultControlCatalog.find(c => c.nodeType === controlType);
       newNode = {
         id: `${controlType}_${Math.random().toString(36).slice(2, 8)}`,
         type: controlType as WorkflowNodeType,
-        displayName: controlType,
+        displayName: controlDef?.label ?? controlType,
         config: {},
         position,
       };
