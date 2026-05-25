@@ -85,6 +85,7 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
                 payload: {},
                 actor: null,
                 source: "timeout",
+                resolvedBy: "node_timeout",
               });
             } catch {
               // Already resolved by webhook/manual or workflow instance cancelled — not an error.
