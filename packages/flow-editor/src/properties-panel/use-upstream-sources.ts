@@ -4,6 +4,7 @@ import { getStartWorkflowInputs } from "@journeyman/core";
 import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 import { pauseNodeSource } from "./pause-node-source.ts";
+import { joinSource } from "./join-source.ts";
 
 export interface UpstreamField {
   name: string;
@@ -38,52 +39,27 @@ export function useUpstreamSources(
       ? graph.inputDefs
       : getStartWorkflowInputs(startNode?.config);
 
-    const allIds = new Set(graph.nodes.map(n => n.id));
-    const start = startNode?.id;
-    const dom = new Map<string, Set<string>>();
-    for (const id of allIds) dom.set(id, id === start ? new Set([start!]) : new Set(allIds));
+    // Transitive reverse-walk through predecessors. Includes every node
+    // reachable backward through edges, regardless of branching topology.
+    // For parallel Fork+Join graphs this exposes all branches' nodes;
+    // for XOR If/Else the branch siblings also appear (engine returns
+    // undefined for refs to branches that didn't run).
     const preds = new Map<string, string[]>();
-    for (const id of allIds) preds.set(id, []);
-    for (const e of graph.edges) preds.get(e.target)?.push(e.source);
-    let changed = true;
-    let iterations = 0;
-    const maxIterations = Math.max(100, allIds.size * allIds.size);
-    while (changed) {
-      changed = false;
-      iterations++;
-      if (iterations > maxIterations) {
-        // eslint-disable-next-line no-console
-        console.error(
-          "[useUpstreamSources] dominator loop did not converge",
-          "start=", JSON.stringify(start),
-          "nodes=", JSON.stringify([...allIds]),
-          "edges=", JSON.stringify(graph.edges.map(e => ({ src: e.source, tgt: e.target }))),
-          "preds=", JSON.stringify([...preds.entries()].map(([k, v]) => [k, v])),
-          "domSizes=", JSON.stringify([...dom.entries()].map(([k, v]) => [k, v.size])),
-        );
-        break;
-      }
-      for (const id of allIds) {
-        if (id === start) continue;
-        const p = preds.get(id) ?? [];
-        if (!p.length) continue;
-        // Build intersection of predecessor dom-sets. Always allocate a
-        // fresh Set — reduce() on a single-element array returns that
-        // element by reference, and the later `inter.add(id)` would
-        // otherwise mutate the predecessor's dom-set, causing the loop
-        // to never converge.
-        const predSets = p.map(x => dom.get(x) ?? new Set<string>());
-        const inter = new Set<string>(predSets[0]);
-        for (let i = 1; i < predSets.length; i++) {
-          const other = predSets[i];
-          for (const x of [...inter]) if (!other.has(x)) inter.delete(x);
-        }
-        inter.add(id);
-        const prev = dom.get(id)!;
-        if (prev.size !== inter.size || [...inter].some(x => !prev.has(x))) { dom.set(id, inter); changed = true; }
-      }
+    for (const e of graph.edges) {
+      const arr = preds.get(e.target) ?? [];
+      arr.push(e.source);
+      preds.set(e.target, arr);
     }
-    const upstream = [...(dom.get(nodeId) ?? new Set())].filter(id => id !== nodeId);
+    const seen = new Set<string>();
+    const upstream: string[] = [];
+    const stack: string[] = [...(preds.get(nodeId) ?? [])];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      upstream.push(id);
+      for (const p of preds.get(id) ?? []) stack.push(p);
+    }
 
     const sources: UpstreamSource[] = [];
     if (runInputs.length) {
@@ -111,6 +87,12 @@ export function useUpstreamSources(
 
       if (n.type === "human-task" || n.type === "webhook-wait") {
         const src = pauseNodeSource(n);
+        if (src) sources.push(src);
+        continue;
+      }
+
+      if (n.type === "join") {
+        const src = joinSource(n);
         if (src) sources.push(src);
         continue;
       }
