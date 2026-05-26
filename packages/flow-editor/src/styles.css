@@ -1913,3 +1913,29 @@ label.je-switch,
 }
 .je-issue-link:hover { color: #8fbeff; }
 .je-issue-link:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
+
+/* If-else gate condition: LHS picker button (replaces the old <select>). */
+.je-condition-row__lhs {
+  position: relative;
+  min-width: 0;
+}
+button.je-condition-row__pick {
+  width: 100%;
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  color: #ddd;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: auto;
+}
+button.je-condition-row__pick:hover {
+  background: #2a2a3e;
+  border-color: #4a4a5e;
+  color: #fff;
+}
