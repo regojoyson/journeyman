@@ -41,7 +41,17 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
     const existing = await c.nodeExecutions.latestForNode(workflowInstanceId, nodeId);
     const isNewlyWaiting = !existing || existing.status !== "waiting";
 
-    await c.nodeExecutions.markWaiting(workflowInstanceId, nodeId, t.taskId);
+    // For webhook-wait pauses, snapshot the Conductor-resolved correlation key
+    // so the event matcher can route incoming events to this paused instance.
+    const inputCk = (t.inputData ?? {})["correlationKey"] as
+      | { eventPath?: unknown; value?: unknown }
+      | undefined;
+    const correlation =
+      inputCk && typeof inputCk.eventPath === "string" && inputCk.value != null
+        ? { eventPath: inputCk.eventPath, value: String(inputCk.value) }
+        : null;
+
+    await c.nodeExecutions.markWaiting(workflowInstanceId, nodeId, t.taskId, correlation);
 
     if (isNewlyWaiting) {
       const node = workflowInstance.definitionSnapshot.nodes.find(n => n.id === nodeId);

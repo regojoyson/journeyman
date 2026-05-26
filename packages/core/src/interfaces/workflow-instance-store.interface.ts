@@ -19,8 +19,6 @@ export interface CreateWorkflowInstanceArgs {
   triggerNodeId?: string | null;
   /** When started via trigger-human, the originating form submission id. */
   formSubmissionId?: string | null;
-  /** Optional issueRef for cross-instance correlation. */
-  issueRef?: string | null;
 }
 
 export interface IWorkflowInstanceStore {
@@ -42,7 +40,6 @@ export interface IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   }): Promise<WorkflowInstance[]>;
   count(opts?: {
     workflowId?: string;
@@ -50,19 +47,23 @@ export interface IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   }): Promise<number>;
-  findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]>;
-  findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]>;
 }
 
 export interface INodeExecutionStore {
   upsert(execution: NodeExecution): Promise<void>;
   listByWorkflowInstance(workflowInstanceId: string): Promise<NodeExecution[]>;
-  markWaiting(workflowInstanceId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution>;
+  markWaiting(
+    workflowInstanceId: string,
+    nodeId: string,
+    conductorTaskId: string,
+    correlation?: { eventPath: string; value: string } | null,
+  ): Promise<NodeExecution>;
   markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution>;
   latestForNode(workflowInstanceId: string, nodeId: string): Promise<NodeExecution | null>;
   latestWaitingForInstance(workflowInstanceId: string): Promise<NodeExecution | null>;
+  /** Lookup paused-instance waits whose recorded correlation_value matches. Used by the matcher. */
+  findAllWaitingWithCorrelation(): Promise<NodeExecution[]>;
   /**
    * Find paused-instance node executions in `waiting` status older than
    * `maxAgeMs`. Used by the webhook-wait max-age sweeper. Returns up to

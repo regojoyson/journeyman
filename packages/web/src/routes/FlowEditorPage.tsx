@@ -172,9 +172,9 @@ export function FlowEditorPage() {
 
   return (
     <>
-      <div style={{ height: "100%" }}>
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {triggers && triggers.length > 0 ? (
-          <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "#666" }}>
+          <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "#666", flex: "0 0 auto" }}>
             Triggered by:{" "}
             {triggers.map((t, i) => (
               <span key={t.id}>
@@ -196,26 +196,28 @@ export function FlowEditorPage() {
             This is a {flow.scope} template. <button onClick={onClone}>Clone to my flows</button> to make changes.
           </div>
         )}
-        <FlowEditor
-          flow={graph}
-          flowName={flow.name}
-          onRename={editable ? (next) => {
-            const trimmed = next.trim();
-            if (!trimmed || trimmed === flow.name) return;
-            renameM.mutate(trimmed);
-          } : undefined}
-          orgId={activeOrgId}
-          steps={[...builtInSteps, ...customStepDefs]}
-          controlCatalog={defaultControlCatalog}
-          mcpCatalog={defaultMcpCatalog}
-          onChange={(next) => { setGraph(next); setDirty(true); }}
-          onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
-          onValidate={async (next) => await validateFlowDefinition(next)}
-          busy={saveM.isPending}
-          status={flow.status}
-          onPublish={editable ? onPublish : undefined}
-          onUnpublish={editable ? onUnpublish : undefined}
-        />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <FlowEditor
+            flow={graph}
+            flowName={flow.name}
+            onRename={editable ? (next) => {
+              const trimmed = next.trim();
+              if (!trimmed || trimmed === flow.name) return;
+              renameM.mutate(trimmed);
+            } : undefined}
+            orgId={activeOrgId}
+            steps={[...builtInSteps, ...customStepDefs]}
+            controlCatalog={defaultControlCatalog}
+            mcpCatalog={defaultMcpCatalog}
+            onChange={(next) => { setGraph(next); setDirty(true); }}
+            onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
+            onValidate={async (next) => await validateFlowDefinition(next)}
+            busy={saveM.isPending}
+            status={flow.status}
+            onPublish={editable ? onPublish : undefined}
+            onUnpublish={editable ? onUnpublish : undefined}
+          />
+        </div>
       </div>
       {saveToast && (
         <StatusToast

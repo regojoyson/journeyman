@@ -149,17 +149,6 @@ export function TriggerWebhookPanel({
           </tbody>
         </table>
       )}
-
-      <label>
-        IssueRef from path (optional)
-        <input
-          type="text"
-          list={`trigger-input-paths-${node.id}`}
-          value={cfg.issueRefFromPath ?? ""}
-          disabled={readOnly}
-          onChange={(e) => onPatchConfig({ issueRefFromPath: e.target.value || undefined })}
-        />
-      </label>
     </div>
   );
 }

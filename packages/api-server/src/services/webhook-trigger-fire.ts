@@ -67,9 +67,6 @@ export async function fireWebhookTriggers(
       const v = readPath(input.rawPayload, mapping.fromPath);
       if (v != null) inputs[name] = coerce(v, mapping.type);
     }
-    const issueRef = cfg.issueRefFromPath
-      ? ((readPath(input.rawPayload, cfg.issueRefFromPath) as string | null | undefined) ?? null)
-      : null;
 
     const { workflowInstanceId } = await c.orchestrator.submit({
       workflowId: workflow.id,
@@ -83,7 +80,6 @@ export async function fireWebhookTriggers(
       triggerSource: "webhook",
       triggerNodeId: node.id,
       webhookEventId: input.eventId,
-      issueRef,
     });
     fired.push(workflowInstanceId);
   }

@@ -91,4 +91,7 @@ export interface NodeExecution {
   errorMessage: string | null;
   /** Conductor task id captured by the engine reconciler when a HUMAN task enters IN_PROGRESS. */
   conductorTaskId?: string | null;
+  /** Set when the engine pauses a webhook-wait. Both null on non-wait executions. */
+  correlationEventPath?: string | null;
+  correlationValue?: string | null;
 }

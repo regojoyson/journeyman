@@ -23,8 +23,6 @@ export interface TriggerWebhookConfig {
   acceptIf?: JsonLogicExpr;
   /** Payload → workflow input mapping. Keys are names from WorkflowGraph.inputDefs. */
   inputsMapping: Record<string, TriggerInputMapping>;
-  /** Optional path to extract a downstream-correlatable issueRef from the payload. */
-  issueRefFromPath?: string;
 }
 
 export type TriggerHumanFieldWidget =

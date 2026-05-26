@@ -19,8 +19,6 @@ export interface SubmitWorkflowInstanceArgs {
   webhookEventId?: string | null;
   /** Form submission id when triggerSource === "human". */
   formSubmissionId?: string | null;
-  /** Optional issueRef for cross-instance correlation (e.g. extracted via trigger-webhook.issueRefFromPath). */
-  issueRef?: string | null;
 }
 
 export interface IOrchestratorEngine {

@@ -58,7 +58,6 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       triggerNodeId: args.triggerNodeId ?? null,
       webhookEventId: args.webhookEventId ?? null,
       formSubmissionId: args.formSubmissionId ?? null,
-      issueRef: args.issueRef ?? null,
     });
 
     const grantsToWrite: Array<{

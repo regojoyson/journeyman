@@ -240,7 +240,7 @@ export function RunsListPage() {
   const q = useQuery({
     queryKey: ["runs", filter, scope, page, pageSize],
     queryFn: () => listRunsPaged({
-      status: filter.status, workflowId: filter.workflowId, provider: filter.provider, issueRef: filter.issueRef,
+      status: filter.status, workflowId: filter.workflowId, provider: filter.provider,
       scope, page, pageSize,
     }),
     refetchInterval: 4000,

@@ -4,7 +4,6 @@ export interface WorkflowInstanceFilter {
   status?: WorkflowInstance["status"];
   workflowId?: string;
   provider?: string;
-  issueRef?: string;
 }
 
 export interface WorkflowInstancesListProps {

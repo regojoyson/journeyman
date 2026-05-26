@@ -95,7 +95,6 @@ export type WebhookEvent = {
   provider: WebhookProvider;
   eventType: string | null;
   deliveryId: string | null;
-  issueRef: string | null;
   productId: string | null;
   rawHeaders: Record<string, string>;
   rawPayload: unknown;

@@ -1,4 +1,18 @@
+import type { WorkflowInputValue } from "./flow.types.ts";
 import type { JsonLogicExpr } from "./flow-condition.types.ts";
+
+/**
+ * How a paused webhook-wait correlates to an incoming event.
+ *
+ * - `eventPath`: JSONPath into the inbound event payload (e.g. "$.pull_request.number").
+ * - `value`: a WorkflowInputValue (literal | ref | template) resolved against
+ *   the workflow instance's state at pause time. The resolved string is
+ *   snapshotted onto `jm_node_executions.correlation_value`.
+ */
+export interface CorrelationKey {
+  eventPath: string;
+  value: WorkflowInputValue;
+}
 
 export interface WebhookWaitOutputField {
   name: string;
@@ -18,12 +32,8 @@ export interface WebhookWaitConfig {
   listensFor?: string[];
   /** JSONLogic predicate evaluated against the raw payload; must be truthy to match. */
   acceptIf?: JsonLogicExpr;
-  /**
-   * How this paused node binds to an incoming event. V1 only supports
-   * `"issueRef"` — the matcher uses the workflow instance's `issueRef` and
-   * compares against the event's extracted ref.
-   */
-  correlationKey?: "issueRef";
+  /** Required at publish time. Determines which paused wait an incoming event resumes. */
+  correlationKey?: CorrelationKey;
   outputs: WebhookWaitOutputField[];
   timeout?: {
     duration: string;

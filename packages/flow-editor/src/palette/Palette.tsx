@@ -91,6 +91,16 @@ function entryDragMime(e: AnyEntry): string {
 export function Palette({ steps, controlCatalog }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
     ...TRIGGER_ENTRIES,
+    ...(controlCatalog ?? []).map((c): AnyEntry => ({
+      kind: "control",
+      nodeType: c.nodeType,
+      label: c.label,
+      category: c.category,
+      color: c.color,
+      icon: c.icon,
+      description: c.description,
+      comingSoon: c.comingSoon === true,
+    })),
     ...steps
       .filter((p) => !p.hiddenFromPalette)
       .map((p): AnyEntry => ({
@@ -103,16 +113,6 @@ export function Palette({ steps, controlCatalog }: PaletteProps) {
         description: p.description,
         comingSoon: p.comingSoon === true,
       })),
-    ...(controlCatalog ?? []).map((c): AnyEntry => ({
-      kind: "control",
-      nodeType: c.nodeType,
-      label: c.label,
-      category: c.category,
-      color: c.color,
-      icon: c.icon,
-      description: c.description,
-      comingSoon: c.comingSoon === true,
-    })),
   ], [steps, controlCatalog]);
 
   const available = useMemo(

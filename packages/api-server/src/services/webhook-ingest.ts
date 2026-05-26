@@ -2,7 +2,6 @@ import type { Pool } from "pg";
 import type { Webhook, WebhookEvent, WebhookProvider } from "@journeyman/core";
 import {
   extractEventType,
-  readPath,
   validatePayload,
   verifyWebhookRequest,
   type VerifyInput,
@@ -99,7 +98,6 @@ export async function ingestForWebhook(
       provider: providerForLegacy,
       eventType,
       deliveryId,
-      issueRef: null, // populated below if we can extract one
       productId: null,
       rawHeaders: sanitized,
       rawPayload: input.rawPayload,
@@ -123,34 +121,12 @@ export async function ingestForWebhook(
     }
   }
 
-  // 5. Best-effort issueRef extraction for legacy compatibility — match service
-  //    still needs it. Use the first correlation suggestion that yields a value.
-  let issueRef: string | null = null;
-  if (webhook.correlationSuggestions) {
-    for (const sug of webhook.correlationSuggestions) {
-      if (sug.key === "issueRef") {
-        const v = readPath(input.rawPayload, sug.path);
-        if (typeof v === "string" && v) {
-          issueRef = `${webhook.preset}:${v}`;
-          break;
-        }
-      }
-    }
-  }
-  if (pool && issueRef) {
-    await pool.query(
-      "UPDATE jm_webhook_events SET issue_ref = $1 WHERE id = $2",
-      [issueRef, event.id],
-    );
-  }
-
-  // 6. Match against paused webhook-wait nodes.
+  // 5. Match against paused webhook-wait nodes.
   try {
     const result = await matchAndResolveWebhookWaits(c, {
       id: event.id,
       provider: webhook.preset,
       eventType,
-      issueRef,
       rawPayload: input.rawPayload,
     });
     if (result.matched > 0) {

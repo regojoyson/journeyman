@@ -429,6 +429,16 @@ class ConvertCtx {
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
     this.validateOutputNames(node, outputs, ["source", "resolvedAt", "webhookEventId", "payload"], "Webhook-wait");
 
+    // Resolve correlationKey.value through the same WorkflowInputValue → Conductor-ref
+    // pipeline as step inputs. Conductor substitutes the ref(s) at task-execution
+    // time; engine-reconciler reads the resolved object from t.inputData.
+    const resolvedCorrelationKey = cfg.correlationKey
+      ? {
+          eventPath: cfg.correlationKey.eventPath,
+          value: resolveInputs({ value: cfg.correlationKey.value }).value,
+        }
+      : undefined;
+
     const human: import("./conductor-types.ts").HumanTask = {
       type: "HUMAN",
       name: `webhookwait_${node.id}`,
@@ -436,7 +446,7 @@ class ConvertCtx {
       inputParameters: {
         outputs,
         webhookId: cfg.webhookId,
-        correlationKey: cfg.correlationKey ?? "issueRef",
+        ...(resolvedCorrelationKey ? { correlationKey: resolvedCorrelationKey } : {}),
         ...(cfg.listensFor ? { listensFor: cfg.listensFor } : {}),
         ...(cfg.acceptIf ? { acceptIf: cfg.acceptIf } : {}),
         ...(cfg.timeout ? {

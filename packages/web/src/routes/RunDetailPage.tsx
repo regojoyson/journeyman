@@ -82,7 +82,6 @@ export function RunDetailPage() {
               {([
                 ["Provider",  detailQ.data.webhookEvent.provider],
                 ["Event",     detailQ.data.webhookEvent.eventType ?? "—"],
-                ["Issue ref", detailQ.data.webhookEvent.issueRef ?? "—"],
                 ["Delivery",  detailQ.data.webhookEvent.deliveryId ?? "—"],
                 ["Received",  new Date(detailQ.data.webhookEvent.receivedAt).toUTCString()],
               ] as [string, string][]).map(([label, value]) => (

@@ -27,7 +27,14 @@ export function InputsTab({ graph, onPatchInputs }: InputsTabProps): JSX.Element
     <div className="jm-inputs-tab">
       <h2>Workflow inputs</h2>
       <p>All triggers map their source data onto these inputs.</p>
-      <table>
+      <table className="jm-inputs-tab__table">
+        <colgroup>
+          <col className="jm-inputs-tab__col-name" />
+          <col className="jm-inputs-tab__col-type" />
+          <col className="jm-inputs-tab__col-required" />
+          <col className="jm-inputs-tab__col-description" />
+          <col className="jm-inputs-tab__col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th>Name</th>
@@ -42,6 +49,7 @@ export function InputsTab({ graph, onPatchInputs }: InputsTabProps): JSX.Element
             <tr key={idx}>
               <td>
                 <input
+                  type="text"
                   value={inp.name}
                   onChange={(e) => update(idx, { name: e.target.value })}
                 />
@@ -57,7 +65,7 @@ export function InputsTab({ graph, onPatchInputs }: InputsTabProps): JSX.Element
                   <option value="json">json</option>
                 </select>
               </td>
-              <td>
+              <td className="jm-inputs-tab__cell-required">
                 <input
                   type="checkbox"
                   checked={inp.required === true}
@@ -66,12 +74,13 @@ export function InputsTab({ graph, onPatchInputs }: InputsTabProps): JSX.Element
               </td>
               <td>
                 <input
+                  type="text"
                   value={inp.description ?? ""}
                   onChange={(e) => update(idx, { description: e.target.value || undefined })}
                 />
               </td>
               <td>
-                <button type="button" onClick={() => remove(idx)}>Remove</button>
+                <button type="button" className="jm-inputs-tab__remove" onClick={() => remove(idx)}>Remove</button>
               </td>
             </tr>
           ))}

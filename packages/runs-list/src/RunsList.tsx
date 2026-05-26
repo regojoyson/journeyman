@@ -6,35 +6,24 @@ import { WorkflowInstanceFilters } from "./RunFilters.tsx";
 import { ProviderBadge } from "./ProviderBadge.tsx";
 import { Pagination } from "./Pagination.tsx";
 
-function rawIssueId(issueRef: string | null | undefined): string {
-  if (!issueRef) return "";
-  const colon = issueRef.indexOf(":");
-  return colon === -1 ? issueRef : issueRef.slice(colon + 1);
-}
-
 /**
- * Pick a short label for the leftmost "Ref" column. Prefer the webhook
- * issueRef when present, otherwise fall back to the first input attribute
- * with a primitive value.
+ * Render the workflow inputs as a short "key=value, key=value" summary for the
+ * leftmost column. Non-primitive values are skipped. Full pairs go in the
+ * tooltip; the visible string is truncated.
  */
-function refLabel(
-  webhookEvent: { issueRef: string | null } | null | undefined,
-  inputs: Record<string, unknown> | undefined,
-): { text: string; title?: string } {
-  if (webhookEvent?.issueRef) {
-    return { text: rawIssueId(webhookEvent.issueRef), title: webhookEvent.issueRef };
-  }
-  if (inputs) {
-    for (const [k, v] of Object.entries(inputs)) {
-      if (v == null) continue;
-      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-        const text = String(v);
-        const trimmed = text.length > 40 ? text.slice(0, 37) + "…" : text;
-        return { text: trimmed, title: `${k}: ${text}` };
-      }
+function refLabel(inputs: Record<string, unknown> | undefined): { text: string; title?: string } {
+  if (!inputs) return { text: "—" };
+  const pairs: string[] = [];
+  for (const [k, v] of Object.entries(inputs)) {
+    if (v == null) continue;
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+      pairs.push(`${k}=${String(v)}`);
     }
   }
-  return { text: "—" };
+  if (pairs.length === 0) return { text: "—" };
+  const full = pairs.join(", ");
+  const text = full.length > 60 ? full.slice(0, 57) + "…" : full;
+  return { text, title: full };
 }
 
 export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
@@ -100,10 +89,10 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
           <tbody>
             {p.workflowInstances.map(r => {
               const webhookEvent = (r as any).webhookEvent as {
-                provider: string; issueRef: string | null; deliveryId: string | null; receivedAt: string;
+                provider: string; deliveryId: string | null; receivedAt: string;
               } | null | undefined;
               const isIgnored = r.status === "ignored" as string;
-              const ref = refLabel(webhookEvent, r.inputs);
+              const ref = refLabel(r.inputs);
               return (
                 <React.Fragment key={r.id}>
                   <tr
@@ -137,12 +126,7 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                     )}
                     <td>
                       {r.triggerSource === "webhook" && webhookEvent ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <ProviderBadge provider={webhookEvent.provider} />
-                          <span style={{ fontSize: 12, color: "#ccc" }}>
-                            {rawIssueId(webhookEvent.issueRef)}
-                          </span>
-                        </span>
+                        <ProviderBadge provider={webhookEvent.provider} />
                       ) : (
                         <ProviderBadge provider={r.triggerSource} />
                       )}

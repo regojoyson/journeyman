@@ -1,5 +1,5 @@
 /* @journeyman/flow-editor — scoped utility styles */
-.je-editor { display: grid; grid-template-rows: auto 1fr; height: 100%; background: rgb(var(--color-bg) / 1); color: rgb(var(--color-text) / 1); font-family: system-ui, -apple-system, sans-serif; }
+.je-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; background: rgb(var(--color-bg) / 1); color: rgb(var(--color-text) / 1); font-family: system-ui, -apple-system, sans-serif; }
 .je-editor__topbar {
   display: flex;
   align-items: center;
@@ -205,8 +205,8 @@
 }
 .je-spin { animation: je-spin 0.9s linear infinite; }
 @keyframes je-spin { to { transform: rotate(360deg); } }
-.je-editor__body { display: grid; grid-template-columns: 200px 1fr 280px; min-height: 0; }
-.je-editor__palette { background: #11111a; border-right: 1px solid #2a2a3a; padding: 10px; overflow: auto; }
+.je-editor__body { flex: 1; display: grid; grid-template-columns: 200px 1fr 280px; min-height: 0; }
+.je-editor__palette { background: #11111a; border-right: 1px solid #2a2a3a; padding: 10px; overflow-y: auto; overflow-x: hidden; min-height: 0; max-height: 100%; }
 .je-editor__canvas { position: relative; background: #1a1a24; overflow: hidden; }
 .je-editor__props { background: #11111a; border-left: 1px solid #2a2a3a; padding: 12px; overflow: auto; }
 .je-palette__group { font-size: 10px; text-transform: uppercase; color: #888; margin: 12px 0 6px; letter-spacing: 0.05em; }
@@ -1798,22 +1798,31 @@ label.je-switch,
 .je-inputs-drawer__body { flex: 1; overflow: auto; }
 
 /* === Inputs tab (Task 9) ================================================= */
-.jm-inputs-tab { padding: 20px 24px; overflow-y: auto; }
+.jm-inputs-tab { padding: 20px 24px; overflow: auto; }
 .jm-inputs-tab h2 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; }
 .jm-inputs-tab p { margin: 0 0 16px 0; font-size: 12px; color: rgb(var(--color-text-muted, 160 160 170) / 1); }
-.jm-inputs-tab table { width: 100%; border-collapse: collapse; }
+.jm-inputs-tab__table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.jm-inputs-tab__col-type { width: 96px; }
+.jm-inputs-tab__col-required { width: 72px; }
+.jm-inputs-tab__col-actions { width: 80px; }
 .jm-inputs-tab thead th {
   text-align: left; padding: 6px 8px; font-size: 11px; font-weight: 600;
   color: rgb(var(--color-text-muted, 160 160 170) / 1);
   text-transform: uppercase; letter-spacing: 0.05em;
   border-bottom: 1px solid rgb(var(--color-border) / 1);
 }
-.jm-inputs-tab tbody td { padding: 6px 8px; }
+.jm-inputs-tab tbody td { padding: 6px 8px; vertical-align: middle; }
+.jm-inputs-tab__cell-required { text-align: center; }
 .jm-inputs-tab input[type="text"], .jm-inputs-tab select {
-  width: 100%; background: rgb(var(--color-bg) / 1);
+  width: 100%; box-sizing: border-box; background: rgb(var(--color-bg) / 1);
   color: rgb(var(--color-text) / 1);
   border: 1px solid rgb(var(--color-border) / 1);
   border-radius: 4px; padding: 4px 6px; font-size: 12px;
+}
+.jm-inputs-tab__remove {
+  width: 100%; background: rgb(var(--color-bg-elev2, 36 36 42) / 1);
+  color: rgb(var(--color-text) / 1); border: 1px solid rgb(var(--color-border) / 1);
+  border-radius: 4px; padding: 4px 6px; font-size: 12px; cursor: pointer;
 }
 .jm-inputs-tab > button {
   margin-top: 12px; background: rgb(var(--color-bg-elev2, 36 36 42) / 1);

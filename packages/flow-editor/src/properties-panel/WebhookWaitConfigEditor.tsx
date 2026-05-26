@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { WorkflowNode } from "@journeyman/core";
+import type { CorrelationKey, WorkflowInputValue, WorkflowNode } from "@journeyman/core";
 import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { ListensForPicker } from "./ListensForPicker.tsx";
 import { pathsFromSchema, useWebhooksForPicker } from "./useWebhooksForPicker.ts";
@@ -25,7 +25,7 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
     webhookId?: string;
     listensFor?: string[];
     acceptIf?: unknown;
-    correlationKey?: "issueRef";
+    correlationKey?: CorrelationKey;
     outputs?: WebhookWaitOutputCfg[];
     timeout?: { duration: string; defaults?: Record<string, unknown> };
   };
@@ -111,6 +111,50 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
         <p className="je-hint">
           Empty means any event type. Custom values are allowed for event types not in the preset.
         </p>
+      </div>
+
+      <div className="je-field">
+        <label className="je-field__label">Correlation</label>
+        <p className="je-hint">
+          When an event arrives, which paused workflow does it belong to? Match
+          the event path against a value resolved from this instance.
+        </p>
+        <input
+          type="text"
+          placeholder="Event path e.g. $.pull_request.number"
+          list={`acceptif-paths-${node.id}`}
+          value={cfg.correlationKey?.eventPath ?? ""}
+          disabled={readOnly}
+          onChange={(e) => {
+            const eventPath = e.target.value;
+            const value: WorkflowInputValue =
+              cfg.correlationKey?.value ?? { kind: "template", template: "" };
+            update({ correlationKey: { eventPath, value } });
+          }}
+          style={{ marginBottom: 6 }}
+        />
+        <input
+          type="text"
+          placeholder='Equals (template e.g. "{{ inputs.ticketId }}")'
+          value={
+            cfg.correlationKey?.value?.kind === "template"
+              ? cfg.correlationKey.value.template
+              : cfg.correlationKey?.value?.kind === "literal"
+                ? String(cfg.correlationKey.value.value ?? "")
+                : ""
+          }
+          disabled={readOnly}
+          onChange={(e) => {
+            const template = e.target.value;
+            const eventPath = cfg.correlationKey?.eventPath ?? "";
+            update({
+              correlationKey: {
+                eventPath,
+                value: { kind: "template", template },
+              },
+            });
+          }}
+        />
       </div>
 
       <div className="je-field">
