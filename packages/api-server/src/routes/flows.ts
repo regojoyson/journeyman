@@ -240,7 +240,7 @@ export function computeValidationReport(
       const cv = config[fieldName];
       const hasTyped = cv !== undefined && cv !== null && cv !== "";
       if (!hasBinding && !hasTyped) {
-        missing.push(`'${node.displayName ?? node.id}' (${node.id}) is missing required input '${fieldName}' (${node.stepType})`);
+        missing.push(`'${node.displayName ?? node.id}' (${node.id}) is missing required input '${fieldName}'`);
       }
     }
   }
