@@ -4,8 +4,7 @@ export const IssueShape: Shape = {
   type: "object",
   named: "Issue",
   fields: {
-    issueRef:      { type: "string", description: "Canonical namespaced identifier (e.g. jira:PROJ-123)" },
-    issueRefShort: { type: "string", description: "Short display ref (e.g. PROJ-123)" },
+    ref:           { type: "string", description: "Provider-native identifier (e.g. PROJ-123)" },
     id:            { type: "string", description: "Provider-native id" },
     title:         { type: "string" },
     description:   { type: "string" },

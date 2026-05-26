@@ -20,6 +20,8 @@ export interface ResolveHumanTaskInput {
   actor: string | null;
   source: ResolveSource;
   webhookEventId?: string | null;
+  /** Optional fine-grained reason for audit. e.g. "node_timeout" | "max_age_sweep". */
+  resolvedBy?: string | null;
 }
 
 export class HumanTaskNotWaitingError extends Error {
@@ -96,6 +98,7 @@ export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskIn
     actor: input.actor,
     source: input.source,
     webhookEventId: input.webhookEventId ?? null,
+    resolvedBy: input.resolvedBy ?? null,
   });
 
   const resolvedAt = new Date().toISOString();

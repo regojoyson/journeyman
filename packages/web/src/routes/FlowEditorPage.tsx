@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Workflow, WorkflowGraph } from "@journeyman/core";
 import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
+import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
 import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInSteps } from "@journeyman/steps";
 import { useCustomStepPaletteEntries } from "../flow-editor-integration/useCustomStepPaletteEntries.ts";
@@ -29,6 +30,7 @@ export function FlowEditorPage() {
   const [graph, setGraph] = useState<WorkflowGraph | null>(null);
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
   const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
   const customStepDefs = useCustomStepPaletteEntries(activeOrgId);
 
@@ -86,6 +88,11 @@ export function FlowEditorPage() {
       setGraph(versionQ.data.definition);
     }
   }, [id, graph, qc, versionQ.data]);
+
+  useEffect(() => {
+    if (!id) return;
+    getWorkflowTriggers(id).then(setTriggers).catch(() => setTriggers([]));
+  }, [id]);
 
   const saveM = useMutation({
     mutationFn: (next: WorkflowGraph) => updateFlowDefinition(id!, next),
@@ -165,7 +172,22 @@ export function FlowEditorPage() {
 
   return (
     <>
-      <div style={{ height: "100%" }}>
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {triggers && triggers.length > 0 ? (
+          <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "#666", flex: "0 0 auto" }}>
+            Triggered by:{" "}
+            {triggers.map((t, i) => (
+              <span key={t.id}>
+                {i > 0 ? ", " : ""}
+                {t.type === "trigger-manual"
+                  ? "Manual"
+                  : t.type === "trigger-webhook"
+                  ? `Webhook${t.webhook ? ` (${t.webhook.name})` : ""}`
+                  : "Human form"}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {!editable && (
           <div style={{
             padding: "8px 12px", marginBottom: 12,
@@ -174,26 +196,28 @@ export function FlowEditorPage() {
             This is a {flow.scope} template. <button onClick={onClone}>Clone to my flows</button> to make changes.
           </div>
         )}
-        <FlowEditor
-          flow={graph}
-          flowName={flow.name}
-          onRename={editable ? (next) => {
-            const trimmed = next.trim();
-            if (!trimmed || trimmed === flow.name) return;
-            renameM.mutate(trimmed);
-          } : undefined}
-          orgId={activeOrgId}
-          steps={[...builtInSteps, ...customStepDefs]}
-          controlCatalog={defaultControlCatalog}
-          mcpCatalog={defaultMcpCatalog}
-          onChange={(next) => { setGraph(next); setDirty(true); }}
-          onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
-          onValidate={async (next) => await validateFlowDefinition(next)}
-          busy={saveM.isPending}
-          status={flow.status}
-          onPublish={editable ? onPublish : undefined}
-          onUnpublish={editable ? onUnpublish : undefined}
-        />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <FlowEditor
+            flow={graph}
+            flowName={flow.name}
+            onRename={editable ? (next) => {
+              const trimmed = next.trim();
+              if (!trimmed || trimmed === flow.name) return;
+              renameM.mutate(trimmed);
+            } : undefined}
+            orgId={activeOrgId}
+            steps={[...builtInSteps, ...customStepDefs]}
+            controlCatalog={defaultControlCatalog}
+            mcpCatalog={defaultMcpCatalog}
+            onChange={(next) => { setGraph(next); setDirty(true); }}
+            onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
+            onValidate={async (next) => await validateFlowDefinition(next)}
+            busy={saveM.isPending}
+            status={flow.status}
+            onPublish={editable ? onPublish : undefined}
+            onUnpublish={editable ? onUnpublish : undefined}
+          />
+        </div>
       </div>
       {saveToast && (
         <StatusToast

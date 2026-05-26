@@ -6,6 +6,12 @@ import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
 import type { WorkflowGraph, WorkflowScope, WorkflowInputValue } from "@journeyman/core";
+import { findManualTriggerNode } from "@journeyman/core";
+import {
+  refreshTriggerIndexOnPublish,
+  refreshTriggerIndexOnUnpublish,
+  refreshTriggerIndexOnVersionCreated,
+} from "../services/workflow-trigger-index.ts";
 import { ConductorJsonConverter } from "@journeyman/orchestrator";
 import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
@@ -234,7 +240,7 @@ export function computeValidationReport(
       const cv = config[fieldName];
       const hasTyped = cv !== undefined && cv !== null && cv !== "";
       if (!hasBinding && !hasTyped) {
-        missing.push(`'${node.displayName ?? node.id}' (${node.stepType}) is missing required input '${fieldName}'`);
+        missing.push(`'${node.displayName ?? node.id}' (${node.id}) is missing required input '${fieldName}'`);
       }
     }
   }
@@ -307,7 +313,9 @@ import {
 } from "../services/flow-access.ts";
 
 function hasWorkflowTrigger(workflow: WorkflowGraph): boolean {
-  return workflow.nodes.some(n => n.type === "start");
+  return workflow.nodes.some(n =>
+    n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  );
 }
 
 function callerFromCtx(ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>): Caller {
@@ -365,7 +373,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const seenWarnings = new Set(report.warnings);
     for (const e of publishResult.errors) {
       const label = e.nodeLabel ?? (e.nodeId ? "Unknown step" : "Flow");
-      const msg = `[${label}] ${e.message}`;
+      // Include the bare node ID in parens so the flow-editor's IssueMessage
+      // component can linkify it (jump-to-node from the validation banner).
+      const msg = e.nodeId
+        ? `[${label}] (${e.nodeId}) ${e.message}`
+        : `[${label}] ${e.message}`;
       if (e.severity === "warning") {
         if (!seenWarnings.has(msg)) { report.warnings.push(msg); seenWarnings.add(msg); }
       } else if (e.code === "missing_config" || e.code === "unresolved_binding") {
@@ -493,6 +505,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       newVersion = await c.workflowVersions.appendVersion({
         workflowId: id, definition: body.definition as WorkflowGraph, createdByUserId: caller.userId,
       });
+      // Pre-compute trigger index rows for the new version. They are inactive
+      // until the workflow is published (publish path activates them).
+      await refreshTriggerIndexOnVersionCreated(c.workflowTriggers, {
+        workflowId: id,
+        workflowVersionId: newVersion.id,
+        graph: body.definition as WorkflowGraph,
+      });
     }
     const updated = await c.workflows.getById(id);
     return warnings.length ? { workflow: updated, version: newVersion, warnings } : { workflow: updated, version: newVersion };
@@ -579,6 +598,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const updated = await c.workflows.setStatus(id, "ready");
     if (!updated) { reply.code(500); return { error: "update_failed" }; }
+    if (updated.currentVersionId) {
+      await refreshTriggerIndexOnPublish(c.workflowTriggers, {
+        workflowId: updated.id,
+        workflowVersionId: updated.currentVersionId,
+        graph: version.definition,
+      });
+    }
     const warnings = result.errors.filter(e => e.severity === "warning");
     return { workflow: updated, warnings };
   });
@@ -602,6 +628,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const updated = await c.workflows.setStatus(id, "draft");
     if (!updated) { reply.code(500); return { error: "update_failed" }; }
+    await refreshTriggerIndexOnUnpublish(c.workflowTriggers, { workflowId: id });
     return { workflow: updated };
   });
 
@@ -618,6 +645,12 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const version = await c.workflowVersions.getById(workflow.currentVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }
 
+    const manualTrigger = findManualTriggerNode(version.definition);
+    if (!manualTrigger) {
+      reply.code(409);
+      return { error: "no_manual_trigger" };
+    }
+
     const { workflowInstanceId, engineWorkflowId } = await c.orchestrator.submit({
       workflowId: workflow.id,
       workflowVersionId: version.id,
@@ -627,6 +660,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       inputs: body.inputs,
       startedByUserId: caller.userId,
       startedByOrgId: ctx.org.id,
+      triggerSource: "manual",
+      triggerNodeId: manualTrigger.id,
     });
 
     reply.code(202);

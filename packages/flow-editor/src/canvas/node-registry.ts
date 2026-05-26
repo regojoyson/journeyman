@@ -10,6 +10,9 @@ import { TimerNode } from "./nodes/TimerNode.tsx";
 import { HumanTaskNode } from "./nodes/HumanTaskNode.tsx";
 import { WebhookWaitNode } from "./nodes/WebhookWaitNode.tsx";
 import { JoinNode } from "./nodes/JoinNode.tsx";
+import { TriggerManualNode } from "./nodes/TriggerManualNode.tsx";
+import { TriggerWebhookNode } from "./nodes/TriggerWebhookNode.tsx";
+import { TriggerHumanNode } from "./nodes/TriggerHumanNode.tsx";
 import { DefaultEdge } from "./edges/DefaultEdge.tsx";
 import { ConditionalEdge } from "./edges/ConditionalEdge.tsx";
 import { ErrorEdge } from "./edges/ErrorEdge.tsx";
@@ -28,6 +31,9 @@ export const nodeTypes = {
   "human-task": HumanTaskNode,
   "webhook-wait": WebhookWaitNode,
   "join": JoinNode,
+  "trigger-manual": TriggerManualNode,
+  "trigger-webhook": TriggerWebhookNode,
+  "trigger-human": TriggerHumanNode,
 };
 
 export const edgeTypes = {

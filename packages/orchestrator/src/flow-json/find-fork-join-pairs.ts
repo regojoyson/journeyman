@@ -26,14 +26,22 @@ export function findForkJoinPairs(graph: WorkflowGraph): PairDetectionResult {
   }
   const nodesById = new Map(graph.nodes.map(n => [n.id, n]));
 
+  const defaultOutCount = new Map<string, number>();
+  for (const e of graph.edges) {
+    if ((e.type ?? "default") !== "default") continue;
+    defaultOutCount.set(e.source, (defaultOutCount.get(e.source) ?? 0) + 1);
+  }
+
   const pairs: ForkJoinPair[] = [];
   const unpairedForks: Array<{ forkId: string; reason: string }> = [];
   const pairedJoinIds = new Set<string>();
 
   for (const node of graph.nodes) {
-    if (node.type !== "gateway-and") continue;
+    if ((defaultOutCount.get(node.id) ?? 0) < 2) continue;
 
-    const forkOuts = outgoing.get(node.id) ?? [];
+    const forkOuts = (outgoing.get(node.id) ?? []).filter(
+      e => (e.type ?? "default") === "default",
+    );
     if (forkOuts.length < 2) {
       unpairedForks.push({ forkId: node.id, reason: "fewer than 2 outgoing branches" });
       continue;

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Webhook } from "@journeyman/core";
 import { card } from "./admin-styles.ts";
-import { deleteWebhook, getWebhook } from "../api/webhooks.ts";
+import { deleteWebhook, getWebhook, updateWebhook } from "../api/webhooks.ts";
+import { InlineEdit } from "./webhooks/InlineEdit.tsx";
 import { WebhookOverviewTab } from "./webhooks/WebhookOverviewTab.tsx";
 import { WebhookSchemaTab } from "./webhooks/WebhookSchemaTab.tsx";
 import { WebhookEventsTab } from "./webhooks/WebhookEventsTab.tsx";
@@ -29,6 +30,18 @@ export function WebhookDetailPage(props: { backTo: string }) {
     navigate(props.backTo);
   }
 
+  async function saveName(next: string | null) {
+    if (!webhook || next === null) return;
+    const updated = await updateWebhook(webhook.id, { name: next });
+    setWebhook(updated);
+  }
+
+  async function saveDescription(next: string | null) {
+    if (!webhook) return;
+    const updated = await updateWebhook(webhook.id, { description: next });
+    setWebhook(updated);
+  }
+
   if (error) return <p className="p-6 text-sm text-red-400">{error}</p>;
   if (!webhook) return <p className="p-6 text-sm text-slate-400">Loading…</p>;
 
@@ -45,8 +58,25 @@ export function WebhookDetailPage(props: { backTo: string }) {
         <header className="flex items-start justify-between">
           <div>
             <Link to={props.backTo} className="text-xs text-slate-500 hover:text-slate-300">← back</Link>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-100">{webhook.name}</h1>
-            {webhook.description && <p className="text-sm text-slate-400 mt-1">{webhook.description}</p>}
+            <div className="mt-1">
+              <InlineEdit
+                value={webhook.name}
+                onSave={saveName}
+                ariaLabel="webhook name"
+                displayClassName="text-2xl font-semibold text-slate-100"
+              />
+            </div>
+            <div className="mt-1">
+              <InlineEdit
+                value={webhook.description ?? ""}
+                multiline
+                allowEmpty
+                onSave={saveDescription}
+                placeholder="Add description"
+                ariaLabel="webhook description"
+                displayClassName="text-sm text-slate-400"
+              />
+            </div>
           </div>
           <button onClick={remove} className="text-xs text-red-300 hover:text-red-200">Delete</button>
         </header>

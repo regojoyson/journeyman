@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { WorkflowGraph, PublishError, StepConfigValidator } from "@journeyman/core";
 import { validateForPublish } from "@journeyman/core";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
+import { IssueMessage } from "../issues/IssueMessage.tsx";
 
 interface Props {
   flow: WorkflowGraph;
@@ -18,11 +19,13 @@ function isHardError(e: PublishError): boolean {
 function IssueRow({
   kind,
   issue,
+  flow,
   onSelectNode,
   onCancel,
 }: {
   kind: "error" | "warning";
   issue: PublishError;
+  flow: WorkflowGraph;
   onSelectNode: (nodeId: string) => void;
   onCancel: () => void;
 }): JSX.Element {
@@ -47,7 +50,14 @@ function IssueRow({
         >
           {chipLabel}
         </button>
-        <span className="fe-publish-message">{issue.message}</span>
+        <span className="fe-publish-message">
+          <IssueMessage
+            flow={flow}
+            message={issue.message}
+            onSelectNode={onSelectNode}
+            onAfterClick={onCancel}
+          />
+        </span>
       </span>
     </li>
   );
@@ -121,7 +131,7 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
                 </p>
                 <ul className="fe-publish-checklist">
                   {issues.map((e, i) => (
-                    <IssueRow key={i} kind="warning" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
+                    <IssueRow key={i} kind="warning" issue={e} flow={flow} onSelectNode={onSelectNode} onCancel={onCancel} />
                   ))}
                 </ul>
               </>
@@ -144,7 +154,7 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
                       </h3>
                       <ul className="fe-publish-checklist">
                         {hardErrors.map((e, i) => (
-                          <IssueRow key={`e-${i}`} kind="error" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
+                          <IssueRow key={`e-${i}`} kind="error" issue={e} flow={flow} onSelectNode={onSelectNode} onCancel={onCancel} />
                         ))}
                       </ul>
                     </section>
@@ -157,7 +167,7 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
                       </h3>
                       <ul className="fe-publish-checklist">
                         {warnings.map((e, i) => (
-                          <IssueRow key={`w-${i}`} kind="warning" issue={e} onSelectNode={onSelectNode} onCancel={onCancel} />
+                          <IssueRow key={`w-${i}`} kind="warning" issue={e} flow={flow} onSelectNode={onSelectNode} onCancel={onCancel} />
                         ))}
                       </ul>
                     </section>

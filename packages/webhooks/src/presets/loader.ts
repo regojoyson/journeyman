@@ -51,7 +51,6 @@ export function loadAllPresets(rootOverride?: string): Map<PresetId, LoadedPrese
       eventTypePath: manifest.eventTypePath,
       deliveryIdHeader: manifest.deliveryIdHeader,
       knownEventTypes: manifest.knownEventTypes,
-      correlationSuggestions: manifest.correlationSuggestions,
       payloadSchema,
       samples,
     };

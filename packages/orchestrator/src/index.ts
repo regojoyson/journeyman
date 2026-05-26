@@ -75,3 +75,5 @@ export { PostgresWebhookEventStore } from "./stores/postgres/postgres-webhook-ev
 export { MemoryWebhookEventStore } from "./stores/memory/memory-webhook-event-store.ts";
 export { PostgresWebhookStore } from "./stores/postgres/postgres-webhook-store.ts";
 export { MemoryWebhookStore } from "./stores/memory/memory-webhook-store.ts";
+export { MemoryWorkflowTriggerStore } from "./stores/memory/memory-workflow-trigger-store.ts";
+export { PostgresWorkflowTriggerStore } from "./stores/postgres/postgres-workflow-trigger-store.ts";

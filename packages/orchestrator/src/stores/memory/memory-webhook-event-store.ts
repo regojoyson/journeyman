@@ -17,7 +17,6 @@ export class MemoryWebhookEventStore implements IWebhookEventStore {
       provider: args.provider,
       eventType: args.eventType ?? null,
       deliveryId: args.deliveryId ?? null,
-      issueRef: args.issueRef ?? null,
       productId: args.productId ?? null,
       rawHeaders: args.rawHeaders ?? {},
       rawPayload: args.rawPayload,
@@ -35,11 +34,5 @@ export class MemoryWebhookEventStore implements IWebhookEventStore {
 
   async getById(id: string): Promise<WebhookEvent | null> {
     return this.events.get(id) ?? null;
-  }
-
-  async listByIssueRef(issueRef: string): Promise<WebhookEvent[]> {
-    return [...this.events.values()]
-      .filter(e => e.issueRef === issueRef)
-      .sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
   }
 }

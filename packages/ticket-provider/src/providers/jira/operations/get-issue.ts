@@ -73,7 +73,7 @@ function buildPrompt(opts: GetIssueOptions): string {
 }
 
 export async function getIssue(opts: GetIssueOptions): Promise<GetIssueResult> {
-  log.info({ issueRef: opts.id }, "getIssue start");
+  log.info({ ref: opts.id }, "getIssue start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -90,14 +90,14 @@ export async function getIssue(opts: GetIssueOptions): Promise<GetIssueResult> {
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as GetIssueResult;
-        log.info({ issueRef: opts.id, found: !!result.issue }, "getIssue done");
+        log.info({ ref: opts.id, found: !!result.issue }, "getIssue done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ issueRef: opts.id, error }, "getIssue failed");
+      log.error({ ref: opts.id, error }, "getIssue failed");
       throw new Error(error);
     }
   }
-  log.error({ issueRef: opts.id }, "getIssue: no result received");
+  log.error({ ref: opts.id }, "getIssue: no result received");
   return { error: "No result received" };
 }

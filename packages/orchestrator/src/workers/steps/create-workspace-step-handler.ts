@@ -9,7 +9,7 @@ const log = createLogger("worker:create-workspace");
  * Wraps ICodingCLI.createWorkspace.
  *
  * Required input keys:
- *   - issueRef — used as the workspace folder name prefix (string)
+ *   - ref — used as the workspace folder name prefix (string)
  *
  * baseDir is read from constructor deps (injected by cli-worker from JOURNEYMAN_BASE_DIR env).
  *
@@ -23,21 +23,21 @@ export class CreateWorkspaceStepHandler implements IStepHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI>; baseDir: string }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
-    const issueRef = typeof input.issueRef === "string" ? input.issueRef : undefined;
-    if (!issueRef) {
+    const ref = typeof input.ref === "string" ? input.ref : undefined;
+    if (!ref) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "create-workspace requires `issueRef`",
+          message: "create-workspace requires `ref`",
           retryable: false,
         },
       };
     }
     const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Creating workspace ${issueRef} under ${this.deps.baseDir}`);
+    ctx.log(`Creating workspace ${ref} under ${this.deps.baseDir}`);
     const result = await coding.createWorkspace({
-      issueRef,
+      ref,
       baseDir: this.deps.baseDir,
       sessionId: ctx.workflowInstanceId,
       signal: ctx.signal,

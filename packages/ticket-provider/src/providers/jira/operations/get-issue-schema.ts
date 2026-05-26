@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { createLogger, parseIssueRef } from "@journeyman/core";
+import { createLogger } from "@journeyman/core";
 import type { GetIssueSchemaOptions, GetIssueSchemaResult } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { buildMcpConfig } from "../utils/mcp-config.ts";
@@ -29,7 +29,7 @@ const OUTPUT_SCHEMA = {
 } as const;
 
 function buildPrompt(opts: GetIssueSchemaOptions): string {
-  const rawId = parseIssueRef(opts.issueRef).rawId;
+  const rawId = opts.ref;
   const parts = [`Fetch the Jira issue with key: ${rawId}`];
   if (opts.projectId) {
     parts.push(`The project key is: ${opts.projectId}`);
@@ -48,7 +48,7 @@ function buildPrompt(opts: GetIssueSchemaOptions): string {
 }
 
 export async function getIssueSchema(opts: GetIssueSchemaOptions): Promise<GetIssueSchemaResult> {
-  log.info({ issueRef: opts.issueRef, projectId: opts.projectId }, "getIssueSchema start");
+  log.info({ ref: opts.ref, projectId: opts.projectId }, "getIssueSchema start");
   for await (const msg of query({
     prompt: buildPrompt(opts),
     options: {
@@ -65,14 +65,14 @@ export async function getIssueSchema(opts: GetIssueSchemaOptions): Promise<GetIs
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as GetIssueSchemaResult;
-        log.info({ issueRef: opts.issueRef, fieldCount: result.fields?.length ?? 0 }, "getIssueSchema done");
+        log.info({ ref: opts.ref, fieldCount: result.fields?.length ?? 0 }, "getIssueSchema done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ issueRef: opts.issueRef, error }, "getIssueSchema failed");
+      log.error({ ref: opts.ref, error }, "getIssueSchema failed");
       return { fields: [], error };
     }
   }
-  log.error({ issueRef: opts.issueRef }, "getIssueSchema: no result received");
+  log.error({ ref: opts.ref }, "getIssueSchema: no result received");
   return { fields: [], error: "No result received" };
 }

@@ -31,20 +31,76 @@ type AnyEntry =
       icon: string;
       description?: string;
       comingSoon: boolean;
+    }
+  | {
+      kind: "trigger";
+      triggerType: "trigger-manual" | "trigger-webhook" | "trigger-human";
+      label: string;
+      category: string;
+      color: string;
+      icon: string;
+      description?: string;
+      comingSoon: boolean;
     };
 
+const TRIGGER_ENTRIES: AnyEntry[] = [
+  {
+    kind: "trigger",
+    triggerType: "trigger-manual",
+    label: "Manual",
+    category: "Triggers",
+    color: "#6c5ce7",
+    icon: "▶",
+    description: "Start by clicking Run or via API.",
+    comingSoon: false,
+  },
+  {
+    kind: "trigger",
+    triggerType: "trigger-webhook",
+    label: "Webhook",
+    category: "Triggers",
+    color: "#6c5ce7",
+    icon: "🪝",
+    description: "Start when a webhook receives a matching event.",
+    comingSoon: false,
+  },
+  {
+    kind: "trigger",
+    triggerType: "trigger-human",
+    label: "Human form",
+    category: "Triggers",
+    color: "#6c5ce7",
+    icon: "📝",
+    description: "Start when a person submits an in-app form.",
+    comingSoon: false,
+  },
+];
+
 function entryKey(e: AnyEntry): string {
-  return e.kind === "step" ? `step:${e.stepType}` : `control:${e.nodeType}`;
+  if (e.kind === "step")    return `step:${e.stepType}`;
+  if (e.kind === "control") return `control:${e.nodeType}`;
+  return `trigger:${e.triggerType}`;
 }
 
 function entryDragMime(e: AnyEntry): string {
-  return e.kind === "step"
-    ? "application/journeyman-step"
-    : "application/journeyman-control";
+  if (e.kind === "step")    return "application/journeyman-step";
+  if (e.kind === "control") return "application/journeyman-control";
+  return "application/journeyman-trigger";
 }
 
 export function Palette({ steps, controlCatalog }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
+    ...TRIGGER_ENTRIES,
+    ...(controlCatalog ?? []).map((c): AnyEntry => ({
+      kind: "control",
+      nodeType: c.nodeType,
+      label: c.label,
+      category: c.category,
+      color: c.color,
+      icon: c.icon,
+      description: c.description,
+      comingSoon: c.comingSoon === true,
+    })),
     ...steps
       .filter((p) => !p.hiddenFromPalette)
       .map((p): AnyEntry => ({
@@ -57,16 +113,6 @@ export function Palette({ steps, controlCatalog }: PaletteProps) {
         description: p.description,
         comingSoon: p.comingSoon === true,
       })),
-    ...(controlCatalog ?? []).map((c): AnyEntry => ({
-      kind: "control",
-      nodeType: c.nodeType,
-      label: c.label,
-      category: c.category,
-      color: c.color,
-      icon: c.icon,
-      description: c.description,
-      comingSoon: c.comingSoon === true,
-    })),
   ], [steps, controlCatalog]);
 
   const available = useMemo(
@@ -123,7 +169,13 @@ export function Palette({ steps, controlCatalog }: PaletteProps) {
           {items.map(it => (
             <PaletteItem
               key={entryKey(it)}
-              entry={{ ...it, dragMime: entryDragMime(it) }}
+              entry={{
+                ...it,
+                dragMime: entryDragMime(it),
+                ...(it.kind === "step"    ? { stepType: it.stepType }    : {}),
+                ...(it.kind === "control" ? { nodeType: it.nodeType }    : {}),
+                ...(it.kind === "trigger" ? { triggerType: it.triggerType } : {}),
+              }}
             />
           ))}
         </div>
@@ -149,7 +201,13 @@ export function Palette({ steps, controlCatalog }: PaletteProps) {
                   {items.map(it => (
                     <PaletteItem
                       key={entryKey(it)}
-                      entry={{ ...it, dragMime: entryDragMime(it) }}
+                      entry={{
+                        ...it,
+                        dragMime: entryDragMime(it),
+                        ...(it.kind === "step"    ? { stepType: it.stepType }    : {}),
+                        ...(it.kind === "control" ? { nodeType: it.nodeType }    : {}),
+                        ...(it.kind === "trigger" ? { triggerType: it.triggerType } : {}),
+                      }}
                       disabled
                     />
                   ))}

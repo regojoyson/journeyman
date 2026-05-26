@@ -89,8 +89,8 @@ export interface HumanTask {
     kind?: "human-task" | "webhook-wait";
     /** Webhook-wait: registered webhook this node listens to. */
     webhookId?: string;
-    /** Webhook-wait: how the paused node binds to an incoming event. */
-    correlationKey?: "issueRef";
+    /** Webhook-wait: per-wait correlation key (eventPath + value). Opaque at the engine layer. */
+    correlationKey?: { eventPath: string; value: unknown };
     /** Human-task: notification config dispatched on pause. */
     notify?: { channel: "slack" | "console"; target: string; message?: string };
   };

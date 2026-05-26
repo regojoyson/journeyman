@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   FileCode2,
+  FormInput,
   Loader2,
   Play,
   Save,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { toYaml } from "./yaml-serialize.ts";
 import { IconButton } from "./IconButton.tsx";
+import { IssueMessage } from "../issues/IssueMessage.tsx";
 
 export interface ValidationReport {
   ok: boolean;
@@ -40,6 +42,8 @@ export interface TopbarProps {
   runDisabledReason?: string;
   validationErrors?: string[];
   onFlowConfig?: () => void;
+  /** Open the workflow input schema drawer. */
+  onInputsClick?: () => void;
   /** When provided, an Import button appears that lets the user paste/upload a flow JSON to replace the current one. */
   onImport?: (flow: WorkflowGraph) => void;
   /** Lifecycle status of the flow. When omitted, the pill and transition button are hidden. */
@@ -48,6 +52,8 @@ export interface TopbarProps {
   onPublishClick?: () => void;
   /** Called when the user clicks "Move to Draft" (status pill area). */
   onUnpublishClick?: () => void;
+  /** Click handler for node-id links inside validation/secret-warning messages. */
+  onFocusNode?: (nodeId: string) => void;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -164,6 +170,15 @@ export function Topbar(p: TopbarProps) {
             onClick={() => setImportOpen(true)}
           />
         )}
+        {p.onInputsClick && (
+          <IconButton
+            className="je-icon-btn--inputs"
+            label="Inputs"
+            hint="Edit the workflow input schema — shared across all triggers"
+            icon={<FormInput size={16} aria-hidden="true" focusable="false" />}
+            onClick={p.onInputsClick}
+          />
+        )}
         {p.onFlowConfig && (
           <IconButton
             className="je-icon-btn--flow-config"
@@ -184,18 +199,21 @@ export function Topbar(p: TopbarProps) {
           />
         )}
       </header>
-      {p.validationErrors && p.validationErrors.length > 0 && (
+      {p.validationErrors && p.validationErrors.length > 0 && !report && (
         <div style={{
           background: "#2a1a1a", borderBottom: "1px solid #ff7675",
           color: "#ff7675", fontSize: 11, padding: "6px 14px",
         }}>
-          {p.validationErrors.length === 1
-            ? p.validationErrors[0]
-            : `${p.validationErrors.length} validation issues — ${p.validationErrors[0]}`}
+          {p.validationErrors.length > 1 && (
+            <>{p.validationErrors.length} validation issues — </>
+          )}
+          {p.flow && p.onFocusNode
+            ? <IssueMessage flow={p.flow} message={p.validationErrors[0]} onSelectNode={p.onFocusNode} />
+            : p.validationErrors[0]}
         </div>
       )}
       {report && (
-        <ValidationPanel report={report} onClose={() => setReport(null)} />
+        <ValidationPanel report={report} onClose={() => setReport(null)} flow={p.flow} onFocusNode={p.onFocusNode} />
       )}
       {exportOpen && p.flow && (
         <ExportPanel flow={p.flow} flowName={p.flowName} onClose={() => setExportOpen(false)} />
@@ -454,7 +472,14 @@ function ImportPanel({
   );
 }
 
-function ValidationPanel({ report, onClose }: { report: ValidationReport; onClose: () => void }) {
+function ValidationPanel({
+  report, onClose, flow, onFocusNode,
+}: {
+  report: ValidationReport;
+  onClose: () => void;
+  flow?: WorkflowGraph;
+  onFocusNode?: (id: string) => void;
+}) {
   const secretWarnings = report.secretWarnings ?? [];
   const total =
     report.errors.length + report.missing.length + report.warnings.length +
@@ -478,22 +503,22 @@ function ValidationPanel({ report, onClose }: { report: ValidationReport; onClos
         )}
         {report.errors.length > 0 && (
           <CollapsibleSection title="Errors" tone="error" count={report.errors.length} defaultOpen>
-            <SectionBody items={report.errors} />
+            <SectionBody items={report.errors} flow={flow} onFocusNode={onFocusNode} />
           </CollapsibleSection>
         )}
         {report.missing.length > 0 && (
           <CollapsibleSection title="Missing required inputs" tone="error" count={report.missing.length} defaultOpen>
-            <SectionBody items={report.missing} />
+            <SectionBody items={report.missing} flow={flow} onFocusNode={onFocusNode} />
           </CollapsibleSection>
         )}
         {report.warnings.length > 0 && (
           <CollapsibleSection title="Warnings" tone="warn" count={report.warnings.length} defaultOpen={false}>
-            <SectionBody items={report.warnings} />
+            <SectionBody items={report.warnings} flow={flow} onFocusNode={onFocusNode} />
           </CollapsibleSection>
         )}
         {secretWarnings.length > 0 && (
           <CollapsibleSection title="Secret warnings" tone="warn" count={secretWarnings.length} defaultOpen={false}>
-            <SecretWarningsBody warnings={secretWarnings} />
+            <SecretWarningsBody warnings={secretWarnings} flow={flow} onFocusNode={onFocusNode} />
           </CollapsibleSection>
         )}
       </div>
@@ -532,18 +557,47 @@ function CollapsibleSection({
   );
 }
 
-function SectionBody({ items }: { items: string[] }) {
-  return <ul>{items.map((m, i) => <li key={i}>{m}</li>)}</ul>;
+function SectionBody({
+  items, flow, onFocusNode,
+}: { items: string[]; flow?: WorkflowGraph; onFocusNode?: (id: string) => void }) {
+  return (
+    <ul>
+      {items.map((m, i) => (
+        <li key={i}>
+          {flow && onFocusNode
+            ? <IssueMessage flow={flow} message={m} onSelectNode={onFocusNode} />
+            : m}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
+function SecretWarningsBody({
+  warnings, flow, onFocusNode,
+}: { warnings: WorkflowSaveWarning[]; flow?: WorkflowGraph; onFocusNode?: (id: string) => void }) {
+  const renderMessage = (m: string): JSX.Element | string =>
+    flow && onFocusNode
+      ? <IssueMessage flow={flow} message={m} onSelectNode={onFocusNode} />
+      : m;
+  const renderNodeIdChip = (nodeId: string): JSX.Element =>
+    flow && onFocusNode
+      ? (
+        <button
+          type="button"
+          className="je-issue-link"
+          onClick={() => onFocusNode(nodeId)}
+          style={{ fontFamily: "ui-monospace, monospace" }}
+        >{nodeId}</button>
+      )
+      : <code>{nodeId}</code>;
   return (
     <>
       {warnings.map((w, i) => {
         if (w.code === "inaccessible_secrets") {
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {w.names.map(n => (
                   <code
@@ -565,11 +619,11 @@ function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
         if (w.code === "cross_scope_pin") {
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
-                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> pinned to{" "}
+                    <code>{e.slot}</code> on node {renderNodeIdChip(e.nodeId)} pinned to{" "}
                     <b>{e.pinnedScope}</b> in a <b>{e.workflowScope}</b>-scope flow
                   </li>
                 ))}
@@ -580,11 +634,11 @@ function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
         if (w.code === "orphan_secret_binding") {
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
-                    <code>{e.slot}</code> on node <code>{e.nodeId}</code> — no longer declared on the step
+                    <code>{e.slot}</code> on node {renderNodeIdChip(e.nodeId)} — no longer declared on the step
                   </li>
                 ))}
               </ul>
@@ -594,11 +648,13 @@ function SecretWarningsBody({ warnings }: { warnings: WorkflowSaveWarning[] }) {
         if (w.code === "unknown_models" || w.code === "deprecated_models") {
           return (
             <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ marginBottom: 4 }}>{w.message}</div>
+              <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
-                    <code>{e.modelId}</code> ({e.provider}) — {e.location === "workflow-default" ? "workflow default" : `node ${e.nodeId ?? "?"}`}
+                    <code>{e.modelId}</code> ({e.provider}) — {e.location === "workflow-default"
+                      ? "workflow default"
+                      : <>node {e.nodeId ? renderNodeIdChip(e.nodeId) : "?"}</>}
                   </li>
                 ))}
               </ul>

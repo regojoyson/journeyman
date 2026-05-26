@@ -1,7 +1,6 @@
 import type {
   Webhook,
   WebhookAuthConfig,
-  WebhookCorrelationSuggestion,
   WebhookKind,
   WebhookScope,
   PresetId,
@@ -19,7 +18,6 @@ export type CreateWebhookArgs = {
   schemaInferredFrom?: string;
   eventTypePath?: string;
   deliveryIdHeader?: string;
-  correlationSuggestions?: WebhookCorrelationSuggestion[];
 };
 
 export type UpdateWebhookArgs = {
@@ -31,7 +29,6 @@ export type UpdateWebhookArgs = {
   schemaInferredFrom?: string | null;
   eventTypePath?: string | null;
   deliveryIdHeader?: string | null;
-  correlationSuggestions?: WebhookCorrelationSuggestion[] | null;
 };
 
 export interface IWebhookStore {

@@ -1,5 +1,5 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
-import { getStartWorkflowInputs } from "@journeyman/core";
+import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
@@ -12,6 +12,40 @@ import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomStepShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
+
+/**
+ * Read-time migration of v1 workflow JSON (with a `start` node and inputs nested
+ * in `start.config.workflowInputs`) to v2 (trigger-manual + graph-level inputDefs).
+ * Idempotent: returns input unchanged when schemaVersion >= 2.
+ */
+export function migrateV1ToV2(raw: WorkflowGraph): WorkflowGraph {
+  const sv = (raw as { schemaVersion?: number }).schemaVersion ?? 1;
+  if (sv >= WORKFLOW_SCHEMA_VERSION) return raw;
+
+  const startNode = raw.nodes.find((n) => (n.type as string) === "start");
+  const legacyInputs = startNode
+    ? ((startNode.config as { workflowInputs?: unknown[] } | undefined)?.workflowInputs ?? [])
+    : [];
+  const liftedInputs = (raw.inputDefs && raw.inputDefs.length > 0)
+    ? raw.inputDefs
+    : (legacyInputs as WorkflowGraph["inputDefs"]);
+
+  const migratedNodes: WorkflowNode[] = raw.nodes.map((n) => {
+    if ((n.type as string) !== "start") return n;
+    // Preserve the start node's `config` (workflowRetry lives there) but
+    // strip the migrated `workflowInputs` field so it isn't duplicated.
+    const cfgRaw = (n.config ?? {}) as Record<string, unknown>;
+    const { workflowInputs: _drop, ...restCfg } = cfgRaw;
+    return { ...n, type: "trigger-manual", config: restCfg };
+  });
+
+  return {
+    ...raw,
+    schemaVersion: WORKFLOW_SCHEMA_VERSION,
+    inputDefs: liftedInputs,
+    nodes: migratedNodes,
+  };
+}
 
 export class UnsupportedNodeTypeError extends Error {
   constructor(public readonly nodeType: string) {
@@ -42,7 +76,12 @@ export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorW
 
     const start = ctx.startNode();
     const tasks = ctx.buildSequence(ctx.successor(start.id));
-    const workflowRetry = (start.config as { workflowRetry?: { maxAttempts?: number; backoffSeconds?: number } } | undefined)?.workflowRetry;
+    // workflowRetry historically lived on the start node's config; for v2 it
+    // moves to the manual trigger (if any), with a fallback to whichever
+    // trigger fired.
+    const manual = findManualTriggerNode(def);
+    const workflowRetryHost = manual ?? start;
+    const workflowRetry = (workflowRetryHost.config as { workflowRetry?: { maxAttempts?: number; backoffSeconds?: number } } | undefined)?.workflowRetry;
 
     return {
       name: opts.workflowName,
@@ -67,7 +106,7 @@ class ConvertCtx {
     private catalog?: Map<string, CatalogShapeEntry>,
     private customStepDefs?: Map<string, CustomStepShapeEntry>,
   ) {
-    this.flow = flow;
+    this.flow = migrateV1ToV2(flow);
     this.nodes = new Map(this.flow.nodes.map(n => [n.id, n]));
     this.outgoing = new Map();
     for (const e of this.flow.edges) {
@@ -88,14 +127,19 @@ class ConvertCtx {
   }
 
   validate(): void {
-    const starts = this.flow.nodes.filter(n => n.type === "start");
-    if (starts.length !== 1) throw new WorkflowValidationError("Flow must have exactly one start node");
+    const triggers = findTriggerNodes(this.flow);
+    if (triggers.length === 0) throw new WorkflowValidationError("Flow must have at least one trigger node");
+    const manualCount = triggers.filter(t => t.type === "trigger-manual").length;
+    if (manualCount > 1) throw new WorkflowValidationError("Flow may declare at most one manual trigger");
     const ends = this.flow.nodes.filter(n => n.type === "end");
     if (ends.length === 0) throw new WorkflowValidationError("Flow must have at least one end node");
 
     const nodeIds = new Set(this.flow.nodes.map(n => n.id));
-    const startNode = this.flow.nodes.find(n => n.type === "start");
-    const runInputDefs = getStartWorkflowInputs(startNode?.config);
+    // Inputs live on the graph (lifted off start in v2). Fall back to any trigger's
+    // legacy config.workflowInputs if graph-level inputDefs is empty.
+    const runInputDefs = (this.flow.inputDefs && this.flow.inputDefs.length > 0)
+      ? this.flow.inputDefs
+      : getStartWorkflowInputs(triggers[0]?.config);
     const runInputNames = new Set(runInputDefs.map(d => d.name));
 
     for (const node of this.flow.nodes) {
@@ -133,7 +177,7 @@ class ConvertCtx {
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
             throw new WorkflowValidationError(
-              `Node ${this.label(node)} references ${this.labelById(parsed.source)} which does not execute on every path to ${this.label(node)}`,
+              `${this.label(node)} reads input '${field}' from ${this.labelById(parsed.source)}, but those two steps are on different branches — ${this.labelById(parsed.source)} won't always have run by the time ${this.label(node)} needs it. Either remove this input link, or move the steps so they're on the same path (e.g. place ${this.labelById(parsed.source)} before the fork, or place ${this.label(node)} after the Join).`,
             );
           }
           // Shape compatibility (only when a catalog is supplied).
@@ -160,7 +204,16 @@ class ConvertCtx {
     }
   }
 
-  startNode(): WorkflowNode { return this.flow.nodes.find(n => n.type === "start")!; }
+  startNode(): WorkflowNode {
+    // Prefer the manual trigger if present (preserves legacy behaviour where
+    // workflowRetry / Run-button semantics live on a single entry node).
+    // Otherwise pick the first trigger node in declaration order.
+    const manual = findManualTriggerNode(this.flow);
+    if (manual) return manual;
+    const t = this.flow.nodes.find(n => isTriggerNode(n));
+    if (!t) throw new WorkflowValidationError("Flow has no trigger node");
+    return t;
+  }
 
   successor(nodeId: string): string | null {
     const out = this.outgoing.get(nodeId) ?? [];
@@ -203,6 +256,13 @@ class ConvertCtx {
       case "subflow":      return this.emitSubflow(node);
       case "human-task":   return this.emitHumanTask(node);
       case "webhook-wait": return this.emitWebhookWait(node);
+      case "trigger-manual":
+      case "trigger-webhook":
+      case "trigger-human":
+        // Trigger nodes are pure graph entry points; they emit no engine tasks.
+        // The build loop should call successor() and continue from there before
+        // ever reaching emitNode, but this case is here defensively.
+        return { tasks: [], nextNodeId: this.successor(node.id) };
       case "retry-block":
       case "try-catch":    throw new UnsupportedNodeTypeError(node.type);
       default:             throw new UnsupportedNodeTypeError(node.type);
@@ -369,6 +429,16 @@ class ConvertCtx {
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
     this.validateOutputNames(node, outputs, ["source", "resolvedAt", "webhookEventId", "payload"], "Webhook-wait");
 
+    // Resolve correlationKey.value through the same WorkflowInputValue → Conductor-ref
+    // pipeline as step inputs. Conductor substitutes the ref(s) at task-execution
+    // time; engine-reconciler reads the resolved object from t.inputData.
+    const resolvedCorrelationKey = cfg.correlationKey
+      ? {
+          eventPath: cfg.correlationKey.eventPath,
+          value: resolveInputs({ value: cfg.correlationKey.value }).value,
+        }
+      : undefined;
+
     const human: import("./conductor-types.ts").HumanTask = {
       type: "HUMAN",
       name: `webhookwait_${node.id}`,
@@ -376,7 +446,7 @@ class ConvertCtx {
       inputParameters: {
         outputs,
         webhookId: cfg.webhookId,
-        correlationKey: cfg.correlationKey ?? "issueRef",
+        ...(resolvedCorrelationKey ? { correlationKey: resolvedCorrelationKey } : {}),
         ...(cfg.listensFor ? { listensFor: cfg.listensFor } : {}),
         ...(cfg.acceptIf ? { acceptIf: cfg.acceptIf } : {}),
         ...(cfg.timeout ? {

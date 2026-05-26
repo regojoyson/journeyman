@@ -11,6 +11,14 @@ export interface SubmitWorkflowInstanceArgs {
   startedByUserId: string | null;
   /** Caller's org at instance-start. Null when the caller has no org context. */
   startedByOrgId: string | null;
+  /** How this instance was started; defaults to "manual" if omitted by the caller. */
+  triggerSource?: "manual" | "webhook" | "schedule" | "api" | "human";
+  /** The trigger node id that fired (id of the trigger-manual/webhook/human node). */
+  triggerNodeId?: string | null;
+  /** Webhook event id when triggerSource === "webhook". */
+  webhookEventId?: string | null;
+  /** Form submission id when triggerSource === "human". */
+  formSubmissionId?: string | null;
 }
 
 export interface IOrchestratorEngine {

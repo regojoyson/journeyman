@@ -4,7 +4,7 @@ import { btnGhost, inputCls, selectCls } from "../../routes/admin-styles.ts";
 const TYPES: CustomStepInputType[] = [
   "string", "number", "boolean", "string[]",
   "object", "array",
-  "workspaceDir", "repoRef", "issueRef",
+  "workspaceDir", "repoRef",
   "template",
 ];
 

@@ -6,11 +6,13 @@ import type { JsonLogicExpr } from "./flow-condition.types.ts";
  * Workflow JSON schema version. Bumped when workflow JSON shape changes
  * incompatibly. ConductorJsonConverter migrates older versions on read.
  */
-export const WORKFLOW_SCHEMA_VERSION = 1 as const;
+export const WORKFLOW_SCHEMA_VERSION = 2 as const;
 export type WorkflowSchemaVersion = typeof WORKFLOW_SCHEMA_VERSION;
 
 export type WorkflowNodeType =
-  | "start"
+  | "trigger-manual"
+  | "trigger-webhook"
+  | "trigger-human"
   | "end"
   | "step"
   | "human-task"
@@ -26,6 +28,29 @@ export type WorkflowNodeType =
   | "timer"
   | "retry-block"
   | "try-catch";
+
+export type WorkflowTriggerNodeType =
+  | "trigger-manual"
+  | "trigger-webhook"
+  | "trigger-human";
+
+export const TRIGGER_NODE_TYPES: readonly WorkflowTriggerNodeType[] = [
+  "trigger-manual",
+  "trigger-webhook",
+  "trigger-human",
+] as const;
+
+export function isTriggerNode(node: { type: WorkflowNodeType }): boolean {
+  return (TRIGGER_NODE_TYPES as readonly string[]).includes(node.type);
+}
+
+export function findTriggerNodes(flow: { nodes: WorkflowNode[] }): WorkflowNode[] {
+  return flow.nodes.filter((n) => isTriggerNode(n));
+}
+
+export function findManualTriggerNode(flow: { nodes: WorkflowNode[] }): WorkflowNode | undefined {
+  return flow.nodes.find((n) => n.type === "trigger-manual");
+}
 
 export type WorkflowInputValue =
   | { kind: "literal"; value: unknown }

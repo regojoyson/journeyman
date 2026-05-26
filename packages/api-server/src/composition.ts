@@ -12,7 +12,7 @@ import { Pool } from "pg";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkspaceProvider,
+  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore, IWorkspaceProvider,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -38,6 +38,8 @@ import {
   MemoryEventBus,
   MemoryWebhookEventStore,
   MemoryWebhookStore,
+  MemoryWorkflowTriggerStore,
+  PostgresWorkflowTriggerStore,
   MemoryHumanTaskResolutionStore,
   DirectoryWorkspaceProvider,
   InMemoryStepRegistry,
@@ -49,6 +51,9 @@ import {
   InMemoryHumanTaskTimeoutService,
   type HumanTaskTimeoutService,
 } from "./services/human-task-timeout.ts";
+import { WebhookWaitSweeper } from "./services/webhook-wait-sweeper.ts";
+import { parseDurationMs } from "./services/parse-duration.ts";
+import { resolveHumanTask } from "./services/resolve-human-task.ts";
 
 export interface Composition {
   workflowGrants: IWorkflowGrantsStore;
@@ -60,8 +65,10 @@ export interface Composition {
   events: IEventBus;
   webhookEvents: IWebhookEventStore;
   webhooks: IWebhookStore;
+  workflowTriggers: IWorkflowTriggerStore;
   humanTaskResolutions: IHumanTaskResolutionStore;
   humanTaskTimeouts: HumanTaskTimeoutService;
+  webhookWaitSweeper: WebhookWaitSweeper;
   conductorClient: ConductorClient;
   orchestrator: IOrchestratorEngine;
   registry: IStepRegistry;
@@ -93,6 +100,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   let events: IEventBus;
   let webhookEvents: IWebhookEventStore;
   let webhooks: IWebhookStore;
+  let workflowTriggers: IWorkflowTriggerStore;
   let humanTaskResolutions: IHumanTaskResolutionStore;
   let pool: Pool | null = null;
 
@@ -102,11 +110,13 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     workflowGrants = new MemoryWorkflowGrantsStore();
     workflowInstanceGrants = new MemoryWorkflowInstanceGrantsStore();
     workflows = new MemoryWorkflowStore(v, workflowGrants);
-    workflowInstances = new MemoryWorkflowInstanceStore();
-    nodeExecutions = new MemoryNodeExecutionStore();
+    const memoryInstances = new MemoryWorkflowInstanceStore();
+    workflowInstances = memoryInstances;
+    nodeExecutions = new MemoryNodeExecutionStore(memoryInstances);
     events = new MemoryEventBus();
     webhookEvents = new MemoryWebhookEventStore();
     webhooks = new MemoryWebhookStore();
+    workflowTriggers = new MemoryWorkflowTriggerStore();
     humanTaskResolutions = new MemoryHumanTaskResolutionStore();
   } else {
     pool = createPool({ connectionString: cfg.databaseUrl });
@@ -120,6 +130,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     events = new PostgresEventBus(pool);
     webhookEvents = new PostgresWebhookEventStore(pool);
     webhooks = new PostgresWebhookStore(pool);
+    workflowTriggers = new PostgresWorkflowTriggerStore(pool);
     humanTaskResolutions = new PostgresHumanTaskResolutionStore(pool);
   }
 
@@ -143,12 +154,51 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   };
   const conditions = new JsonLogicEvaluator();
 
-  return {
+  const composition: Composition = {
     workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
-    nodeExecutions, events, webhookEvents, webhooks,
+    nodeExecutions, events, webhookEvents, webhooks, workflowTriggers,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,
+    // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.
+    webhookWaitSweeper: null as unknown as WebhookWaitSweeper,
     shutdown: async () => { if (pool) await pool.end(); },
   };
+
+  const maxAgeStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE ?? "30d").trim();
+  const intervalStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_SWEEP_INTERVAL ?? "5m").trim();
+
+  const sweeperDisabled = maxAgeStr === "" || maxAgeStr.toLowerCase() === "off";
+  const maxAgeMs = sweeperDisabled ? 0 : parseDurationMs(maxAgeStr);
+  if (!sweeperDisabled && maxAgeMs === 0) {
+    throw new Error(
+      `Invalid JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE: "${maxAgeStr}". Use a duration like "30d", "12h", "90m", or "off".`,
+    );
+  }
+  const intervalMs = parseDurationMs(intervalStr) || 5 * 60_000;
+
+  composition.webhookWaitSweeper = new WebhookWaitSweeper({
+    maxAgeMs,
+    intervalMs,
+    batchSize: 500,
+    nodeExecutions,
+    workflowInstances,
+    fire: async ({ workflowInstanceId, nodeId, defaults }) => {
+      try {
+        await resolveHumanTask(composition, {
+          workflowInstanceId,
+          nodeId,
+          values: defaults,
+          payload: {},
+          actor: null,
+          source: "timeout",
+          resolvedBy: "max_age_sweep",
+        });
+      } catch {
+        // Already resolved by webhook/manual or instance cancelled — not an error.
+      }
+    },
+  });
+
+  return composition;
 }

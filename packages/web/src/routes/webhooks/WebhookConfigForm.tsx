@@ -13,7 +13,6 @@ export interface ConfigFormValue {
   schemaValidation: "off" | "warn" | "reject";
   eventTypePath?: string;
   deliveryIdHeader?: string;
-  correlationSuggestions?: Array<{ key: string; path: string }>;
 }
 
 interface Props {
@@ -77,7 +76,6 @@ export function WebhookConfigForm({ preset, initial, submitLabel = "Create webho
       schemaValidation,
       eventTypePath: preset.eventTypePath ?? undefined,
       deliveryIdHeader: preset.deliveryIdHeader ?? undefined,
-      correlationSuggestions: preset.correlationSuggestions,
     });
   }
 

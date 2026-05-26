@@ -9,7 +9,7 @@ export type WorkflowInstanceStatus =
   | "failed"
   | "cancelled";
 
-export type TriggerSource = "manual" | "webhook" | "schedule" | "api";
+export type TriggerSource = "manual" | "webhook" | "schedule" | "api" | "human";
 
 export interface WorkflowInstance {
   id: string;
@@ -31,6 +31,10 @@ export interface WorkflowInstance {
   /** Workflow-wide retry attempt number (1 on first run; incremented when workflowRetry fires). */
   attemptNumber: number;
   webhookEventId: string | null;
+  /** ID of the trigger node that started this instance (trigger-manual|webhook|human). Null for legacy instances. */
+  triggerNodeId: string | null;
+  /** When started via trigger-human, the submission id; null otherwise. */
+  formSubmissionId: string | null;
   /** Hydrated by the API layer for the calling actor. */
   effectiveRole?: WorkflowInstanceGrantRole;
 }
@@ -87,4 +91,7 @@ export interface NodeExecution {
   errorMessage: string | null;
   /** Conductor task id captured by the engine reconciler when a HUMAN task enters IN_PROGRESS. */
   conductorTaskId?: string | null;
+  /** Set when the engine pauses a webhook-wait. Both null on non-wait executions. */
+  correlationEventPath?: string | null;
+  correlationValue?: string | null;
 }

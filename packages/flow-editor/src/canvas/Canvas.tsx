@@ -22,6 +22,7 @@ import {
 } from "./flow-rf-adapters.ts";
 import { HelpPanel } from "./HelpPanel.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
+import { defaultControlCatalog } from "../palette/built-in-categories.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 import { collectCustomStepIds } from "../properties-panel/use-upstream-sources.ts";
@@ -88,6 +89,11 @@ export interface CanvasProps {
   onEdgeSelect?: (edgeId: string | null) => void;
   readOnly?: boolean;
   stepRunStates?: Record<string, StepRunState>;
+  /**
+   * Pan and zoom-in to a node. `tick` lets the same nodeId re-trigger the
+   * effect when clicked twice in a row (selection alone wouldn't change).
+   */
+  focusRequest?: { nodeId: string; tick: number };
 }
 
 function toReactWorkflowNodes(
@@ -109,6 +115,7 @@ function toReactWorkflowNodes(
         }
       : {
           displayName: n.displayName ?? n.type,
+          ...(n.type === "end" ? { outcome: n.outcome } : {}),
           ...(n.config ?? {}),
         },
     selected: n.id === selectedId,
@@ -122,7 +129,7 @@ function CanvasInner(p: CanvasProps) {
   const customStepDefs = useCustomStepDefs(collectCustomStepIds(p.flow));
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = useStepRegistry();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow();
 
   // Mount log
   const canvasMountedRef = useRef(false);
@@ -169,12 +176,23 @@ function CanvasInner(p: CanvasProps) {
   // .stringify on the whole flow on every render — 200×/s during autoPan.
   const propagatedSigRef = useRef<string | null>(null);
   const lastSigRef = useRef<string | null>(null);
+  // Full signature including positions — used to drop no-op propagations
+  // emitted by React Flow during initial measurement/fitView where the
+  // rebuilt flow is identical to what we already sent up. Without this,
+  // each such no-op still creates a new parent state ref and re-renders.
+  const propagatedFullSigRef = useRef<string | null>(null);
   if (propagatedSigRef.current === null) {
     const sig = structuralSig(p.flow);
     propagatedSigRef.current = sig;
     lastSigRef.current = sig;
+    propagatedFullSigRef.current = JSON.stringify(p.flow);
   }
   const lastSelectedRef = useRef<string | null>(p.selectedNodeId);
+  // Track which nodes are currently in a user-initiated drag. RF emits
+  // position changes during fitView / measurement with `dragging: false`
+  // too, which would otherwise look like a "drag commit" and propagate.
+  // We only commit a position when we previously saw dragging:true.
+  const draggingNodesRef = useRef<Set<string>>(new Set());
 
   // Render-loop detector: if this resync effect fires too many times in quick
   // succession, log a warning so we can see runaway state propagation in the
@@ -217,6 +235,10 @@ function CanvasInner(p: CanvasProps) {
       });
       lastSigRef.current = sig;
       lastSelectedRef.current = p.selectedNodeId;
+      // Sync the full-sig ref to the external flow so the next propagate
+      // call from RF (echoing back the same content) is recognized as a
+      // no-op and skipped.
+      propagatedFullSigRef.current = JSON.stringify(p.flow);
       setNodes(toReactWorkflowNodes(p.flow, p.selectedNodeId, p.stepRunStates));
       setEdges(toReactWorkflowEdges(p.flow));
     }
@@ -230,6 +252,9 @@ function CanvasInner(p: CanvasProps) {
 
   /** Propagate a change to the parent and remember its sig so the resync effect skips the echo. */
   const propagate = useCallback((next: WorkflowGraph) => {
+    const fullSig = JSON.stringify(next);
+    if (fullSig === propagatedFullSigRef.current) return;
+    propagatedFullSigRef.current = fullSig;
     propagatedSigRef.current = structuralSig(next);
     onChangeRef.current(next);
   }, []);
@@ -261,9 +286,16 @@ function CanvasInner(p: CanvasProps) {
       if (c.type !== "remove") return true;
       const node = flowNodes.find(n => n.id === c.id);
       if (!node) return true;
-      if (node.type === "start") {
-        blockedRemoval = { id: c.id, reason: "Cannot delete the start node — every flow needs exactly one." };
-        return false;
+      if (node.type === "trigger-manual" || node.type === "trigger-webhook" || node.type === "trigger-human") {
+        // Allow deletion only if at least one other trigger remains.
+        const remainingTriggers = flowNodes.filter((n) =>
+          n.id !== node.id &&
+          (n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human"),
+        );
+        if (remainingTriggers.length === 0) {
+          blockedRemoval = { id: c.id, reason: "Cannot delete the only trigger — every flow needs at least one." };
+          return false;
+        }
       }
       if (node.type === "end" && endCount <= 1) {
         blockedRemoval = { id: c.id, reason: "Cannot delete the only end node — flows need at least one terminal." };
@@ -277,11 +309,22 @@ function CanvasInner(p: CanvasProps) {
 
     onNodesChangeInternal(filtered);
 
-    const meaningful = filtered.some(c => {
-      if (c.type === "position") return (c as { dragging?: boolean }).dragging === false;
-      if (c.type === "remove") return true;
-      return false;
-    });
+    // Update per-node drag tracking. Only treat position-with-dragging:false
+    // as meaningful if we previously observed dragging:true for that node —
+    // otherwise it's a fitView / measurement echo, not a user commit.
+    let meaningful = false;
+    for (const c of filtered) {
+      if (c.type === "remove") { meaningful = true; continue; }
+      if (c.type !== "position") continue;
+      const pc = c as { id?: string; dragging?: boolean };
+      if (!pc.id) continue;
+      if (pc.dragging === true) {
+        draggingNodesRef.current.add(pc.id);
+      } else if (pc.dragging === false && draggingNodesRef.current.has(pc.id)) {
+        draggingNodesRef.current.delete(pc.id);
+        meaningful = true;
+      }
+    }
     if (!meaningful) return;
 
     setNodes(curr => {
@@ -321,6 +364,7 @@ function CanvasInner(p: CanvasProps) {
     ev.preventDefault();
     const stepType = ev.dataTransfer.getData("application/journeyman-step");
     const controlType = ev.dataTransfer.getData("application/journeyman-control");
+    const triggerType = ev.dataTransfer.getData("application/journeyman-trigger");
     const position = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     let newNode: WorkflowNode | null = null;
@@ -351,10 +395,32 @@ function CanvasInner(p: CanvasProps) {
           }
         : base;
     } else if (controlType) {
+      const controlDef = defaultControlCatalog.find(c => c.nodeType === controlType);
       newNode = {
         id: `${controlType}_${Math.random().toString(36).slice(2, 8)}`,
         type: controlType as WorkflowNodeType,
-        displayName: controlType,
+        displayName: controlDef?.label ?? controlType,
+        config: {},
+        position,
+      };
+    } else if (triggerType) {
+      // Only one manual trigger is allowed per workflow.
+      if (triggerType === "trigger-manual") {
+        const flow = flowRef.current;
+        if (flow.nodes.some(n => n.type === "trigger-manual")) {
+          // eslint-disable-next-line no-console
+          console.warn("[flow-editor] only one manual trigger is allowed per workflow");
+          return;
+        }
+      }
+      const defaultName =
+        triggerType === "trigger-manual"  ? "Manual"
+        : triggerType === "trigger-webhook" ? "Webhook"
+        : "Human form";
+      newNode = {
+        id: `${triggerType}_${Math.random().toString(36).slice(2, 8)}`,
+        type: triggerType as WorkflowNodeType,
+        displayName: defaultName,
         config: {},
         position,
       };
@@ -395,6 +461,22 @@ function CanvasInner(p: CanvasProps) {
     const id = sel.nodes[0]?.id ?? null;
     onSelectRef.current(id);
   }, []);
+
+  // Pan + zoom to a requested node. Triggered by FlowEditor when a link or
+  // chip is clicked inside an issue message; selection alone doesn't move
+  // the viewport, so without this an offscreen node looks ignored.
+  useEffect(() => {
+    const req = p.focusRequest;
+    if (!req) return;
+    const node = p.flow.nodes.find(n => n.id === req.nodeId);
+    if (!node || !node.position) return;
+    const approxW = 240;
+    const approxH = 80;
+    const cx = node.position.x + approxW / 2;
+    const cy = node.position.y + approxH / 2;
+    const zoom = Math.max(getZoom(), 1);
+    setCenter(cx, cy, { zoom, duration: 250 });
+  }, [p.focusRequest, p.flow.nodes, setCenter, getZoom]);
 
   const stableNodeTypes = useMemo(() => nodeTypes, []);
   const stableEdgeTypes = useMemo(() => edgeTypes, []);

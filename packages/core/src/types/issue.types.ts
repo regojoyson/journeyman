@@ -93,7 +93,7 @@ export type ListIssuesResult = SessionResult & {
 };
 
 export type GetIssueSchemaOptions = SessionOptions & {
-  issueRef: string;
+  ref: string;
   projectId?: string;
 };
 

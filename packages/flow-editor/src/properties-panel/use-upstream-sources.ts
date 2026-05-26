@@ -30,8 +30,12 @@ export function useUpstreamSources(
 ): UpstreamSource[] {
   return useMemo(() => {
     const _t0 = performance.now();
-    const startNode = graph.nodes.find(n => n.type === "start");
-    const runInputs = getStartWorkflowInputs(startNode?.config);
+    const startNode = graph.nodes.find(n =>
+      n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+    );
+    const runInputs = (graph.inputDefs && graph.inputDefs.length > 0)
+      ? graph.inputDefs
+      : getStartWorkflowInputs(startNode?.config);
 
     const allIds = new Set(graph.nodes.map(n => n.id));
     const start = startNode?.id;
@@ -41,13 +45,38 @@ export function useUpstreamSources(
     for (const id of allIds) preds.set(id, []);
     for (const e of graph.edges) preds.get(e.target)?.push(e.source);
     let changed = true;
+    let iterations = 0;
+    const maxIterations = Math.max(100, allIds.size * allIds.size);
     while (changed) {
       changed = false;
+      iterations++;
+      if (iterations > maxIterations) {
+        // eslint-disable-next-line no-console
+        console.error(
+          "[useUpstreamSources] dominator loop did not converge",
+          "start=", JSON.stringify(start),
+          "nodes=", JSON.stringify([...allIds]),
+          "edges=", JSON.stringify(graph.edges.map(e => ({ src: e.source, tgt: e.target }))),
+          "preds=", JSON.stringify([...preds.entries()].map(([k, v]) => [k, v])),
+          "domSizes=", JSON.stringify([...dom.entries()].map(([k, v]) => [k, v.size])),
+        );
+        break;
+      }
       for (const id of allIds) {
         if (id === start) continue;
         const p = preds.get(id) ?? [];
         if (!p.length) continue;
-        const inter = p.map(x => dom.get(x) ?? new Set<string>()).reduce((a, b) => new Set([...a].filter(x => b.has(x))));
+        // Build intersection of predecessor dom-sets. Always allocate a
+        // fresh Set — reduce() on a single-element array returns that
+        // element by reference, and the later `inter.add(id)` would
+        // otherwise mutate the predecessor's dom-set, causing the loop
+        // to never converge.
+        const predSets = p.map(x => dom.get(x) ?? new Set<string>());
+        const inter = new Set<string>(predSets[0]);
+        for (let i = 1; i < predSets.length; i++) {
+          const other = predSets[i];
+          for (const x of [...inter]) if (!other.has(x)) inter.delete(x);
+        }
         inter.add(id);
         const prev = dom.get(id)!;
         if (prev.size !== inter.size || [...inter].some(x => !prev.has(x))) { dom.set(id, inter); changed = true; }

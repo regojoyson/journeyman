@@ -1,12 +1,13 @@
-import { WORKFLOW_SCHEMA_VERSION, type WorkflowEdge, type WorkflowGraph, type WorkflowNode } from "@journeyman/core";
+import { WORKFLOW_SCHEMA_VERSION, isTriggerNode, type WorkflowEdge, type WorkflowGraph, type WorkflowNode } from "@journeyman/core";
 
 export function createBlankFlow(): WorkflowGraph {
   return {
     schemaVersion: WORKFLOW_SCHEMA_VERSION,
-    // Horizontal layout: start on the left, end on the right.
+    inputDefs: [],
+    // Horizontal layout: manual trigger on the left, end on the right.
     nodes: [
-      { id: "start", type: "start", position: { x: 80,  y: 200 } },
-      { id: "end",   type: "end",   position: { x: 480, y: 200 } },
+      { id: "start", type: "trigger-manual", position: { x: 80,  y: 200 } },
+      { id: "end",   type: "end",            position: { x: 480, y: 200 } },
     ],
     edges: [
       { id: "e_start_end", source: "start", target: "end" },
@@ -42,8 +43,8 @@ export function newEdge(source: string, target: string): WorkflowEdge {
  * connected, no cycles, every node has at most one outgoing edge.
  */
 export function isLinearAndComplete(flow: WorkflowGraph): { ok: boolean; reason?: string } {
-  const starts = flow.nodes.filter(n => n.type === "start");
-  if (starts.length !== 1) return { ok: false, reason: "Flow must have exactly one start node" };
+  const starts = flow.nodes.filter(n => isTriggerNode(n));
+  if (starts.length === 0) return { ok: false, reason: "Flow must have at least one trigger node" };
   const ends = flow.nodes.filter(n => n.type === "end");
   if (ends.length === 0) return { ok: false, reason: "Flow must have at least one end node" };
 

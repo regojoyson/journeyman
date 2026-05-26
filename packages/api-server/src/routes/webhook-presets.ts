@@ -17,7 +17,6 @@ export function registerWebhookPresetRoutes(app: FastifyInstance, c: Composition
       eventTypePath: p.eventTypePath ?? null,
       deliveryIdHeader: p.deliveryIdHeader ?? null,
       knownEventTypes: p.knownEventTypes ?? [],
-      correlationSuggestions: p.correlationSuggestions ?? [],
       hasSchema: p.payloadSchema != null,
       hasSamples: !!p.samples && Object.keys(p.samples).length > 0,
     }));

@@ -10,8 +10,8 @@ const log = createLogger("worker:update-status");
  * Wraps IIssueProvider.updateStatus.
  *
  * Inputs:
- *   - issueRef | id — issue identifier (string, required)
- *   - status         — new status (string, required)
+ *   - ref    — provider-native identifier (string, required)
+ *   - status — new status (string, required)
  *
  * Returns the updated issue fields.
  */
@@ -21,22 +21,21 @@ export class TransitionIssueStepHandler implements IStepHandler {
   constructor(private deps: { issue: ProviderFactory<IIssueProvider> }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
-    const id = typeof input.id === "string" ? input.id
-      : typeof input.issueRef === "string" ? input.issueRef : undefined;
+    const ref = typeof input.ref === "string" ? input.ref : undefined;
     const status = typeof input.status === "string" ? input.status : undefined;
-    if (!id || !status) {
+    if (!ref || !status) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "update-status requires `issueRef`/`id` and `status`",
+          message: "update-status requires `ref` and `status`",
           retryable: false,
         },
       };
     }
     const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Updating issue ${id} → ${status}`);
-    const result = await issueProvider.updateStatus({ id, status, sessionId: ctx.workflowInstanceId });
+    ctx.log(`Updating issue ${ref} → ${status}`);
+    const result = await issueProvider.updateStatus({ id: ref, status, sessionId: ctx.workflowInstanceId });
     if (result?.error) {
       log.error({ result }, "update-status failed");
       return {
@@ -47,7 +46,7 @@ export class TransitionIssueStepHandler implements IStepHandler {
     return {
       kind: "success",
       output: {
-        id: result.issue?.id ?? id,
+        id: result.issue?.id ?? ref,
         status: result.issue?.status ?? status,
       },
     };

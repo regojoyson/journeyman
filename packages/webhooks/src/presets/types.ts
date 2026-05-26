@@ -1,7 +1,6 @@
 import type {
   PresetId,
   WebhookAuthConfig,
-  WebhookCorrelationSuggestion,
   WebhookKind,
 } from "@journeyman/core";
 
@@ -18,7 +17,6 @@ export type PresetManifest = {
   deliveryIdHeader?: string;
 
   knownEventTypes?: string[];
-  correlationSuggestions?: WebhookCorrelationSuggestion[];
 
   /** Schema relative to the preset directory; loader replaces with the parsed object. */
   payloadSchemaRef?: string;

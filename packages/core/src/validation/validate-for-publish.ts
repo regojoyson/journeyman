@@ -1,5 +1,6 @@
 import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
+import { findTriggerNodes, isTriggerNode } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
 import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
 import { extractTemplateRefs } from "../utils/template-refs.ts";
@@ -63,11 +64,14 @@ export function validateForPublish(
 
   pushOrphanErrors(flow, errors);
 
+  const nodeById = new Map(flow.nodes.map(n => [n.id, n]));
   for (const e of validateForkJoinPairs(flow)) {
+    const n = nodeById.get(e.nodeId);
     errors.push({
       code: "graph_invalid",
       message: e.message,
       nodeId: e.nodeId,
+      nodeLabel: n ? nodeLabelFor(n) : undefined,
     });
   }
 
@@ -80,12 +84,82 @@ export function validateForPublish(
 }
 
 function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
-  const starts = flow.nodes.filter(n => n.type === "start");
-  if (starts.length !== 1) {
-    errors.push({ code: "graph_invalid", message: "Flow must have exactly one start node" });
+  const triggers = findTriggerNodes(flow);
+  if (triggers.length === 0) {
+    errors.push({
+      code: "no_trigger",
+      message: "Workflow must declare at least one trigger node (manual, webhook, or human form).",
+    });
+  }
+  for (const t of triggers) {
+    const hasInbound = flow.edges.some(e => e.target === t.id);
+    if (hasInbound) {
+      errors.push({
+        code: "graph_invalid",
+        message: `Trigger node must not have inbound edges`,
+        nodeId: t.id,
+        nodeLabel: nodeLabelFor(t),
+      });
+    }
+    if (t.type === "trigger-webhook") {
+      const webhookId = (t.config as { webhookId?: string } | undefined)?.webhookId;
+      if (!webhookId) {
+        errors.push({
+          code: "missing_config",
+          message: `trigger-webhook must reference a webhookId`,
+          nodeId: t.id,
+          nodeLabel: nodeLabelFor(t),
+        });
+      }
+    }
+  }
+  // Only one manual trigger per workflow (the Run button has exactly one target).
+  const manualCount = triggers.filter(t => t.type === "trigger-manual").length;
+  if (manualCount > 1) {
+    errors.push({
+      code: "graph_invalid",
+      message: "Workflow may declare at most one manual trigger",
+    });
   }
   if (flow.nodes.filter(n => n.type === "end").length === 0) {
     errors.push({ code: "graph_invalid", message: "Flow must have at least one end node" });
+  }
+  // Only Join and End may legitimately aggregate multiple upstream branches.
+  // Every other node type (regular step, If, Fork, Loop, Human Task, etc.)
+  // is single-input — multiple incoming default edges would mean the worker
+  // can't decide which upstream's output to use and may execute the node more
+  // than once. Triggers are checked separately above.
+  //
+  // Exception: a node may have multiple incoming default edges if ALL of
+  // them originate from trigger nodes. Each trigger fires its own workflow
+  // instance, so at runtime only one upstream is ever active — there's no
+  // worker ambiguity. This expresses the "triggers share a downstream graph"
+  // rule from the workflow-trigger-nodes design.
+  const defaultIncomingByTarget = new Map<string, string[]>();
+  for (const e of flow.edges) {
+    if ((e.type ?? "default") !== "default") continue;
+    const list = defaultIncomingByTarget.get(e.target);
+    if (list) list.push(e.source);
+    else defaultIncomingByTarget.set(e.target, [e.source]);
+  }
+  const nodeById = new Map(flow.nodes.map(n => [n.id, n] as const));
+  for (const node of flow.nodes) {
+    if (node.type === "join" || node.type === "end") continue;
+    if (isTriggerNode(node)) continue;
+    const sources = defaultIncomingByTarget.get(node.id) ?? [];
+    if (sources.length <= 1) continue;
+    const allFromTriggers = sources.every(srcId => {
+      const src = nodeById.get(srcId);
+      return src !== undefined && isTriggerNode(src);
+    });
+    if (allFromTriggers) continue;
+    const label = nodeLabelFor(node);
+    errors.push({
+      code: "graph_invalid",
+      message: `"${label}" has ${sources.length} incoming arrows. To merge multiple paths into a single step, add a Join node before it — the Join will wait for the upstream branches and then continue into "${label}".`,
+      nodeId: node.id,
+      nodeLabel: label,
+    });
   }
   for (const node of flow.nodes) {
     if (node.type === "step" && !node.stepType) {
@@ -100,10 +174,14 @@ function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
 }
 
 function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
-  const start = flow.nodes.find(n => n.type === "start");
-  if (!start) return;
-  const reachable = new Set<string>([start.id]);
-  const stack = [start.id];
+  const triggers = findTriggerNodes(flow);
+  if (triggers.length === 0) return;
+  const reachable = new Set<string>();
+  const stack: string[] = [];
+  for (const t of triggers) {
+    reachable.add(t.id);
+    stack.push(t.id);
+  }
   while (stack.length) {
     const cur = stack.pop()!;
     for (const e of flow.edges) {
@@ -117,7 +195,7 @@ function pushOrphanErrors(flow: WorkflowGraph, errors: PublishError[]): void {
     if (!reachable.has(n.id)) {
       errors.push({
         code: "orphan_node",
-        message: `Node is unreachable from start`,
+        message: `Node is unreachable from any trigger`,
         nodeId: n.id,
         nodeLabel: nodeLabelFor(n),
       });

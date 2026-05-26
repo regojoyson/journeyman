@@ -33,7 +33,6 @@ export class MemoryWebhookStore implements IWebhookStore {
       schemaInferredFrom: args.schemaInferredFrom,
       eventTypePath: args.eventTypePath,
       deliveryIdHeader: args.deliveryIdHeader,
-      correlationSuggestions: args.correlationSuggestions,
       createdAt: now,
       updatedAt: now,
     };
@@ -69,7 +68,6 @@ export class MemoryWebhookStore implements IWebhookStore {
       schemaInferredFrom: patch.schemaInferredFrom === null ? undefined : (patch.schemaInferredFrom ?? current.schemaInferredFrom),
       eventTypePath: patch.eventTypePath === null ? undefined : (patch.eventTypePath ?? current.eventTypePath),
       deliveryIdHeader: patch.deliveryIdHeader === null ? undefined : (patch.deliveryIdHeader ?? current.deliveryIdHeader),
-      correlationSuggestions: patch.correlationSuggestions === null ? undefined : (patch.correlationSuggestions ?? current.correlationSuggestions),
       updatedAt: new Date(),
     };
     this.webhooks.set(id, merged);

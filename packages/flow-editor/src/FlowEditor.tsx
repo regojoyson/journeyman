@@ -1,5 +1,5 @@
 // packages/flow-editor/src/FlowEditor.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "./canvas/Canvas.tsx";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
@@ -10,6 +10,7 @@ import { Topbar } from "./topbar/Topbar.tsx";
 import { PublishModal } from "./topbar/PublishModal.tsx";
 import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
+import { InputsTab } from "./inputs-tab/InputsTab.tsx";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { StepRegistryProvider } from "./state/step-registry-context.tsx";
 import { OrgIdProvider } from "./state/org-context.tsx";
@@ -26,9 +27,11 @@ const PALETTE_WIDTH_KEY = "je-editor:paletteWidth";
 function autoHeal(flow: WorkflowGraph): { healed: WorkflowGraph; restored: string[] } {
   const restored: string[] = [];
   let nodes = flow.nodes;
-  if (!nodes.some(n => n.type === "start")) {
-    nodes = [{ id: "start", type: "start", position: { x: 80, y: 200 } }, ...nodes];
-    restored.push("start");
+  if (!nodes.some(n =>
+    n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  )) {
+    nodes = [{ id: "start", type: "trigger-manual", position: { x: 80, y: 200 } }, ...nodes];
+    restored.push("trigger-manual");
   }
   if (!nodes.some(n => n.type === "end")) {
     nodes = [...nodes, { id: "end", type: "end", position: { x: 480, y: 200 } }];
@@ -123,9 +126,17 @@ export function FlowEditor(props: FlowEditorProps) {
   }, [paletteWidth]);
 
   const [flowConfigOpen, setFlowConfigOpen] = useState(false);
+  const [inputsDrawerOpen, setInputsDrawerOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [unpublishOpen, setUnpublishOpen] = useState(false);
   const [unpublishWarning, setUnpublishWarning] = useState<UnpublishWarning | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ nodeId: string; tick: number } | undefined>(undefined);
+
+  const focusNode = useCallback((id: string): void => {
+    s.setSelectedNodeId(id);
+    setFlowConfigOpen(false);
+    setFocusRequest(prev => ({ nodeId: id, tick: (prev?.tick ?? 0) + 1 }));
+  }, [s]);
 
   const handlePublishClick = (): void => { setPublishOpen(true); };
   const handleUnpublishClick = async (): Promise<void> => {
@@ -157,7 +168,7 @@ export function FlowEditor(props: FlowEditorProps) {
   return (
     <StepRegistryProvider steps={props.steps}>
      <OrgIdProvider orgId={props.orgId}>
-      <ValidationProvider inputWarnings={inputWarnings}>
+      <ValidationProvider inputWarnings={inputWarnings} graphIssues={validity.issues}>
       <div className="je-editor">
         <Topbar
           flowName={props.flowName}
@@ -176,10 +187,12 @@ export function FlowEditor(props: FlowEditorProps) {
           }
           validationErrors={validity.errors}
           onFlowConfig={() => setFlowConfigOpen(o => !o)}
+          onInputsClick={() => setInputsDrawerOpen(true)}
           onImport={effectiveReadOnly ? undefined : (flow) => props.onChange(flow)}
           status={props.status}
           onPublishClick={props.onPublish ? handlePublishClick : undefined}
           onUnpublishClick={props.onUnpublish ? handleUnpublishClick : undefined}
+          onFocusNode={focusNode}
         />
         {effectiveReadOnly && props.status === "ready" && (
           <div className="fe-readonly-banner">
@@ -195,52 +208,101 @@ export function FlowEditor(props: FlowEditorProps) {
             <button onClick={() => setHealDismissed(true)} aria-label="dismiss">×</button>
           </div>
         )}
-        <div
-          className="je-editor__body"
-          style={{ gridTemplateColumns: `${paletteWidth}px 6px 1fr 6px ${propsWidth}px` }}
-        >
-          <Palette steps={props.steps} controlCatalog={props.controlCatalog} />
-          <PanelResizer width={paletteWidth} onResize={setPaletteWidth} side="left" min={160} max={480} />
-          <Canvas
-            flow={heal.healed}
-            selectedNodeId={s.selectedNodeId}
-            onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
-            onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
-            onChange={props.onChange}
-            readOnly={effectiveReadOnly}
-            stepRunStates={props.stepRunStates}
-          />
-          <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
-          {flowConfigOpen ? (
-            <FlowConfigPanel
-              flow={heal.healed}
-              onChange={props.onChange}
-              onClose={() => setFlowConfigOpen(false)}
-              readOnly={effectiveReadOnly}
-            />
-          ) : s.selectedEdge ? (
-            <EdgeInspector
-              flow={heal.healed}
-              edge={s.selectedEdge}
-              onChange={s.updateEdge}
-            />
-          ) : (
-            <PropertiesPanel
-              flow={heal.healed}
-              node={s.selectedNode}
-              mcpCatalog={props.mcpCatalog ?? []}
-              orgId={props.orgId}
-              onChange={onUpdateNode}
-              readOnly={effectiveReadOnly}
-            />
-          )}
-        </div>
+        {(() => {
+          const rightPanelOpen = flowConfigOpen || !!s.selectedEdge || !!s.selectedNode;
+          const gridCols = rightPanelOpen
+            ? `${paletteWidth}px 6px 1fr 6px ${propsWidth}px`
+            : `${paletteWidth}px 6px 1fr`;
+          const closeRightPanel = (): void => {
+            setFlowConfigOpen(false);
+            s.setSelectedNodeId(null);
+            s.setSelectedEdgeId(null);
+          };
+          return (
+            <div className="je-editor__body" style={{ gridTemplateColumns: gridCols }}>
+              <Palette steps={props.steps} controlCatalog={props.controlCatalog} />
+              <PanelResizer width={paletteWidth} onResize={setPaletteWidth} side="left" min={160} max={480} />
+              <Canvas
+                flow={heal.healed}
+                selectedNodeId={s.selectedNodeId}
+                onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
+                onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
+                onChange={props.onChange}
+                readOnly={effectiveReadOnly}
+                stepRunStates={props.stepRunStates}
+                focusRequest={focusRequest}
+              />
+              {rightPanelOpen && (
+                <>
+                  <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
+                  {flowConfigOpen ? (
+                    <FlowConfigPanel
+                      flow={heal.healed}
+                      onChange={props.onChange}
+                      onClose={() => setFlowConfigOpen(false)}
+                      readOnly={effectiveReadOnly}
+                    />
+                  ) : s.selectedEdge ? (
+                    <EdgeInspector
+                      flow={heal.healed}
+                      edge={s.selectedEdge}
+                      onChange={s.updateEdge}
+                      onClose={closeRightPanel}
+                    />
+                  ) : (
+                    <PropertiesPanel
+                      flow={heal.healed}
+                      node={s.selectedNode}
+                      mcpCatalog={props.mcpCatalog ?? []}
+                      orgId={props.orgId}
+                      onChange={onUpdateNode}
+                      onClose={closeRightPanel}
+                      readOnly={effectiveReadOnly}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
+        {inputsDrawerOpen && (
+          <div
+            className="je-inputs-drawer__overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setInputsDrawerOpen(false)}
+          >
+            <aside
+              className="je-inputs-drawer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className="je-inputs-drawer__header">
+                <h2>Workflow inputs</h2>
+                <button
+                  type="button"
+                  className="je-inputs-drawer__close"
+                  aria-label="Close"
+                  onClick={() => setInputsDrawerOpen(false)}
+                >×</button>
+              </header>
+              <div className="je-inputs-drawer__body">
+                <InputsTab
+                  graph={heal.healed}
+                  onPatchInputs={(next) => {
+                    if (effectiveReadOnly) return;
+                    s.update((f) => ({ ...f, inputDefs: next }));
+                  }}
+                />
+              </div>
+            </aside>
+          </div>
+        )}
         {publishOpen && props.onPublish && (
           <PublishModal
             flow={heal.healed}
             hasTrigger={true}
             onCancel={() => setPublishOpen(false)}
-            onSelectNode={(id) => { s.setSelectedNodeId(id); }}
+            onSelectNode={focusNode}
             onConfirm={async () => {
               const r = await props.onPublish!();
               if (r.ok && !r.warnings?.length) setPublishOpen(false);

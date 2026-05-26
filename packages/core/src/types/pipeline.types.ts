@@ -96,8 +96,7 @@ export type FlowDefinition = {
 export type PipelineRun = {
   sessionId: string;
   productId: string;
-  issueRef: string;                     // canonical id e.g. "jira:PROJ-123"
-  issueRefShort: string;                // short id for display e.g. "PROJ-123"
+  ref: string;                          // provider-native identifier e.g. "PROJ-123"
   flowName: string;
   flowSnapshot: FlowDefinition;         // frozen copy
   status: "queued" | "running" | "blocked" | "completed" | "failed" | "cancelling" | "cancelled";
@@ -139,8 +138,7 @@ export type PipelineConfig = {
 export type PipelineTrigger = {
   sourceId: string;
   productId: string;
-  issueRef: string;
-  issueRefShort: string;
+  ref: string;
   flowName?: string;
   rawPayload: unknown;
   receivedAt: string;
@@ -149,7 +147,7 @@ export type PipelineTrigger = {
 };
 
 export type PipelineEvent =
-  | { type: "runStarted";  sessionId: string; issueRef: string; flowName: string; at: string }
+  | { type: "runStarted";  sessionId: string; ref: string; flowName: string; at: string }
   | { type: "stepStarted"; sessionId: string; stepId: string; step: string; attempt: number; at: string }
   | { type: "stepEnded";   sessionId: string; stepId: string; step: string; attempt: number; status: StepRecord["status"]; durationMs: number; at: string }
   | { type: "logLine";     sessionId: string; stepId: string; level: "info"|"warn"|"error"; line: string; at: string }

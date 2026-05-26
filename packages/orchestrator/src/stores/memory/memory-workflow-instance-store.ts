@@ -28,6 +28,8 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
       outputs: null,
       attemptNumber: 1,
       webhookEventId: args.webhookEventId ?? null,
+      triggerNodeId: args.triggerNodeId ?? null,
+      formSubmissionId: args.formSubmissionId ?? null,
     };
     this.rows.set(instance.id, instance);
     return instance;
@@ -76,7 +78,6 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   } = {}): Promise<WorkflowInstance[]> {
     let out = this.filtered(opts);
     const offset = opts.offset ?? 0;
@@ -91,7 +92,6 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   } = {}): Promise<number> {
     return this.filtered(opts).length;
   }
@@ -106,25 +106,17 @@ export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
     return out;
   }
 
-  async findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
-    return [...this.rows.values()].filter(r =>
-      r.status === "paused"
-      && (r.inputs as { issueRef?: unknown })?.issueRef === issueRef,
-    );
-  }
-
-  async findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
-    const active = new Set<WorkflowInstanceStatus>(["pending", "running", "paused"]);
-    return [...this.rows.values()].filter(r =>
-      active.has(r.status)
-      && (r.inputs as { issueRef?: unknown })?.issueRef === issueRef,
-    );
+  /** Internal helper used by MemoryNodeExecutionStore to filter by instance status. */
+  allInstances(): IterableIterator<WorkflowInstance> {
+    return this.rows.values();
   }
 }
 
 export class MemoryNodeExecutionStore implements INodeExecutionStore {
   private rows = new Map<string, NodeExecution>();
   private nextId = 1;
+
+  constructor(private readonly instances?: MemoryWorkflowInstanceStore) {}
 
   async upsert(execution: NodeExecution): Promise<void> {
     this.rows.set(execution.id, execution);
@@ -134,12 +126,25 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
     return [...this.rows.values()].filter(x => x.workflowInstanceId === workflowInstanceId);
   }
 
-  async markWaiting(workflowInstanceId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
+  async markWaiting(
+    workflowInstanceId: string,
+    nodeId: string,
+    conductorTaskId: string,
+    correlation?: { eventPath: string; value: string } | null,
+  ): Promise<NodeExecution> {
+    const correlationEventPath = correlation?.eventPath ?? null;
+    const correlationValue = correlation?.value ?? null;
     const existing = [...this.rows.values()].find(r =>
       r.workflowInstanceId === workflowInstanceId && r.nodeId === nodeId && r.attempt === 1,
     );
     if (existing) {
-      const updated: NodeExecution = { ...existing, status: "waiting", conductorTaskId };
+      const updated: NodeExecution = {
+        ...existing,
+        status: "waiting",
+        conductorTaskId,
+        correlationEventPath,
+        correlationValue,
+      };
       this.rows.set(updated.id, updated);
       return updated;
     }
@@ -149,9 +154,23 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
       startedAt: new Date(), completedAt: null,
       input: {}, output: null, errorClass: null, errorMessage: null,
       conductorTaskId,
+      correlationEventPath,
+      correlationValue,
     };
     this.rows.set(row.id, row);
     return row;
+  }
+
+  async findAllWaitingWithCorrelation(): Promise<NodeExecution[]> {
+    if (!this.instances) return [];
+    const pausedInstanceIds = new Set(
+      [...this.instances.allInstances()].filter(i => i.status === "paused").map(i => i.id),
+    );
+    return [...this.rows.values()].filter(e =>
+      e.status === "waiting"
+      && pausedInstanceIds.has(e.workflowInstanceId)
+      && e.correlationValue != null,
+    );
   }
 
   async markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution> {
@@ -174,5 +193,22 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
       .filter(r => r.workflowInstanceId === workflowInstanceId && r.status === "waiting")
       .sort((a, b) => +(b.startedAt ?? 0) - +(a.startedAt ?? 0));
     return list[0] ?? null;
+  }
+
+  async listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]> {
+    if (!this.instances) return [];
+    const cutoff = Date.now() - maxAgeMs;
+    const pausedInstanceIds = new Set(
+      [...this.instances.allInstances()].filter(i => i.status === "paused").map(i => i.id),
+    );
+    return [...this.rows.values()]
+      .filter(e =>
+        e.status === "waiting" &&
+        pausedInstanceIds.has(e.workflowInstanceId) &&
+        e.startedAt != null &&
+        e.startedAt.getTime() < cutoff,
+      )
+      .sort((a, b) => +(a.startedAt ?? 0) - +(b.startedAt ?? 0))
+      .slice(0, limit);
   }
 }

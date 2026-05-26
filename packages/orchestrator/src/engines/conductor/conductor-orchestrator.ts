@@ -5,7 +5,7 @@ import type {
   IWorkflowInstanceStore, IWorkflowInstanceGrantsStore, WorkflowInstance, WorkflowInstanceStatus,
   SubmitWorkflowInstanceArgs,
 } from "@journeyman/core";
-import { createLogger } from "@journeyman/core";
+import { createLogger, findManualTriggerNode, isTriggerNode } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import { emitRoutingEvents } from "./emit-routing-events.ts";
 import type { IWorkflowJsonConverter } from "@journeyman/core";
@@ -16,8 +16,10 @@ const log = createLogger("orchestrator:conductor");
 interface WorkflowRetryPolicy { maxAttempts?: number; backoffSeconds?: number }
 
 function readWorkflowRetry(def: WorkflowGraph): WorkflowRetryPolicy | undefined {
-  const start = def.nodes.find((n) => n.type === "start");
-  return (start?.config as { workflowRetry?: WorkflowRetryPolicy } | undefined)?.workflowRetry;
+  // workflowRetry historically lived on the start node's config. In v2 it sits
+  // on the manual trigger (if any); fall back to the first trigger otherwise.
+  const host = findManualTriggerNode(def) ?? def.nodes.find((n) => isTriggerNode(n));
+  return (host?.config as { workflowRetry?: WorkflowRetryPolicy } | undefined)?.workflowRetry;
 }
 
 export interface ConductorOrchestratorDeps {
@@ -49,10 +51,13 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       workflowNameSnapshot: args.workflowNameSnapshot,
       workflowScopeSnapshot: args.workflowScopeSnapshot,
       definitionSnapshot: args.definitionSnapshot,
-      triggerSource: "api",
+      triggerSource: args.triggerSource ?? "api",
       startedByUserId: args.startedByUserId,
       startedByOrgId: args.startedByOrgId,
       inputs: args.inputs,
+      triggerNodeId: args.triggerNodeId ?? null,
+      webhookEventId: args.webhookEventId ?? null,
+      formSubmissionId: args.formSubmissionId ?? null,
     });
 
     const grantsToWrite: Array<{
@@ -90,10 +95,16 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     await this.deps.workflowInstances.setEngineWorkflowId(instance.id, engineWorkflowId);
     await this.deps.workflowInstances.setStatus(instance.id, "running");
 
-    // Start nodes are graph markers, not steps — conductor-converter begins the task sequence at
-    // successor(start), so no worker ever runs for them. Emit node.resolved (the same family used
-    // for human tasks) so the UI doesn't show the start node stuck at "pending".
-    const startNode = args.definitionSnapshot.nodes.find((n) => n.type === "start");
+    // Trigger nodes are graph markers, not steps — conductor-converter begins the task sequence at
+    // successor(trigger), so no worker ever runs for them. Emit node.resolved (the same family used
+    // for human tasks) so the UI doesn't show the entry node stuck at "pending".
+    // Prefer the trigger that actually fired (args.triggerNodeId), else fall back to the manual trigger
+    // (legacy Run-button path), else any trigger in the graph.
+    const startNode = (args.triggerNodeId
+      ? args.definitionSnapshot.nodes.find((n) => n.id === args.triggerNodeId)
+      : null)
+      ?? findManualTriggerNode(args.definitionSnapshot)
+      ?? args.definitionSnapshot.nodes.find((n) => isTriggerNode(n));
     if (startNode) {
       try {
         await this.deps.events.append({

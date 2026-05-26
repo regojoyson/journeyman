@@ -106,8 +106,14 @@ function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
 }
 
 function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
-  const start = flow.nodes.find((n) => n.type === "start");
-  return getStartWorkflowInputs(start?.config);
+  // Post-v2: inputs live on the graph itself (lifted off the legacy start node).
+  // Legacy v1 fallback: read from any trigger node's config.workflowInputs (the converter
+  // should already have lifted these, but this keeps callers robust).
+  if (flow.inputDefs && flow.inputDefs.length > 0) return flow.inputDefs;
+  const triggerWithLegacyInputs = flow.nodes.find(
+    (n) => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  );
+  return getStartWorkflowInputs(triggerWithLegacyInputs?.config);
 }
 
 /**
@@ -130,6 +136,26 @@ export function validateWorkflowInputs(
   for (const n of flow.nodes) nodesById.set(n.id, n);
   const workflowInputs = findStartWorkflowInputs(flow);
   const workflowInputByName = new Map(workflowInputs.map((r) => [r.name, r] as const));
+
+  // Webhook-wait nodes must declare a correlation key (event path + value) so the
+  // matcher can route incoming events to this paused instance.
+  for (const node of flow.nodes) {
+    if (node.type !== "webhook-wait") continue;
+    const cfg = (node.config ?? {}) as {
+      correlationKey?: { eventPath?: string; value?: unknown };
+    };
+    const ck = cfg.correlationKey;
+    const hasEventPath = !!ck?.eventPath && String(ck.eventPath).trim() !== "";
+    const hasValue = ck?.value != null;
+    if (!hasEventPath || !hasValue) {
+      warnings.push({
+        code: "missing-required",
+        message: `Webhook-wait "${node.displayName ?? node.id}" needs a correlation key (event path and value).`,
+        nodeId: node.id,
+        inputKey: "correlationKey",
+      });
+    }
+  }
 
   // Resolve a node's per-customStepId overlay (if any) on the catalog entry
   // for "custom-ai". Returns undefined for non-custom-ai or unknown ids.

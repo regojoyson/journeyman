@@ -9,6 +9,8 @@ export interface HumanTaskResolutionRow {
   actor: string | null;
   source: "webhook" | "manual" | "timeout";
   webhookEventId: string | null;
+  /** Fine-grained reason for audit: "node_timeout" | "max_age_sweep" | null. */
+  resolvedBy: string | null;
   resolvedAt: Date;
 }
 
@@ -24,17 +26,17 @@ export class PostgresHumanTaskResolutionStore implements IHumanTaskResolutionSto
   async create(input: Omit<HumanTaskResolutionRow, "id" | "resolvedAt">): Promise<HumanTaskResolutionRow> {
     const r = await this.pool.query(
       `INSERT INTO jm_human_task_resolutions
-         (run_id, node_id, outcome, comment, actor, source, webhook_event_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_at`,
-      [input.runId, input.nodeId, input.outcome, input.comment, input.actor, input.source, input.webhookEventId],
+         (run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_by, resolved_at`,
+      [input.runId, input.nodeId, input.outcome, input.comment, input.actor, input.source, input.webhookEventId, input.resolvedBy ?? null],
     );
     return rowToObj(r.rows[0]);
   }
 
   async listForRun(runId: string): Promise<HumanTaskResolutionRow[]> {
     const r = await this.pool.query(
-      `SELECT id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_at
+      `SELECT id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_by, resolved_at
        FROM jm_human_task_resolutions WHERE run_id = $1 ORDER BY resolved_at ASC`,
       [runId],
     );
@@ -43,7 +45,7 @@ export class PostgresHumanTaskResolutionStore implements IHumanTaskResolutionSto
 
   async latestForNode(runId: string, nodeId: string): Promise<HumanTaskResolutionRow | null> {
     const r = await this.pool.query(
-      `SELECT id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_at
+      `SELECT id, run_id, node_id, outcome, comment, actor, source, webhook_event_id, resolved_by, resolved_at
        FROM jm_human_task_resolutions WHERE run_id = $1 AND node_id = $2
        ORDER BY resolved_at DESC LIMIT 1`,
       [runId, nodeId],
@@ -79,6 +81,7 @@ function rowToObj(r: {
   actor: string | null;
   source: "webhook" | "manual" | "timeout";
   webhook_event_id: string | null;
+  resolved_by: string | null;
   resolved_at: Date | string;
 }): HumanTaskResolutionRow {
   return {
@@ -90,6 +93,7 @@ function rowToObj(r: {
     actor: r.actor,
     source: r.source,
     webhookEventId: r.webhook_event_id,
+    resolvedBy: r.resolved_by,
     resolvedAt: r.resolved_at instanceof Date ? r.resolved_at : new Date(r.resolved_at),
   };
 }

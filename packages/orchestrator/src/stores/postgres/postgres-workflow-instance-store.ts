@@ -24,6 +24,8 @@ function rowToWorkflowInstance(row: any): WorkflowInstance {
     outputs: row.outputs,
     attemptNumber: row.attempt_number ?? 1,
     webhookEventId: row.webhook_event_id ?? null,
+    triggerNodeId: row.trigger_node_id ?? null,
+    formSubmissionId: row.form_submission_id ?? null,
   };
 }
 
@@ -72,8 +74,9 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_workflow_instances
          (workflow_id, workflow_version_id, workflow_name_snapshot, workflow_scope_snapshot, definition_snapshot,
-          status, trigger_source, started_by_user_id, inputs, webhook_event_id)
-       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9)
+          status, trigger_source, started_by_user_id, inputs, webhook_event_id,
+          trigger_node_id, form_submission_id)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9, $10, $11)
        RETURNING *`,
       [
         args.workflowId, args.workflowVersionId,
@@ -82,6 +85,8 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
         args.triggerSource, args.startedByUserId,
         JSON.stringify(args.inputs),
         args.webhookEventId ?? null,
+        args.triggerNodeId ?? null,
+        args.formSubmissionId ?? null,
       ],
     );
     return rowToWorkflowInstance(rows[0]);
@@ -138,7 +143,6 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   } = {}): Promise<WorkflowInstance[]> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
     const limitOffset: string[] = [];
@@ -156,7 +160,6 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   } = {}): Promise<number> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
     const sql = `SELECT COUNT(*)::int AS n FROM (${baseSql}) sub`;
@@ -170,7 +173,6 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     actor?: ActorContext;
     scope?: WorkflowInstanceListScope;
     provider?: string;
-    issueRef?: string;
   }): { sql: string; params: any[] } {
     const conds: string[] = [];
     const params: any[] = [];
@@ -180,9 +182,8 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     if (opts.workflowId) { conds.push(`r.workflow_id = $${nextIdx()}`);   params.push(opts.workflowId); }
     if (opts.status)     { conds.push(`r.status = $${nextIdx()}`);         params.push(opts.status); }
     if (opts.provider)   { conds.push(`w.provider = $${nextIdx()}`);       params.push(opts.provider); }
-    if (opts.issueRef)   { conds.push(`w.issue_ref = $${nextIdx()}`);      params.push(opts.issueRef); }
 
-    const webhookJoin = (opts.provider || opts.issueRef)
+    const webhookJoin = opts.provider
       ? "LEFT JOIN jm_webhook_events w ON r.webhook_event_id = w.id"
       : "";
 
@@ -208,25 +209,6 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     return { sql, params };
   }
 
-  async findPausedInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
-    const { rows } = await this.pool.query(
-      `SELECT * FROM jm_workflow_instances
-       WHERE status = 'paused' AND (inputs->>'issueRef') = $1
-       ORDER BY started_at DESC NULLS LAST`,
-      [issueRef],
-    );
-    return rows.map(rowToWorkflowInstance);
-  }
-
-  async findActiveInstancesByIssueRef(issueRef: string): Promise<WorkflowInstance[]> {
-    const { rows } = await this.pool.query(
-      `SELECT * FROM jm_workflow_instances
-       WHERE status IN ('pending','running','paused') AND (inputs->>'issueRef') = $1
-       ORDER BY started_at DESC NULLS LAST`,
-      [issueRef],
-    );
-    return rows.map(rowToWorkflowInstance);
-  }
 }
 
 function rowToExec(row: any): NodeExecution {
@@ -243,6 +225,8 @@ function rowToExec(row: any): NodeExecution {
     errorClass: row.error_class,
     errorMessage: row.error_message,
     conductorTaskId: row.conductor_task_id ?? null,
+    correlationEventPath: row.correlation_event_path ?? null,
+    correlationValue: row.correlation_value ?? null,
   };
 }
 
@@ -280,18 +264,42 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
     return rows.map(rowToExec);
   }
 
-  async markWaiting(workflowInstanceId: string, nodeId: string, conductorTaskId: string): Promise<NodeExecution> {
+  async markWaiting(
+    workflowInstanceId: string,
+    nodeId: string,
+    conductorTaskId: string,
+    correlation?: { eventPath: string; value: string } | null,
+  ): Promise<NodeExecution> {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_node_executions
-         (workflow_instance_id, node_id, attempt, status, started_at, input, conductor_task_id)
-       VALUES ($1, $2, 1, 'waiting', now(), '{}'::jsonb, $3)
+         (workflow_instance_id, node_id, attempt, status, started_at, input,
+          conductor_task_id, correlation_event_path, correlation_value)
+       VALUES ($1, $2, 1, 'waiting', now(), '{}'::jsonb, $3, $4, $5)
        ON CONFLICT (workflow_instance_id, node_id, attempt) DO UPDATE SET
          status = 'waiting',
-         conductor_task_id = EXCLUDED.conductor_task_id
+         conductor_task_id = EXCLUDED.conductor_task_id,
+         correlation_event_path = EXCLUDED.correlation_event_path,
+         correlation_value = EXCLUDED.correlation_value
        RETURNING *`,
-      [workflowInstanceId, nodeId, conductorTaskId],
+      [
+        workflowInstanceId, nodeId, conductorTaskId,
+        correlation?.eventPath ?? null,
+        correlation?.value ?? null,
+      ],
     );
     return rowToExec(rows[0]);
+  }
+
+  async findAllWaitingWithCorrelation(): Promise<NodeExecution[]> {
+    const { rows } = await this.pool.query(
+      `SELECT ne.*
+         FROM jm_node_executions ne
+         JOIN jm_workflow_instances wi ON wi.id = ne.workflow_instance_id
+        WHERE ne.status = 'waiting'
+          AND wi.status = 'paused'
+          AND ne.correlation_value IS NOT NULL`,
+    );
+    return rows.map(rowToExec);
   }
 
   async markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution> {
@@ -323,5 +331,21 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
       [workflowInstanceId],
     );
     return rows[0] ? rowToExec(rows[0]) : null;
+  }
+
+  async listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]> {
+    const { rows } = await this.pool.query(
+      `SELECT ne.*
+       FROM jm_node_executions ne
+       JOIN jm_workflow_instances wi ON wi.id = ne.workflow_instance_id
+       WHERE ne.status = 'waiting'
+         AND wi.status = 'paused'
+         AND ne.started_at IS NOT NULL
+         AND ne.started_at < now() - make_interval(secs => $1::numeric / 1000)
+       ORDER BY ne.started_at ASC
+       LIMIT $2`,
+      [maxAgeMs, limit],
+    );
+    return rows.map(rowToExec);
   }
 }

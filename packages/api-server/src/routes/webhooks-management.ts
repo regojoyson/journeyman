@@ -227,7 +227,6 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
             schemaInferredFrom: source.schemaInferredFrom,
             eventTypePath: source.eventTypePath,
             deliveryIdHeader: source.deliveryIdHeader,
-            correlationSuggestions: source.correlationSuggestions,
           },
           mintToken(),
         );

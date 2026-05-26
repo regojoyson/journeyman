@@ -8,30 +8,36 @@ export interface WebhookEventInfo {
   id: string;
   provider: string;
   eventType: string | null;
-  issueRef: string | null;
   rawPayload: unknown;
 }
 
 export interface MatchResult { matched: number; }
 
+/**
+ * Find paused webhook-wait nodes whose declared correlation key matches this
+ * incoming event, then run them through acceptIf and resolve the survivors.
+ *
+ * Routing model: each paused wait stored `correlation_event_path` and
+ * `correlation_value` at pause time (snapshotted from Conductor-resolved
+ * inputs). We pull every such candidate, extract `event.payload[eventPath]`,
+ * and compare against `correlationValue` for equality.
+ */
 export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEventInfo): Promise<MatchResult> {
-  if (!ev.issueRef) return { matched: 0 };
+  const candidates = await c.nodeExecutions.findAllWaitingWithCorrelation();
+  if (candidates.length === 0) return { matched: 0 };
 
-  // Reconcile any active workflow instance on this issueRef so the DB reflects current
-  // Conductor state — Conductor may have entered a HUMAN task while our DB
-  // still showed status='running'.
-  const candidates = await c.workflowInstances.findActiveInstancesByIssueRef(ev.issueRef);
-  for (const instance of candidates) {
-    await reconcileWorkflowInstance(c, instance.id);
-  }
-
-  // Re-read after reconciliation.
-  const paused = await c.workflowInstances.findPausedInstancesByIssueRef(ev.issueRef);
   let matched = 0;
 
-  for (const instance of paused) {
-    const exec = await c.nodeExecutions.latestWaitingForInstance(instance.id);
-    if (!exec) continue;
+  for (const exec of candidates) {
+    if (!exec.correlationEventPath || !exec.correlationValue) continue;
+
+    const eventValue = getByPath(ev.rawPayload, exec.correlationEventPath);
+    if (eventValue == null || String(eventValue) !== exec.correlationValue) continue;
+
+    // Reconcile in case Conductor advanced state since we last looked.
+    await reconcileWorkflowInstance(c, exec.workflowInstanceId);
+    const instance = await c.workflowInstances.getById(exec.workflowInstanceId);
+    if (!instance || instance.status !== "paused") continue;
 
     const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
     if (!node || node.type !== "webhook-wait") continue;
@@ -39,7 +45,9 @@ export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEve
     const cfg = (node.config ?? {}) as unknown as WebhookWaitConfig;
 
     // Filter 1: event type whitelist.
-    if (cfg.listensFor && ev.eventType && !cfg.listensFor.includes(ev.eventType)) continue;
+    if (cfg.listensFor && cfg.listensFor.length > 0 && ev.eventType) {
+      if (!cfg.listensFor.includes(ev.eventType)) continue;
+    }
 
     // Filter 2: acceptIf JSONLogic against the raw payload.
     if (cfg.acceptIf) {

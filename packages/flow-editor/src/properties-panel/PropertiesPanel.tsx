@@ -2,6 +2,45 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 
+function NodeIdButton({ id }: { id: string }): JSX.Element {
+  const [copied, setCopied] = useState(false);
+  const onClick = (): void => {
+    try {
+      void navigator.clipboard?.writeText(id);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard unavailable (insecure context). Falls back to selectable text.
+    }
+  };
+  return (
+    <button
+      type="button"
+      className={`je-props__id${copied ? " je-props__id--copied" : ""}`}
+      onClick={onClick}
+      title="Click to copy node ID"
+    >
+      {copied ? "Copied" : id}
+    </button>
+  );
+}
+
+function PanelHeader({
+  node, onClose,
+}: { node: { id: string; type: string; displayName?: string }; onClose?: () => void }): JSX.Element {
+  return (
+    <div className="je-props__header">
+      <div className="je-props__title-block">
+        <div className="je-props__title">{node.displayName ?? node.type}</div>
+        <NodeIdButton id={node.id} />
+      </div>
+      {onClose ? (
+        <button type="button" className="je-props__close" onClick={onClose} aria-label="Close">×</button>
+      ) : null}
+    </div>
+  );
+}
+
 function EndNodeConfig({ node, onChange, readOnly }: { node: WorkflowNode; onChange: (next: WorkflowNode) => void; readOnly?: boolean }) {
   return (
     <div>
@@ -42,7 +81,38 @@ import { RetryTab } from "./RetryTab.tsx";
 import { IoTab } from "./IoTab.tsx";
 import { FlowSettingsView } from "./FlowSettingsView.tsx";
 import { ControlNodeConfigTab } from "./ControlNodeConfigTab.tsx";
+import { TriggerManualPanel } from "./trigger-manual-panel.tsx";
+import { TriggerWebhookPanel } from "./trigger-webhook-panel.tsx";
+import { TriggerHumanPanel } from "./trigger-human-panel.tsx";
+import { useWebhooksForPicker } from "./useWebhooksForPicker.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
+import type { TriggerWebhookConfig } from "@journeyman/core";
+
+// FlowSettingsView is retained for back-compat but no longer the trigger router.
+void FlowSettingsView;
+
+function TriggerWebhookPanelWrapper(props: {
+  node: WorkflowNode;
+  graph: WorkflowGraph;
+  onPatchConfig: (patch: Partial<TriggerWebhookConfig>) => void;
+  readOnly?: boolean;
+}): JSX.Element {
+  const { webhooks } = useWebhooksForPicker();
+  return (
+    <TriggerWebhookPanel
+      node={props.node}
+      graph={props.graph}
+      webhooks={webhooks.map((w) => ({
+        id: w.id,
+        name: w.name,
+        knownEventTypes: w.knownEventTypes,
+        payloadSchema: w.payloadSchema,
+      }))}
+      onPatchConfig={props.onPatchConfig}
+      readOnly={props.readOnly}
+    />
+  );
+}
 
 export interface PropertiesPanelProps {
   flow: WorkflowGraph;
@@ -50,6 +120,8 @@ export interface PropertiesPanelProps {
   mcpCatalog: McpCatalog;
   orgId: string;
   onChange: (next: WorkflowNode) => void;
+  /** Optional — when provided, a close button is rendered in the panel header. */
+  onClose?: () => void;
   readOnly?: boolean;
 }
 
@@ -62,7 +134,7 @@ const DEFAULT_VISIBILITY: TabsVisibility = {
 };
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { flow, node, mcpCatalog, orgId, onChange, readOnly } = props;
+  const { flow, node, mcpCatalog, orgId, onChange, onClose, readOnly } = props;
   const registry = useStepRegistry();
   const [active, setActive] = useState<TabId>("config");
 
@@ -74,10 +146,30 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
     );
   }
 
-  if (node.type === "start") {
+  if (node.type === "trigger-manual" || node.type === "trigger-webhook" || node.type === "trigger-human") {
+    const patchCfg = (patch: object): void => {
+      const nextCfg = { ...(node.config ?? {}), ...patch } as Record<string, unknown>;
+      onChange({ ...node, config: nextCfg });
+    };
     return (
       <aside className="je-editor__props">
-        <FlowSettingsView startNode={node} onChange={onChange} readOnly={readOnly} />
+        <PanelHeader node={node} onClose={onClose} />
+        {node.type === "trigger-manual" ? (
+          <TriggerManualPanel node={node} graph={flow} />
+        ) : node.type === "trigger-webhook" ? (
+          <TriggerWebhookPanelWrapper
+            node={node}
+            graph={flow}
+            onPatchConfig={(p) => { if (!readOnly) patchCfg(p); }}
+            readOnly={readOnly}
+          />
+        ) : (
+          <TriggerHumanPanel
+            node={node}
+            graph={flow}
+            onPatchConfig={(p) => { if (!readOnly) patchCfg(p); }}
+          />
+        )}
       </aside>
     );
   }
@@ -109,7 +201,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
   return (
     <aside className="je-editor__props">
-      <div className="je-props__title">{node.displayName ?? node.type}</div>
+      <PanelHeader node={node} onClose={onClose} />
       {isStep ? (
         <TabsShell
           active={effectiveActive}

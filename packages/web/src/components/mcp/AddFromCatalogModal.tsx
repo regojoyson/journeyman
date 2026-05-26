@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/admin-styles.ts";
 import { mcpApi, type CatalogEntry, type UpsertBody } from "../../api/mcp.ts";
 import { SecretPicker } from "./SecretPicker.tsx";
@@ -19,10 +19,31 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
   const [bindings, setBindings] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     mcpApi.catalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of catalog) if (c.category) set.add(c.category);
+    return Array.from(set).sort();
+  }, [catalog]);
+
+  const visibleCatalog = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return catalog.filter((c) => {
+      if (categoryFilter !== "all" && (c.category ?? "") !== categoryFilter) return false;
+      if (!q) return true;
+      return (
+        c.label.toLowerCase().includes(q) ||
+        c.id.toLowerCase().includes(q) ||
+        (c.description?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [catalog, categoryFilter, search]);
 
   function pickEntry(e: CatalogEntry) {
     setChosen(e);
@@ -79,28 +100,52 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
         </div>
 
         {!chosen ? (
-          <div className="grid grid-cols-2 gap-3">
-            {catalog.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => pickEntry(c)}
-                className={`${card} p-3 text-left hover:border-indigo-500 transition`}
+          <>
+            <div className="mb-3 flex gap-2">
+              <input
+                className={`${inputCls} flex-1`}
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select
+                className={inputCls}
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Filter by category"
               >
-                <div className="text-sm font-medium text-slate-100">{c.label}</div>
-                <div className="mt-1 flex gap-1">
-                  <span className={codePill}>{c.transport}</span>
-                  <span className={codePill}>{c.source}</span>
+                <option value="all">All categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {visibleCatalog.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => pickEntry(c)}
+                  className={`${card} p-3 text-left hover:border-indigo-500 transition`}
+                >
+                  <div className="text-sm font-medium text-slate-100">{c.label}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <span className={codePill}>{c.transport}</span>
+                    <span className={codePill}>{c.source}</span>
+                    {c.category && <span className={codePill}>{c.category}</span>}
+                  </div>
+                  {c.description && (
+                    <div className="mt-2 text-xs text-slate-400">{c.description}</div>
+                  )}
+                </button>
+              ))}
+              {visibleCatalog.length === 0 && (
+                <div className="col-span-2 text-sm text-slate-500 text-center py-6">
+                  {catalog.length === 0 ? "Catalog is empty." : "No entries match the current filter."}
                 </div>
-                {c.description && (
-                  <div className="mt-2 text-xs text-slate-400">{c.description}</div>
-                )}
-              </button>
-            ))}
-            {catalog.length === 0 && (
-              <div className="col-span-2 text-sm text-slate-500 text-center py-6">Catalog is empty.</div>
-            )}
-          </div>
+              )}
+            </div>
+          </>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <input className={inputCls} placeholder="Name" required value={name} onChange={e => setName(e.target.value)} />

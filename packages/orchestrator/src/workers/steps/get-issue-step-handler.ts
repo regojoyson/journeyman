@@ -9,9 +9,8 @@ const log = createLogger("worker:get-issue");
 /**
  * Wraps IIssueProvider.getIssue.
  *
- * Inputs (any of):
- *   - issueRef   — canonical issue ref (e.g. "jira:PROJ-123")
- *   - id         — provider id (string)
+ * Input:
+ *   - ref — provider-native identifier (e.g. "PROJ-123")
  *
  * Returns the Issue object as output.issue.
  */
@@ -21,14 +20,13 @@ export class GetIssueStepHandler implements IStepHandler {
   constructor(private deps: { issue: ProviderFactory<IIssueProvider> }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
-    const id = typeof input.id === "string" ? input.id
-      : typeof input.issueRef === "string" ? input.issueRef : undefined;
-    if (!id) {
+    const ref = typeof input.ref === "string" ? input.ref : undefined;
+    if (!ref) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "get-issue requires `issueRef` or `id`",
+          message: "get-issue requires `ref`",
           retryable: false,
         },
       };
@@ -37,8 +35,8 @@ export class GetIssueStepHandler implements IStepHandler {
       typeof input.provider === "string" ? input.provider : undefined,
       ctx.env,
     );
-    ctx.log(`Fetching issue ${id}`);
-    const result = await issueProvider.getIssue({ id, sessionId: ctx.workflowInstanceId });
+    ctx.log(`Fetching issue ${ref}`);
+    const result = await issueProvider.getIssue({ id: ref, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.issue) {
       log.error({ result }, "get-issue failed");
       const msg = String(result?.error ?? "no issue returned");

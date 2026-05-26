@@ -60,7 +60,7 @@ const flowEdgeSchema = z.object({
 }).passthrough();
 
 export const flowGraphSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.union([z.literal(1), z.literal(2)]),
   nodes: z.array(flowNodeSchema),
   edges: z.array(flowEdgeSchema),
   maxCycleVisits: z.number().int().nonnegative().optional(),

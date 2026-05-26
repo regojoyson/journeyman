@@ -2,7 +2,7 @@ import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 
 export const KNOWN_NODE_TYPES = new Set([
-  "start", "end", "step",
+  "trigger-manual", "trigger-webhook", "trigger-human", "end", "step",
   "gateway-xor", "gateway-and", "join", "loop", "subflow", "if", "timer",
   "human-task", "webhook-wait",
 ]);
@@ -15,9 +15,21 @@ export function toReactWorkflowEdges(flow: WorkflowGraph): Edge[] {
       t === "conditional" ? "#fdcb6e" :
       t === "else"        ? "#888"    :
       /* default */        "#888";
+    // For multi-handle source nodes (If/Else has "then"+"else"; Step has
+    // "default"+"error"; Loop has "body"+"exit"), set sourceHandle so React
+    // Flow routes the edge to the intended port instead of stacking edges on
+    // one anchor. Default edges leave sourceHandle undefined so single-handle
+    // nodes (triggers, end, join, gateway, etc. — whose source handle may not
+    // have an explicit `id`) still connect.
+    const sourceHandle: string | undefined =
+      t === "conditional" ? "then"  :
+      t === "else"        ? "else"  :
+      t === "error"       ? "error" :
+      /* default */         undefined;
     return {
       id: e.id,
       source: e.source,
+      ...(sourceHandle ? { sourceHandle } : {}),
       target: e.target,
       type: t,
       data: { branchLabel: e.branchLabel, condition: e.condition },

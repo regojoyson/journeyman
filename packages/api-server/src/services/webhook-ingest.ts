@@ -2,7 +2,6 @@ import type { Pool } from "pg";
 import type { Webhook, WebhookEvent, WebhookProvider } from "@journeyman/core";
 import {
   extractEventType,
-  readPath,
   validatePayload,
   verifyWebhookRequest,
   type VerifyInput,
@@ -10,6 +9,7 @@ import {
 import type { Composition } from "../composition.ts";
 import { matchAndResolveWebhookWaits } from "./match-human-tasks.ts";
 import { resolveWebhookSecret, secretRefFromAuth } from "./webhook-secret-lookup.ts";
+import { fireWebhookTriggers } from "./webhook-trigger-fire.ts";
 
 const BLOCKED_HEADERS = new Set([
   "authorization", "cookie",
@@ -98,7 +98,6 @@ export async function ingestForWebhook(
       provider: providerForLegacy,
       eventType,
       deliveryId,
-      issueRef: null, // populated below if we can extract one
       productId: null,
       rawHeaders: sanitized,
       rawPayload: input.rawPayload,
@@ -122,34 +121,12 @@ export async function ingestForWebhook(
     }
   }
 
-  // 5. Best-effort issueRef extraction for legacy compatibility — match service
-  //    still needs it. Use the first correlation suggestion that yields a value.
-  let issueRef: string | null = null;
-  if (webhook.correlationSuggestions) {
-    for (const sug of webhook.correlationSuggestions) {
-      if (sug.key === "issueRef") {
-        const v = readPath(input.rawPayload, sug.path);
-        if (typeof v === "string" && v) {
-          issueRef = `${webhook.preset}:${v}`;
-          break;
-        }
-      }
-    }
-  }
-  if (pool && issueRef) {
-    await pool.query(
-      "UPDATE jm_webhook_events SET issue_ref = $1 WHERE id = $2",
-      [issueRef, event.id],
-    );
-  }
-
-  // 6. Match against paused webhook-wait nodes.
+  // 5. Match against paused webhook-wait nodes.
   try {
     const result = await matchAndResolveWebhookWaits(c, {
       id: event.id,
       provider: webhook.preset,
       eventType,
-      issueRef,
       rawPayload: input.rawPayload,
     });
     if (result.matched > 0) {
@@ -158,7 +135,20 @@ export async function ingestForWebhook(
       return { status: "resolved", matched: result.matched, eventId: event.id };
     }
 
-    // 7. No waiters → mark ignored (start-of-flow triggers handled in plan 3).
+    // 7. No waiters → try start-of-flow triggers (resume-wins precedence).
+    const tr = await fireWebhookTriggers(c, {
+      webhook,
+      eventId: event.id,
+      eventType,
+      rawPayload: input.rawPayload,
+    });
+    if (tr.fired > 0) {
+      await c.webhookEvents.setStatus(event.id, "processed");
+      void c.webhooks.touchLastEvent(webhook.id);
+      return { status: "resolved", matched: tr.fired, eventId: event.id };
+    }
+
+    // 8. Nothing matched → mark ignored.
     await c.webhookEvents.setStatus(event.id, "ignored");
     void c.webhooks.touchLastEvent(webhook.id);
     return { status: "ignored", eventId: event.id };

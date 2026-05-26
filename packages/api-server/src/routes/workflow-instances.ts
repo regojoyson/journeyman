@@ -27,7 +27,7 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
   const requireWorkflowInstanceRole = makeRequireWorkflowInstanceRole(c);
 
   app.get("/workflow-instances", { preHandler: requireAuth() }, async (req, reply) => {
-    const q = req.query as { workflow_id?: string; status?: string; limit?: string; page?: string; page_size?: string; scope?: string; provider?: string; issue_ref?: string };
+    const q = req.query as { workflow_id?: string; status?: string; limit?: string; page?: string; page_size?: string; scope?: string; provider?: string };
     const scope = q.scope as WorkflowInstanceListScope | undefined;
     const actor = actorFrom(req);
 
@@ -43,7 +43,6 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
       actor,
       scope,
       provider: q.provider,
-      issueRef: q.issue_ref,
     };
 
     if (paginated) {
@@ -89,7 +88,6 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
         id: webhookEvent.id,
         provider: webhookEvent.provider,
         eventType: webhookEvent.eventType,
-        issueRef: webhookEvent.issueRef,
         deliveryId: webhookEvent.deliveryId,
         receivedAt: webhookEvent.receivedAt.toISOString(),
         rawPayload: webhookEvent.rawPayload,

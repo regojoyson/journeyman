@@ -9,7 +9,7 @@ import {
 } from "./transition-issue.meta.ts";
 
 interface TransitionIssueConfig {
-  issueRef: string;
+  ref: string;
   status: string;
 }
 
@@ -20,10 +20,10 @@ export const transitionIssueStep: StepDefinition<TransitionIssueConfig> = {
   description: TRANSITION_ISSUE_DESCRIPTION,
   color: "#a29bfe",
   icon: "🚦",
-  defaultConfig: { issueRef: "", status: "" },
+  defaultConfig: { ref: "", status: "" },
   configSchema: transitionIssueConfigSchema,
   configFields: {
-    issueRef: { label: "Issue ref", widget: "text", help: "Supports #{issue} placeholder" },
+    ref: { label: "Ref", widget: "text", help: "Supports #{issue} placeholder" },
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
