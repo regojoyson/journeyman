@@ -7,16 +7,77 @@ interface Props {
   readOnly?: boolean;
 }
 
-const MODE_OPTIONS: Array<{ value: JoinMode; label: string; desc: string }> = [
-  { value: "fail-fast", label: "Fail fast", desc: "First branch error cancels the others and fails the workflow." },
-  { value: "wait-all", label: "Wait for all", desc: "Let every branch finish. Workflow fails only if all branches failed." },
-  { value: "wait-all-strict", label: "Wait for all (strict)", desc: "Let every branch finish. Workflow fails if any branch failed." },
-  { value: "first-wins", label: "First wins", desc: "First branch to succeed wins; others are cancelled. v1: branches must contain only pause nodes (human-task, webhook-wait, timer)." },
+interface DownstreamRow {
+  ref: string;
+  when: string;
+}
+
+interface ModeInfo {
+  value: JoinMode;
+  label: string;
+  howItRuns: string;
+  downstreamSees: DownstreamRow[];
+  whenToUse: string;
+}
+
+const MODE_INFO: ModeInfo[] = [
+  {
+    value: "fail-fast",
+    label: "Fail fast",
+    howItRuns:
+      "All branches run in parallel. If any branch fails, the workflow fails immediately and the other branches are cancelled. If all branches succeed, downstream runs.",
+    downstreamSees: [
+      { ref: "${branchNodeId.output.<field>}", when: "Always defined (all branches must succeed for downstream to run)" },
+      { ref: "${joinId.output.*}", when: "Nothing — Join contributes no extra fields in this mode" },
+    ],
+    whenToUse: "Use when all branches must succeed and a single failure should abort the whole workflow.",
+  },
+  {
+    value: "wait-all",
+    label: "Wait for all",
+    howItRuns:
+      "All branches run to completion, even if some fail. Downstream runs after every branch has finished, regardless of which succeeded.",
+    downstreamSees: [
+      { ref: "${branchNodeId.output.<field>}", when: "Defined if that branch succeeded; undefined if it failed" },
+      { ref: "${joinId.output.results}", when: "Full bag keyed by branch head node id, each { status, output, error? }" },
+      { ref: "${joinId.output.results.<branchHeadId>.status}", when: 'Always defined — "success" | "error" | "cancelled"' },
+    ],
+    whenToUse: "Use when you want every branch's outcome (success or failure) and will react to it downstream.",
+  },
+  {
+    value: "wait-all-strict",
+    label: "Wait for all (strict)",
+    howItRuns:
+      "All branches run to completion. After the Join, if any branch failed, the workflow ends as failed and downstream does NOT run. Otherwise downstream runs normally.",
+    downstreamSees: [
+      { ref: "${branchNodeId.output.<field>}", when: "Always defined (downstream only runs if every branch succeeded)" },
+      { ref: "${joinId.output.results}", when: "Full bag of branch results — all entries have status \"success\"" },
+    ],
+    whenToUse:
+      "Use when each branch must complete (so partial state isn't lost), but any failure should still abort the rest of the workflow.",
+  },
+  {
+    value: "first-wins",
+    label: "First wins",
+    howItRuns:
+      "All branches start in parallel. The first branch to finish wins; the others are cancelled. v1 restriction: branches may contain only pause nodes (human-task, webhook-wait, timer).",
+    downstreamSees: [
+      { ref: "${joinId.output.winner}", when: "Always defined — the winning branch's head node id" },
+      { ref: "${joinId.output.output.<field>}", when: "Always defined — the winner's output (whichever branch won)" },
+      { ref: "${branchNodeId.output.<field>}", when: "Only defined if THIS branch won; undefined if it lost" },
+      { ref: "${joinId.output.results}", when: "Contains only the winner's entry" },
+    ],
+    whenToUse: "Use when racing pauses (humans, webhooks, timers) and only the first response matters.",
+  },
 ];
+
+const MODE_INFO_BY_VALUE: Record<JoinMode, ModeInfo> =
+  Object.fromEntries(MODE_INFO.map(m => [m.value, m])) as Record<JoinMode, ModeInfo>;
 
 export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
   const cfg = (node.config ?? {}) as { mode?: JoinMode; description?: string };
   const mode: JoinMode = cfg.mode ?? "fail-fast";
+  const info = MODE_INFO_BY_VALUE[mode];
   const incomingBranches = flow.edges.filter(e => e.target === node.id).length;
 
   const update = (patch: Partial<typeof cfg>) => onChange({ ...node, config: { ...cfg, ...patch } });
@@ -30,16 +91,41 @@ export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
           disabled={readOnly}
           onChange={e => update({ mode: e.target.value as JoinMode })}
         >
-          {MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {MODE_INFO.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <p className="je-hint">{MODE_OPTIONS.find(o => o.value === mode)?.desc}</p>
       </div>
+
+      <div className="je-join-mode-info">
+        <div className="je-join-mode-info__section">
+          <div className="je-join-mode-info__heading">How it runs</div>
+          <p>{info.howItRuns}</p>
+        </div>
+        <div className="je-join-mode-info__section">
+          <div className="je-join-mode-info__heading">Downstream sees</div>
+          <table className="je-join-mode-info__table">
+            <tbody>
+              {info.downstreamSees.map(row => (
+                <tr key={row.ref}>
+                  <td><code>{row.ref}</code></td>
+                  <td>{row.when}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="je-join-mode-info__section">
+          <div className="je-join-mode-info__heading">When to use it</div>
+          <p>{info.whenToUse}</p>
+        </div>
+      </div>
+
       {mode === "first-wins" && (
         <div className="je-field je-hint--warn">
           <strong>v1 restriction:</strong> first-wins branches may contain only pause nodes (human-task, webhook-wait, timer).
           Step nodes are not allowed and will be flagged in validation.
         </div>
       )}
+
       <div className="je-field">
         <label className="je-field__label">Description</label>
         <textarea

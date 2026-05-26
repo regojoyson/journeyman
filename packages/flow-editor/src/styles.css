@@ -1939,3 +1939,49 @@ button.je-condition-row__pick:hover {
   border-color: #4a4a5e;
   color: #fff;
 }
+
+/* Join mode info card — rendered below the mode select in JoinConfigEditor. */
+.je-join-mode-info {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  font-size: 11px;
+  color: #ccc;
+}
+.je-join-mode-info__section + .je-join-mode-info__section {
+  margin-top: 10px;
+}
+.je-join-mode-info__heading {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8fbeff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.je-join-mode-info p {
+  margin: 0;
+  line-height: 1.5;
+}
+.je-join-mode-info__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.je-join-mode-info__table td {
+  vertical-align: top;
+  padding: 3px 6px 3px 0;
+}
+.je-join-mode-info__table td:first-child {
+  white-space: nowrap;
+  width: 1%;
+}
+.je-join-mode-info__table code {
+  background: #0e0e1a;
+  border: 1px solid #2a2a3a;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #ddd;
+}
