@@ -89,6 +89,11 @@ export interface CanvasProps {
   onEdgeSelect?: (edgeId: string | null) => void;
   readOnly?: boolean;
   stepRunStates?: Record<string, StepRunState>;
+  /**
+   * Pan and zoom-in to a node. `tick` lets the same nodeId re-trigger the
+   * effect when clicked twice in a row (selection alone wouldn't change).
+   */
+  focusRequest?: { nodeId: string; tick: number };
 }
 
 function toReactWorkflowNodes(
@@ -124,7 +129,7 @@ function CanvasInner(p: CanvasProps) {
   const customStepDefs = useCustomStepDefs(collectCustomStepIds(p.flow));
   const wrapper = useRef<HTMLDivElement>(null);
   const registry = useStepRegistry();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow();
 
   // Mount log
   const canvasMountedRef = useRef(false);
@@ -456,6 +461,22 @@ function CanvasInner(p: CanvasProps) {
     const id = sel.nodes[0]?.id ?? null;
     onSelectRef.current(id);
   }, []);
+
+  // Pan + zoom to a requested node. Triggered by FlowEditor when a link or
+  // chip is clicked inside an issue message; selection alone doesn't move
+  // the viewport, so without this an offscreen node looks ignored.
+  useEffect(() => {
+    const req = p.focusRequest;
+    if (!req) return;
+    const node = p.flow.nodes.find(n => n.id === req.nodeId);
+    if (!node || !node.position) return;
+    const approxW = 240;
+    const approxH = 80;
+    const cx = node.position.x + approxW / 2;
+    const cy = node.position.y + approxH / 2;
+    const zoom = Math.max(getZoom(), 1);
+    setCenter(cx, cy, { zoom, duration: 250 });
+  }, [p.focusRequest, p.flow.nodes, setCenter, getZoom]);
 
   const stableNodeTypes = useMemo(() => nodeTypes, []);
   const stableEdgeTypes = useMemo(() => edgeTypes, []);
