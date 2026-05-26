@@ -6,6 +6,9 @@ import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 export interface WebhookWaitNodeData {
   displayName?: string;
   config?: {
+    /** New field: FK to a Webhook record. */
+    webhookId?: string;
+    /** Legacy field, retained for un-migrated nodes. */
     provider?: string;
     listensFor?: string[];
     outputs?: Array<{ name: string; type?: string }>;
@@ -19,10 +22,17 @@ export function WebhookWaitNode(props: NodeProps) {
   const outputs = data.config?.outputs ?? [];
   const isWaiting = data.runState?.status === "running";
 
+  // Prefer the new webhookId (current config shape). Fall back to the legacy
+  // provider string for nodes that pre-date the webhook picker. Show an empty
+  // state only when neither is set.
   const subtitleParts: string[] = [];
-  if (data.config?.provider) subtitleParts.push(data.config.provider);
+  if (data.config?.webhookId) {
+    subtitleParts.push("webhook ✓");
+  } else if (data.config?.provider) {
+    subtitleParts.push(data.config.provider);
+  }
   if (outputs.length > 0) subtitleParts.push(outputs.map(o => o.name).join(", "));
-  const subtitle = subtitleParts.length > 0 ? subtitleParts.join(" · ") : "(no provider)";
+  const subtitle = subtitleParts.length > 0 ? subtitleParts.join(" · ") : "(no webhook selected)";
 
   return (
     <div
