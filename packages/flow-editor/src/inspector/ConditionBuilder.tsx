@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import type { JsonLogicExpr } from "@journeyman/core";
-import type { ConditionSuggestion } from "./condition-suggestions.ts";
+import { ValuePicker } from "../properties-panel/ValuePicker.tsx";
+import type { UpstreamSource } from "../properties-panel/use-upstream-sources.ts";
+import { shapeForRef } from "./shape-for-ref.ts";
 
 type Op = "==" | "!=" | "<" | "<=" | ">" | ">=" | "in";
 type Connector = "and" | "or";
@@ -13,11 +15,11 @@ interface Row {
 
 interface Props {
   value: JsonLogicExpr | undefined;
-  suggestions: ConditionSuggestion[];
+  sources: UpstreamSource[];
   onChange: (expr: JsonLogicExpr | undefined) => void;
 }
 
-export function ConditionBuilder({ value, suggestions, onChange }: Props) {
+export function ConditionBuilder({ value, sources, onChange }: Props) {
   const [showJson, setShowJson] = useState(false);
 
   const initial = useMemo(() => exprToRows(value), [value]);
@@ -27,7 +29,7 @@ export function ConditionBuilder({ value, suggestions, onChange }: Props) {
   function commit(nextRows: Row[], nextConnector: Connector) {
     setRows(nextRows);
     setConnector(nextConnector);
-    onChange(rowsToExpr(nextRows, nextConnector, suggestions));
+    onChange(rowsToExpr(nextRows, nextConnector, sources));
   }
 
   return (
@@ -62,7 +64,7 @@ export function ConditionBuilder({ value, suggestions, onChange }: Props) {
             <RowEditor
               key={i}
               row={r}
-              suggestions={suggestions}
+              sources={sources}
               onChange={(nr) => {
                 const next = rows.slice();
                 next[i] = nr;
@@ -92,42 +94,34 @@ export function ConditionBuilder({ value, suggestions, onChange }: Props) {
 
 function RowEditor(p: {
   row: Row;
-  suggestions: ConditionSuggestion[];
+  sources: UpstreamSource[];
   onChange: (r: Row) => void;
   onRemove: () => void;
 }) {
-  const grouped = useMemo(() => {
-    const order: string[] = [];
-    const labelByGroup = new Map<string, string>();
-    const itemsByGroup = new Map<string, ConditionSuggestion[]>();
-    for (const s of p.suggestions) {
-      if (!itemsByGroup.has(s.group)) {
-        order.push(s.group);
-        labelByGroup.set(s.group, s.groupLabel);
-        itemsByGroup.set(s.group, []);
-      }
-      itemsByGroup.get(s.group)!.push(s);
-    }
-    return { order, labelByGroup, itemsByGroup };
-  }, [p.suggestions]);
-
-  const selected = p.suggestions.find(s => s.path === p.row.varPath);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const leafShape = useMemo(() => shapeForRef(p.row.varPath, p.sources), [p.row.varPath, p.sources]);
+  const leafType = leafShape?.type;
 
   return (
     <div className="je-condition-row">
-      <select
-        value={p.row.varPath}
-        onChange={(e) => p.onChange({ ...p.row, varPath: e.target.value })}
-      >
-        <option value="">— pick a value —</option>
-        {grouped.order.map(group => (
-          <optgroup key={group} label={grouped.labelByGroup.get(group) ?? group}>
-            {grouped.itemsByGroup.get(group)!.map(s => (
-              <option key={s.path} value={s.path}>{s.fieldLabel}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <div className="je-condition-row__lhs">
+        <button
+          type="button"
+          className="je-condition-row__pick"
+          onClick={() => setPickerOpen(o => !o)}
+        >
+          {p.row.varPath ? p.row.varPath : "{x} pick value…"}
+        </button>
+        {pickerOpen && (
+          <div className="je-props__picker-popover">
+            <ValuePicker
+              sources={p.sources}
+              onPick={(ref) => { p.onChange({ ...p.row, varPath: ref }); setPickerOpen(false); }}
+              onClose={() => setPickerOpen(false)}
+            />
+          </div>
+        )}
+      </div>
       <select
         value={p.row.op}
         onChange={(e) => p.onChange({ ...p.row, op: e.target.value as Op })}
@@ -136,7 +130,7 @@ function RowEditor(p: {
           <option key={op} value={op}>{op}</option>
         ))}
       </select>
-      {selected?.type === "boolean" ? (
+      {leafType === "boolean" ? (
         <select
           value={p.row.value}
           onChange={(e) => p.onChange({ ...p.row, value: e.target.value })}
@@ -147,7 +141,7 @@ function RowEditor(p: {
         </select>
       ) : (
         <input
-          type={selected?.type === "number" ? "number" : "text"}
+          type={leafType === "number" ? "number" : "text"}
           value={p.row.value}
           onChange={(e) => p.onChange({ ...p.row, value: e.target.value })}
         />
@@ -180,19 +174,19 @@ function opToRow(expr: JsonLogicExpr): Row {
   return { varPath, op, value: rhs == null ? "" : String(rhs) };
 }
 
-function rowsToExpr(rows: Row[], connector: Connector, suggestions: ConditionSuggestion[]): JsonLogicExpr | undefined {
+function rowsToExpr(rows: Row[], connector: Connector, sources: UpstreamSource[]): JsonLogicExpr | undefined {
   const valid = rows.filter(r => r.varPath);
   if (valid.length === 0) return undefined;
-  const exprs = valid.map(r => rowToExpr(r, suggestions));
+  const exprs = valid.map(r => rowToExpr(r, sources));
   if (exprs.length === 1) return exprs[0];
   return { [connector]: exprs } as JsonLogicExpr;
 }
 
-function rowToExpr(r: Row, suggestions: ConditionSuggestion[]): JsonLogicExpr {
-  const meta = suggestions.find(s => s.path === r.varPath);
+function rowToExpr(r: Row, sources: UpstreamSource[]): JsonLogicExpr {
+  const t = shapeForRef(r.varPath, sources)?.type;
   let v: JsonLogicExpr;
-  if (meta?.type === "number") v = Number(r.value);
-  else if (meta?.type === "boolean") v = r.value === "true";
+  if (t === "number") v = Number(r.value);
+  else if (t === "boolean") v = r.value === "true";
   else v = r.value;
   return { [r.op]: [{ var: r.varPath }, v] } as JsonLogicExpr;
 }

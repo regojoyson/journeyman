@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr, OutputSchema, CustomAiStep } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr, CustomAiStep } from "@journeyman/core";
 import { ConditionBuilder } from "./ConditionBuilder.tsx";
-import {
-  buildConditionSuggestions,
-  collectUpstreamSteps,
-  customAiOutputSchemaFromJsonSchema,
-} from "./condition-suggestions.ts";
-import { useStepRegistry } from "../state/step-registry-context.tsx";
+import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
+import { useUpstreamSources } from "../properties-panel/use-upstream-sources.ts";
 import { useOrgId } from "../state/org-context.tsx";
 
 interface Props {
@@ -16,115 +12,84 @@ interface Props {
   onClose?: () => void;
 }
 
-interface CustomStepFetchTarget {
-  stepId: string;
-  customStepId: string;
-}
-
 export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
-  const registry = useStepRegistry();
+  const catalog = useStepCatalog();
   const orgId = useOrgId();
-  const catalog = useMemo(
-    () => ({
-      outputSchemaFor: (stepType: string) => registry.get(stepType)?.outputSchema ?? null,
-    }),
-    [registry],
-  );
 
   const sourceNode = flow.nodes.find(n => n.id === edge.source);
   const isXor = sourceNode?.type === "gateway-xor" || sourceNode?.type === "if";
 
-  const customTargets = useMemo<CustomStepFetchTarget[]>(() => {
-    if (!isXor) return [];
-    const upstream = collectUpstreamSteps(flow, edge.source);
-    const targets: CustomStepFetchTarget[] = [];
-    for (const stepId of upstream) {
-      const node = flow.nodes.find(n => n.id === stepId);
-      if (!node) continue;
-      const isCustom = node.stepType === "custom-ai" || node.stepType?.startsWith("custom-ai:");
-      if (!isCustom) continue;
-      const cfg = (node.config ?? {}) as { customStepId?: unknown };
-      if (typeof cfg.customStepId === "string" && cfg.customStepId) {
-        targets.push({ stepId, customStepId: cfg.customStepId });
-      }
+  // Collect distinct customStepIds referenced anywhere in the graph by
+  // custom-ai nodes — useUpstreamSources only consumes the ones it needs
+  // (dominators of edge.source), so over-fetching is cheap and avoids
+  // re-running the fetch whenever edge.source changes.
+  const customStepIds = useMemo(() => {
+    if (!isXor) return [] as string[];
+    const set = new Set<string>();
+    for (const n of flow.nodes) {
+      if (n.type !== "step") continue;
+      if (n.stepType !== "custom-ai" && !n.stepType?.startsWith("custom-ai:")) continue;
+      const cfg = (n.config ?? {}) as { customStepId?: unknown };
+      if (typeof cfg.customStepId === "string" && cfg.customStepId) set.add(cfg.customStepId);
     }
-    return targets;
-  }, [flow, edge.source, isXor]);
+    return [...set];
+  }, [flow.nodes, isXor]);
 
-  const targetsKey = customTargets.map(t => `${t.stepId}:${t.customStepId}`).sort().join(",");
+  const customStepKey = customStepIds.slice().sort().join(",");
 
-  const [extraSchemas, setExtraSchemas] = useState<Map<string, OutputSchema>>(new Map());
-  const [loadingExtras, setLoadingExtras] = useState(false);
-  const [extrasErrored, setExtrasErrored] = useState(false);
+  const [customStepDefs, setCustomStepDefs] = useState<Record<string, CustomAiStep | null>>({});
+  const [loadingCustom, setLoadingCustom] = useState(false);
+  const [customErrored, setCustomErrored] = useState(false);
 
   useEffect(() => {
-    if (!isXor || !orgId || customTargets.length === 0) {
-      setExtraSchemas(new Map());
-      setLoadingExtras(false);
-      setExtrasErrored(false);
+    if (!isXor || !orgId || customStepIds.length === 0) {
+      setCustomStepDefs({});
+      setLoadingCustom(false);
+      setCustomErrored(false);
       return;
     }
     let alive = true;
-    setLoadingExtras(true);
-    setExtrasErrored(false);
+    setLoadingCustom(true);
+    setCustomErrored(false);
 
-    const fetches = customTargets.map(async (t): Promise<[string, OutputSchema | null]> => {
+    const fetches = customStepIds.map(async (id): Promise<[string, CustomAiStep | null]> => {
       try {
         let res = await fetch(
-          `/api/orgs/${orgId}/users/me/custom-steps/${t.customStepId}`,
+          `/api/orgs/${orgId}/users/me/custom-steps/${id}`,
           { credentials: "include" },
         );
         if (!res.ok) {
           res = await fetch(
-            `/api/orgs/${orgId}/custom-steps/${t.customStepId}`,
+            `/api/orgs/${orgId}/custom-steps/${id}`,
             { credentials: "include" },
           );
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const step = (await res.json()) as CustomAiStep;
-        return [t.stepId, customAiOutputSchemaFromJsonSchema(step)];
+        return [id, step];
       } catch (err) {
-        console.warn(`[EdgeInspector] failed to load custom step ${t.customStepId}:`, err);
-        return [t.stepId, null];
+        console.warn(`[EdgeInspector] failed to load custom step ${id}:`, err);
+        return [id, null];
       }
     });
 
     Promise.all(fetches).then(results => {
       if (!alive) return;
-      const next = new Map<string, OutputSchema>();
+      const next: Record<string, CustomAiStep | null> = {};
       let anyError = false;
-      for (const [stepId, schema] of results) {
-        if (schema) next.set(stepId, schema);
-        else anyError = true;
+      for (const [id, step] of results) {
+        next[id] = step;
+        if (!step) anyError = true;
       }
-      setExtraSchemas(next);
-      setExtrasErrored(anyError);
-      setLoadingExtras(false);
+      setCustomStepDefs(next);
+      setCustomErrored(anyError);
+      setLoadingCustom(false);
     });
 
     return () => { alive = false; };
-  }, [targetsKey, orgId, isXor]);
+  }, [customStepKey, orgId, isXor]);
 
-  const suggestions = useMemo(() => {
-    if (!isXor) return [];
-    const base = buildConditionSuggestions(flow, edge.source, catalog, extraSchemas);
-    if (loadingExtras) {
-      base.unshift({
-        path: "__loading__",
-        group: "__status__",
-        groupLabel: "Status",
-        fieldLabel: "Loading custom step outputs…",
-      });
-    } else if (extrasErrored) {
-      base.unshift({
-        path: "__error__",
-        group: "__status__",
-        groupLabel: "Status",
-        fieldLabel: "(failed to load some custom-step outputs)",
-      });
-    }
-    return base;
-  }, [flow, edge.source, catalog, extraSchemas, loadingExtras, extrasErrored, isXor]);
+  const sources = useUpstreamSources(flow, edge.source, catalog, customStepDefs);
 
   if (!isXor) {
     return (
@@ -194,9 +159,15 @@ export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
       {isConditional && (
         <div className="je-edge-inspector__condition">
           <div className="je-edge-inspector__condition-header">Condition</div>
+          {loadingCustom && (
+            <div className="je-edge-inspector__status">Loading custom step outputs…</div>
+          )}
+          {!loadingCustom && customErrored && (
+            <div className="je-edge-inspector__status">(failed to load some custom-step outputs)</div>
+          )}
           <ConditionBuilder
             value={edge.condition}
-            suggestions={suggestions}
+            sources={sources}
             onChange={(expr: JsonLogicExpr | undefined) => onChange({ ...edge, condition: expr })}
           />
         </div>
