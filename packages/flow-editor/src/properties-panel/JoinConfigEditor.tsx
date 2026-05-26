@@ -121,8 +121,9 @@ export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
 
       {mode === "first-wins" && (
         <div className="je-field je-hint--warn">
-          <strong>v1 restriction:</strong> first-wins branches may contain only pause nodes (human-task, webhook-wait, timer).
-          Step nodes are not allowed and will be flagged in validation.
+          <strong>Branches can only contain things that wait:</strong> Human Task, Webhook Wait, or Timer.
+          Regular steps aren't allowed here — the loser branches get cancelled mid-run, which could leave a step half-done.
+          You'll see an error when you try to publish if any branch contains a step.
         </div>
       )}
 
