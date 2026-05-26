@@ -15,9 +15,14 @@ export function IfNode(props: NodeProps) {
           <div className="je-node__subtitle">then / else</div>
         </div>
       </div>
-      {/* Two outputs stacked on the right edge: top = then, bottom = else. */}
-      <Handle type="source" position={Position.Right} id="then" style={{ ...handleBlue, top: "30%" }} />
-      <Handle type="source" position={Position.Right} id="else" style={{ ...handleBlue, top: "70%" }} />
+      {/* Two outputs on the right edge with visible labels and spread vertical
+          positions so the two branches read as distinct ports. */}
+      <Handle type="source" position={Position.Right} id="then" style={{ ...handleBlue, top: "20%" }}>
+        <span className="je-node__handle-label je-node__handle-label--then">then</span>
+      </Handle>
+      <Handle type="source" position={Position.Right} id="else" style={{ ...handleBlue, top: "80%" }}>
+        <span className="je-node__handle-label je-node__handle-label--else">else</span>
+      </Handle>
     </div>
   );
 }

@@ -583,8 +583,24 @@ label.je-switch,
 .je-node--and      .je-node__icon { color: #00b894; }
 .je-node--join     { border-color: #00b894; }   /* Pairs with parallel fork */
 .je-node--join     .je-node__icon { color: #00b894; }
-.je-node--if       { border-color: #74b9ff; }
+.je-node--if       { border-color: #74b9ff; min-height: 72px; }
 .je-node--if       .je-node__icon { color: #74b9ff; }
+/* Small text label next to the then/else source handles. Positioned to the
+   right of the dot, vertically centered with it. */
+.je-node__handle-label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #aaa;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.je-node__handle-label--then { color: #fdcb6e; }
+.je-node__handle-label--else { color: #888; }
 .je-node--loop     { border-color: #fdcb6e; }
 .je-node--loop     .je-node__icon { color: #fdcb6e; }
 .je-node--subflow  { border-color: #a29bfe; }
