@@ -11,12 +11,15 @@ import {
 } from "@journeyman/flow-editor";
 import type { CustomAiStep, CanonicalTool, WorkflowInputValue, Shape } from "@journeyman/core";
 
-/** Expected shape for a custom-step bind field — only the clear primitives, else permissive. */
+/** Expected shape for a custom-step bind field. Returns undefined only when the
+ * target type is genuinely unconstrained (generic array / repoRef). */
 function expectedShapeForType(type: string): Shape | undefined {
   if (type === "string" || type === "workspaceDir") return { type: "string" };
   if (type === "number") return { type: "number" };
   if (type === "boolean") return { type: "boolean" };
-  return undefined; // string[]/object/array/repoRef — stay permissive
+  if (type === "string[]") return { type: "array", items: { type: "string" } };
+  if (type === "object") return { type: "object", fields: {} };
+  return undefined; // array (unknown items) / repoRef — stay permissive
 }
 
 interface CustomAiConfig {
