@@ -1130,16 +1130,73 @@ label.je-switch,
   margin-top: 4px;
 }
 
-/* Validation: node tile red dot (top-left to avoid clash with run-state badge) */
-.je-node-warning-dot {
+/* Validation: per-node issue badges (top-left corner).
+   Pill-shaped, color-coded, with a Lucide icon inside. Two badges
+   can stack horizontally when both severities are present. */
+.je-node-issue-badge {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff6b6b;
-  box-shadow: 0 0 4px #ff6b6b;
+  top: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  cursor: help;
+  user-select: none;
+  border: 1.5px solid rgb(var(--color-bg, 18 18 26));
+  z-index: 2;
+}
+
+.je-node-issue-badge--error {
+  left: -6px;
+  background: #ef4444;
+  animation: je-issue-pulse 2.4s ease-in-out infinite;
+}
+
+.je-node-issue-badge--warning {
+  left: 18px;
+  background: #f59e0b;
+}
+
+/* When error is absent, warning takes the leftmost slot. */
+.je-node-issue-badge--error + .je-node-issue-badge--warning {
+  left: 18px;
+}
+.je-node-issue-badge--warning:first-child,
+.je-node-issue-badge--warning:only-child {
+  left: -6px;
+}
+
+.je-node-issue-badge__count {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@keyframes je-issue-pulse {
+  0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.35), 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50%      { box-shadow: 0 1px 3px rgba(0,0,0,0.35), 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+/* Multi-out indicator: small branch glyph in top-right corner (offset from
+   the status badge at right:4) when a step has 2+ default outgoing edges. */
+.je-node-fork-dot {
+  position: absolute;
+  top: 2px;
+  right: 18px;
+  font-size: 12px;
+  line-height: 1;
+  color: #00b894;
+  font-weight: 700;
+  letter-spacing: -1px;
   pointer-events: auto;
   cursor: help;
 }
@@ -1795,3 +1852,39 @@ label.je-switch,
 }
 .jm-properties-panel-section fieldset legend { font-size: 12px; padding: 0 4px; }
 .jm-properties-panel-section ul { margin: 0; padding-left: 20px; font-size: 12px; }
+
+/* Node ID surfaced under panel title */
+.je-props__title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.je-props__id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #6b7280;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.je-props__id:hover { color: #111827; }
+.je-props__id:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
+.je-props__id--copied { color: #16a34a; }
+
+/* Inline clickable node IDs inside validation messages */
+.je-issue-message { word-break: break-word; }
+.je-issue-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: inherit;
+  color: #6aa3ff;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.je-issue-link:hover { color: #8fbeff; }
+.je-issue-link:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
