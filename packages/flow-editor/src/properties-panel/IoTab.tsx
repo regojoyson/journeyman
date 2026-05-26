@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import type { WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
-import { ValuePicker } from "./ValuePicker.tsx";
+import { MentionInput } from "./MentionInput.tsx";
+import { toMentionFields } from "./mention-fields.ts";
+import { soleRefOf, type Segment } from "./mention-serialize.ts";
 import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
@@ -36,7 +38,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
   const catalog = useStepCatalog();
   const customStepDefs = useCustomStepDefs(collectCustomStepIds(flow));
   const sources = useUpstreamSources(flow, node.id, catalog, customStepDefs);
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const mentionFields = useMemo(() => toMentionFields(sources), [sources]);
 
   const renameKey = (oldKey: string, newKey: string) => {
     if (oldKey === newKey) return;
@@ -65,9 +67,8 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {Object.entries(inputs).map(([k, v]) => {
             const ref = getRef(v);
-            const isPicking = pickerFor === k;
             return (
-              <div key={k} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <div key={k} style={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
                 <input
                   type="text" value={k}
                   disabled={readOnly}
@@ -75,29 +76,15 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
                   style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}
                   onChange={e => renameKey(k, e.target.value)}
                 />
-                {ref ? (
-                  <div className="je-props__bound-pill" style={{ flex: 2 }}>
-                    <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
-                    <code className="je-props__bound-pill-ref">{ref}</code>
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        className="je-props__bound-pill-unbind"
-                        onClick={() => setRef(k, "")}
-                        title="unbind"
-                      >×</button>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => setPickerFor(isPicking ? null : k)}
-                    style={{ flex: 2, background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer", textAlign: "left" }}
-                  >
-                    {`{x} Pick value…`}
-                  </button>
-                )}
+                <div style={{ flex: 2 }}>
+                  <MentionInput
+                    value={ref ? [{ kind: "ref", ref }] : []}
+                    fields={mentionFields}
+                    readOnly={readOnly}
+                    placeholder="@ to pick a value"
+                    onChange={(segs: Segment[]) => setRef(k, soleRefOf(segs) ?? "")}
+                  />
+                </div>
                 <button
                   disabled={readOnly}
                   onClick={() => removeRow(k)}
@@ -112,15 +99,6 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
             onClick={addRow}
             style={{ marginTop: 6, background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}
           >+ Add</button>
-        )}
-        {pickerFor !== null && (
-          <div className="je-props__picker-popover">
-            <ValuePicker
-              sources={sources}
-              onPick={ref => { setRef(pickerFor, ref); setPickerFor(null); }}
-              onClose={() => setPickerFor(null)}
-            />
-          </div>
         )}
       </div>
 
