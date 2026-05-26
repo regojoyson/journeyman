@@ -204,9 +204,12 @@ export function Topbar(p: TopbarProps) {
           background: "#2a1a1a", borderBottom: "1px solid #ff7675",
           color: "#ff7675", fontSize: 11, padding: "6px 14px",
         }}>
-          {p.validationErrors.length === 1
-            ? p.validationErrors[0]
-            : `${p.validationErrors.length} validation issues — ${p.validationErrors[0]}`}
+          {p.validationErrors.length > 1 && (
+            <>{p.validationErrors.length} validation issues — </>
+          )}
+          {p.flow && p.onFocusNode
+            ? <IssueMessage flow={p.flow} message={p.validationErrors[0]} onSelectNode={p.onFocusNode} />
+            : p.validationErrors[0]}
         </div>
       )}
       {report && (
