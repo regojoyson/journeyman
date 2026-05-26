@@ -2,14 +2,24 @@ export type Segment =
   | { kind: "text"; text: string }
   | { kind: "ref"; ref: string };
 
-const REF_RE = /\$\{([^}]*)\}/g;
+/**
+ * Reference delimiter syntax. `"dollar"` → `${ref}` (used by ConfigTab config
+ * templates); `"braces"` → `{{ref}}` (used by custom-ai step template inputs).
+ */
+export type RefSyntax = "dollar" | "braces";
+
+const REF_RE: Record<RefSyntax, RegExp> = {
+  dollar: /\$\{([^}]*)\}/g,
+  braces: /\{\{([^}]*)\}\}/g,
+};
 
 /** Split a stored template string into ordered text/ref segments. */
-export function parseTemplate(s: string): Segment[] {
+export function parseTemplate(s: string, syntax: RefSyntax = "dollar"): Segment[] {
   if (!s) return [];
   const out: Segment[] = [];
   let last = 0;
-  for (const m of s.matchAll(REF_RE)) {
+  const re = new RegExp(REF_RE[syntax].source, "g");
+  for (const m of s.matchAll(re)) {
     const idx = m.index ?? 0;
     if (idx > last) out.push({ kind: "text", text: s.slice(last, idx) });
     out.push({ kind: "ref", ref: m[1] });
@@ -19,10 +29,11 @@ export function parseTemplate(s: string): Segment[] {
   return out;
 }
 
-/** Join segments back into a template string, wrapping refs as ${ref}. */
-export function segmentsToTemplate(segs: Segment[]): string {
+/** Join segments back into a template string, wrapping refs per the syntax. */
+export function segmentsToTemplate(segs: Segment[], syntax: RefSyntax = "dollar"): string {
+  const wrap = (ref: string) => (syntax === "braces" ? "{{" + ref + "}}" : "${" + ref + "}");
   return segs
-    .map(seg => (seg.kind === "text" ? seg.text : "${" + seg.ref + "}"))
+    .map(seg => (seg.kind === "text" ? seg.text : wrap(seg.ref)))
     .join("");
 }
 

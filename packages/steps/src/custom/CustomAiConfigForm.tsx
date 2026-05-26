@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { StepFormProps } from "@journeyman/flow-editor";
-import { useOrgId, ValuePicker } from "@journeyman/flow-editor";
+import {
+  useOrgId,
+  MentionInput,
+  toMentionFields,
+  parseTemplate,
+  segmentsToTemplate,
+  soleRefOf,
+  type Segment,
+} from "@journeyman/flow-editor";
 import type { CustomAiStep, CanonicalTool, WorkflowInputValue } from "@journeyman/core";
 
 interface CustomAiConfig {
@@ -14,9 +22,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
   const orgId = useOrgId();
   const [step, setStep] = useState<CustomAiStep | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
-  const [templateInsertFor, setTemplateInsertFor] = useState<string | null>(null);
-  const cursorByField = useRef<Record<string, number>>({});
+  const mentionFields = useMemo(() => toMentionFields(sources ?? []), [sources]);
 
   useEffect(() => {
     if (!config.customStepId || !orgId) return;
@@ -42,7 +48,13 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
   if (!step) return <div className="je-props__field-help">Loading custom step…</div>;
 
   const editHref = step.scope === "user" ? "/me/custom-steps" : "/admin/custom-steps";
+  const removeInput = (name: string) => {
+    const next = { ...inputs };
+    delete next[name];
+    setInputs(next);
+  };
   const setRef = (name: string, ref: string) => {
+    if (!ref) { removeInput(name); return; }
     setInputs({ ...inputs, [name]: { kind: "ref", ref } as WorkflowInputValue });
   };
   const getRef = (name: string): string => {
@@ -50,6 +62,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
     return v && v.kind === "ref" ? v.ref : "";
   };
   const setTemplate = (name: string, template: string) => {
+    if (!template) { removeInput(name); return; }
     setInputs({ ...inputs, [name]: { kind: "template", template } as WorkflowInputValue });
   };
   const getTemplate = (name: string): string => {
@@ -85,57 +98,24 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
         )}
         {step.inputFields.map((f) => {
           if (f.type === "template") {
-            const tpl = getTemplate(f.name);
-            const empty = tpl.trim().length === 0;
-            const showError = f.required && empty;
-            const insertOpen = templateInsertFor === f.name;
+            const segs = parseTemplate(getTemplate(f.name), "braces");
+            const showError = f.required && segs.length === 0;
             return (
-              <div key={f.name} className="je-props__field" style={{ position: "relative" }}>
+              <div key={f.name} className={`je-props__field${showError ? " je-props__field--invalid" : ""}`}>
                 <div className="je-props__field-label-row">
                   <label>
                     {f.name}
                     {f.required && <span className="je-props__required-mark">*</span>}
                   </label>
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    className="je-props__bind-icon"
-                    onClick={() => setTemplateInsertFor(insertOpen ? null : f.name)}
-                    title="insert upstream value"
-                  >
-                    {`{x}`}
-                  </button>
                 </div>
-                <textarea
-                  value={tpl}
-                  disabled={readOnly}
-                  rows={4}
-                  onChange={(e) => {
-                    cursorByField.current[f.name] = e.target.selectionStart;
-                    setTemplate(f.name, e.target.value);
-                  }}
-                  onSelect={(e) => {
-                    cursorByField.current[f.name] = (e.target as HTMLTextAreaElement).selectionStart;
-                  }}
-                  style={{
-                    borderColor: showError ? "#ff7675" : undefined,
-                  }}
+                <MentionInput
+                  value={segs}
+                  fields={mentionFields}
+                  readOnly={readOnly}
+                  placeholder="Type, or @ to insert an upstream value"
+                  onChange={(next: Segment[]) => setTemplate(f.name, segmentsToTemplate(next, "braces"))}
                 />
                 {f.description && <div className="je-props__field-help">{f.description}</div>}
-                {insertOpen && (
-                  <div className="je-props__picker-popover">
-                    <ValuePicker
-                      sources={sources ?? []}
-                      onPick={(ref) => {
-                        const pos = cursorByField.current[f.name] ?? tpl.length;
-                        const next = tpl.slice(0, pos) + `{{${ref}}}` + tpl.slice(pos);
-                        setTemplate(f.name, next);
-                        setTemplateInsertFor(null);
-                      }}
-                      onClose={() => setTemplateInsertFor(null)}
-                    />
-                  </div>
-                )}
               </div>
             );
           }
@@ -150,48 +130,18 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
                   {f.name}
                   {f.required && <span className="je-props__required-mark">*</span>}
                 </label>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className={`je-props__bind-icon${isBound ? " je-props__bind-icon--bound" : ""}`}
-                    onClick={() => setPickerFor(pickerFor === f.name ? null : f.name)}
-                    title={isBound ? `bound to ${ref}` : "bind to upstream value"}
-                  >
-                    {`{x}`}
-                  </button>
-                )}
               </div>
-              {isBound ? (
-                <div className="je-props__bound-pill">
-                  <span className="je-props__bound-pill-icon" aria-hidden>↳</span>
-                  <code className="je-props__bound-pill-ref">{ref}</code>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      className="je-props__bound-pill-unbind"
-                      onClick={() => setRef(f.name, "")}
-                      title="unbind"
-                    >×</button>
-                  )}
-                </div>
-              ) : (
-                <div className="je-props__bind-only-empty">
-                  {f.required ? "Required — bind from upstream" : "Optional — not bound"}
-                </div>
-              )}
+              <MentionInput
+                value={ref ? [{ kind: "ref", ref }] : []}
+                fields={mentionFields}
+                readOnly={readOnly}
+                placeholder={f.required ? "Required — @ to bind from upstream" : "Optional — @ to bind"}
+                onChange={(next: Segment[]) => setRef(f.name, soleRefOf(next) ?? "")}
+              />
               {f.description && <div className="je-props__field-help">{f.description}</div>}
             </div>
           );
         })}
-        {pickerFor !== null && (
-          <div className="je-props__picker-popover">
-            <ValuePicker
-              sources={sources ?? []}
-              onPick={(ref) => { setRef(pickerFor, ref); setPickerFor(null); }}
-              onClose={() => setPickerFor(null)}
-            />
-          </div>
-        )}
       </div>
 
       <div>

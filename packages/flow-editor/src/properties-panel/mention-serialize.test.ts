@@ -55,4 +55,21 @@ assert.equal(soleRefOf([
 // soleRefOf: no refs → null
 assert.equal(soleRefOf([{ kind: "text", text: "hi" }]), null);
 
+// --- braces syntax ({{ref}}) ---
+assert.deepEqual(parseTemplate("hi {{a.output.x}}!", "braces"), [
+  { kind: "text", text: "hi " },
+  { kind: "ref", ref: "a.output.x" },
+  { kind: "text", text: "!" },
+]);
+assert.deepEqual(parseTemplate("${a.output.x}", "braces"), [
+  { kind: "text", text: "${a.output.x}" },
+]); // dollar form is plain text under braces syntax
+assert.equal(
+  segmentsToTemplate([
+    { kind: "text", text: "hi " },
+    { kind: "ref", ref: "a.output.x" },
+  ], "braces"),
+  "hi {{a.output.x}}",
+);
+
 console.log("mention-serialize: ok");
