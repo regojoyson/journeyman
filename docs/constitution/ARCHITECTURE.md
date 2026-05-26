@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — System & Package Layout
 
-Linked from [AGENT.md](AGENT.md). Provider-agnostic guide to where things live and why.
+Linked from [AGENTS.md](../../AGENTS.md). Provider-agnostic guide to where things live and why.
 
 ## 5-layer logical overview
 
@@ -30,10 +30,10 @@ Run `npm run check:boundaries` to validate. If you add a package, update the scr
 
 ```
 journeyman/
-├── AGENT.md ← entry point for AI agents
+├── AGENTS.md ← entry point for AI agents
 ├── CONSTITUTION.md / ARCHITECTURE.md (this) / CODE_REVIEW.md
 ├── UNIT_TESTING.md / DEPLOYMENT.md / SECURITY.md / VERSION_MANAGEMENT.md
-├── CLAUDE.md ← Claude Agent SDK deep dive (defers to AGENT.md)
+├── CLAUDE.md ← Claude Agent SDK deep dive (defers to AGENTS.md)
 ├── .env.example
 ├── docs/ examples/ infra/ scripts/
 └── packages/

@@ -1,6 +1,6 @@
 # SECURITY.md — Security Standards
 
-Linked from [AGENT.md](AGENT.md). Mandatory for any change touching auth, secrets, user input, or external systems.
+Linked from [AGENTS.md](../../AGENTS.md). Mandatory for any change touching auth, secrets, user input, or external systems.
 
 ## Secrets handling
 

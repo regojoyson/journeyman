@@ -163,6 +163,7 @@ Human Task and Webhook Wait are **separate** node types — one is person-driven
 |---|---|
 | [Constitution](docs/constitution/CONSTITUTION.md) | Non-negotiable operating principles for all contributors |
 | [Architecture](docs/constitution/ARCHITECTURE.md) | System and package layout, import boundaries |
+| [Database Architecture](docs/constitution/DATABASE_ARCHITECTURE.md) | PostgreSQL schema, ER diagrams, sequence diagrams, and storage patterns |
 | [Code Review](docs/constitution/CODE_REVIEW.md) | Code review standards |
 | [Unit Testing](docs/constitution/UNIT_TESTING.md) | Test conventions and verification requirements |
 | [Deployment](docs/constitution/DEPLOYMENT.md) | Infra, migrations, and environment configuration |

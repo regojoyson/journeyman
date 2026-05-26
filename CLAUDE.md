@@ -24,7 +24,7 @@ journeyman/                  ← repo root
 ├── README.md
 ├── package.json             ← workspaces: ["packages/*"]
 ├── docs/                    ← architecture diagrams, quickstart, setup
-│   └── constitution/        ← developer guidelines (ARCHITECTURE, CONSTITUTION, SECURITY, …)
+│   └── constitution/        ← developer guidelines (ARCHITECTURE, DATABASE_ARCHITECTURE, CONSTITUTION, SECURITY, …)
 ├── examples/
 ├── infra/                   ← docker-compose (Postgres, Redis, Conductor)
 ├── scripts/                 ← check-import-boundaries.mjs, etc.
@@ -120,6 +120,7 @@ journeyman/                  ← repo root
 - **Coding-CLI vs Git-Provider distinction**: `coding-cli` runs git ops *locally via bash* (clone, scan, reset). `git-provider` calls *remote REST APIs* (PRs, webhooks). Don't mix them.
 - **Stub pattern**: unimplemented methods throw `new Error("<ClassName>.<method> not implemented")` — never silent no-ops.
 - **Import boundaries** enforced via `npm run check:boundaries` (see [scripts/check-import-boundaries.mjs](scripts/check-import-boundaries.mjs)).
+- **Database**: PostgreSQL 16, direct SQL via `pg` (no ORM). All migrations are append-only in `packages/migrations/`. Before touching any DB table or adding a migration, read [docs/constitution/DATABASE_ARCHITECTURE.md](docs/constitution/DATABASE_ARCHITECTURE.md) for the full schema, ER diagrams, and patterns.
 
 ## coding-cli Internal Layout
 

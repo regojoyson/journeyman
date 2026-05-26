@@ -1,6 +1,6 @@
 # CONSTITUTION.md — Non-Negotiable Rules
 
-Linked from [AGENT.md](AGENT.md). These rules apply to **every AI agent** regardless of provider. They override defaults but never override an explicit user instruction.
+Linked from [AGENTS.md](../../AGENTS.md). These rules apply to **every AI agent** regardless of provider. They override defaults but never override an explicit user instruction.
 
 ## 1. Truth & verification
 
@@ -56,6 +56,6 @@ See [SECURITY.md](SECURITY.md). At minimum:
 
 Priority order:
 1. Explicit user instruction in the current conversation.
-2. Project files: `CLAUDE.md`, `AGENT.md`, `CONSTITUTION.md`.
-3. Topic-specific instruction files linked from [AGENT.md](AGENT.md).
+2. Project files: `CLAUDE.md`, `AGENTS.md`, `CONSTITUTION.md`.
+3. Topic-specific instruction files linked from [AGENTS.md](../../AGENTS.md).
 4. Provider defaults.

@@ -1,6 +1,6 @@
 # VERSION_MANAGEMENT.md — Versioning, Branching & Releases
 
-Linked from [AGENT.md](AGENT.md).
+Linked from [AGENTS.md](../../AGENTS.md).
 
 ## Current state
 

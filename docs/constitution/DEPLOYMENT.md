@@ -1,6 +1,6 @@
 # DEPLOYMENT.md — Infra, Migrations & Release Flow
 
-Linked from [AGENT.md](AGENT.md).
+Linked from [AGENTS.md](../../AGENTS.md).
 
 ## Local infrastructure
 

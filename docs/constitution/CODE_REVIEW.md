@@ -1,6 +1,6 @@
 # CODE_REVIEW.md — Review Standards
 
-Linked from [AGENT.md](AGENT.md). Applies to both human review and AI-assisted review.
+Linked from [AGENTS.md](../../AGENTS.md). Applies to both human review and AI-assisted review.
 
 ## Tooling baseline
 

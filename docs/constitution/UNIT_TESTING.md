@@ -1,6 +1,6 @@
 # UNIT_TESTING.md — Test Standards
 
-Linked from [AGENT.md](AGENT.md).
+Linked from [AGENTS.md](../../AGENTS.md).
 
 ## Test runner
 

@@ -1,8 +1,8 @@
-# AGENT.md — AI Agent Instructions (Journeyman)
+# AGENTS.md — AI Agent Instructions (Journeyman)
 
 This file is the **entry point for any AI coding agent** (Claude, Codex, Gemini, Cursor, Copilot, etc.) working on this repository. It is intentionally provider-neutral.
 
-If your runtime has its own convention file (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `AGENTS.md`), treat **this file and its links as the source of truth**. Provider-specific files should defer here. The existing [CLAUDE.md](CLAUDE.md) covers Claude Agent SDK specifics and is consistent with these docs.
+If your runtime has its own convention file (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`), treat **this file and its links as the source of truth**. Provider-specific files should defer here. The existing [CLAUDE.md](CLAUDE.md) covers Claude Agent SDK specifics and is consistent with these docs.
 
 ## How to use this file
 
@@ -12,7 +12,7 @@ If your runtime has its own convention file (`CLAUDE.md`, `.cursorrules`, `GEMIN
 
 ## Project summary
 
-Journeyman is a configurable, step-based AI pipeline that automates **ticket → code → PR** workflows. It is an **npm-workspaces monorepo** (`packages/*`, currently 21 packages, all at version `0.1.0`) using a provider pattern. Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) live in `@journeyman/core`; implementations live in their respective packages. See [ARCHITECTURE.md](ARCHITECTURE.md).
+Journeyman is a configurable, step-based AI pipeline that automates **ticket → code → PR** workflows. It is an **npm-workspaces monorepo** (`packages/*`, currently 21 packages, all at version `0.1.0`) using a provider pattern. Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) live in `@journeyman/core`; implementations live in their respective packages. Storage is **PostgreSQL 16** via direct SQL (no ORM) + Redis for the job queue.
 
 ## Instruction index
 
@@ -20,6 +20,7 @@ Journeyman is a configurable, step-based AI pipeline that automates **ticket →
 |---|---|---|
 | Operating principles | [CONSTITUTION.md](docs/constitution/CONSTITUTION.md) | Always — non-negotiable rules. |
 | System & package layout | [ARCHITECTURE.md](docs/constitution/ARCHITECTURE.md) | Before adding packages, providers, or cross-cutting changes. |
+| Database schema & diagrams | [DATABASE_ARCHITECTURE.md](docs/constitution/DATABASE_ARCHITECTURE.md) | Before touching any DB table, writing a migration, or querying data. |
 | Code review standards | [CODE_REVIEW.md](docs/constitution/CODE_REVIEW.md) | When reviewing or self-reviewing changes. |
 | Tests & verification | [UNIT_TESTING.md](docs/constitution/UNIT_TESTING.md) | When adding/changing tests or before claiming done. |
 | Infra, migrations, deploys | [DEPLOYMENT.md](docs/constitution/DEPLOYMENT.md) | When touching infra, migrations, or env config. |
