@@ -16,6 +16,12 @@ export interface SchemaFormProps {
   renderFieldBindControl?: (key: string) => ReactNode;
   /** Renders the bound-state pill that replaces the input when a key is bound. */
   renderBoundPill?: (key: string) => ReactNode;
+  /**
+   * Optional override for a field's value control. When it returns a node,
+   * it replaces the bind control + pill + default input for that field.
+   * Used to mount the @-mention chip input for string-like fields.
+   */
+  renderFieldInput?: (key: string, meta: FieldMeta) => ReactNode | null;
   /** Optional per-key validation warnings to render with red highlight + inline message. */
   warningsByKey?: Map<string, WorkflowSaveWarning>;
 }
@@ -23,6 +29,7 @@ export interface SchemaFormProps {
 export function SchemaForm({
   config, fields, schema, onChange, readOnly,
   boundKeys, renderFieldBindControl, renderBoundPill, warningsByKey,
+  renderFieldInput,
 }: SchemaFormProps) {
   const set = (key: string, value: unknown) => onChange({ ...config, [key]: value });
 
@@ -56,6 +63,19 @@ export function SchemaForm({
                 />
                 {meta.label}
               </label>
+              {meta.help && <div className="je-props__field-help">{meta.help}</div>}
+              {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
+            </div>
+          );
+        }
+        const override = renderFieldInput?.(key, meta) ?? null;
+        if (override) {
+          return (
+            <div key={key} className={fieldClass}>
+              <div className="je-props__field-label-row">
+                <label>{meta.label}</label>
+              </div>
+              {override}
               {meta.help && <div className="je-props__field-help">{meta.help}</div>}
               {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
             </div>
