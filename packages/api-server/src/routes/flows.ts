@@ -240,7 +240,7 @@ export function computeValidationReport(
       const cv = config[fieldName];
       const hasTyped = cv !== undefined && cv !== null && cv !== "";
       if (!hasBinding && !hasTyped) {
-        missing.push(`'${node.displayName ?? node.id}' (${node.stepType}) is missing required input '${fieldName}'`);
+        missing.push(`'${node.displayName ?? node.id}' (${node.id}) is missing required input '${fieldName}' (${node.stepType})`);
       }
     }
   }
@@ -373,7 +373,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const seenWarnings = new Set(report.warnings);
     for (const e of publishResult.errors) {
       const label = e.nodeLabel ?? (e.nodeId ? "Unknown step" : "Flow");
-      const msg = `[${label}] ${e.message}`;
+      // Include the bare node ID in parens so the flow-editor's IssueMessage
+      // component can linkify it (jump-to-node from the validation banner).
+      const msg = e.nodeId
+        ? `[${label}] (${e.nodeId}) ${e.message}`
+        : `[${label}] ${e.message}`;
       if (e.severity === "warning") {
         if (!seenWarnings.has(msg)) { report.warnings.push(msg); seenWarnings.add(msg); }
       } else if (e.code === "missing_config" || e.code === "unresolved_binding") {
