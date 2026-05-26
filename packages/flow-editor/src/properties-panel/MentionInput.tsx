@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Shape } from "@journeyman/core";
+import { validateInputBinding, shapeTag } from "@journeyman/core";
 import type { Segment } from "./mention-serialize.ts";
 import type { MentionField } from "./mention-fields.ts";
 
@@ -7,6 +9,8 @@ interface Props {
   fields: MentionField[];
   placeholder?: string;
   readOnly?: boolean;
+  /** Target field's expected shape. When set, type-incompatible options are dimmed and not selectable. */
+  expected?: Shape;
   onChange: (segments: Segment[]) => void;
 }
 
@@ -64,7 +68,18 @@ function fieldsKey(fields: MentionField[]): string {
   return fields.map(f => f.ref).join(",");
 }
 
-export function MentionInput({ value, fields, placeholder, readOnly, onChange }: Props) {
+/** Type-compatibility of a candidate field against the target's expected shape. */
+function incompatReason(expected: Shape | undefined, f: MentionField): string | null {
+  if (!expected) return null;
+  const check = validateInputBinding(expected, f.shape);
+  if (check.ok) return null;
+  if (check.reason === "shape-mismatch") {
+    return `Type mismatch: expected ${shapeTag(check.expected)}, got ${shapeTag(check.actual)}`;
+  }
+  return null; // unknown-shape — stay permissive
+}
+
+export function MentionInput({ value, fields, placeholder, readOnly, expected, onChange }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [menu, setMenu] = useState<{ query: string } | null>(null);
   const [active, setActive] = useState(0);
@@ -150,7 +165,7 @@ export function MentionInput({ value, fields, placeholder, readOnly, onChange }:
     if (menu && filtered.length > 0) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActive(a => Math.min(a + 1, filtered.length - 1)); return; }
       if (e.key === "ArrowUp")   { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); return; }
-      if (e.key === "Enter")     { e.preventDefault(); insertChip(filtered[active]); return; }
+      if (e.key === "Enter")     { e.preventDefault(); if (!incompatReason(expected, filtered[active])) insertChip(filtered[active]); return; }
       if (e.key === "Escape")    { e.preventDefault(); setMenu(null); return; }
     }
   };
@@ -169,19 +184,27 @@ export function MentionInput({ value, fields, placeholder, readOnly, onChange }:
       />
       {menu && filtered.length > 0 && !readOnly && (
         <div className="je-mention__menu">
-          {filtered.map((f, i) => (
-            <div
-              key={f.ref}
-              className={`je-mention__item${i === active ? " je-mention__item--active" : ""}`}
-              onMouseDown={(e) => { e.preventDefault(); insertChip(f); }}
-            >
-              <span className="je-mention__item-src">
-                {f.sourceLabel}{f.showId ? ` #${f.sourceId.slice(-6)}` : ""}
-              </span>
-              <span className="je-mention__item-path">{f.fieldPath}</span>
-              {f.type && <span className="je-mention__item-type">{f.type}</span>}
-            </div>
-          ))}
+          {filtered.map((f, i) => {
+            const reason = incompatReason(expected, f);
+            const cls = `je-mention__item`
+              + (i === active ? " je-mention__item--active" : "")
+              + (reason ? " je-mention__item--incompatible" : "");
+            return (
+              <div
+                key={f.ref}
+                className={cls}
+                title={reason ?? undefined}
+                aria-disabled={reason ? true : undefined}
+                onMouseDown={(e) => { e.preventDefault(); if (!reason) insertChip(f); }}
+              >
+                <span className="je-mention__item-src">
+                  {f.sourceLabel}{f.showId ? ` #${f.sourceId.slice(-6)}` : ""}
+                </span>
+                <span className="je-mention__item-path">{f.fieldPath}</span>
+                {f.type && <span className="je-mention__item-type">{f.type}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

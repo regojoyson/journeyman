@@ -2045,3 +2045,9 @@ button.je-condition-row__pick:hover {
 .je-mention__item-src { color: #8fbeff; white-space: nowrap; }
 .je-mention__item-path { color: #ddd; flex: 1; }
 .je-mention__item-type { color: #7a7f8c; font-size: 10px; }
+
+.je-mention__item--incompatible {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.je-mention__item--incompatible:hover { background: transparent; }

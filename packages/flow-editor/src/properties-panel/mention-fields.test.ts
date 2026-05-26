@@ -47,6 +47,7 @@ assert.ok(ticket);
 assert.equal(ticket!.fieldPath, "ticketId");
 assert.equal(ticket!.type, "string");
 assert.equal(ticket!.showId, false);
+assert.deepEqual(ticket!.shape, { type: "string" });
 
 // output leaf
 const approved = fields.find(f => f.ref === "ht_a1b2c3.output.approved");

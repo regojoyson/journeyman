@@ -9,6 +9,8 @@ export interface MentionField {
   showId: boolean;
   fieldPath: string;
   type?: string;
+  /** Resolved leaf shape — used for type-compatibility checks against a target field. */
+  shape: Shape;
 }
 
 function refFor(scope: UpstreamField["scope"], sourceId: string, path: string[]): string {
@@ -25,18 +27,18 @@ function fieldPathFor(scope: UpstreamField["scope"], path: string[]): string {
   return `output.${tail}`;
 }
 
-interface Leaf { path: string[]; type?: string }
+interface Leaf { path: string[]; type?: string; shape: Shape }
 
 function flatten(shape: Shape, prefix: string[]): Leaf[] {
   let resolved: Shape;
   try { resolved = resolveShape(shape); } catch { resolved = shape; }
   if (resolved.type === "object") {
     const entries = Object.entries(resolved.fields);
-    if (entries.length === 0) return [{ path: prefix, type: "object" }];
+    if (entries.length === 0) return [{ path: prefix, type: "object", shape: resolved }];
     return entries.flatMap(([k, sub]) => flatten(sub, [...prefix, k]));
   }
-  if (resolved.type === "array") return [{ path: prefix, type: "array" }];
-  return [{ path: prefix, type: resolved.type }];
+  if (resolved.type === "array") return [{ path: prefix, type: "array", shape: resolved }];
+  return [{ path: prefix, type: resolved.type, shape: resolved }];
 }
 
 export function toMentionFields(sources: UpstreamSource[]): MentionField[] {
@@ -56,6 +58,7 @@ export function toMentionFields(sources: UpstreamSource[]): MentionField[] {
             showId,
             fieldPath: fieldPathFor(group.scope, leaf.path),
             type: leaf.type,
+            shape: leaf.shape,
           });
         }
       }

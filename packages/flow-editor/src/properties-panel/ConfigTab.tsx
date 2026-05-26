@@ -109,6 +109,21 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const mentionFields = useMemo(() => toMentionFields(sources), [sources]);
   const MENTION_WIDGETS = new Set(["text", "textarea", "code"]);
 
+  /** Best-effort expected shape for a config field, from its widget. */
+  const shapeForWidget = (widget?: string): import("@journeyman/core").Shape | undefined => {
+    if (widget === "number") return { type: "number" };
+    if (widget === "checkbox") return { type: "boolean" };
+    if (widget === "text" || widget === "textarea" || widget === "code" || widget === "select" || widget === "secret") {
+      return { type: "string" };
+    }
+    return undefined;
+  };
+  const expectedForKey = (key: string): import("@journeyman/core").Shape | undefined => {
+    const inputShape = (catalogEntry?.inputFields?.[key] as { shape?: import("@journeyman/core").Shape } | undefined)?.shape;
+    if (inputShape) return inputShape;
+    return shapeForWidget(definition?.configFields?.[key]?.widget);
+  };
+
   /** Build the initial chip-editor segments for a field from its stored value. */
   const segmentsForField = (key: string): Segment[] => {
     const bound = inputsMap[key];
@@ -144,6 +159,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
         value={segmentsForField(key)}
         fields={mentionFields}
         readOnly={readOnly}
+        expected={expectedForKey(key)}
         onChange={segs => commitSegments(key, segs)}
       />
     );
@@ -309,6 +325,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                       value={segmentsForField(key)}
                       fields={mentionFields}
                       readOnly={readOnly}
+                      expected={expectedForKey(key)}
                       placeholder={isRequired ? "Required — @ to bind from upstream" : "Optional — @ to bind"}
                       onChange={segs => commitSegments(key, segs)}
                     />
@@ -324,6 +341,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                 value={inputsMap[pickerFor]?.ref ? [{ kind: "ref", ref: inputsMap[pickerFor]!.ref! }] : []}
                 fields={mentionFields}
                 readOnly={readOnly}
+                expected={expectedForKey(pickerFor)}
                 placeholder="@ to bind from upstream"
                 onChange={segs => {
                   const sole = soleRefOf(segs);
