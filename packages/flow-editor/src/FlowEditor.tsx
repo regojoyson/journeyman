@@ -1,5 +1,5 @@
 // packages/flow-editor/src/FlowEditor.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "./canvas/Canvas.tsx";
 import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
@@ -130,6 +130,13 @@ export function FlowEditor(props: FlowEditorProps) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [unpublishOpen, setUnpublishOpen] = useState(false);
   const [unpublishWarning, setUnpublishWarning] = useState<UnpublishWarning | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ nodeId: string; tick: number } | undefined>(undefined);
+
+  const focusNode = useCallback((id: string): void => {
+    s.setSelectedNodeId(id);
+    setFlowConfigOpen(false);
+    setFocusRequest(prev => ({ nodeId: id, tick: (prev?.tick ?? 0) + 1 }));
+  }, [s]);
 
   const handlePublishClick = (): void => { setPublishOpen(true); };
   const handleUnpublishClick = async (): Promise<void> => {
@@ -161,7 +168,7 @@ export function FlowEditor(props: FlowEditorProps) {
   return (
     <StepRegistryProvider steps={props.steps}>
      <OrgIdProvider orgId={props.orgId}>
-      <ValidationProvider inputWarnings={inputWarnings}>
+      <ValidationProvider inputWarnings={inputWarnings} graphIssues={validity.issues}>
       <div className="je-editor">
         <Topbar
           flowName={props.flowName}
@@ -185,6 +192,7 @@ export function FlowEditor(props: FlowEditorProps) {
           status={props.status}
           onPublishClick={props.onPublish ? handlePublishClick : undefined}
           onUnpublishClick={props.onUnpublish ? handleUnpublishClick : undefined}
+          onFocusNode={focusNode}
         />
         {effectiveReadOnly && props.status === "ready" && (
           <div className="fe-readonly-banner">
@@ -222,6 +230,7 @@ export function FlowEditor(props: FlowEditorProps) {
                 onChange={props.onChange}
                 readOnly={effectiveReadOnly}
                 stepRunStates={props.stepRunStates}
+                focusRequest={focusRequest}
               />
               {rightPanelOpen && (
                 <>
@@ -293,7 +302,7 @@ export function FlowEditor(props: FlowEditorProps) {
             flow={heal.healed}
             hasTrigger={true}
             onCancel={() => setPublishOpen(false)}
-            onSelectNode={(id) => { s.setSelectedNodeId(id); }}
+            onSelectNode={focusNode}
             onConfirm={async () => {
               const r = await props.onPublish!();
               if (r.ok && !r.warnings?.length) setPublishOpen(false);
