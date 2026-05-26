@@ -1,7 +1,7 @@
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 
 /**
- * Inspect a workflow's tasks. For every JOIN with `inputData.errorMode === "first-wins"`
+ * Inspect a workflow's tasks. For every JOIN with `inputData.mode === "first-wins"`
  * that is still IN_PROGRESS:
  *   - find the first branch whose terminal task has status COMPLETED
  *   - for every OTHER branch's still-pending task (IN_PROGRESS or SCHEDULED),
@@ -23,11 +23,11 @@ export async function applyFirstWinsCancellation(
 
   for (const join of joins) {
     const params = (join.inputData ?? {}) as {
-      errorMode?: string;
+      mode?: string;
       branchTaskRefs?: string[][];
       joinOn?: string[];
     };
-    if (params.errorMode !== "first-wins") continue;
+    if (params.mode !== "first-wins") continue;
     const branches = params.branchTaskRefs ?? [];
     if (branches.length < 2) continue;
 

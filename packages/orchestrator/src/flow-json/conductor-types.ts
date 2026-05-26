@@ -37,8 +37,8 @@ export interface JoinTask {
   taskReferenceName: string;
   joinOn: string[];
   inputParameters?: {
-    /** Error / completion mode resolved from the Join node config. */
-    errorMode?: "fail-fast" | "wait-all" | "wait-all-strict" | "first-wins";
+    /** Completion mode resolved from the Join node config. */
+    mode?: "fail-fast" | "wait-all" | "wait-all-strict" | "first-wins";
     /**
      * For first-wins: every branch's full task-reference-name list. The
      * first-wins controller uses this to know which sibling tasks to cancel

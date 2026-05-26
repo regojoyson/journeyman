@@ -212,7 +212,7 @@ Setup:
 - Fork has two outgoing branches.
 - Branch A: a single `human-task` asking *"Approve deploy?"*, output `approved: boolean`, optional Slack notify.
 - Branch B: a single `webhook-wait` listening for Jira `issue_updated` with `acceptIf: { "==": [{ "var": "issue.fields.status.name" }, "Done"] }`, output `jiraStatus: string` via `fromPath: "issue.fields.status.name"`.
-- Join: `errorMode: "first-wins"`.
+- Join: `mode: "first-wins"`.
 - Downstream `deploy-step` references `join.output` (works regardless of which branch won) or `humanTask1.approved` / `webhookWait1.jiraStatus` (only the winner's branch will have a real value).
 
 Result: whichever finishes first wins; the other branch's paused task is cancelled cleanly with no wasted work.

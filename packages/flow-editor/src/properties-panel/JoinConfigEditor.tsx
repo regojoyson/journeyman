@@ -1,4 +1,4 @@
-import type { WorkflowGraph, WorkflowNode, JoinErrorMode } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNode, JoinMode } from "@journeyman/core";
 
 interface Props {
   flow: WorkflowGraph;
@@ -7,7 +7,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-const MODE_OPTIONS: Array<{ value: JoinErrorMode; label: string; desc: string }> = [
+const MODE_OPTIONS: Array<{ value: JoinMode; label: string; desc: string }> = [
   { value: "fail-fast", label: "Fail fast", desc: "First branch error cancels the others and fails the workflow." },
   { value: "wait-all", label: "Wait for all", desc: "Let every branch finish. Workflow fails only if all branches failed." },
   { value: "wait-all-strict", label: "Wait for all (strict)", desc: "Let every branch finish. Workflow fails if any branch failed." },
@@ -15,8 +15,8 @@ const MODE_OPTIONS: Array<{ value: JoinErrorMode; label: string; desc: string }>
 ];
 
 export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
-  const cfg = (node.config ?? {}) as { errorMode?: JoinErrorMode; description?: string };
-  const mode: JoinErrorMode = cfg.errorMode ?? "fail-fast";
+  const cfg = (node.config ?? {}) as { mode?: JoinMode; description?: string };
+  const mode: JoinMode = cfg.mode ?? "fail-fast";
   const incomingBranches = flow.edges.filter(e => e.target === node.id).length;
 
   const update = (patch: Partial<typeof cfg>) => onChange({ ...node, config: { ...cfg, ...patch } });
@@ -24,11 +24,11 @@ export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
   return (
     <div className="je-tab je-tab--config">
       <div className="je-field">
-        <label className="je-field__label">Error mode</label>
+        <label className="je-field__label">Mode</label>
         <select
           value={mode}
           disabled={readOnly}
-          onChange={e => update({ errorMode: e.target.value as JoinErrorMode })}
+          onChange={e => update({ mode: e.target.value as JoinMode })}
         >
           {MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -62,7 +62,7 @@ export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
   );
 }
 
-function outputShapeFor(mode: JoinErrorMode): string {
+function outputShapeFor(mode: JoinMode): string {
   if (mode === "fail-fast") return "// no Join-level output; reference branch nodes by id, e.g. stepA.field";
   if (mode === "first-wins") return JSON.stringify({ winner: "<branchHeadNodeId>", output: "<winning branch's last node output>" }, null, 2);
   return JSON.stringify({ results: { "<branchHeadNodeId>": { status: "success | error | cancelled", output: "<...>" } } }, null, 2);

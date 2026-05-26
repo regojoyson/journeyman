@@ -5,8 +5,8 @@ import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 export interface JoinNodeData {
   displayName?: string;
   // Canvas adapter (Canvas.tsx#toReactWorkflowNodes) spreads node.config onto
-  // data for non-step nodes — so errorMode lives at data root.
-  errorMode?: "fail-fast" | "wait-all" | "wait-all-strict" | "first-wins";
+  // data for non-step nodes — so `mode` lives at data root.
+  mode?: "fail-fast" | "wait-all" | "wait-all-strict" | "first-wins";
   pendingBranches?: number;
   [key: string]: unknown;
 }
@@ -20,7 +20,7 @@ const MODE_LABEL: Record<string, string> = {
 
 export function JoinNode(props: NodeProps) {
   const data = props.data as JoinNodeData;
-  const mode = data.errorMode ?? "fail-fast";
+  const mode = data.mode ?? "fail-fast";
   return (
     <div className="je-node je-node--gateway je-node--join">
       <NodeIssueBadges nodeId={props.id} />

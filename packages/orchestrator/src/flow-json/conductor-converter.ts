@@ -523,7 +523,7 @@ class ConvertCtx {
     }
 
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").JoinConfig>;
-    const errorMode = cfg.errorMode ?? "fail-fast";
+    const mode = cfg.mode ?? "fail-fast";
 
     const branchTaskRefs: string[][] = (this.outgoing.get(forkId) ?? []).map(e => {
       const chain: string[] = [];
@@ -545,7 +545,7 @@ class ConvertCtx {
       taskReferenceName: node.id,
       joinOn,
       inputParameters: {
-        errorMode,
+        mode,
         branchTaskRefs,
         ...(cfg.description ? { description: cfg.description } : {}),
       },

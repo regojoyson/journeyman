@@ -25,7 +25,7 @@ export { HUMAN_TASK_RESERVED_KEYS } from "./types/human-task.types.ts";
 export type * from "./types/webhook-wait.types.ts";
 export { WEBHOOK_WAIT_RESERVED_KEYS } from "./types/webhook-wait.types.ts";
 export type {
-  JoinErrorMode,
+  JoinMode,
   ForkConfig,
   JoinConfig,
   JoinBranchResult,

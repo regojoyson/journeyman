@@ -1,4 +1,4 @@
-export type JoinErrorMode =
+export type JoinMode =
   | "fail-fast"
   | "wait-all"
   | "wait-all-strict"
@@ -9,8 +9,8 @@ export interface ForkConfig {
 }
 
 export interface JoinConfig {
-  /** How the join waits for branches and propagates failure. Default: "fail-fast". */
-  errorMode?: JoinErrorMode;
+  /** How the join waits for branches, cancels losers, and shapes its output. Default: "fail-fast". */
+  mode?: JoinMode;
   description?: string;
 }
 
@@ -23,7 +23,7 @@ export interface JoinBranchResult {
 
 /**
  * Shape exposed at runtime as the Join node's output. Which fields are
- * populated depends on the Join's `errorMode`:
+ * populated depends on the Join's `mode`:
  *   - `fail-fast`: no fields (the workflow either continues with no join
  *     payload or has failed).
  *   - `wait-all` / `wait-all-strict`: `results` keyed by each branch's head
