@@ -15,22 +15,21 @@ export function toReactWorkflowEdges(flow: WorkflowGraph): Edge[] {
       t === "conditional" ? "#fdcb6e" :
       t === "else"        ? "#888"    :
       /* default */        "#888";
-    // Map the edge to the correct named source handle on its source node so
-    // multi-handle nodes (If/Else, Loop, Step error-out) route edges to the
-    // intended port instead of stacking them on a single anchor.
-    //   "conditional" → "then" (IfNode#then)
-    //   "else"        → "else" (IfNode#else)
-    //   "error"       → "error" (StepNode#error)
-    //   anything else → "default"
-    const sourceHandle =
+    // For multi-handle source nodes (If/Else has "then"+"else"; Step has
+    // "default"+"error"; Loop has "body"+"exit"), set sourceHandle so React
+    // Flow routes the edge to the intended port instead of stacking edges on
+    // one anchor. Default edges leave sourceHandle undefined so single-handle
+    // nodes (triggers, end, join, gateway, etc. — whose source handle may not
+    // have an explicit `id`) still connect.
+    const sourceHandle: string | undefined =
       t === "conditional" ? "then"  :
       t === "else"        ? "else"  :
       t === "error"       ? "error" :
-      /* default */         "default";
+      /* default */         undefined;
     return {
       id: e.id,
       source: e.source,
-      sourceHandle,
+      ...(sourceHandle ? { sourceHandle } : {}),
       target: e.target,
       type: t,
       data: { branchLabel: e.branchLabel, condition: e.condition },
