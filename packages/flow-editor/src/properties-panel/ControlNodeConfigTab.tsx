@@ -15,7 +15,9 @@
 // existing JSONLogic value (or replace if empty).
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
-import { ValuePicker } from "./ValuePicker.tsx";
+import { MentionInput } from "./MentionInput.tsx";
+import { toMentionFields } from "./mention-fields.ts";
+import { parseTemplate, segmentsToTemplate, type Segment } from "./mention-serialize.ts";
 import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
@@ -43,42 +45,17 @@ interface ExprFieldProps {
 }
 
 function ExprField({ label, value, onChange, readOnly, sources }: ExprFieldProps) {
-  const [showPicker, setShowPicker] = useState(false);
+  const mentionFields = toMentionFields(sources);
   return (
     <div className="je-field">
       <label className="je-field__label">{label}</label>
-      <div className="je-field__row" style={{ display: "flex", gap: 4, position: "relative" }}>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={readOnly}
-          style={{ flex: 1 }}
-        />
-        <button
-          type="button"
-          title="Insert reference"
-          onClick={() => setShowPicker(true)}
-          disabled={readOnly}
-        >
-          {"{x}"}
-        </button>
-        {showPicker && (
-          <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 10 }}>
-            <ValuePicker
-              sources={sources}
-              onPick={(ref) => {
-                const literal = insertRef(ref, "expr") as string;
-                // Append at end. (Cursor-aware insertion would require a ref
-                // to the input element; append is sufficient for v0.)
-                onChange((value ?? "") + literal);
-                setShowPicker(false);
-              }}
-              onClose={() => setShowPicker(false)}
-            />
-          </div>
-        )}
-      </div>
+      <MentionInput
+        value={parseTemplate(value ?? "", "dollar")}
+        fields={mentionFields}
+        readOnly={readOnly}
+        placeholder="Type, or @ to insert a reference"
+        onChange={(segs: Segment[]) => onChange(segmentsToTemplate(segs, "dollar"))}
+      />
     </div>
   );
 }

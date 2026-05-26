@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import type { JsonLogicExpr } from "@journeyman/core";
-import { ValuePicker } from "../properties-panel/ValuePicker.tsx";
+import { MentionInput } from "../properties-panel/MentionInput.tsx";
+import { toMentionFields } from "../properties-panel/mention-fields.ts";
+import { soleRefOf, type Segment } from "../properties-panel/mention-serialize.ts";
 import type { UpstreamSource } from "../properties-panel/use-upstream-sources.ts";
 import { shapeForRef } from "./shape-for-ref.ts";
 
@@ -98,29 +100,19 @@ function RowEditor(p: {
   onChange: (r: Row) => void;
   onRemove: () => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
   const leafShape = useMemo(() => shapeForRef(p.row.varPath, p.sources), [p.row.varPath, p.sources]);
   const leafType = leafShape?.type;
+  const mentionFields = useMemo(() => toMentionFields(p.sources), [p.sources]);
 
   return (
     <div className="je-condition-row">
       <div className="je-condition-row__lhs">
-        <button
-          type="button"
-          className="je-condition-row__pick"
-          onClick={() => setPickerOpen(o => !o)}
-        >
-          {p.row.varPath ? p.row.varPath : "{x} pick value…"}
-        </button>
-        {pickerOpen && (
-          <div className="je-props__picker-popover">
-            <ValuePicker
-              sources={p.sources}
-              onPick={(ref) => { p.onChange({ ...p.row, varPath: ref }); setPickerOpen(false); }}
-              onClose={() => setPickerOpen(false)}
-            />
-          </div>
-        )}
+        <MentionInput
+          value={p.row.varPath ? [{ kind: "ref", ref: p.row.varPath }] : []}
+          fields={mentionFields}
+          placeholder="@ to pick a value"
+          onChange={(segs: Segment[]) => p.onChange({ ...p.row, varPath: soleRefOf(segs) ?? "" })}
+        />
       </div>
       <select
         value={p.row.op}

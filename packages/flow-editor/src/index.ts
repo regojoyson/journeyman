@@ -24,7 +24,6 @@ export { defaultMcpCatalog } from "./catalogs/built-in-mcp-catalog.ts";
 export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
 export { StepRegistryProvider } from "./state/step-registry-context.tsx";
 export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
-export { ValuePicker } from "./properties-panel/ValuePicker.tsx";
 export { MentionInput } from "./properties-panel/MentionInput.tsx";
 export { toMentionFields } from "./properties-panel/mention-fields.ts";
 export type { MentionField } from "./properties-panel/mention-fields.ts";

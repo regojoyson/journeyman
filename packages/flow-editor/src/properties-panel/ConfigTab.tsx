@@ -7,7 +7,6 @@ import { ExecutorBlock } from "./ExecutorBlock.tsx";
 import { CodingModelSelect } from "../components/CodingModelSelect.tsx";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
-import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
 import { MentionInput } from "./MentionInput.tsx";
 import { toMentionFields } from "./mention-fields.ts";
@@ -91,16 +90,6 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
     delete inputs[fieldKey];
     onChange({ ...node, inputs: inputs as WorkflowNode["inputs"] });
-  };
-
-  /** Append `${ref}` to the field's literal config value (template-string mode). */
-  const handleInsert = (fieldKey: string, ref: string) => {
-    const clean = sanitizeRef(ref);
-    const cfg = { ...config };
-    const existing = typeof cfg[fieldKey] === "string" ? (cfg[fieldKey] as string) : "";
-    cfg[fieldKey] = existing + "${" + clean + "}";
-    onChange({ ...node, config: cfg });
-    setPickerFor(null);
   };
 
   const inputsMap = (node.inputs ?? {}) as Record<string, { kind: string; ref?: string; value?: unknown }>;
@@ -331,12 +320,16 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           )}
           {pickerFor && (
             <div className="je-props__picker-popover">
-              <ValuePicker
-                sources={sources}
-                expected={catalogEntry?.inputFields?.[pickerFor]?.shape}
-                onPick={ref => handlePick(pickerFor, ref)}
-                onInsert={ref => handleInsert(pickerFor, ref)}
-                onClose={() => setPickerFor(null)}
+              <MentionInput
+                value={inputsMap[pickerFor]?.ref ? [{ kind: "ref", ref: inputsMap[pickerFor]!.ref! }] : []}
+                fields={mentionFields}
+                readOnly={readOnly}
+                placeholder="@ to bind from upstream"
+                onChange={segs => {
+                  const sole = soleRefOf(segs);
+                  if (sole) handlePick(pickerFor, sole);
+                  else handleUnbind(pickerFor);
+                }}
               />
             </div>
           )}
