@@ -10,3 +10,4 @@ workspaces/
 .superpowers/
 deploy/k8s/overlays/local/.env.secret
 .tmp
+github:*
