@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
 import type { StepRunState } from "../../step-definition.ts";
 import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
+import { useWebhooksForPicker } from "../../properties-panel/useWebhooksForPicker.ts";
 
 export interface WebhookWaitNodeData {
   displayName?: string;
@@ -23,12 +24,16 @@ export function WebhookWaitNode(props: NodeProps) {
   const outputs = data.outputs ?? [];
   const isWaiting = data.runState?.status === "running";
 
-  // Prefer the new webhookId (current config shape). Fall back to the legacy
-  // provider string for nodes that pre-date the webhook picker. Show an empty
-  // state only when neither is set.
+  // Look up the webhook's display name from the shared cache (fetches once
+  // per session across all webhook-wait nodes). Falls back to a short id
+  // snippet while the cache is loading, then to the legacy `provider`
+  // string for un-migrated nodes.
+  const { webhooks } = useWebhooksForPicker();
+  const selectedWebhook = data.webhookId ? webhooks.find((w) => w.id === data.webhookId) : undefined;
+
   const subtitleParts: string[] = [];
   if (data.webhookId) {
-    subtitleParts.push("webhook ✓");
+    subtitleParts.push(selectedWebhook?.name ?? `webhook ${data.webhookId.slice(0, 6)}…`);
   } else if (data.provider) {
     subtitleParts.push(data.provider);
   }

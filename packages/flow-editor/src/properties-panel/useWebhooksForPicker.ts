@@ -11,42 +11,78 @@ export interface WebhookForPicker {
 }
 
 /**
+ * Module-level cache + in-flight promise so multiple consumers (e.g. one per
+ * webhook-wait canvas node) share a single fetch and re-renders are cheap.
+ * Cleared on a full page reload, which is the right granularity for editor use.
+ */
+let _cache: WebhookForPicker[] | null = null;
+let _inFlight: Promise<WebhookForPicker[]> | null = null;
+const _subscribers = new Set<(list: WebhookForPicker[]) => void>();
+
+async function fetchWebhooksOnce(): Promise<WebhookForPicker[]> {
+  if (_cache) return _cache;
+  if (_inFlight) return _inFlight;
+  _inFlight = (async () => {
+    try {
+      const [mine, presets] = await Promise.all([
+        fetch("/api/users/me/webhooks", { credentials: "include" })
+          .then((r) => (r.ok ? (r.json() as Promise<Webhook[]>) : []))
+          .catch(() => [] as Webhook[]),
+        fetch("/api/webhook-presets", { credentials: "include" })
+          .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: string; knownEventTypes: string[] }>>) : []))
+          .catch(() => []),
+      ]);
+      const presetById = new Map(presets.map((p) => [p.id, p]));
+      const list = mine.map((w) => ({
+        id: w.id,
+        name: w.name,
+        preset: w.preset,
+        kind: w.kind,
+        knownEventTypes: presetById.get(w.preset)?.knownEventTypes ?? [],
+        payloadSchema: w.payloadSchema,
+      }));
+      _cache = list;
+      for (const sub of _subscribers) sub(list);
+      return list;
+    } finally {
+      _inFlight = null;
+    }
+  })();
+  return _inFlight;
+}
+
+/**
  * Fetch both user-scope and org-scope webhooks visible to the current user.
  * Returns an empty list on any error — the picker degrades to "no options",
  * but the JSON tab still lets authors set webhookId manually.
+ *
+ * Backed by a module-level cache so N consumers share one network fetch.
  */
 export function useWebhooksForPicker(): { webhooks: WebhookForPicker[]; loading: boolean } {
-  const [webhooks, setWebhooks] = useState<WebhookForPicker[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [webhooks, setWebhooks] = useState<WebhookForPicker[]>(_cache ?? []);
+  const [loading, setLoading] = useState(_cache === null);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const [mine, presets] = await Promise.all([
-          fetch("/api/users/me/webhooks", { credentials: "include" })
-            .then((r) => (r.ok ? (r.json() as Promise<Webhook[]>) : []))
-            .catch(() => [] as Webhook[]),
-          fetch("/api/webhook-presets", { credentials: "include" })
-            .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: string; knownEventTypes: string[] }>>) : []))
-            .catch(() => []),
-        ]);
-        if (cancelled) return;
-        const presetById = new Map(presets.map((p) => [p.id, p]));
-        setWebhooks(mine.map((w) => ({
-          id: w.id,
-          name: w.name,
-          preset: w.preset,
-          kind: w.kind,
-          knownEventTypes: presetById.get(w.preset)?.knownEventTypes ?? [],
-          payloadSchema: w.payloadSchema,
-        })));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    const onUpdate = (list: WebhookForPicker[]) => {
+      if (!cancelled) setWebhooks(list);
+    };
+    _subscribers.add(onUpdate);
+    if (_cache) {
+      setWebhooks(_cache);
+      setLoading(false);
+    } else {
+      void fetchWebhooksOnce().then((list) => {
+        if (!cancelled) {
+          setWebhooks(list);
+          setLoading(false);
+        }
+      });
     }
-    void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      _subscribers.delete(onUpdate);
+    };
   }, []);
 
   return { webhooks, loading };
