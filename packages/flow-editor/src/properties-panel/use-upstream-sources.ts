@@ -3,6 +3,7 @@ import type { WorkflowGraph, Shape, CustomAiStep } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
 import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
+import { pauseNodeSource } from "./pause-node-source.ts";
 
 export interface UpstreamField {
   name: string;
@@ -106,7 +107,15 @@ export function useUpstreamSources(
     }
     for (const id of upstream) {
       const n = graph.nodes.find(x => x.id === id);
-      if (!n || n.type !== "step" || !n.stepType) continue;
+      if (!n) continue;
+
+      if (n.type === "human-task" || n.type === "webhook-wait") {
+        const src = pauseNodeSource(n);
+        if (src) sources.push(src);
+        continue;
+      }
+
+      if (n.type !== "step" || !n.stepType) continue;
 
       let inputFields: StepCatalogEntry["inputFields"] = {};
       let outputSchema: StepCatalogEntry["outputSchema"] = {};
