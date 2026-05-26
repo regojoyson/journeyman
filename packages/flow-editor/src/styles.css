@@ -1985,3 +1985,63 @@ button.je-condition-row__pick:hover {
   font-size: 10px;
   color: #ddd;
 }
+
+/* @-mention chip input (ConfigTab step inputs). */
+.je-mention { position: relative; }
+.je-mention__editable {
+  min-height: 30px;
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.je-mention__editable:focus { outline: none; border-color: #6c8eff; }
+.je-mention__editable:empty::before {
+  content: attr(data-placeholder);
+  color: #6a6a7e;
+}
+.je-mention-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #3a2f6e;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin: 0 1px;
+  font-size: 10px;
+  white-space: nowrap;
+  user-select: none;
+}
+.je-mention__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  z-index: 30;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #11111c;
+  border: 1px solid #3a3a5e;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.je-mention__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.je-mention__item--active,
+.je-mention__item:hover { background: #23233a; }
+.je-mention__item-src { color: #8fbeff; white-space: nowrap; }
+.je-mention__item-path { color: #ddd; flex: 1; }
+.je-mention__item-type { color: #7a7f8c; font-size: 10px; }
