@@ -18,7 +18,7 @@ function buildTimestamp(now: Date = new Date()): string {
 
 /**
  * Creates a fresh directory for a issue/flow under `baseDir`, named
- * `<issueRef>-<ISO-timestamp>` (e.g. "jira:PROJ-123-2026-04-18T14-30-22Z").
+ * `<ref>-<ISO-timestamp>` (e.g. "PROJ-123-2026-04-18T14-30-22Z").
  *
  * The parent directory is created recursively if missing. If the target
  * directory already exists (unlikely — collisions require two calls in the
@@ -30,7 +30,7 @@ function buildTimestamp(now: Date = new Date()): string {
  * @example
  * ```ts
  * const result = await createWorkspace({
- *   issueRef: "PROJ-123",
+ *   ref: "PROJ-123",
  *   baseDir: "/tmp/journeyman-workspace",
  * });
  * // result.repoDir === "/tmp/journeyman-workspace/PROJ-123-2026-04-18T14-30-22Z"
@@ -40,18 +40,18 @@ export async function createWorkspace(
   opts: CreateWorkspaceOptions
 ): Promise<CreateWorkspaceResult> {
   const { sessionId } = resolveSession(opts.sessionId);
-  log.info({ sessionId, issueRef: opts.issueRef, baseDir: opts.baseDir }, "createWorkspace start");
+  log.info({ sessionId, ref: opts.ref, baseDir: opts.baseDir }, "createWorkspace start");
 
-  if (!opts.issueRef) {
-    log.error({ sessionId }, "createWorkspace missing issueRef");
-    return { folderName: "", repoDir: "", error: "issueRef is required", sessionId };
+  if (!opts.ref) {
+    log.error({ sessionId }, "createWorkspace missing ref");
+    return { folderName: "", repoDir: "", error: "ref is required", sessionId };
   }
   if (!opts.baseDir) {
     log.error({ sessionId }, "createWorkspace missing baseDir");
     return { folderName: "", repoDir: "", error: "baseDir is required", sessionId };
   }
 
-  const folderName = `${opts.issueRef}-${buildTimestamp()}`;
+  const folderName = `${opts.ref}-${buildTimestamp()}`;
   const repoDir = resolve(opts.baseDir, folderName);
 
   try {
@@ -68,7 +68,7 @@ export async function createWorkspace(
 // Run directly: npx tsx create-workspace.ts
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = await createWorkspace({
-    issueRef: "PROJ-123",
+    ref: "PROJ-123",
     baseDir: "/tmp/journeyman-workspace",
   });
 

@@ -82,7 +82,7 @@ function buildPrompt(opts: UpdateIssueOptions): string {
 export async function updateIssue(opts: UpdateIssueOptions): Promise<UpdateIssueResult> {
   log.info(
     {
-      issueRef: opts.id,
+      ref: opts.id,
       fields: Object.keys(opts).filter((k) => k !== "id" && (opts as any)[k] !== undefined),
     },
     "updateIssue start",
@@ -103,14 +103,14 @@ export async function updateIssue(opts: UpdateIssueOptions): Promise<UpdateIssue
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as UpdateIssueResult;
-        log.info({ issueRef: opts.id }, "updateIssue done");
+        log.info({ ref: opts.id }, "updateIssue done");
         return result;
       }
       const error = msg.errors?.[0] ?? msg.subtype;
-      log.error({ issueRef: opts.id, error }, "updateIssue failed");
+      log.error({ ref: opts.id, error }, "updateIssue failed");
       throw new Error(error);
     }
   }
-  log.error({ issueRef: opts.id }, "updateIssue: no result received");
+  log.error({ ref: opts.id }, "updateIssue: no result received");
   return { error: "No result received" };
 }

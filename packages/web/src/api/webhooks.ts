@@ -17,7 +17,6 @@ export interface WebhookPresetSummary {
   eventTypePath: string | null;
   deliveryIdHeader: string | null;
   knownEventTypes: string[];
-  correlationSuggestions: Array<{ key: string; path: string }>;
   hasSchema: boolean;
   hasSamples: boolean;
 }

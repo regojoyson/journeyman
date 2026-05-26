@@ -52,11 +52,6 @@ export type WebhookAuthConfig =
       expectedAudience?: string;
     };
 
-export type WebhookCorrelationSuggestion = {
-  key: string;
-  path: string;
-};
-
 export type WebhookScope = { orgId: string } | { userId: string };
 
 export type Webhook = {
@@ -78,8 +73,6 @@ export type Webhook = {
 
   eventTypePath?: string; // "header:x-github-event" | "$.webhookEvent"
   deliveryIdHeader?: string;
-
-  correlationSuggestions?: WebhookCorrelationSuggestion[];
 
   createdAt: Date;
   updatedAt: Date;

@@ -7,7 +7,6 @@ export interface WebhookForPicker {
   preset: string;
   kind: "ticket" | "git";
   knownEventTypes: string[];
-  correlationSuggestions: Array<{ key: string; path: string }>;
   payloadSchema?: unknown;
 }
 
@@ -29,7 +28,7 @@ export function useWebhooksForPicker(): { webhooks: WebhookForPicker[]; loading:
             .then((r) => (r.ok ? (r.json() as Promise<Webhook[]>) : []))
             .catch(() => [] as Webhook[]),
           fetch("/api/webhook-presets", { credentials: "include" })
-            .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: string; knownEventTypes: string[]; correlationSuggestions: Array<{ key: string; path: string }> }>>) : []))
+            .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: string; knownEventTypes: string[] }>>) : []))
             .catch(() => []),
         ]);
         if (cancelled) return;
@@ -40,7 +39,6 @@ export function useWebhooksForPicker(): { webhooks: WebhookForPicker[]; loading:
           preset: w.preset,
           kind: w.kind,
           knownEventTypes: presetById.get(w.preset)?.knownEventTypes ?? [],
-          correlationSuggestions: presetById.get(w.preset)?.correlationSuggestions ?? [],
           payloadSchema: w.payloadSchema,
         })));
       } finally {

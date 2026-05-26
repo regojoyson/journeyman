@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const getIssueConfigSchema = z.object({
-  issueRef: z.string().min(1),
+  ref: z.string().min(1),
 });
 
 export const GET_ISSUE_STEP_TYPE = "get-issue";
@@ -16,5 +16,5 @@ export const getIssueOutputSchema: OutputSchema = {
 };
 
 export const getIssueInputFields: InputFields = {
-  issueRef: { shape: { type: "string" }, label: "Issue ref", required: true },
+  ref: { shape: { type: "string" }, label: "Ref", required: true },
 };

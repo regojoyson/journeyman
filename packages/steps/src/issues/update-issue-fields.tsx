@@ -11,7 +11,7 @@ import {
 } from "./update-issue-fields.meta.ts";
 
 interface UpdateIssueFieldsConfig {
-  issueRef: string;
+  ref: string;
   fields: Record<string, string>;
 }
 
@@ -31,12 +31,12 @@ function UpdateIssueFieldsConfigForm({ config, onChange, readOnly }: StepFormPro
   return (
     <div>
       <div className="je-props__field">
-        <label>Issue ref</label>
+        <label>Ref</label>
         <input
           type="text"
-          value={config.issueRef}
+          value={config.ref}
           disabled={readOnly}
-          onChange={e => onChange({ ...config, issueRef: e.target.value })}
+          onChange={e => onChange({ ...config, ref: e.target.value })}
         />
       </div>
       <div className="je-props__field">
@@ -85,11 +85,11 @@ export const updateIssueFieldsStep: StepDefinition<UpdateIssueFieldsConfig> = {
   description: UPDATE_ISSUE_FIELDS_DESCRIPTION,
   color: "#a29bfe",
   icon: "✏️",
-  defaultConfig: { issueRef: "", fields: {} },
+  defaultConfig: { ref: "", fields: {} },
   configSchema: updateIssueFieldsConfigSchema,
   ConfigForm: UpdateIssueFieldsConfigForm,
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",
+  summary: (c, ctx) => summaryValue(c, ctx, "ref") || "(no issue)",
   executor: { kind: "issue-provider", method: "updateIssue" },
   outputSchema: updateIssueFieldsOutputSchema,
   comingSoon: true,

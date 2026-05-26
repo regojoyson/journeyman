@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
-import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope, IssueRefProvider } from "@journeyman/core";
-import { buildIssueRef, getStartWorkflowInputs } from "@journeyman/core";
+import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
 import { listRunsPaged, rerunRun } from "../api/runs.ts";
 import { getCurrentWorkflowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
@@ -25,9 +25,6 @@ interface NewRunDialogProps {
 function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
   const { isPlatformAdmin } = useAuth();
   const [flowId, setFlowId] = useState("");
-  const [provider, setProvider] = useState<IssueRefProvider>("jira");
-  const [rawId, setRawId] = useState("");
-  const issueRef = rawId.trim() ? buildIssueRef(provider, rawId.trim()) : "";
   const [dynValues, setDynValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -49,16 +46,11 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
   const inputDefs: WorkflowInputDef[] = (def?.inputDefs && def.inputDefs.length > 0)
     ? def.inputDefs
     : getStartWorkflowInputs(startNode?.config);
-  // The dedicated Issue Ref block above already collects `issueRef` via the
-  // provider+id pair. Skip it in the dynamic loop to avoid a duplicate field
-  // and to keep the provider-built value from being overwritten by an empty
-  // string on submit.
-  const dynamicDefs = inputDefs.filter(d => d.name.trim() !== "" && d.name !== "issueRef");
+  const dynamicDefs = inputDefs.filter(d => d.name.trim() !== "");
 
   const submitM = useMutation({
     mutationFn: () => {
       const inputs: Record<string, unknown> = {};
-      if (issueRef.trim()) inputs.issueRef = issueRef.trim();
       for (const def of dynamicDefs) {
         const raw = dynValues[def.name] ?? "";
         if (def.type === "number") inputs[def.name] = Number(raw);
@@ -132,40 +124,6 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
               }}>{SCOPE_LABELS[f.scope]}</span>
             ) : null;
           })()}
-        </label>
-
-        {/* Issue Ref */}
-        <label style={{ display: "block", marginBottom: 14 }}>
-          <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>Issue Ref</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select
-              value={provider}
-              onChange={e => setProvider(e.target.value as IssueRefProvider)}
-              style={{ background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
-            >
-              <option value="jira">Jira</option>
-              <option value="github">GitHub</option>
-              <option value="monday">Monday</option>
-              <option value="linear">Linear</option>
-            </select>
-            <input
-              type="text"
-              value={rawId}
-              onChange={e => setRawId(e.target.value)}
-              placeholder={
-                provider === "jira"   ? "PROJ-123" :
-                provider === "github" ? "owner/repo#42" :
-                provider === "monday" ? "12345678" :
-                "ENG-99"
-              }
-              style={{ flex: 1, background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
-            />
-          </div>
-          {issueRef && (
-            <span style={{ fontSize: 11, color: "#6c5ce7", display: "block", marginTop: 4 }}>
-              → {issueRef}
-            </span>
-          )}
         </label>
 
         {/* Dynamic inputs from flow definition */}

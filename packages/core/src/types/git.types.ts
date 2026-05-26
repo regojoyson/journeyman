@@ -101,7 +101,7 @@ export type CleanupReposResult = SessionResult & {
 };
 
 export type CreateWorkspaceOptions = SessionOptions & {
-  issueRef: string;
+  ref: string;
   baseDir: string;
   signal?: AbortSignal;
   model?: string;

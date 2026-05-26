@@ -56,7 +56,6 @@ export function WebhookCreateWizard({ scope, onCreated, onCancel }: Props) {
         schemaValidation: v.schemaValidation,
         eventTypePath: v.eventTypePath,
         deliveryIdHeader: v.deliveryIdHeader,
-        correlationSuggestions: v.correlationSuggestions,
       };
       const w = "orgId" in scope
         ? await createOrgWebhook(scope.orgId, args)

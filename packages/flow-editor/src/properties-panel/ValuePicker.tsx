@@ -35,7 +35,7 @@ export function ValuePicker({ sources, expected, onPick, onInsert, onClose }: Pr
   return (
     <div className="value-picker">
       <div className="value-picker-help">
-        Click a tree node to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${issueRef}"}</code>).
+        Click a tree node to <b>replace</b>. Click <b>+</b> to <b>insert into the existing text</b> (e.g. <code>feature/${"${ref}"}</code>).
       </div>
       <div className="value-picker-cols">
         <ul className="vp-sources">

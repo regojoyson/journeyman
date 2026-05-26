@@ -58,7 +58,7 @@ export async function createIssue(opts: CreateIssueOptions): Promise<CreateIssue
     if (msg.type === "result") {
       if (msg.subtype === "success") {
         const result = msg.structured_output as CreateIssueResult;
-        log.info({ issueRef: result.issue?.id }, "createIssue done");
+        log.info({ ref: result.issue?.id }, "createIssue done");
         return result;
       }
       const error = (msg as any).errors?.[0] ?? msg.subtype;

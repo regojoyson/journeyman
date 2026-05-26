@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const transitionIssueConfigSchema = z.object({
-  issueRef: z.string().min(1),
+  ref: z.string().min(1),
   status: z.string().min(1),
 });
 
@@ -17,6 +17,6 @@ export const transitionIssueOutputSchema: OutputSchema = {
 };
 
 export const transitionIssueInputFields: InputFields = {
-  issueRef: { shape: { type: "string" }, label: "Issue ref", required: true },
+  ref: { shape: { type: "string" }, label: "Ref", required: true },
   status:   { shape: { type: "string" }, label: "Status", required: true },
 };

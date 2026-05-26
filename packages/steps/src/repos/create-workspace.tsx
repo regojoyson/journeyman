@@ -9,7 +9,7 @@ import {
 } from "./create-workspace.meta.ts";
 
 interface CreateWorkspaceConfig {
-  issueRef: string;
+  ref: string;
 }
 
 export const createWorkspaceStep: StepDefinition<CreateWorkspaceConfig> = {
@@ -19,13 +19,13 @@ export const createWorkspaceStep: StepDefinition<CreateWorkspaceConfig> = {
   description: CREATE_WORKSPACE_DESCRIPTION,
   color: "#fdcb6e",
   icon: "📁",
-  defaultConfig: { issueRef: "" },
+  defaultConfig: { ref: "" },
   configSchema: createWorkspaceConfigSchema,
   configFields: {
-    issueRef: { label: "Issue ref", widget: "text" },
+    ref: { label: "Ref", widget: "text" },
   },
   tabs: { io: "shown", requiredSecrets: "hidden", mcp: "hidden", retry: "shown" },
-  summary: c => c.issueRef,
+  summary: c => c.ref,
   executor: { kind: "coding-cli", method: "createWorkspace" },
   outputSchema: createWorkspaceOutputSchema,
 };

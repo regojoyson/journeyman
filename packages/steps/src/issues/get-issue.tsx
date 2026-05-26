@@ -11,7 +11,7 @@ import {
 } from "./get-issue.meta.ts";
 
 interface GetIssueConfig {
-  issueRef: string;
+  ref: string;
 }
 
 export const getIssueStep: StepDefinition<GetIssueConfig> = {
@@ -21,13 +21,13 @@ export const getIssueStep: StepDefinition<GetIssueConfig> = {
   description: GET_ISSUE_DESCRIPTION,
   color: "#a29bfe",
   icon: "📥",
-  defaultConfig: { issueRef: "" },
+  defaultConfig: { ref: "" },
   configSchema: getIssueConfigSchema,
   configFields: {
-    issueRef: { label: "Issue ref", widget: "text", help: "e.g. jira:PROJ-123 (supports #{issue} placeholder)" },
+    ref: { label: "Ref", widget: "text", help: "Supports #{issue} placeholder" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  summary: (c, ctx) => summaryValue(c, ctx, "issueRef") || "(no issue)",
+  summary: (c, ctx) => summaryValue(c, ctx, "ref") || "(no issue)",
   executor: { kind: "issue-provider", method: "getIssue" },
   outputSchema: getIssueOutputSchema,
 };

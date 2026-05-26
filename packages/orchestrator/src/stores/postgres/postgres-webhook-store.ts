@@ -26,7 +26,6 @@ function rowToWebhook(row: any): Webhook {
     schemaInferredFrom: row.schema_inferred_from ?? undefined,
     eventTypePath: row.event_type_path ?? undefined,
     deliveryIdHeader: row.delivery_id_header ?? undefined,
-    correlationSuggestions: row.correlation_suggestions ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     rotatedAt: row.rotated_at ? new Date(row.rotated_at) : undefined,
@@ -44,10 +43,10 @@ export class PostgresWebhookStore implements IWebhookStore {
       `INSERT INTO jm_webhooks
          (org_id, user_id, name, description, preset, kind, tenant_token,
           auth, payload_schema, schema_validation, schema_inferred_from,
-          event_type_path, delivery_id_header, correlation_suggestions)
+          event_type_path, delivery_id_header)
        VALUES ($1,$2,$3,$4,$5,$6,$7,
                $8::jsonb,$9::jsonb,$10,$11::jsonb,
-               $12,$13,$14::jsonb)
+               $12,$13)
        RETURNING *`,
       [
         orgId, userId, args.name, args.description ?? null,
@@ -58,7 +57,6 @@ export class PostgresWebhookStore implements IWebhookStore {
         args.schemaInferredFrom == null ? null : JSON.stringify(args.schemaInferredFrom),
         args.eventTypePath ?? null,
         args.deliveryIdHeader ?? null,
-        args.correlationSuggestions == null ? null : JSON.stringify(args.correlationSuggestions),
       ],
     );
     return rowToWebhook(rows[0]);
@@ -108,7 +106,6 @@ export class PostgresWebhookStore implements IWebhookStore {
     if (patch.schemaInferredFrom !== undefined) add("schema_inferred_from", patch.schemaInferredFrom == null ? null : JSON.stringify(patch.schemaInferredFrom), "::jsonb");
     if (patch.eventTypePath !== undefined) add("event_type_path", patch.eventTypePath);
     if (patch.deliveryIdHeader !== undefined) add("delivery_id_header", patch.deliveryIdHeader);
-    if (patch.correlationSuggestions !== undefined) add("correlation_suggestions", patch.correlationSuggestions == null ? null : JSON.stringify(patch.correlationSuggestions), "::jsonb");
     sets.push(`updated_at = now()`);
 
     values.push(id);
