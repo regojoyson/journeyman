@@ -1,5 +1,6 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
+import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
 export interface JoinNodeData {
   displayName?: string;
@@ -20,6 +21,7 @@ export function JoinNode(props: NodeProps) {
   const mode = data.config?.errorMode ?? "fail-fast";
   return (
     <div className="je-node je-node--gateway je-node--join">
+      <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__icon">⋈</div>
       <div className="je-node__text">

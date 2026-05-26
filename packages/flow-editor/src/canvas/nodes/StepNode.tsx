@@ -1,9 +1,9 @@
 // packages/flow-editor/src/canvas/nodes/StepNode.tsx
 import { useMemo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { handleBlue, handleRed } from "../handle-styles.ts";
 import { useStepRegistry } from "../../state/step-registry-context.tsx";
-import { useNodeHasWarning } from "../../state/validation-context.tsx";
+import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 import { useCustomStepDefs } from "../../catalogs/use-custom-step-defs.ts";
 import { resolveStepIcon } from "../../icons/resolve.tsx";
 import type { StepRunState } from "../../step-definition.ts";
@@ -70,12 +70,22 @@ export function StepNode(props: NodeProps) {
     definition?.label ||
     data.stepType;
   const Badge = definition?.StatusBadge ?? DefaultStatusBadge;
-  const hasWarning = useNodeHasWarning(props.id);
+  const isMultiOut = useStore((s) => {
+    let count = 0;
+    for (const e of s.edges) {
+      if (e.source !== props.id) continue;
+      const t = (e as { type?: string }).type ?? "default";
+      if (t === "default") count++;
+      if (count >= 2) return true;
+    }
+    return false;
+  });
 
   return (
     <div className="je-node je-node--step" style={{ borderColor: accent, position: "relative" }}>
       {data.runState && <Badge state={data.runState} />}
-      {hasWarning && <span className="je-node-warning-dot" aria-hidden title="Input validation warnings — see topbar Validate panel" />}
+      <NodeIssueBadges nodeId={props.id} />
+      {isMultiOut && <span className="je-node-fork-dot" aria-hidden title="This step fans out — branches must converge on a Join">⫶</span>}
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: accent }}>{icon}</div>

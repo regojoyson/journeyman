@@ -23,8 +23,12 @@ export function dominators(graph: WorkflowGraph, target: string): Set<string> {
       if (id === start) continue;
       const p = preds.get(id) ?? [];
       if (!p.length) continue;
+      // Clone each predecessor's dom set so subsequent mutation (inter.add(id))
+      // doesn't corrupt the stored dom. The previous version relied on reduce
+      // creating a new Set, but `.reduce` with no seed returns the single
+      // element AS-IS when the array length is 1 — leaking the reference.
       const inter = p
-        .map(x => dom.get(x) ?? new Set<string>())
+        .map(x => new Set(dom.get(x) ?? []))
         .reduce((a, b) => new Set([...a].filter(x => b.has(x))));
       inter.add(id);
       const prev = dom.get(id)!;

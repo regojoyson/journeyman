@@ -25,6 +25,8 @@ export interface McpCatalogEntry {
   url?: string;
   requiredEnv?: string[];
   description?: string;
+  /** Optional grouping/filter key for the catalog picker (e.g. "git", "tickets", "design"). */
+  category?: string;
 }
 export type McpCatalog = McpCatalogEntry[];
 

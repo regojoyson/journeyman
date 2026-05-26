@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
 import type { StepRunState } from "../../step-definition.ts";
+import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
 export interface HumanTaskNodeData {
   displayName?: string;
@@ -35,6 +36,7 @@ export function HumanTaskNode(props: NodeProps) {
         animation: isWaiting ? "je-pulse 1.5s ease-in-out infinite" : undefined,
       }}
     >
+      <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: "#fbc531" }}>⏳</div>

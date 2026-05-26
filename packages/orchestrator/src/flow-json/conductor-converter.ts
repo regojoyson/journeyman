@@ -177,7 +177,7 @@ class ConvertCtx {
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
             throw new WorkflowValidationError(
-              `Node ${this.label(node)} references ${this.labelById(parsed.source)} which does not execute on every path to ${this.label(node)}`,
+              `${this.label(node)} reads input '${field}' from ${this.labelById(parsed.source)}, but those two steps are on different branches — ${this.labelById(parsed.source)} won't always have run by the time ${this.label(node)} needs it. Either remove this input link, or move the steps so they're on the same path (e.g. place ${this.labelById(parsed.source)} before the fork, or place ${this.label(node)} after the Join).`,
             );
           }
           // Shape compatibility (only when a catalog is supplied).

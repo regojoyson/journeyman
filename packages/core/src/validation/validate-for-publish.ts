@@ -64,11 +64,14 @@ export function validateForPublish(
 
   pushOrphanErrors(flow, errors);
 
+  const nodeById = new Map(flow.nodes.map(n => [n.id, n]));
   for (const e of validateForkJoinPairs(flow)) {
+    const n = nodeById.get(e.nodeId);
     errors.push({
       code: "graph_invalid",
       message: e.message,
       nodeId: e.nodeId,
+      nodeLabel: n ? nodeLabelFor(n) : undefined,
     });
   }
 
@@ -120,6 +123,30 @@ function pushGraphErrors(flow: WorkflowGraph, errors: PublishError[]): void {
   }
   if (flow.nodes.filter(n => n.type === "end").length === 0) {
     errors.push({ code: "graph_invalid", message: "Flow must have at least one end node" });
+  }
+  // Only Join and End may legitimately aggregate multiple upstream branches.
+  // Every other node type (regular step, If, Fork, Loop, Human Task, etc.)
+  // is single-input — multiple incoming default edges would mean the worker
+  // can't decide which upstream's output to use and may execute the node more
+  // than once. Triggers are checked separately above.
+  const defaultIncomingCount = new Map<string, number>();
+  for (const e of flow.edges) {
+    if ((e.type ?? "default") !== "default") continue;
+    defaultIncomingCount.set(e.target, (defaultIncomingCount.get(e.target) ?? 0) + 1);
+  }
+  for (const node of flow.nodes) {
+    if (node.type === "join" || node.type === "end") continue;
+    if (isTriggerNode(node)) continue;
+    const n = defaultIncomingCount.get(node.id) ?? 0;
+    if (n > 1) {
+      const label = nodeLabelFor(node);
+      errors.push({
+        code: "graph_invalid",
+        message: `"${label}" has ${n} incoming arrows. To merge multiple paths into a single step, add a Join node before it — the Join will wait for the upstream branches and then continue into "${label}".`,
+        nodeId: node.id,
+        nodeLabel: label,
+      });
+    }
   }
   for (const node of flow.nodes) {
     if (node.type === "step" && !node.stepType) {

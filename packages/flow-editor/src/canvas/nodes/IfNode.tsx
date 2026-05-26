@@ -1,10 +1,12 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
+import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
 export function IfNode(props: NodeProps) {
   const data = props.data as { displayName?: string };
   return (
     <div className="je-node je-node--if">
+      <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
         <div className="je-node__icon" style={{ background: "#74b9ff" }}>?</div>

@@ -1,15 +1,18 @@
-import { Handle, Position } from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { handleBlue } from "../handle-styles.ts";
+import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
 interface Data {
   displayName?: string;
   formTitle?: string;
 }
 
-export function TriggerHumanNode({ data }: { data: Data }) {
+export function TriggerHumanNode(props: NodeProps) {
+  const data = props.data as Data;
   const label = data.formTitle ?? data.displayName ?? "Form";
   return (
     <div className="je-node je-node--trigger je-node--trigger-human">
+      <NodeIssueBadges nodeId={props.id} />
       <div className="je-node__row">
         <div className="je-node__icon">📝</div>
         <div className="je-node__text">

@@ -4,11 +4,7 @@ import type { JoinConfig, JoinErrorMode } from "../types/parallel.types.ts";
 export interface ForkJoinPairError {
   nodeId: string;
   rule:
-    | "fork-needs-join"
-    | "join-needs-fork"
-    | "branch-escapes-to-end"
-    | "branches-converge-on-different-joins"
-    | "join-incoming-mismatch"
+    | "join-needs-branch-source"
     | "first-wins-non-pause-branch"
     | "shared-step-across-branches";
   message: string;
@@ -29,26 +25,35 @@ export function validateForkJoinPairs(graph: WorkflowGraph): ForkJoinPairError[]
     const i = incoming.get(e.target); if (i) i.push(e.source); else incoming.set(e.target, [e.source]);
   }
   const nodesById = new Map(graph.nodes.map(n => [n.id, n]));
+  const labelFor = (id: string): string => {
+    const n = nodesById.get(id);
+    const dn = n?.displayName?.trim();
+    return dn && dn.length > 0 ? `"${dn}"` : id;
+  };
 
-  const forkIds = graph.nodes.filter(n => n.type === "gateway-and").map(n => n.id);
+  const defaultOutCount = new Map<string, number>();
+  for (const e of graph.edges) {
+    if ((e.type ?? "default") !== "default") continue;
+    defaultOutCount.set(e.source, (defaultOutCount.get(e.source) ?? 0) + 1);
+  }
+  const forkIds = graph.nodes
+    .filter(n => (defaultOutCount.get(n.id) ?? 0) >= 2)
+    .map(n => n.id);
   const joinIds = graph.nodes.filter(n => n.type === "join").map(n => n.id);
   const pairedJoins = new Set<string>();
   const branchOwnership = new Map<string, string>();
 
+  // Walk each multi-out node's branches forward. A branch may reach a Join
+  // (parallel sync point), an End (terminates independently), or hit a
+  // dead-end (still an error — orphan path). Branches from the same fork
+  // may reach different Joins or end directly — these are independent paths.
   for (const forkId of forkIds) {
-    const outs = outgoing.get(forkId) ?? [];
-    if (outs.length < 2) {
-      errors.push({
-        nodeId: forkId,
-        rule: "fork-needs-join",
-        message: `Fork ${forkId} needs at least 2 outgoing branches.`,
-      });
-      continue;
-    }
+    const allOuts = graph.edges.filter(e => e.source === forkId);
+    const outs = allOuts
+      .filter(e => (e.type ?? "default") === "default")
+      .map(e => e.target);
 
-    const joinCandidates = new Set<string>();
-    const branchPaths: Array<{ head: string; path: string[] }> = [];
-    let escapedEnd = false;
+    const branchPathsByJoin = new Map<string, Array<{ head: string; path: string[] }>>();
 
     for (const head of outs) {
       const path: string[] = [];
@@ -62,61 +67,30 @@ export function validateForkJoinPairs(graph: WorkflowGraph): ForkJoinPairError[]
         const n = nodesById.get(here);
         if (!n) break;
         if (n.type === "join") { joinHit = here; break; }
-        if (n.type === "end") {
-          errors.push({
-            nodeId: here,
-            rule: "branch-escapes-to-end",
-            message: `Branch from fork ${forkId} reaches end ${here} without a join.`,
-          });
-          escapedEnd = true;
-          break;
-        }
+        if (n.type === "end") { break; } // independent terminus
         path.push(here);
+        // Stop walking when we hit a NESTED fork (a node with 2+ default outs
+        // that isn't this fork). The inner fork claims its own region; we
+        // shouldn't double-claim its descendants.
+        if (here !== forkId && (defaultOutCount.get(here) ?? 0) >= 2) break;
         const nexts: string[] = outgoing.get(here) ?? [];
         cur = nexts.length > 0 ? nexts[0] : null;
       }
 
-      if (joinHit) joinCandidates.add(joinHit);
-      branchPaths.push({ head, path });
-    }
+      if (joinHit) {
+        const arr = branchPathsByJoin.get(joinHit) ?? [];
+        arr.push({ head, path });
+        branchPathsByJoin.set(joinHit, arr);
+      }
 
-    if (escapedEnd) continue;
-
-    if (joinCandidates.size === 0) {
-      errors.push({
-        nodeId: forkId,
-        rule: "fork-needs-join",
-        message: `Fork ${forkId} has no branch that reaches a join.`,
-      });
-      continue;
-    }
-    if (joinCandidates.size > 1) {
-      errors.push({
-        nodeId: forkId,
-        rule: "branches-converge-on-different-joins",
-        message: `Fork ${forkId} branches converge on multiple joins: ${[...joinCandidates].join(", ")}.`,
-      });
-      continue;
-    }
-    const joinId = [...joinCandidates][0];
-    const joinIncoming = incoming.get(joinId) ?? [];
-    if (joinIncoming.length !== outs.length) {
-      errors.push({
-        nodeId: joinId,
-        rule: "join-incoming-mismatch",
-        message: `Join ${joinId} has ${joinIncoming.length} incoming edges; expected one per branch (${outs.length}).`,
-      });
-      continue;
-    }
-
-    for (const { path } of branchPaths) {
+      // Branch ownership — still flag steps that appear in multiple forks' branches.
       for (const id of path) {
         const prior = branchOwnership.get(id);
         if (prior && prior !== forkId) {
           errors.push({
             nodeId: id,
             rule: "shared-step-across-branches",
-            message: `Node ${id} appears in branches of multiple forks (${prior} and ${forkId}).`,
+            message: `Node ${labelFor(id)} appears in branches of multiple forks (${labelFor(prior)} and ${labelFor(forkId)}).`,
           });
         } else {
           branchOwnership.set(id, forkId);
@@ -124,34 +98,46 @@ export function validateForkJoinPairs(graph: WorkflowGraph): ForkJoinPairError[]
       }
     }
 
-    pairedJoins.add(joinId);
-
-    const joinNode = nodesById.get(joinId);
-    const joinCfg = (joinNode?.config ?? {}) as JoinConfig;
-    const mode: JoinErrorMode = joinCfg.errorMode ?? "fail-fast";
-    if (mode === "first-wins") {
-      for (const { path } of branchPaths) {
-        for (const id of path) {
-          const n = nodesById.get(id);
-          if (!n) continue;
-          if (!PAUSE_NODE_TYPES.has(n.type)) {
-            errors.push({
-              nodeId: id,
-              rule: "first-wins-non-pause-branch",
-              message: `Node ${id} (${n.type}) cannot appear in a first-wins branch — only pause nodes (human-task, webhook-wait, timer) are allowed in v1.`,
-            });
+    // Per-Join checks: count vs incoming, first-wins branch contents.
+    for (const [joinId, branchPaths] of branchPathsByJoin) {
+      pairedJoins.add(joinId);
+      const joinNode = nodesById.get(joinId);
+      const joinCfg = (joinNode?.config ?? {}) as JoinConfig;
+      const mode: JoinErrorMode = joinCfg.errorMode ?? "fail-fast";
+      if (mode === "first-wins") {
+        for (const { path } of branchPaths) {
+          for (const id of path) {
+            const n = nodesById.get(id);
+            if (!n) continue;
+            if (!PAUSE_NODE_TYPES.has(n.type)) {
+              errors.push({
+                nodeId: id,
+                rule: "first-wins-non-pause-branch",
+                message: `Node ${labelFor(id)} (${n.type}) cannot appear in a first-wins branch — only pause nodes (human-task, webhook-wait, timer) are allowed in v1.`,
+              });
+            }
           }
         }
       }
     }
   }
 
+  // A Join needs at least 2 default incoming edges to be meaningful (otherwise
+  // it has nothing to coordinate). Joins that no fork branch reaches are also
+  // flagged.
   for (const joinId of joinIds) {
-    if (!pairedJoins.has(joinId)) {
+    const incomingCount = (incoming.get(joinId) ?? []).length;
+    if (incomingCount < 2) {
       errors.push({
         nodeId: joinId,
-        rule: "join-needs-fork",
-        message: `Join ${joinId} has no matching fork.`,
+        rule: "join-needs-branch-source",
+        message: `Join ${labelFor(joinId)} needs at least 2 incoming branches.`,
+      });
+    } else if (!pairedJoins.has(joinId)) {
+      errors.push({
+        nodeId: joinId,
+        rule: "join-needs-branch-source",
+        message: `Join ${labelFor(joinId)} has no fork upstream — its incoming branches don't originate from a parallel fork.`,
       });
     }
   }

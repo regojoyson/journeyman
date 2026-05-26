@@ -27,6 +27,7 @@ export interface CatalogEntry {
   url?: string;
   requiredEnv?: string[];
   description?: string;
+  category?: string;
 }
 
 export interface PromotableRow {
