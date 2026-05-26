@@ -1,5 +1,5 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { WorkflowDefaults, WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
@@ -9,6 +9,9 @@ import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { ValuePicker } from "./ValuePicker.tsx";
 import { sanitizeRef } from "./sanitize-ref.ts";
+import { MentionInput } from "./MentionInput.tsx";
+import { toMentionFields } from "./mention-fields.ts";
+import { parseTemplate, segmentsToTemplate, soleRefOf, type Segment } from "./mention-serialize.ts";
 import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
@@ -113,6 +116,49 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const bindOnlyFields = Object.entries(catalogEntry?.inputFields ?? {}).filter(
     ([key, meta]) => (meta as { bindOnly?: boolean }).bindOnly === true && !configFieldKeys.has(key),
   ) as [string, { label?: string; required?: boolean; bindOnly?: boolean }][];
+
+  const mentionFields = useMemo(() => toMentionFields(sources), [sources]);
+  const MENTION_WIDGETS = new Set(["text", "textarea", "code"]);
+
+  /** Build the initial chip-editor segments for a field from its stored value. */
+  const segmentsForField = (key: string): Segment[] => {
+    const bound = inputsMap[key];
+    if (bound?.kind === "ref" && bound.ref) return [{ kind: "ref", ref: bound.ref }];
+    const cfgVal = config[key];
+    if (typeof cfgVal === "string") return parseTemplate(cfgVal);
+    return [];
+  };
+
+  /** Persist edited segments back to inputs/config per the serialization rules. */
+  const commitSegments = (key: string, segs: Segment[]) => {
+    const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
+    const cfg = { ...config };
+    const sole = soleRefOf(segs);
+    const template = segmentsToTemplate(segs);
+    if (sole) {
+      inputs[key] = { kind: "ref", ref: sanitizeRef(sole) };
+      delete cfg[key];
+    } else if (template !== "") {
+      delete inputs[key];
+      cfg[key] = template;
+    } else {
+      delete inputs[key];
+      delete cfg[key];
+    }
+    onChange({ ...node, inputs: inputs as WorkflowNode["inputs"], config: cfg });
+  };
+
+  const renderMentionField = (key: string, meta: { widget?: string }) => {
+    if (!MENTION_WIDGETS.has(meta.widget ?? "text")) return null;
+    return (
+      <MentionInput
+        value={segmentsForField(key)}
+        fields={mentionFields}
+        readOnly={readOnly}
+        onChange={segs => commitSegments(key, segs)}
+      />
+    );
+  };
 
   const renderFieldBindControl = (key: string) => {
     if (readOnly) return null;
@@ -252,6 +298,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
               boundKeys={boundKeys}
               renderFieldBindControl={renderFieldBindControl}
               renderBoundPill={renderBoundPill}
+              renderFieldInput={renderMentionField}
               warningsByKey={nodeWarningsByKey}
             />
           )}
@@ -259,7 +306,6 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
             <div className="je-props__bind-only-section">
               <div className="je-props__bind-only-title">Required bindings</div>
               {bindOnlyFields.map(([key, meta]) => {
-                const isBound = boundKeys.has(key);
                 const isRequired = !!meta.required;
                 const warning = nodeWarningsByKey.get(key);
                 return (
@@ -269,13 +315,14 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                         {meta.label ?? key}
                         {isRequired && <span className="je-props__required-mark">*</span>}
                       </label>
-                      {renderFieldBindControl(key)}
                     </div>
-                    {isBound ? renderBoundPill(key) : (
-                      <div className="je-props__bind-only-empty">
-                        {isRequired ? "Required — bind from upstream" : "Optional — not bound"}
-                      </div>
-                    )}
+                    <MentionInput
+                      value={segmentsForField(key)}
+                      fields={mentionFields}
+                      readOnly={readOnly}
+                      placeholder={isRequired ? "Required — @ to bind from upstream" : "Optional — @ to bind"}
+                      onChange={segs => commitSegments(key, segs)}
+                    />
                     {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
                   </div>
                 );
