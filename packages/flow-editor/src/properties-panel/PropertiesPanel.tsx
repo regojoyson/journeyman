@@ -2,6 +2,45 @@
 import { useState } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 
+function NodeIdButton({ id }: { id: string }): JSX.Element {
+  const [copied, setCopied] = useState(false);
+  const onClick = (): void => {
+    try {
+      void navigator.clipboard?.writeText(id);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard unavailable (insecure context). Falls back to selectable text.
+    }
+  };
+  return (
+    <button
+      type="button"
+      className={`je-props__id${copied ? " je-props__id--copied" : ""}`}
+      onClick={onClick}
+      title="Click to copy node ID"
+    >
+      {copied ? "Copied" : id}
+    </button>
+  );
+}
+
+function PanelHeader({
+  node, onClose,
+}: { node: { id: string; type: string; displayName?: string }; onClose?: () => void }): JSX.Element {
+  return (
+    <div className="je-props__header">
+      <div className="je-props__title-block">
+        <div className="je-props__title">{node.displayName ?? node.type}</div>
+        <NodeIdButton id={node.id} />
+      </div>
+      {onClose ? (
+        <button type="button" className="je-props__close" onClick={onClose} aria-label="Close">×</button>
+      ) : null}
+    </div>
+  );
+}
+
 function EndNodeConfig({ node, onChange, readOnly }: { node: WorkflowNode; onChange: (next: WorkflowNode) => void; readOnly?: boolean }) {
   return (
     <div>
@@ -114,12 +153,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
     };
     return (
       <aside className="je-editor__props">
-        <div className="je-props__header">
-          <div className="je-props__title">{node.displayName ?? node.type}</div>
-          {onClose ? (
-            <button type="button" className="je-props__close" onClick={onClose} aria-label="Close">×</button>
-          ) : null}
-        </div>
+        <PanelHeader node={node} onClose={onClose} />
         {node.type === "trigger-manual" ? (
           <TriggerManualPanel node={node} graph={flow} />
         ) : node.type === "trigger-webhook" ? (
@@ -167,12 +201,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
   return (
     <aside className="je-editor__props">
-      <div className="je-props__header">
-        <div className="je-props__title">{node.displayName ?? node.type}</div>
-        {onClose ? (
-          <button type="button" className="je-props__close" onClick={onClose} aria-label="Close">×</button>
-        ) : null}
-      </div>
+      <PanelHeader node={node} onClose={onClose} />
       {isStep ? (
         <TabsShell
           active={effectiveActive}
