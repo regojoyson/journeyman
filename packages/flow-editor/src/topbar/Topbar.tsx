@@ -199,7 +199,7 @@ export function Topbar(p: TopbarProps) {
           />
         )}
       </header>
-      {p.validationErrors && p.validationErrors.length > 0 && (
+      {p.validationErrors && p.validationErrors.length > 0 && !report && (
         <div style={{
           background: "#2a1a1a", borderBottom: "1px solid #ff7675",
           color: "#ff7675", fontSize: 11, padding: "6px 14px",
