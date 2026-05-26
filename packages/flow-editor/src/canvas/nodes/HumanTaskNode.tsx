@@ -5,10 +5,11 @@ import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
 export interface HumanTaskNodeData {
   displayName?: string;
-  config?: {
-    prompt?: string;
-    outputs?: Array<{ name: string; type?: string }>;
-  };
+  // Canvas adapter (Canvas.tsx#toReactWorkflowNodes) SPREADS node.config onto
+  // data for non-step nodes — so config fields live at data root, not under
+  // data.config. Match that shape here.
+  prompt?: string;
+  outputs?: Array<{ name: string; type?: string }>;
   /**
    * Optional run-time state. The canvas can pass `{ status: "running" }` here
    * when the node-execution row is in `waiting` status to render the waiting
@@ -20,7 +21,7 @@ export interface HumanTaskNodeData {
 
 export function HumanTaskNode(props: NodeProps) {
   const data = props.data as HumanTaskNodeData;
-  const outputs = data.config?.outputs ?? [];
+  const outputs = data.outputs ?? [];
   const isWaiting = data.runState?.status === "running";
 
   const subtitle = outputs.length > 0
@@ -42,7 +43,7 @@ export function HumanTaskNode(props: NodeProps) {
         <div className="je-node__icon" style={{ background: "#fbc531" }}>⏳</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "Human Task"}</div>
-          <div className="je-node__subtitle" title={data.config?.prompt}>
+          <div className="je-node__subtitle" title={data.prompt}>
             {subtitle}
           </div>
         </div>
