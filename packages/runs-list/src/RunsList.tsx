@@ -5,26 +5,7 @@ import type { WorkflowInstancesListProps } from "./types.ts";
 import { WorkflowInstanceFilters } from "./RunFilters.tsx";
 import { ProviderBadge } from "./ProviderBadge.tsx";
 import { Pagination } from "./Pagination.tsx";
-
-/**
- * Render the workflow inputs as a short "key=value, key=value" summary for the
- * leftmost column. Non-primitive values are skipped. Full pairs go in the
- * tooltip; the visible string is truncated.
- */
-function refLabel(inputs: Record<string, unknown> | undefined): { text: string; title?: string } {
-  if (!inputs) return { text: "—" };
-  const pairs: string[] = [];
-  for (const [k, v] of Object.entries(inputs)) {
-    if (v == null) continue;
-    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-      pairs.push(`${k}=${String(v)}`);
-    }
-  }
-  if (pairs.length === 0) return { text: "—" };
-  const full = pairs.join(", ");
-  const text = full.length > 60 ? full.slice(0, 57) + "…" : full;
-  return { text, title: full };
-}
+import { refLabel } from "./ref-label.ts";
 
 export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
   const scope = p.scope ?? "mine";
