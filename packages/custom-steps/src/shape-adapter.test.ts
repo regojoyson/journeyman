@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { customStepToShape } from "./shape-adapter.ts";
+import { workflowInputDefShape, validateInputBinding } from "@journeyman/core";
 import type { CustomAiStep } from "@journeyman/core";
 
 function stepWith(type: "json-object" | "json-array"): CustomAiStep {
@@ -18,5 +19,25 @@ describe("customStepToShape — json inputs", () => {
   it("json-array → json array shape", () => {
     const { inputFields } = customStepToShape(stepWith("json-array"));
     expect(inputFields.payload.shape).toEqual({ type: "json", container: "array" });
+  });
+});
+
+describe("regression: json-object workflow input binds to json-object custom-step input", () => {
+  it("the reported scenario validates clean", () => {
+    // Producer: a workflow input declared as `json object`.
+    const producer = workflowInputDefShape({ name: "payload", type: "json-object" });
+    // Consumer: a custom-step input declared as `json object`.
+    const { inputFields } = customStepToShape(stepWith("json-object"));
+    const expected = inputFields.payload.shape;
+
+    const check = validateInputBinding(expected, producer);
+    expect(check.ok).toBe(true);
+  });
+
+  it("a json-array workflow input does NOT bind to a json-object input", () => {
+    const producer = workflowInputDefShape({ name: "payload", type: "json-array" });
+    const { inputFields } = customStepToShape(stepWith("json-object"));
+    const check = validateInputBinding(inputFields.payload.shape, producer);
+    expect(check.ok).toBe(false);
   });
 });
