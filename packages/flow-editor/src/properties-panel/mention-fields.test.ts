@@ -71,4 +71,23 @@ assert.equal(fields.some(f => f.ref.startsWith("ht_a1b2c3.output.payload.")), fa
 // unique-label source is not flagged
 assert.equal(ticket!.showId, false);
 
+// json object run-input flattens to one opaque leaf
+{
+  const src: UpstreamSource = {
+    kind: "run-input",
+    id: "",
+    label: "Run inputs",
+    groups: [{
+      title: "Run inputs",
+      scope: "run-input",
+      fields: [{ name: "payload", scope: "run-input", shape: { type: "json", container: "object" } }],
+    }],
+  };
+  const f = toMentionFields([src]);
+  const payloadLeaf = f.find(x => x.ref === "workflow.input.payload");
+  assert.ok(payloadLeaf, "json object run-input should produce a leaf");
+  assert.equal(payloadLeaf!.type, "json object");
+  assert.equal(f.some(x => x.ref.startsWith("workflow.input.payload.")), false);
+}
+
 console.log("mention-fields: ok");

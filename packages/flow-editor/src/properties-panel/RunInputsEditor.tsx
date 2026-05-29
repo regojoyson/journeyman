@@ -3,7 +3,13 @@ import type { WorkflowInputDef } from "@journeyman/core";
 
 interface Props { value: WorkflowInputDef[]; onChange: (next: WorkflowInputDef[]) => void; }
 
-const TYPE_OPTIONS: WorkflowInputDef["type"][] = ["string", "number", "boolean", "json"];
+const TYPE_OPTIONS: { value: WorkflowInputDef["type"]; label: string }[] = [
+  { value: "string", label: "string" },
+  { value: "number", label: "number" },
+  { value: "boolean", label: "boolean" },
+  { value: "json-object", label: "json object" },
+  { value: "json-array", label: "json array" },
+];
 
 export function RunInputsEditor({ value, onChange }: Props) {
   const update = (i: number, patch: Partial<WorkflowInputDef>) =>
@@ -46,7 +52,7 @@ export function RunInputsEditor({ value, onChange }: Props) {
                   value={r.type}
                   onChange={e => update(i, { type: e.target.value as WorkflowInputDef["type"] })}
                 >
-                  {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
             </div>

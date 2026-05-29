@@ -38,6 +38,9 @@ function flatten(shape: Shape, prefix: string[]): Leaf[] {
     return entries.flatMap(([k, sub]) => flatten(sub, [...prefix, k]));
   }
   if (resolved.type === "array") return [{ path: prefix, type: "array", shape: resolved }];
+  if (resolved.type === "json") {
+    return [{ path: prefix, type: resolved.container === "object" ? "json object" : "json array", shape: resolved }];
+  }
   return [{ path: prefix, type: resolved.type, shape: resolved }];
 }
 

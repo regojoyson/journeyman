@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { WorkflowGraph, Shape, CustomAiStep } from "@journeyman/core";
-import { getStartWorkflowInputs } from "@journeyman/core";
+import { getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
 import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 import { pauseNodeSource } from "./pause-node-source.ts";
@@ -74,9 +74,7 @@ export function useUpstreamSources(
             name: r.name,
             description: r.description,
             scope: "run-input" as const,
-            shape: (r.type === "number" || r.type === "boolean" || r.type === "string"
-              ? { type: r.type }
-              : { type: "string" }) as Shape,
+            shape: workflowInputDefShape(r),
           })),
         }],
       });

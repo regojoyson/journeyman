@@ -1,20 +1,6 @@
 import type { WorkflowGraph, Shape } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
-
-/**
- * When the *expected* input shape is `object` with no declared fields (custom
- * steps that declare a plain `object` input), accept any object as actual.
- */
-function isWildcardMatch(actual: Shape, expected: Shape): boolean {
-  const ra = resolveShape(actual);
-  const re = resolveShape(expected);
-  return re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object";
-}
-
-function shapeMatches(actual: Shape, expected: Shape): boolean {
-  return isWildcardMatch(actual, expected) || shapesEqual(actual, expected);
-}
 
 export function validateRefShape(
   flow: WorkflowGraph,
@@ -37,16 +23,12 @@ export function validateRefShape(
           flow.nodes.find(n => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human")?.config,
         );
     const decl = decls.find(r => r.name === path[0]);
-    root = decl
-      ? ((decl.type === "number" || decl.type === "boolean" || decl.type === "string"
-          ? { type: decl.type }
-          : { type: "string" }) as Shape)
-      : ({ type: "string" } as Shape);
-    if (!root) return { ok: false, error: `workflow.input.${path[0]} not declared` };
+    if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
+    root = workflowInputDefShape(decl);
     const leaf = shapeAtPath(root, path.slice(1));
     if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
     try {
-      return shapeMatches(leaf, expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
+      return shapesCompatible(leaf, expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
     } catch (e) {
       return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
     }
@@ -61,7 +43,7 @@ export function validateRefShape(
   const leaf = shapeAtPath(root, path.slice(1));
   if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
   try {
-    return shapeMatches(resolveShape(leaf), expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
+    return shapesCompatible(resolveShape(leaf), expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
   } catch (e) {
     return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
   }
