@@ -1,6 +1,7 @@
 import type { SecretScope } from "./secrets.types.ts";
 import type { ExecutorKind } from "../registries/provider-catalog.ts";
 import type { JsonLogicExpr } from "./flow-condition.types.ts";
+import type { Shape } from "./shape.types.ts";
 
 /**
  * Workflow JSON schema version. Bumped when workflow JSON shape changes
@@ -59,9 +60,20 @@ export type WorkflowInputValue =
 
 export interface WorkflowInputDef {
   name: string;
-  type: "string" | "number" | "boolean" | "json";
+  type: "string" | "number" | "boolean" | "json-object" | "json-array";
   description?: string;
   required?: boolean;
+}
+
+/** Editor input type → binding Shape. Exhaustive over WorkflowInputDef.type. */
+export function workflowInputDefShape(def: WorkflowInputDef): Shape {
+  switch (def.type) {
+    case "number":      return { type: "number" };
+    case "boolean":     return { type: "boolean" };
+    case "json-object": return { type: "json", container: "object" };
+    case "json-array":  return { type: "json", container: "array" };
+    case "string":      return { type: "string" };
+  }
 }
 
 export interface WorkflowNode {

@@ -115,7 +115,7 @@ export type {
   SecretBinding,
   WorkflowDefaults,
 } from "./types/flow.types.ts";
-export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode } from "./types/flow.types.ts";
+export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode, workflowInputDefShape } from "./types/flow.types.ts";
 export type { WorkflowTriggerNodeType } from "./types/flow.types.ts";
 export type {
   TriggerInputMapping,
@@ -162,7 +162,7 @@ export type {
 export type { Shape, InputField, InputFields } from "./types/shape.types.ts";
 export {
   IssueShape, RepoShape, PullRequestShape, WorkspaceShape,
-  NAMED_SHAPES, resolveShape, shapesEqual, shapeAtPath,
+  NAMED_SHAPES, resolveShape, shapesEqual, shapeAtPath, shapesCompatible,
 } from "./types/shapes.ts";
 export * from "./types/secrets.types.ts";
 export * from "./types/mcp.types.ts";

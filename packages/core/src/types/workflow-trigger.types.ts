@@ -1,6 +1,6 @@
 import type { JsonLogicExpr } from "./flow-condition.types.ts";
 
-export type TriggerInputMappingType = "string" | "number" | "boolean" | "json";
+export type TriggerInputMappingType = "string" | "number" | "boolean" | "json-object" | "json-array";
 
 export interface TriggerInputMapping {
   /** JSONPath into the inbound payload. */

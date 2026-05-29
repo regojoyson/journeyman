@@ -6,7 +6,7 @@ export type CustomStepOutputMode = "none" | "text" | "structured";
 
 export type CustomStepInputType =
   | "string" | "number" | "boolean" | "string[]"
-  | "object" | "array"
+  | "json-object" | "json-array"
   | "workspaceDir" | "repoRef"
   | "template";
 

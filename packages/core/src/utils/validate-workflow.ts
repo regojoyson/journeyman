@@ -1,6 +1,7 @@
 import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef } from "../types/flow.types.ts";
+import { workflowInputDefShape } from "../types/flow.types.ts";
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
-import { resolveShape, shapeAtPath, shapesEqual } from "../types/shapes.ts";
+import { shapeAtPath, shapesCompatible } from "../types/shapes.ts";
 import { getStartWorkflowInputs } from "./start-node.ts";
 import { extractTemplateRefs } from "./template-refs.ts";
 
@@ -45,6 +46,7 @@ export function shapeTag(s: Shape): string {
     case "ref":     return s.name;
     case "object":  return s.named ?? "object";
     case "array":   return `${shapeTag(s.items)}[]`;
+    case "json":    return s.container === "object" ? "json object" : "json array";
   }
 }
 
@@ -56,22 +58,11 @@ export function shapeTag(s: Shape): string {
 export function validateInputBinding(expected: Shape, actual: Shape | undefined): BindingCheck {
   if (!actual) return { ok: false, reason: "unknown-shape" };
   try {
-    if (isWildcardObjectMatch(actual, expected)) return { ok: true };
-    if (shapesEqual(actual, expected)) return { ok: true };
+    if (shapesCompatible(actual, expected)) return { ok: true };
   } catch {
     return { ok: false, reason: "unknown-shape" };
   }
   return { ok: false, reason: "shape-mismatch", expected, actual };
-}
-
-/**
- * Wildcard: when `expected` is an object with no declared fields (custom-step
- * input typed as plain `object`), accept any object as actual.
- */
-function isWildcardObjectMatch(actual: Shape, expected: Shape): boolean {
-  const ra = resolveShape(actual);
-  const re = resolveShape(expected);
-  return re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object";
 }
 
 type RefScope = "workflow.input" | "input" | "output";
@@ -93,16 +84,8 @@ function parseRefForValidation(ref: string): ParsedRef | null {
   return { source: m[1], scope: m[2] as RefScope, fieldPath: m[3].split(".") };
 }
 
-void resolveShape;
-
 function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
-  switch (def.type) {
-    case "string":  return { type: "string" };
-    case "number":  return { type: "number" };
-    case "boolean": return { type: "boolean" };
-    case "json":    return undefined;
-    default:        return undefined;
-  }
+  return workflowInputDefShape(def);
 }
 
 function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
