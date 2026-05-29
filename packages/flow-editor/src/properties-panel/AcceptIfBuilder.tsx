@@ -22,7 +22,7 @@ type Mode = "builder" | "advanced";
 
 const EMPTY_STATE: BuilderState = { combinator: "and", rules: [] };
 
-export function AcceptIfBuilder({ value, knownPaths: _knownPaths, readOnly, onChange, datalistId }: Props) {
+export function AcceptIfBuilder({ value, knownPaths, readOnly, onChange, datalistId }: Props) {
   const initial = useMemo(() => deriveInitial(value), []);
   const [mode, setMode] = useState<Mode>(initial.mode);
   const [builder, setBuilder] = useState<BuilderState>(initial.state);
@@ -102,6 +102,9 @@ export function AcceptIfBuilder({ value, knownPaths: _knownPaths, readOnly, onCh
 
   return (
     <div className="je-acceptif">
+      <datalist id={datalistId}>
+        {knownPaths.map((p) => <option key={p} value={p} />)}
+      </datalist>
       <div className="je-acceptif__header">
         <span className="je-acceptif__mode">
           <button
