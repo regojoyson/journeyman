@@ -18,8 +18,8 @@ function inputTypeToShape(t: CustomStepInputType): Shape {
     case "string[]":      return { type: "array", items: { type: "string" } };
     case "workspaceDir":  return { type: "string" };
     case "repoRef":       return { type: "ref", name: "RepoRef" };
-    case "object":        return { type: "object", fields: {} };
-    case "array":         return { type: "array", items: { type: "string" } };
+    case "json-object":   return { type: "json", container: "object" };
+    case "json-array":    return { type: "json", container: "array" };
   }
 }
 
