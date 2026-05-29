@@ -55,7 +55,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
         const raw = dynValues[def.name] ?? "";
         if (def.type === "number") inputs[def.name] = Number(raw);
         else if (def.type === "boolean") inputs[def.name] = raw === "true";
-        else if (def.type === "json") {
+        else if (def.type === "json-object" || def.type === "json-array") {
           try { inputs[def.name] = JSON.parse(raw); }
           catch { throw new Error(`Invalid JSON for "${def.name}"`); }
         } else {
@@ -151,7 +151,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
                 type={def.type === "number" ? "number" : "text"}
                 value={dynValues[def.name] ?? ""}
                 onChange={e => setDynValues(v => ({ ...v, [def.name]: e.target.value }))}
-                placeholder={def.type === "json" ? '{"key": "value"}' : undefined}
+                placeholder={def.type === "json-object" ? '{"key": "value"}' : def.type === "json-array" ? '[ ... ]' : undefined}
                 style={{ width: "100%", background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
               />
             )}

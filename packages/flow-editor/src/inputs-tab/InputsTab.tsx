@@ -62,7 +62,8 @@ export function InputsTab({ graph, onPatchInputs }: InputsTabProps): JSX.Element
                   <option value="string">string</option>
                   <option value="number">number</option>
                   <option value="boolean">boolean</option>
-                  <option value="json">json</option>
+                  <option value="json-object">json object</option>
+                  <option value="json-array">json array</option>
                 </select>
               </td>
               <td className="jm-inputs-tab__cell-required">

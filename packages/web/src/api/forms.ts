@@ -8,7 +8,7 @@ export interface FormListItem {
 
 export interface FormField {
   name: string;
-  type: "string" | "number" | "boolean" | "json";
+  type: "string" | "number" | "boolean" | "json-object" | "json-array";
   required: boolean;
   label: string;
   description?: string;

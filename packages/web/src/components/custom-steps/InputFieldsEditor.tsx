@@ -1,11 +1,16 @@
 import type { CustomStepInputField, CustomStepInputType } from "@journeyman/core";
 import { btnGhost, inputCls, selectCls } from "../../routes/admin-styles.ts";
 
-const TYPES: CustomStepInputType[] = [
-  "string", "number", "boolean", "string[]",
-  "object", "array",
-  "workspaceDir", "repoRef",
-  "template",
+const TYPES: { value: CustomStepInputType; label: string }[] = [
+  { value: "string", label: "string" },
+  { value: "number", label: "number" },
+  { value: "boolean", label: "boolean" },
+  { value: "string[]", label: "string[]" },
+  { value: "json-object", label: "json object" },
+  { value: "json-array", label: "json array" },
+  { value: "workspaceDir", label: "workspaceDir" },
+  { value: "repoRef", label: "repoRef" },
+  { value: "template", label: "template" },
 ];
 
 export function InputFieldsEditor(props: {
@@ -37,7 +42,7 @@ export function InputFieldsEditor(props: {
             value={f.type}
             onChange={(e) => update(i, { type: e.target.value as CustomStepInputType })}
           >
-            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
           <label className="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
             <input
