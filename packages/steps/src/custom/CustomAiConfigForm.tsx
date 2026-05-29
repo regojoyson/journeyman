@@ -172,7 +172,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
         >
           {JSON.stringify(
             step.outputMode === "structured"
-              ? step.outputSchema
+              ? (step.outputFields ?? [])
               : step.outputMode === "text"
                 ? { result: "string" }
                 : {},

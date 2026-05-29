@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { CustomAiStep, OutputSchema } from "@journeyman/core";
+import type { CustomAiStep } from "@journeyman/core";
 import { DEFAULT_CUSTOM_STEP_ICON_ID } from "@journeyman/core";
+import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
 import type { StepDefinition } from "@journeyman/flow-editor";
 
 const colors = ["#a29bfe", "#fd79a8", "#55efc4", "#ffeaa7", "#74b9ff", "#fab1a0"];
@@ -52,22 +53,6 @@ function buildSyntheticStep(p: CustomAiStep, color: string): StepDefinition<any>
     slots: [],
     summary: () => p.name,
     executor: { kind: "coding-cli", method: "runCustomPrompt" },
-    outputSchema: outputSchemaFor(p),
+    outputSchema: customStepToShape(p).outputSchema ?? {},
   };
-}
-
-function outputSchemaFor(p: CustomAiStep): OutputSchema {
-  if (p.outputMode === "text") {
-    return { result: { type: "string" } } as OutputSchema;
-  }
-  if (p.outputMode === "structured" && p.outputSchema) {
-    const props = (p.outputSchema as any).properties ?? {};
-    return Object.fromEntries(
-      Object.entries(props).map(([k, v]: [string, any]) => [
-        k,
-        { type: (v?.type ?? "string"), ...(v?.description ? { description: v.description } : {}) },
-      ]),
-    ) as OutputSchema;
-  }
-  return {} as OutputSchema;
 }

@@ -1,15 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import type { CustomStepOutputMode, CustomStepJsonSchema } from "@journeyman/core";
+import type { CustomStepOutputMode, CustomStepOutputField } from "@journeyman/core";
 import { btnGhost, inputCls, selectCls } from "../../routes/admin-styles.ts";
 
-interface SchemaField {
-  name: string;
-  type: "string" | "number" | "boolean" | "json-array" | "json-object";
-  required: boolean;
-  description?: string;
-}
-
-const TYPE_OPTIONS: { value: SchemaField["type"]; label: string }[] = [
+const TYPE_OPTIONS: { value: CustomStepOutputField["type"]; label: string }[] = [
   { value: "string", label: "string" },
   { value: "number", label: "number" },
   { value: "boolean", label: "boolean" },
@@ -19,32 +11,16 @@ const TYPE_OPTIONS: { value: SchemaField["type"]; label: string }[] = [
 
 export function OutputSchemaEditor(props: {
   mode: CustomStepOutputMode;
-  schema: CustomStepJsonSchema | undefined;
+  fields: CustomStepOutputField[];
   onModeChange: (m: CustomStepOutputMode) => void;
-  onSchemaChange: (s: CustomStepJsonSchema | undefined) => void;
+  onFieldsChange: (f: CustomStepOutputField[]) => void;
 }) {
-  const { mode, schema, onModeChange, onSchemaChange } = props;
+  const { mode, fields, onModeChange, onFieldsChange } = props;
 
-  // Local state for editor rows so empty-name rows aren't dropped on
-  // round-trip through JSON Schema (which can't have empty property names).
-  const [fields, setFields] = useState<SchemaField[]>(() => parseSchema(schema));
-  const lastEmitted = useRef<string>("");
-
-  // Sync from props only when the incoming schema differs from what we last
-  // emitted (i.e. an external change, not our own write).
-  useEffect(() => {
-    const incoming = JSON.stringify(schema ?? null);
-    if (incoming !== lastEmitted.current) {
-      setFields(parseSchema(schema));
-    }
-  }, [schema]);
-
-  const apply = (next: SchemaField[]) => {
-    setFields(next);
-    const built = buildSchema(next);
-    lastEmitted.current = JSON.stringify(built ?? null);
-    onSchemaChange(built);
-  };
+  const update = (i: number, patch: Partial<CustomStepOutputField>) =>
+    onFieldsChange(fields.map((f, idx) => idx === i ? { ...f, ...patch } : f));
+  const remove = (i: number) => onFieldsChange(fields.filter((_, idx) => idx !== i));
+  const add = () => onFieldsChange([...fields, { name: "", type: "string", required: false }]);
 
   return (
     <div className="space-y-3">
@@ -72,12 +48,12 @@ export function OutputSchemaEditor(props: {
                 className={inputCls}
                 placeholder="name"
                 value={f.name}
-                onChange={(e) => apply(fields.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))}
+                onChange={(e) => update(i, { name: e.target.value })}
               />
               <select
                 className={selectCls}
                 value={f.type}
-                onChange={(e) => apply(fields.map((x, idx) => idx === i ? { ...x, type: e.target.value as SchemaField["type"] } : x))}
+                onChange={(e) => update(i, { type: e.target.value as CustomStepOutputField["type"] })}
               >
                 {TYPE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -86,7 +62,7 @@ export function OutputSchemaEditor(props: {
                   type="checkbox"
                   className="accent-indigo-500"
                   checked={f.required}
-                  onChange={(e) => apply(fields.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))}
+                  onChange={(e) => update(i, { required: e.target.checked })}
                 />
                 required
               </label>
@@ -94,68 +70,22 @@ export function OutputSchemaEditor(props: {
                 className={inputCls}
                 placeholder="description"
                 value={f.description ?? ""}
-                onChange={(e) => apply(fields.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))}
+                onChange={(e) => update(i, { description: e.target.value })}
               />
               <button
                 type="button"
                 className={btnGhost}
-                onClick={() => apply(fields.filter((_, idx) => idx !== i))}
+                onClick={() => remove(i)}
               >×</button>
             </div>
           ))}
           <button
             type="button"
             className={btnGhost}
-            onClick={() => apply([...fields, { name: "", type: "string", required: false }])}
+            onClick={add}
           >+ Add output field</button>
         </div>
       )}
     </div>
   );
-}
-
-/** JSON Schema scalar/container type → editor field type. */
-function jsonSchemaTypeToField(t: unknown): SchemaField["type"] {
-  switch (t) {
-    case "number":
-    case "integer": return "number";
-    case "boolean": return "boolean";
-    case "array":   return "json-array";
-    case "object":  return "json-object";
-    default:        return "string";
-  }
-}
-
-/** Editor field type → JSON Schema type. */
-function fieldTypeToJsonSchema(t: SchemaField["type"]): "string" | "number" | "boolean" | "array" | "object" {
-  switch (t) {
-    case "number":      return "number";
-    case "boolean":     return "boolean";
-    case "json-array":  return "array";
-    case "json-object": return "object";
-    case "string":      return "string";
-  }
-}
-
-function parseSchema(s: CustomStepJsonSchema | undefined): SchemaField[] {
-  if (!s || typeof s !== "object") return [];
-  const required = new Set<string>(Array.isArray((s as any).required) ? (s as any).required : []);
-  const props = (s as any).properties ?? {};
-  return Object.entries(props).map(([name, p]: [string, any]) => ({
-    name,
-    type: jsonSchemaTypeToField(p?.type),
-    required: required.has(name),
-    description: p?.description,
-  }));
-}
-
-function buildSchema(fields: SchemaField[]): CustomStepJsonSchema {
-  const properties: Record<string, unknown> = {};
-  const required: string[] = [];
-  for (const f of fields) {
-    if (!f.name) continue;
-    properties[f.name] = { type: fieldTypeToJsonSchema(f.type), ...(f.description ? { description: f.description } : {}) };
-    if (f.required) required.push(f.name);
-  }
-  return { type: "object", properties, ...(required.length ? { required } : {}) };
 }

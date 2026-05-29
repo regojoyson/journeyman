@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type {
   CustomAiStep, CustomAiStepCreateInput, CustomStepInputField,
-  CustomStepOutputMode, CustomStepJsonSchema,
+  CustomStepOutputMode, CustomStepOutputField,
   CanonicalTool, SecretSlotDef,
 } from "@journeyman/core";
 import { toolsRequireWorkspace } from "@journeyman/core";
@@ -39,7 +39,7 @@ export function EditCustomStepModal(props: {
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
   const [inputFields, setInputFields] = useState<CustomStepInputField[]>(initial?.inputFields ?? []);
   const [outputMode, setOutputMode] = useState<CustomStepOutputMode>(initial?.outputMode ?? "none");
-  const [outputSchema, setOutputSchema] = useState<CustomStepJsonSchema | undefined>(initial?.outputSchema);
+  const [outputFields, setOutputFields] = useState<CustomStepOutputField[]>(initial?.outputFields ?? []);
   const [promptTemplate, setPromptTemplate] = useState(initial?.promptTemplate ?? "");
   const [defaultTools, setDefaultTools] = useState<CanonicalTool[]>(initial?.defaultTools ?? []);
   const [slots, setSlots] = useState<SecretSlotDef[]>(initial?.slots ?? []);
@@ -85,7 +85,7 @@ export function EditCustomStepModal(props: {
         icon,
         inputFields,
         outputMode,
-        outputSchema: outputMode === "structured" ? outputSchema : undefined,
+        outputFields: outputMode === "structured" ? outputFields : undefined,
         promptTemplate,
         defaultTools,
         defaultMcpIds: initial?.defaultMcpIds ?? [],
@@ -262,9 +262,9 @@ export function EditCustomStepModal(props: {
                 />
                 <OutputSchemaEditor
                   mode={outputMode}
-                  schema={outputSchema}
+                  fields={outputFields}
                   onModeChange={setOutputMode}
-                  onSchemaChange={setOutputSchema}
+                  onFieldsChange={setOutputFields}
                 />
               </section>
             )}
