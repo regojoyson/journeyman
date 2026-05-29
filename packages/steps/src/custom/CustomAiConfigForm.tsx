@@ -4,22 +4,20 @@ import {
   useOrgId,
   MentionInput,
   toMentionFields,
-  parseTemplate,
-  segmentsToTemplate,
   soleRefOf,
   type Segment,
 } from "@journeyman/flow-editor";
 import type { CustomAiStep, CanonicalTool, WorkflowInputValue, Shape } from "@journeyman/core";
 
 /** Expected shape for a custom-step bind field. Returns undefined only when the
- * target type is genuinely unconstrained (generic array / repoRef). */
+ * target type is genuinely unconstrained. */
 function expectedShapeForType(type: string): Shape | undefined {
   if (type === "string" || type === "workspaceDir") return { type: "string" };
   if (type === "number") return { type: "number" };
   if (type === "boolean") return { type: "boolean" };
-  if (type === "string[]") return { type: "array", items: { type: "string" } };
-  if (type === "object") return { type: "object", fields: {} };
-  return undefined; // array (unknown items) / repoRef — stay permissive
+  if (type === "json-object") return { type: "json", container: "object" };
+  if (type === "json-array") return { type: "json", container: "array" };
+  return undefined;
 }
 
 interface CustomAiConfig {
@@ -72,14 +70,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
     const v = inputs[name];
     return v && v.kind === "ref" ? v.ref : "";
   };
-  const setTemplate = (name: string, template: string) => {
-    if (!template) { removeInput(name); return; }
-    setInputs({ ...inputs, [name]: { kind: "template", template } as WorkflowInputValue });
-  };
-  const getTemplate = (name: string): string => {
-    const v = inputs[name];
-    return v && v.kind === "template" ? v.template : "";
-  };
 
   return (
     <div className="je-props__field" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -108,29 +98,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
           <div className="je-props__field-help">No inputs declared.</div>
         )}
         {step.inputFields.map((f) => {
-          if (f.type === "template") {
-            const segs = parseTemplate(getTemplate(f.name), "braces");
-            const showError = f.required && segs.length === 0;
-            return (
-              <div key={f.name} className={`je-props__field${showError ? " je-props__field--invalid" : ""}`}>
-                <div className="je-props__field-label-row">
-                  <label>
-                    {f.name}
-                    {f.required && <span className="je-props__required-mark">*</span>}
-                  </label>
-                </div>
-                <MentionInput
-                  value={segs}
-                  fields={mentionFields}
-                  readOnly={readOnly}
-                  placeholder="Type, or @ to insert an upstream value"
-                  onChange={(next: Segment[]) => setTemplate(f.name, segmentsToTemplate(next, "braces"))}
-                />
-                {f.description && <div className="je-props__field-help">{f.description}</div>}
-              </div>
-            );
-          }
-
           const ref = getRef(f.name);
           const isBound = !!ref;
           const showError = f.required && !isBound;

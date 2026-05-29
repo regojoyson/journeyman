@@ -5,10 +5,9 @@ export type CustomStepScope = "user" | "org";
 export type CustomStepOutputMode = "none" | "text" | "structured";
 
 export type CustomStepInputType =
-  | "string" | "number" | "boolean" | "string[]"
+  | "string" | "number" | "boolean"
   | "json-object" | "json-array"
-  | "workspaceDir" | "repoRef"
-  | "template";
+  | "workspaceDir";
 
 export interface CustomStepInputField {
   name: string;

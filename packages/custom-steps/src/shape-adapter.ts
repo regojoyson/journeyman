@@ -12,13 +12,10 @@ import type {
 
 function inputTypeToShape(t: CustomStepInputType): Shape {
   switch (t) {
-    case "string":
-    case "template":      return { type: "string" };
+    case "string":        return { type: "string" };
     case "number":        return { type: "number" };
     case "boolean":       return { type: "boolean" };
-    case "string[]":      return { type: "array", items: { type: "string" } };
     case "workspaceDir":  return { type: "string" };
-    case "repoRef":       return { type: "ref", name: "RepoRef" };
     case "json-object":   return { type: "json", container: "object" };
     case "json-array":    return { type: "json", container: "array" };
   }
