@@ -12,7 +12,7 @@ import {
   type ResolvedSkillPackage,
   type SecretBinding,
 } from "@journeyman/core";
-import { getCustomAiStep, renderPrompt } from "@journeyman/custom-steps";
+import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
 import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 
@@ -161,7 +161,9 @@ export class CustomAiStepHandler implements IStepHandler {
     const result = await coding.runCustomPrompt({
       prompt,
       outputMode: step.outputMode,
-      outputSchema: step.outputSchema,
+      outputSchema: step.outputMode === "structured"
+        ? outputFieldsToJsonSchema(step.outputFields ?? [])
+        : undefined,
       cwd,
       mcps,
       skills,
