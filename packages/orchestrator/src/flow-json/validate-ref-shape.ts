@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape, pauseNodeOutputSchema } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
@@ -58,6 +58,23 @@ export function resolveRefShape(
 
   const node = flow.nodes.find(n => n.id === parsed.source);
   if (!node) return { ok: false, error: `Node ${labelNode(undefined, parsed.source)} not found` };
+
+  // Pause nodes (webhook-wait / human-task) produce outputs too: reserved meta
+  // keys + declared config.outputs. Resolve refs against that schema instead of
+  // rejecting them as "not a step".
+  const pauseSchema = pauseNodeOutputSchema(node);
+  if (pauseSchema) {
+    if (parsed.scope !== "output") {
+      return { ok: false, error: `Node ${labelNode(node, parsed.source)} only exposes outputs (use output.<field>)` };
+    }
+    const pauseRoot = pauseSchema[path[0]];
+    if (!pauseRoot) {
+      return { ok: false, error: `Field 'output.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
+    }
+    const pauseLeaf = shapeAtPath(pauseRoot, path.slice(1));
+    return pauseLeaf ? { ok: true, shape: pauseLeaf } : { ok: false, error: `Path not found: ${ref}` };
+  }
+
   if (node.type !== "step" || !node.stepType) return { ok: false, error: `Node ${labelNode(node, parsed.source)} is not a step` };
 
   let inputFields: InputFields | undefined;
