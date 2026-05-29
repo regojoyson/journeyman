@@ -18,8 +18,19 @@ export interface CustomStepInputField {
   default?: unknown;
 }
 
-// JSON Schema subset stored in output_schema (full JSON Schema is allowed;
-// we only constrain what the editor produces).
+export type CustomStepOutputType =
+  | "string" | "number" | "boolean" | "json-object" | "json-array";
+
+/** One declared field of a structured custom-step output. Mirrors CustomStepInputField. */
+export interface CustomStepOutputField {
+  name: string;
+  type: CustomStepOutputType;
+  required: boolean;
+  description?: string;
+}
+
+// JSON Schema GENERATED from outputFields at the model-call boundary. Not stored;
+// produced by outputFieldsToJsonSchema() and handed to the AI SDK as outputFormat.
 export type CustomStepJsonSchema = Record<string, unknown>;
 
 export interface CustomAiStep {
@@ -38,7 +49,7 @@ export interface CustomAiStep {
   icon?: string | null;
   inputFields: CustomStepInputField[];
   outputMode: CustomStepOutputMode;
-  outputSchema?: CustomStepJsonSchema;
+  outputFields?: CustomStepOutputField[];
   promptTemplate: string;
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
@@ -61,7 +72,7 @@ export interface CustomAiStepCreateInput {
   icon?: string | null;
   inputFields?: CustomStepInputField[];
   outputMode?: CustomStepOutputMode;
-  outputSchema?: CustomStepJsonSchema;
+  outputFields?: CustomStepOutputField[];
   promptTemplate?: string;
   defaultTools?: CanonicalTool[];
   defaultMcpIds?: string[];
@@ -83,7 +94,7 @@ export interface CustomStepExportPayloadV1 {
   icon: string | null;
   inputFields: CustomStepInputField[];
   outputMode: CustomStepOutputMode;
-  outputSchema?: CustomStepJsonSchema;
+  outputFields?: CustomStepOutputField[];
   promptTemplate: string;
   defaultTools: CanonicalTool[];
   /** Always [] in exports — cross-system IDs do not resolve. */
