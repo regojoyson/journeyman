@@ -33,11 +33,12 @@ function pickHumanTrigger(graph: WorkflowGraph): WorkflowNode | undefined {
 
 function defaultWidgetFor(type: WorkflowInputDef["type"]): TriggerHumanFieldWidget {
   switch (type) {
-    case "number":  return "number";
-    case "boolean": return "checkbox";
-    case "json":    return "textarea";
+    case "number":      return "number";
+    case "boolean":     return "checkbox";
+    case "json-object": return "textarea";
+    case "json-array":  return "textarea";
     case "string":
-    default:        return "text";
+    default:            return "text";
   }
 }
 
@@ -75,11 +76,12 @@ export function resolveFormSchema(
 function coerceInput(value: unknown, type: WorkflowInputDef["type"]): unknown {
   if (value == null) return value;
   switch (type) {
-    case "number":  return typeof value === "number" ? value : Number(value);
-    case "boolean": return Boolean(value);
-    case "json":    return typeof value === "string" ? JSON.parse(value) : value;
+    case "number":      return typeof value === "number" ? value : Number(value);
+    case "boolean":     return Boolean(value);
+    case "json-object": return typeof value === "string" ? JSON.parse(value) : value;
+    case "json-array":  return typeof value === "string" ? JSON.parse(value) : value;
     case "string":
-    default:        return String(value);
+    default:            return String(value);
   }
 }
 

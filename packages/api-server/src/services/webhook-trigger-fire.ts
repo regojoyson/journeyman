@@ -18,13 +18,17 @@ export interface TriggerFireResult {
   workflowInstanceIds: string[];
 }
 
-function coerce(value: unknown, type: "string" | "number" | "boolean" | "json"): unknown {
+function coerce(
+  value: unknown,
+  type: "string" | "number" | "boolean" | "json-object" | "json-array",
+): unknown {
   if (value == null) return value;
   switch (type) {
-    case "string": return String(value);
-    case "number": return Number(value);
-    case "boolean": return Boolean(value);
-    case "json":   return value;
+    case "string":      return String(value);
+    case "number":      return Number(value);
+    case "boolean":     return Boolean(value);
+    case "json-object": return value;
+    case "json-array":  return value;
   }
 }
 
