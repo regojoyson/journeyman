@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesEqual, getStartWorkflowInputs } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
@@ -43,10 +43,7 @@ export function resolveRefShape(
         );
     const decl = workflowInputs.find(r => r.name === path[0]);
     if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
-    const root: Shape =
-      decl.type === "number" || decl.type === "boolean" || decl.type === "string"
-        ? { type: decl.type }
-        : { type: "string" };
+    const root: Shape = workflowInputDefShape(decl);
     const leaf = shapeAtPath(root, path.slice(1));
     return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
   }
@@ -97,7 +94,7 @@ export function validateRefShapeAgainst(
   if (!r.ok || !r.shape) return { ok: false, error: r.error };
   let ok = false;
   try {
-    ok = isWildcardMatch(r.shape, expected) || shapesEqual(r.shape, expected);
+    ok = shapesCompatible(r.shape, expected);
   } catch (e) {
     return { ok: false, error: `Shape comparison failed: ${(e as Error).message}` };
   }
@@ -108,21 +105,6 @@ export function validateRefShapeAgainst(
     };
   }
   return { ok: true };
-}
-
-/**
- * Wildcard match: when the *expected* shape is an object with no declared
- * fields (e.g. a custom-step input typed as plain `object`), accept any
- * object as the actual shape. Lets custom steps declare generic object
- * inputs without naming every nested field.
- */
-function isWildcardMatch(actual: Shape, expected: Shape): boolean {
-  const ra = resolveShape(actual);
-  const re = resolveShape(expected);
-  if (re.type === "object" && Object.keys(re.fields).length === 0 && ra.type === "object") {
-    return true;
-  }
-  return false;
 }
 
 function describeShape(s: Shape): string {
@@ -136,6 +118,7 @@ function describeShape(s: Shape): string {
     case "object": return r.named ?? "object";
     case "array":  return `${describeShape(r.items)}[]`;
     case "ref":    return r.name;
+    case "json":   return r.container === "object" ? "json object" : "json array";
     default:       return r.type;
   }
 }
