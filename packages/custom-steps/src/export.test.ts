@@ -16,7 +16,7 @@ const sampleStep: CustomAiStep = {
   icon: "lucide:Sparkles",
   inputFields: [{ name: "repoUrl", type: "string", required: true }],
   outputMode: "structured",
-  outputSchema: { type: "object" },
+  outputFields: [{ name: "summary", type: "json-object", required: true }],
   promptTemplate: "Analyze {{repoUrl}}",
   defaultTools: ["bash"],
   defaultMcpIds: ["mcp-abc"],
@@ -53,7 +53,7 @@ describe("toExportV1", () => {
     expect(out.step.description).toBe("Look at the repo");
     expect(out.step.icon).toBe("lucide:Sparkles");
     expect(out.step.outputMode).toBe("structured");
-    expect(out.step.outputSchema).toEqual({ type: "object" });
+    expect(out.step.outputFields).toEqual([{ name: "summary", type: "json-object", required: true }]);
     expect(out.step.promptTemplate).toBe("Analyze {{repoUrl}}");
     expect(out.step.defaultTools).toEqual(["bash"]);
     expect(out.step.requiresSkills).toBe(false);
@@ -68,11 +68,11 @@ describe("toExportV1", () => {
     const minimal: CustomAiStep = {
       ...sampleStep,
       icon: undefined,
-      outputSchema: undefined,
+      outputFields: undefined,
     };
     const out = toExportV1(minimal);
     expect(out.step.icon).toBeNull();
-    expect(out.step.outputSchema).toBeUndefined();
+    expect(out.step.outputFields).toEqual([]);
   });
 });
 

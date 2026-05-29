@@ -2,7 +2,8 @@ import type {
   CustomAiStep,
   CustomStepInputField,
   CustomStepInputType,
-  CustomStepJsonSchema,
+  CustomStepOutputField,
+  CustomStepOutputType,
   InputField,
   InputFields,
   OutputSchema,
@@ -31,42 +32,23 @@ function inputFieldToCatalogField(f: CustomStepInputField): InputField {
   };
 }
 
-function jsonSchemaToOutputSchema(schema: CustomStepJsonSchema | undefined): OutputSchema | null {
-  if (!schema || typeof schema !== "object") return null;
-  const props = (schema as { properties?: Record<string, unknown> }).properties;
-  if (!props || typeof props !== "object") return null;
-  const out: OutputSchema = {};
-  for (const [name, raw] of Object.entries(props)) {
-    out[name] = jsonSchemaNodeToShape(raw);
+function outputTypeToShape(t: CustomStepOutputType, desc?: string): Shape {
+  switch (t) {
+    case "number":      return { type: "number", description: desc };
+    case "boolean":     return { type: "boolean", description: desc };
+    case "json-object": return { type: "json", container: "object", description: desc };
+    case "json-array":  return { type: "json", container: "array", description: desc };
+    case "string":      return { type: "string", description: desc };
   }
-  return out;
 }
 
-function jsonSchemaNodeToShape(raw: unknown): Shape {
-  if (!raw || typeof raw !== "object") return { type: "string" };
-  const node = raw as { type?: unknown; items?: unknown; properties?: unknown; description?: unknown };
-  const desc = typeof node.description === "string" ? node.description : undefined;
-  switch (node.type) {
-    case "string":  return { type: "string", description: desc };
-    case "number":
-    case "integer": return { type: "number", description: desc };
-    case "boolean": return { type: "boolean", description: desc };
-    case "array": {
-      // Opaque array (no declared items) → json array; otherwise a typed array.
-      if (node.items == null) return { type: "json", container: "array", description: desc };
-      return { type: "array", items: jsonSchemaNodeToShape(node.items), description: desc };
-    }
-    case "object": {
-      const props = node.properties && typeof node.properties === "object" ? node.properties as Record<string, unknown> : {};
-      const keys = Object.keys(props);
-      // Opaque object (no declared properties) → json object; otherwise a typed object.
-      if (keys.length === 0) return { type: "json", container: "object", description: desc };
-      const fields: Record<string, Shape> = {};
-      for (const [k, v] of Object.entries(props)) fields[k] = jsonSchemaNodeToShape(v);
-      return { type: "object", fields, description: desc };
-    }
-    default: return { type: "string", description: desc };
+function outputFieldsToShape(fields: CustomStepOutputField[]): OutputSchema {
+  const out: OutputSchema = {};
+  for (const f of fields) {
+    if (!f.name) continue;
+    out[f.name] = outputTypeToShape(f.type, f.description);
   }
+  return out;
 }
 
 export interface CustomStepShape {
@@ -79,7 +61,7 @@ export function customStepToShape(step: CustomAiStep): CustomStepShape {
   for (const f of step.inputFields) inputFields[f.name] = inputFieldToCatalogField(f);
 
   const outputSchema =
-    step.outputMode === "structured" ? jsonSchemaToOutputSchema(step.outputSchema) :
+    step.outputMode === "structured" ? outputFieldsToShape(step.outputFields ?? []) :
     step.outputMode === "text"       ? ({ result: { type: "string" } } as OutputSchema) :
     null;
 

@@ -132,7 +132,7 @@ export async function registerUserCustomStepRoutes(app: FastifyInstance, pool: P
         icon: parseIcon(body.icon) ?? null,
         inputFields: body.inputFields,
         outputMode: body.outputMode,
-        outputSchema: body.outputSchema,
+        outputFields: body.outputFields,
         promptTemplate: body.promptTemplate,
         defaultTools: parseDefaultTools(body.defaultTools),
         defaultMcpIds: body.defaultMcpIds,

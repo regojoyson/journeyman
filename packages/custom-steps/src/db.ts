@@ -23,7 +23,7 @@ function rowToStep(r: any): CustomAiStep {
     icon: r.icon ?? null,
     inputFields: r.input_fields ?? [],
     outputMode: r.output_mode,
-    outputSchema: r.output_schema ?? undefined,
+    outputFields: Array.isArray(r.output_schema) ? r.output_schema : [],
     promptTemplate: r.prompt_template ?? "",
     defaultTools: Array.isArray(r.default_tools) ? r.default_tools : [],
     defaultMcpIds: r.default_mcp_ids ?? [],
@@ -63,7 +63,7 @@ export async function insertCustomAiStep(
         input.icon ?? null,
         JSON.stringify(input.inputFields ?? []),
         input.outputMode ?? "none",
-        input.outputSchema ? JSON.stringify(input.outputSchema) : null,
+        JSON.stringify(input.outputFields ?? []),
         input.promptTemplate ?? "",
         JSON.stringify(input.defaultTools ?? []),
         JSON.stringify(input.defaultMcpIds ?? []),
@@ -135,7 +135,7 @@ export async function updateCustomAiStep(
   if (patch.icon !== undefined)            push("icon", patch.icon);
   if (patch.inputFields !== undefined)     push("input_fields", JSON.stringify(patch.inputFields));
   if (patch.outputMode !== undefined)      push("output_mode", patch.outputMode);
-  if (patch.outputSchema !== undefined)    push("output_schema", patch.outputSchema ? JSON.stringify(patch.outputSchema) : null);
+  if (patch.outputFields !== undefined)    push("output_schema", JSON.stringify(patch.outputFields ?? []));
   if (patch.promptTemplate !== undefined)  push("prompt_template", patch.promptTemplate);
   if (patch.defaultTools !== undefined)    push("default_tools", JSON.stringify(patch.defaultTools));
   if (patch.defaultMcpIds !== undefined)   push("default_mcp_ids", JSON.stringify(patch.defaultMcpIds));

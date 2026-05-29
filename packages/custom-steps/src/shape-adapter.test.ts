@@ -23,35 +23,29 @@ describe("customStepToShape — json inputs", () => {
 });
 
 describe("customStepToShape — structured outputs", () => {
-  function stepWithOutput(schema: Record<string, unknown>): CustomAiStep {
+  function stepWithOutputFields(fields: Array<{ name: string; type: any; required?: boolean }>): CustomAiStep {
     return {
       id: "cs2", scope: "org", orgId: "o1", name: "x",
       inputFields: [],
       outputMode: "structured",
-      outputSchema: schema,
+      outputFields: fields.map(f => ({ required: false, ...f })),
     } as unknown as CustomAiStep;
   }
 
-  it("opaque object/array output fields → json shapes", () => {
-    const { outputSchema } = customStepToShape(stepWithOutput({
-      type: "object",
-      properties: { obj: { type: "object" }, arr: { type: "array" }, name: { type: "string" } },
-    }));
+  it("output fields map to binding shapes (json containers stay opaque)", () => {
+    const { outputSchema } = customStepToShape(stepWithOutputFields([
+      { name: "obj", type: "json-object" },
+      { name: "arr", type: "json-array" },
+      { name: "name", type: "string" },
+    ]));
     expect(outputSchema?.obj).toEqual({ type: "json", container: "object", description: undefined });
     expect(outputSchema?.arr).toEqual({ type: "json", container: "array", description: undefined });
     expect(outputSchema?.name).toEqual({ type: "string", description: undefined });
   });
 
-  it("typed object (with properties) stays a typed object", () => {
-    const { outputSchema } = customStepToShape(stepWithOutput({
-      type: "object",
-      properties: { rec: { type: "object", properties: { a: { type: "string" } } } },
-    }));
-    expect(outputSchema?.rec).toEqual({
-      type: "object",
-      fields: { a: { type: "string", description: undefined } },
-      description: undefined,
-    });
+  it("text mode → { result: string }", () => {
+    const step = { id: "c", scope: "org", orgId: "o", name: "x", inputFields: [], outputMode: "text" } as unknown as CustomAiStep;
+    expect(customStepToShape(step).outputSchema).toEqual({ result: { type: "string" } });
   });
 });
 

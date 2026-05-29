@@ -35,11 +35,11 @@ export function diffCustomStep(
   }
 
   if (prev.outputMode === "structured" && next.outputMode === "structured") {
-    const prevPaths = collectPaths(prev.outputSchema);
-    const nextPaths = collectPaths(next.outputSchema);
+    const prevTypes = new Map((prev.outputFields ?? []).map((f) => [f.name, f.type]));
+    const nextTypes = new Map((next.outputFields ?? []).map((f) => [f.name, f.type]));
     for (const path of wired.wiredOutputPaths) {
-      const pType = prevPaths.get(path);
-      const nType = nextPaths.get(path);
+      const pType = prevTypes.get(path);
+      const nType = nextTypes.get(path);
       if (pType && !nType) out.outputErrors.push({ path, reason: "removed" });
       else if (pType && nType && pType !== nType) {
         out.outputWarnings.push({ path, reason: "type-changed" });
@@ -55,20 +55,4 @@ export function diffCustomStep(
 
 function typesCompatible(a: CustomStepInputField, b: CustomStepInputField): boolean {
   return a.type === b.type;
-}
-
-function collectPaths(schema: unknown, base = ""): Map<string, string> {
-  const m = new Map<string, string>();
-  if (!schema || typeof schema !== "object") return m;
-  const props = (schema as any).properties;
-  if (!props || typeof props !== "object") return m;
-  for (const [key, val] of Object.entries(props)) {
-    const path = base ? `${base}.${key}` : key;
-    const t = (val as any)?.type ?? "unknown";
-    m.set(path, typeof t === "string" ? t : "unknown");
-    if (t === "object") {
-      for (const [k, v] of collectPaths(val, path)) m.set(k, v);
-    }
-  }
-  return m;
 }

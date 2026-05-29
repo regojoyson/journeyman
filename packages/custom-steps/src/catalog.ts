@@ -11,7 +11,7 @@ export interface CustomStepCatalogEntry {
   description: string;
   inputFields: CustomAiStep["inputFields"];
   outputMode: CustomAiStep["outputMode"];
-  outputSchema?: CustomAiStep["outputSchema"];
+  outputFields?: CustomAiStep["outputFields"];
   defaultTools: CanonicalTool[];
   defaultMcpIds: string[];
   defaultSkillIds: string[];
@@ -34,7 +34,7 @@ export async function buildCustomStepCatalog(
     description: p.description,
     inputFields: p.inputFields,
     outputMode: p.outputMode,
-    outputSchema: p.outputSchema,
+    outputFields: p.outputFields,
     defaultTools: p.defaultTools,
     defaultMcpIds: p.defaultMcpIds,
     defaultSkillIds: p.defaultSkillIds,
