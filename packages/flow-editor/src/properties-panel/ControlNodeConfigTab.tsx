@@ -114,7 +114,7 @@ export function ControlNodeConfigTab({ flow, node, onChange, readOnly }: Props) 
   }
 
   if (node.type === "webhook-wait") {
-    return <WebhookWaitConfigEditor node={node} onChange={onChange} readOnly={readOnly} />;
+    return <WebhookWaitConfigEditor node={node} onChange={onChange} readOnly={readOnly} sources={sources} />;
   }
 
   if (node.type === "gateway-and") {

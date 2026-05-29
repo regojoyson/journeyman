@@ -3,6 +3,10 @@ import type { CorrelationKey, WorkflowInputValue, WorkflowNode } from "@journeym
 import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { ListensForPicker } from "./ListensForPicker.tsx";
 import { pathsFromSchema, useWebhooksForPicker } from "./useWebhooksForPicker.ts";
+import { MentionInput } from "./MentionInput.tsx";
+import { toMentionFields } from "./mention-fields.ts";
+import type { UpstreamSource } from "./use-upstream-sources.ts";
+import { correlationValueToSegments, segmentsToCorrelationValue } from "./correlation-value.ts";
 
 interface WebhookWaitOutputCfg {
   name: string;
@@ -18,9 +22,11 @@ interface Props {
   node: WorkflowNode;
   onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
+  /** Upstream sources for the correlation @-mention picker (from ControlNodeConfigTab). */
+  sources: UpstreamSource[];
 }
 
-export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
+export function WebhookWaitConfigEditor({ node, onChange, readOnly, sources }: Props) {
   const cfg = (node.config ?? {}) as {
     webhookId?: string;
     listensFor?: string[];
@@ -40,6 +46,7 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
     () => (selectedWebhook ? pathsFromSchema(selectedWebhook.payloadSchema) : []),
     [selectedWebhook],
   );
+  const mentionFields = useMemo(() => toMentionFields(sources), [sources]);
 
   const [defaultsDraft, setDefaultsDraft] = useState<string>(
     cfg.timeout?.defaults ? JSON.stringify(cfg.timeout.defaults, null, 2) : "",
@@ -116,13 +123,17 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
       <div className="je-field">
         <label className="je-field__label">Correlation</label>
         <p className="je-hint">
-          When an event arrives, which paused workflow does it belong to? Match
-          the event path against a value resolved from this instance.
+          When an event arrives, Journeyman matches it to a paused run by comparing
+          one value from the incoming event to one value from this run. If they're
+          equal, the run resumes.
         </p>
+
+        <label className="je-corr-sublabel">Event field</label>
+        <p className="je-hint">Path into the incoming webhook payload.</p>
         <input
           type="text"
-          placeholder="Event path e.g. $.pull_request.number"
-          list={`acceptif-paths-${node.id}`}
+          placeholder="e.g. $.pull_request.number"
+          list={datalistId}
           value={cfg.correlationKey?.eventPath ?? ""}
           disabled={readOnly}
           onChange={(e) => {
@@ -131,28 +142,23 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly }: Props) {
               cfg.correlationKey?.value ?? { kind: "template", template: "" };
             update({ correlationKey: { eventPath, value } });
           }}
-          style={{ marginBottom: 6 }}
         />
-        <input
-          type="text"
-          placeholder='Equals (template e.g. "{{ inputs.ticketId }}")'
-          value={
-            cfg.correlationKey?.value?.kind === "template"
-              ? cfg.correlationKey.value.template
-              : cfg.correlationKey?.value?.kind === "literal"
-                ? String(cfg.correlationKey.value.value ?? "")
-                : ""
-          }
-          disabled={readOnly}
-          onChange={(e) => {
-            const template = e.target.value;
+        {!selectedWebhook && (
+          <p className="je-hint">Pick a webhook above to get path suggestions.</p>
+        )}
+
+        <span className="je-corr-equals">equals</span>
+
+        <label className="je-corr-sublabel">Value from this run</label>
+        <p className="je-hint">Type @ to insert a field from run inputs or upstream steps.</p>
+        <MentionInput
+          value={correlationValueToSegments(cfg.correlationKey?.value)}
+          fields={mentionFields}
+          placeholder="Value from this run (type @)"
+          readOnly={readOnly}
+          onChange={(segs) => {
             const eventPath = cfg.correlationKey?.eventPath ?? "";
-            update({
-              correlationKey: {
-                eventPath,
-                value: { kind: "template", template },
-              },
-            });
+            update({ correlationKey: { eventPath, value: segmentsToCorrelationValue(segs) } });
           }}
         />
       </div>
