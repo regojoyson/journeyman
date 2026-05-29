@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { customStepToShape } from "./shape-adapter.ts";
+import { outputFieldsToJsonSchema } from "./output-schema.ts";
 import { workflowInputDefShape, validateInputBinding } from "@journeyman/core";
 import type { CustomAiStep } from "@journeyman/core";
 
@@ -66,5 +67,22 @@ describe("regression: json-object workflow input binds to json-object custom-ste
     const { inputFields } = customStepToShape(stepWith("json-object"));
     const check = validateInputBinding(inputFields.payload.shape, producer);
     expect(check.ok).toBe(false);
+  });
+
+  it("output path: clean field → valid model JSON Schema AND a bindable json shape", () => {
+    const step = {
+      id: "c", scope: "org", orgId: "o", name: "x", inputFields: [],
+      outputMode: "structured",
+      outputFields: [{ name: "result", type: "json-object", required: true }],
+    } as unknown as CustomAiStep;
+
+    // What the AI model receives must be standard JSON Schema (object), never "json-object".
+    const schema = outputFieldsToJsonSchema(step.outputFields!);
+    expect((schema as any).properties.result).toEqual({ type: "object" });
+
+    // What the picker sees is an opaque json object that binds to a json-object input.
+    const outShape = customStepToShape(step).outputSchema!.result;
+    const consumer = workflowInputDefShape({ name: "x", type: "json-object" });
+    expect(validateInputBinding(consumer, outShape).ok).toBe(true);
   });
 });
