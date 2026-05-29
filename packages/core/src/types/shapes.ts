@@ -106,6 +106,9 @@ export function shapesEqual(a: Shape, b: Shape): boolean {
   if (ra.type === "array" && rb.type === "array") {
     return shapesEqual(ra.items, rb.items);
   }
+  if (ra.type === "json" && rb.type === "json") {
+    return ra.container === rb.container;
+  }
   return true; // scalars of equal `type`
 }
 
@@ -128,4 +131,38 @@ export function shapeAtPath(root: Shape, path: string[]): Shape | null {
     }
   }
   return cur;
+}
+
+function objectish(s: Shape): boolean {
+  return s.type === "object" || (s.type === "json" && s.container === "object");
+}
+function arrayish(s: Shape): boolean {
+  return s.type === "array" || (s.type === "json" && s.container === "array");
+}
+function isEmptyObject(s: Shape): boolean {
+  return s.type === "object" && Object.keys(s.fields).length === 0;
+}
+
+/**
+ * True when a value of shape `actual` can be bound into an input of shape
+ * `expected`. Stricter than equality for typed objects/arrays, but permissive
+ * for opaque `json`:
+ *   - a `json object` binds to ANY object (typed or empty/wildcard), both ways
+ *   - a `json array`  binds to ANY array, both ways
+ *   - an empty-fields object (legacy wildcard) binds to any object, both ways
+ *   - a `json object` never binds to a scalar or to a `json array`
+ */
+export function shapesCompatible(actual: Shape, expected: Shape): boolean {
+  const ra = resolveShape(actual);
+  const re = resolveShape(expected);
+  if (objectish(ra) && objectish(re)) {
+    if (ra.type === "json" || re.type === "json") return true;
+    if (isEmptyObject(ra) || isEmptyObject(re)) return true;
+    return shapesEqual(ra, re);
+  }
+  if (arrayish(ra) && arrayish(re)) {
+    if (ra.type === "json" || re.type === "json") return true;
+    return shapesEqual(ra, re);
+  }
+  return shapesEqual(ra, re);
 }

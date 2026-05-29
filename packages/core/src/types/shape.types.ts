@@ -12,6 +12,7 @@ export type Shape =
   | { type: "boolean"; description?: string }
   | { type: "object";  fields: Record<string, Shape>; named?: string; description?: string }
   | { type: "array";   items: Shape; description?: string }
+  | { type: "json";    container: "object" | "array"; description?: string }
   | { type: "ref";     name: string; description?: string };
 
 /**
