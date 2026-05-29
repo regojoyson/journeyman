@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import type {
   CloneReposOptions,
@@ -58,7 +59,7 @@ export async function cloneRepos(
   const results: CloneResult[] = [];
   for (const entry of entries) {
     const folderName = repoFolder(entry.url);
-    const repoDir = `${workspaceDir}/${folderName}`;
+    const repoDir = join(workspaceDir, folderName);
     const { owner, repoName } = parseOwnerRepo(entry.url);
     if (opts.signal?.aborted) {
       results.push({ folderName, repoDir, url: entry.url, branch: entry.branch, owner, repoName, error: "aborted" });
