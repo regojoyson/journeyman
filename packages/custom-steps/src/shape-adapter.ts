@@ -51,10 +51,17 @@ function jsonSchemaNodeToShape(raw: unknown): Shape {
     case "number":
     case "integer": return { type: "number", description: desc };
     case "boolean": return { type: "boolean", description: desc };
-    case "array":   return { type: "array", items: jsonSchemaNodeToShape(node.items), description: desc };
+    case "array": {
+      // Opaque array (no declared items) → json array; otherwise a typed array.
+      if (node.items == null) return { type: "json", container: "array", description: desc };
+      return { type: "array", items: jsonSchemaNodeToShape(node.items), description: desc };
+    }
     case "object": {
-      const fields: Record<string, Shape> = {};
       const props = node.properties && typeof node.properties === "object" ? node.properties as Record<string, unknown> : {};
+      const keys = Object.keys(props);
+      // Opaque object (no declared properties) → json object; otherwise a typed object.
+      if (keys.length === 0) return { type: "json", container: "object", description: desc };
+      const fields: Record<string, Shape> = {};
       for (const [k, v] of Object.entries(props)) fields[k] = jsonSchemaNodeToShape(v);
       return { type: "object", fields, description: desc };
     }

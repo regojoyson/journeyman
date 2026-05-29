@@ -4,10 +4,18 @@ import { btnGhost, inputCls, selectCls } from "../../routes/admin-styles.ts";
 
 interface SchemaField {
   name: string;
-  type: "string" | "number" | "boolean" | "array" | "object";
+  type: "string" | "number" | "boolean" | "json-array" | "json-object";
   required: boolean;
   description?: string;
 }
+
+const TYPE_OPTIONS: { value: SchemaField["type"]; label: string }[] = [
+  { value: "string", label: "string" },
+  { value: "number", label: "number" },
+  { value: "boolean", label: "boolean" },
+  { value: "json-object", label: "json object" },
+  { value: "json-array", label: "json array" },
+];
 
 export function OutputSchemaEditor(props: {
   mode: CustomStepOutputMode;
@@ -71,8 +79,7 @@ export function OutputSchemaEditor(props: {
                 value={f.type}
                 onChange={(e) => apply(fields.map((x, idx) => idx === i ? { ...x, type: e.target.value as SchemaField["type"] } : x))}
               >
-                <option>string</option><option>number</option><option>boolean</option>
-                <option>array</option><option>object</option>
+                {TYPE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
               <label className="flex items-center gap-1 text-xs text-slate-300 whitespace-nowrap">
                 <input
@@ -107,13 +114,36 @@ export function OutputSchemaEditor(props: {
   );
 }
 
+/** JSON Schema scalar/container type → editor field type. */
+function jsonSchemaTypeToField(t: unknown): SchemaField["type"] {
+  switch (t) {
+    case "number":
+    case "integer": return "number";
+    case "boolean": return "boolean";
+    case "array":   return "json-array";
+    case "object":  return "json-object";
+    default:        return "string";
+  }
+}
+
+/** Editor field type → JSON Schema type. */
+function fieldTypeToJsonSchema(t: SchemaField["type"]): "string" | "number" | "boolean" | "array" | "object" {
+  switch (t) {
+    case "number":      return "number";
+    case "boolean":     return "boolean";
+    case "json-array":  return "array";
+    case "json-object": return "object";
+    case "string":      return "string";
+  }
+}
+
 function parseSchema(s: CustomStepJsonSchema | undefined): SchemaField[] {
   if (!s || typeof s !== "object") return [];
   const required = new Set<string>(Array.isArray((s as any).required) ? (s as any).required : []);
   const props = (s as any).properties ?? {};
   return Object.entries(props).map(([name, p]: [string, any]) => ({
     name,
-    type: (p?.type ?? "string") as SchemaField["type"],
+    type: jsonSchemaTypeToField(p?.type),
     required: required.has(name),
     description: p?.description,
   }));
@@ -124,7 +154,7 @@ function buildSchema(fields: SchemaField[]): CustomStepJsonSchema {
   const required: string[] = [];
   for (const f of fields) {
     if (!f.name) continue;
-    properties[f.name] = { type: f.type, ...(f.description ? { description: f.description } : {}) };
+    properties[f.name] = { type: fieldTypeToJsonSchema(f.type), ...(f.description ? { description: f.description } : {}) };
     if (f.required) required.push(f.name);
   }
   return { type: "object", properties, ...(required.length ? { required } : {}) };

@@ -22,6 +22,39 @@ describe("customStepToShape — json inputs", () => {
   });
 });
 
+describe("customStepToShape — structured outputs", () => {
+  function stepWithOutput(schema: Record<string, unknown>): CustomAiStep {
+    return {
+      id: "cs2", scope: "org", orgId: "o1", name: "x",
+      inputFields: [],
+      outputMode: "structured",
+      outputSchema: schema,
+    } as unknown as CustomAiStep;
+  }
+
+  it("opaque object/array output fields → json shapes", () => {
+    const { outputSchema } = customStepToShape(stepWithOutput({
+      type: "object",
+      properties: { obj: { type: "object" }, arr: { type: "array" }, name: { type: "string" } },
+    }));
+    expect(outputSchema?.obj).toEqual({ type: "json", container: "object", description: undefined });
+    expect(outputSchema?.arr).toEqual({ type: "json", container: "array", description: undefined });
+    expect(outputSchema?.name).toEqual({ type: "string", description: undefined });
+  });
+
+  it("typed object (with properties) stays a typed object", () => {
+    const { outputSchema } = customStepToShape(stepWithOutput({
+      type: "object",
+      properties: { rec: { type: "object", properties: { a: { type: "string" } } } },
+    }));
+    expect(outputSchema?.rec).toEqual({
+      type: "object",
+      fields: { a: { type: "string", description: undefined } },
+      description: undefined,
+    });
+  });
+});
+
 describe("regression: json-object workflow input binds to json-object custom-step input", () => {
   it("the reported scenario validates clean", () => {
     // Producer: a workflow input declared as `json object`.
