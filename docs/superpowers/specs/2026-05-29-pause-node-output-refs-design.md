@@ -79,7 +79,7 @@ Refactor the editor's `pauseNodeSource` to build its picker list from the new co
 
 | File | Change |
 |---|---|
-| `packages/core/src/...` (pause-node output helper + index export) | Add `pauseNodeOutputSchema(node): OutputSchema \| null` |
+| `packages/core/src/utils/pause-node-output.ts` (new) + `packages/core/src/index.ts` (export) | Add `pauseNodeOutputSchema(node): OutputSchema \| null` |
 | `packages/orchestrator/src/flow-json/validate-ref-shape.ts` | Branch for pause-node sources; remove the unconditional "is not a step" for them |
 | `packages/flow-editor/src/properties-panel/pause-node-source.ts` | Reuse core helper |
 
