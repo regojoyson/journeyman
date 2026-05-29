@@ -1,4 +1,5 @@
 import { readPath } from "@journeyman/webhooks";
+import { eventPassesListensFor } from "./listens-for.ts";
 import type {
   TriggerWebhookConfig,
   Webhook,
@@ -57,9 +58,7 @@ export async function fireWebhookTriggers(
     if (!node || node.type !== "trigger-webhook") continue;
     const cfg = (node.config ?? {}) as unknown as TriggerWebhookConfig;
 
-    if (cfg.listensFor && cfg.listensFor.length > 0 && input.eventType) {
-      if (!cfg.listensFor.includes(input.eventType)) continue;
-    }
+    if (!eventPassesListensFor(cfg.listensFor, input.eventType)) continue;
     if (cfg.acceptIf) {
       const data = (input.rawPayload ?? {}) as Record<string, unknown>;
       const ok = c.conditions.evaluate(cfg.acceptIf as unknown, data);
@@ -79,7 +78,11 @@ export async function fireWebhookTriggers(
       workflowScopeSnapshot: workflow.scope,
       definitionSnapshot: version.definition,
       inputs,
-      startedByUserId: null,
+      // No interactive caller on a webhook, so run as the workflow's owner.
+      // `workflow.orgId` is the org for org-scoped flows and the owner's primary
+      // org for user-scoped flows; `ownerUserId` is set only for user scope.
+      // This gives secret resolution a valid org (+ user) instead of blanks.
+      startedByUserId: workflow.ownerUserId,
       startedByOrgId: workflow.orgId,
       triggerSource: "webhook",
       triggerNodeId: node.id,

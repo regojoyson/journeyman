@@ -1,0 +1,7 @@
+{
+  "action": "created",
+  "issue": { "number": 7, "title": "Bug: button does not click", "state": "open", "user": { "login": "alice" } },
+  "comment": { "body": "I can reproduce this.", "user": { "login": "bob" } },
+  "repository": { "full_name": "acme/demo" },
+  "sender": { "login": "bob" }
+}

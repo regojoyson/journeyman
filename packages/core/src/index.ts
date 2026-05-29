@@ -110,12 +110,12 @@ export type {
   Workflow, WorkflowGraph, WorkflowEdge, WorkflowEdgeType, WorkflowNode, WorkflowNodeType, WorkflowVersion,
   WorkflowSchemaVersion,
   RetryPolicy, WorkflowRetryPolicy, BackoffStrategy,
-  McpServerConfig, McpTransport, WorkflowInputValue, WorkflowInputDef,
+  McpServerConfig, McpTransport, WorkflowInputValue, WorkflowInputDef, WorkflowAttributeDef,
   WorkflowSaveWarning,
   SecretBinding,
   WorkflowDefaults,
 } from "./types/flow.types.ts";
-export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode, workflowInputDefShape } from "./types/flow.types.ts";
+export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode, workflowInputDefShape, workflowAttributeDefShape } from "./types/flow.types.ts";
 export type { WorkflowTriggerNodeType } from "./types/flow.types.ts";
 export type {
   TriggerInputMapping,

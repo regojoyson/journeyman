@@ -153,7 +153,7 @@ export function AcceptIfBuilder({ value, knownPaths, readOnly, onChange, datalis
                   type="text"
                   list={datalistId}
                   value={rule.field}
-                  placeholder="field path in payload"
+                  placeholder="$.issue.state"
                   title={'Dot-path into the incoming webhook payload (same vocabulary as "Payload source" on outputs).'}
                   disabled={readOnly}
                   onChange={e => setRule(idx, { field: e.target.value })}
@@ -225,7 +225,7 @@ export function AcceptIfBuilder({ value, knownPaths, readOnly, onChange, datalis
             rows={6}
             value={draft}
             disabled={readOnly}
-            placeholder='{"==": [{"var": "issue.fields.status.name"}, "Done"]}'
+            placeholder='{"==": [{"var": "$.issue.fields.status.name"}, "Done"]}'
             onChange={e => onDraftChange(e.target.value)}
           />
           {advancedError && <p className="je-hint je-hint--error">{advancedError}</p>}

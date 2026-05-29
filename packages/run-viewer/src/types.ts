@@ -46,11 +46,24 @@ export interface HumanTaskHistoryEntry {
   resolvedAt: string;
 }
 
+/** Summary of the event that triggered the run (webhook/api). Shown on the trigger node. */
+export interface TriggerEventSummary {
+  provider: string;
+  /** The configured webhook's name; preferred over the legacy `provider` label. */
+  webhookName?: string | null;
+  eventType: string | null;
+  deliveryId: string | null;
+  receivedAt: string;
+  rawPayload: unknown;
+}
+
 export interface WorkflowInstanceViewerProps {
   workflow: WorkflowGraph;
   workflowInstance: WorkflowInstance;
   events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
+  /** Present for webhook/api-triggered runs; surfaced on the trigger node's detail panel. */
+  triggerEvent?: TriggerEventSummary | null;
   pendingHumanTask?: PendingHumanTask | null;
   humanTaskHistory?: HumanTaskHistoryEntry[];
   onRerun?: () => void;

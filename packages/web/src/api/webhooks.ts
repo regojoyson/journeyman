@@ -82,7 +82,7 @@ export interface TestDeliveryResult {
   ingestBody: unknown;
 }
 
-export function testWebhook(id: string, body: { sampleEvent?: string; payload?: unknown }): Promise<TestDeliveryResult> {
+export function testWebhook(id: string, body: { sampleEvent?: string; payload?: unknown; eventType?: string }): Promise<TestDeliveryResult> {
   return api<TestDeliveryResult>(`/api/webhooks/${encodeURIComponent(id)}/test`, {
     method: "POST",
     body: JSON.stringify(body),

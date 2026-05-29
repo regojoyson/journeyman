@@ -66,43 +66,6 @@ export function RunDetailPage() {
           You're viewing this run as an org peer. Only the run's owner or an org admin can pause, retry, or cancel.
         </div>
       )}
-      {detailQ.data?.webhookEvent && (
-        <div style={{
-          margin: "0 0 12px",
-          padding: "12px 16px",
-          background: "#1a1a2e",
-          border: "1px solid #2a2a3e",
-          borderRadius: 8,
-          fontSize: 13,
-          color: "#ccc",
-        }}>
-          <div style={{ fontWeight: 700, marginBottom: 10, color: "#fff", fontSize: 14 }}>Trigger</div>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <tbody>
-              {([
-                ["Provider",  detailQ.data.webhookEvent.provider],
-                ["Event",     detailQ.data.webhookEvent.eventType ?? "—"],
-                ["Delivery",  detailQ.data.webhookEvent.deliveryId ?? "—"],
-                ["Received",  new Date(detailQ.data.webhookEvent.receivedAt).toUTCString()],
-              ] as [string, string][]).map(([label, value]) => (
-                <tr key={label}>
-                  <td style={{ color: "#888", paddingRight: 16, paddingBottom: 4, whiteSpace: "nowrap" }}>{label}</td>
-                  <td style={{ paddingBottom: 4 }}>{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <details style={{ marginTop: 10 }}>
-            <summary style={{ cursor: "pointer", color: "#6c5ce7", fontSize: 12 }}>Raw payload</summary>
-            <pre style={{
-              marginTop: 8, padding: 10, background: "#0f0f1e", borderRadius: 4,
-              fontSize: 11, color: "#a0aec0", overflowX: "auto",
-            }}>
-              {JSON.stringify(detailQ.data.webhookEvent.rawPayload, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
       <OrgIdProvider orgId={activeOrgId ?? ""}>
       <StepRegistryProvider steps={builtInSteps}>
       <RunViewer
@@ -114,6 +77,7 @@ export function RunDetailPage() {
         workflowInstance={detailQ.data.workflowInstance}
         events={allEvents}
         executions={detailQ.data.executions}
+        triggerEvent={detailQ.data.webhookEvent ?? null}
         onCancel={isViewer ? undefined : () => actions.cancel.mutate()}
         onPause={isViewer ? undefined : () => actions.pause.mutate()}
         onResume={isViewer ? undefined : () => actions.resume.mutate()}

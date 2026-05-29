@@ -1832,6 +1832,11 @@ label.je-switch,
 /* === Inputs tab (Task 9) ================================================= */
 .jm-inputs-tab { padding: 20px 24px; overflow: auto; }
 .jm-inputs-tab h2 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; }
+.jm-inputs-tab h2:not(:first-child) {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgb(var(--color-border) / 1);
+}
 .jm-inputs-tab p { margin: 0 0 16px 0; font-size: 12px; color: rgb(var(--color-text-muted, 160 160 170) / 1); }
 .jm-inputs-tab__table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .jm-inputs-tab__col-type { width: 96px; }

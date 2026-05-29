@@ -1,0 +1,6 @@
+{
+  "action": "published",
+  "release": { "tag_name": "v1.2.0", "name": "v1.2.0", "draft": false, "prerelease": false },
+  "repository": { "id": 1, "name": "demo", "full_name": "acme/demo", "owner": { "login": "acme" } },
+  "sender": { "login": "alice" }
+}

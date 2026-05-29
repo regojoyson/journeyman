@@ -76,6 +76,25 @@ export function workflowInputDefShape(def: WorkflowInputDef): Shape {
   }
 }
 
+export interface WorkflowAttributeDef {
+  name: string;
+  type: "string" | "number" | "boolean" | "json-object" | "json-array";
+  /** Plain literal constant, typed per `type`. No templating/refs. */
+  value: unknown;
+  description?: string;
+}
+
+/** Editor attribute type → binding Shape. Exhaustive over WorkflowAttributeDef.type. */
+export function workflowAttributeDefShape(def: WorkflowAttributeDef): Shape {
+  switch (def.type) {
+    case "number":      return { type: "number" };
+    case "boolean":     return { type: "boolean" };
+    case "json-object": return { type: "json", container: "object" };
+    case "json-array":  return { type: "json", container: "array" };
+    case "string":      return { type: "string" };
+  }
+}
+
 export interface WorkflowNode {
   id: string;
   type: WorkflowNodeType;
@@ -133,6 +152,8 @@ export interface WorkflowGraph {
   defaults?: WorkflowDefaults;
   /** Run-time inputs the caller must supply when starting this workflow. */
   inputDefs?: WorkflowInputDef[];
+  /** Design-time constant attributes, selectable in any step's config. */
+  attributeDefs?: WorkflowAttributeDef[];
 }
 
 export interface WorkflowVersion {

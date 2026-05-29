@@ -7,15 +7,29 @@ export function resolveInputs(
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(inputs ?? {})) {
     if (v.kind === "literal") out[k] = v.value;
-    else if (v.kind === "ref") out[k] = "${" + sanitizeRef(v.ref) + "}";
+    else if (v.kind === "ref") out[k] = "${" + toEngineRef(v.ref) + "}";
     else if (v.kind === "template") {
-      out[k] = replaceTemplateRefs(v.template, (ref) => "${" + sanitizeRef(ref) + "}");
+      out[k] = replaceTemplateRefs(v.template, (ref) => "${" + toEngineRef(ref) + "}");
     }
   }
   return out;
 }
 
-export type RefScope = "workflow.input" | "input" | "output";
+/**
+ * Editor ref → Conductor template path. The engine only resolves the
+ * `workflow.input.*` namespace, so attribute refs (`workflow.attribute.x`) are
+ * rewritten to the nested `workflow.input.attributes.x` seeded at run-start.
+ * All other refs pass through (after markdown-autolink sanitization).
+ */
+export function toEngineRef(ref: string): string {
+  const clean = sanitizeRef(ref);
+  if (clean.startsWith("workflow.attribute.")) {
+    return "workflow.input.attributes." + clean.slice("workflow.attribute.".length);
+  }
+  return clean;
+}
+
+export type RefScope = "workflow.input" | "workflow.attribute" | "input" | "output";
 
 export interface ParsedRef {
   source: string;
@@ -48,6 +62,9 @@ export function parseRef(ref: string): ParsedRef | null {
   const clean = sanitizeRef(ref);
   if (clean.startsWith("workflow.input.")) {
     return { source: "workflow.input", scope: "workflow.input", field: clean.slice("workflow.input.".length) };
+  }
+  if (clean.startsWith("workflow.attribute.")) {
+    return { source: "workflow.attribute", scope: "workflow.attribute", field: clean.slice("workflow.attribute.".length) };
   }
   const m = /^([^.]+)\.(input|output)\.(.+)$/.exec(clean);
   return m ? { source: m[1], scope: m[2] as RefScope, field: m[3] } : null;

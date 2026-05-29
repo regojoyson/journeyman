@@ -292,6 +292,10 @@ export function FlowEditor(props: FlowEditorProps) {
                     if (effectiveReadOnly) return;
                     s.update((f) => ({ ...f, inputDefs: next }));
                   }}
+                  onPatchAttributes={(next) => {
+                    if (effectiveReadOnly) return;
+                    s.update((f) => ({ ...f, attributeDefs: next }));
+                  }}
                 />
               </div>
             </aside>

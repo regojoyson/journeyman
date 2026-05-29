@@ -1,0 +1,6 @@
+{
+  "object_kind": "pipeline",
+  "project": { "id": 1, "name": "demo", "path_with_namespace": "acme/demo" },
+  "object_attributes": { "id": 1001, "ref": "main", "status": "success", "sha": "abc1234" },
+  "user": { "username": "alice" }
+}

@@ -130,16 +130,22 @@ export async function deleteSecret(
 export interface ResolverRow { name: string; userId: string | null; value: string; }
 
 export async function fetchForResolve(
-  pool: Pool, orgId: string, userId: string, names: string[],
+  pool: Pool, orgId: string | null, userId: string | null, names: string[],
 ): Promise<ResolverRow[]> {
   if (names.length === 0) return [];
+  // No org context (e.g. a global-scoped run) → no org/user secrets apply;
+  // the caller falls back to global secrets. Avoids passing "" into a UUID column.
+  if (!orgId) return [];
+  // No user context (e.g. an org-scoped webhook run) → match org-scope rows only,
+  // rather than comparing user_id against an empty string (invalid UUID).
+  const hasUser = !!userId;
   const r = await pool.query(
     `SELECT name, user_id, ciphertext, iv, auth_tag
        FROM jm_secrets
       WHERE org_id = $1
         AND name = ANY($2::text[])
-        AND (user_id = $3 OR user_id IS NULL)`,
-    [orgId, names, userId],
+        AND ${hasUser ? "(user_id = $3 OR user_id IS NULL)" : "user_id IS NULL"}`,
+    hasUser ? [orgId, names, userId] : [orgId, names],
   );
   return r.rows.map((row: any) => ({
     name: row.name,

@@ -1,0 +1,7 @@
+{
+  "ref": "feat/x",
+  "ref_type": "branch",
+  "master_branch": "main",
+  "repository": { "id": 1, "name": "demo", "full_name": "acme/demo", "owner": { "login": "acme" } },
+  "sender": { "login": "alice" }
+}

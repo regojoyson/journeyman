@@ -1,5 +1,5 @@
-import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef } from "../types/flow.types.ts";
-import { workflowInputDefShape } from "../types/flow.types.ts";
+import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef, WorkflowAttributeDef } from "../types/flow.types.ts";
+import { workflowInputDefShape, workflowAttributeDefShape } from "../types/flow.types.ts";
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
 import { shapeAtPath, shapesCompatible } from "../types/shapes.ts";
 import { getStartWorkflowInputs } from "./start-node.ts";
@@ -65,7 +65,7 @@ export function validateInputBinding(expected: Shape, actual: Shape | undefined)
   return { ok: false, reason: "shape-mismatch", expected, actual };
 }
 
-type RefScope = "workflow.input" | "input" | "output";
+type RefScope = "workflow.input" | "workflow.attribute" | "input" | "output";
 interface ParsedRef {
   source: string;
   scope: RefScope;
@@ -79,6 +79,10 @@ function parseRefForValidation(ref: string): ParsedRef | null {
     const rest = trimmed.slice("workflow.input.".length);
     return { source: "workflow.input", scope: "workflow.input", fieldPath: rest.split(".") };
   }
+  if (trimmed.startsWith("workflow.attribute.")) {
+    const rest = trimmed.slice("workflow.attribute.".length);
+    return { source: "workflow.attribute", scope: "workflow.attribute", fieldPath: rest.split(".") };
+  }
   const m = /^([^.]+)\.(input|output)\.(.+)$/.exec(trimmed);
   if (!m) return null;
   return { source: m[1], scope: m[2] as RefScope, fieldPath: m[3].split(".") };
@@ -86,6 +90,10 @@ function parseRefForValidation(ref: string): ParsedRef | null {
 
 function workflowInputShape(def: WorkflowInputDef): Shape | undefined {
   return workflowInputDefShape(def);
+}
+
+function workflowAttributeShape(def: WorkflowAttributeDef): Shape | undefined {
+  return workflowAttributeDefShape(def);
 }
 
 function findStartWorkflowInputs(flow: WorkflowGraph): WorkflowInputDef[] {
@@ -119,6 +127,7 @@ export function validateWorkflowInputs(
   for (const n of flow.nodes) nodesById.set(n.id, n);
   const workflowInputs = findStartWorkflowInputs(flow);
   const workflowInputByName = new Map(workflowInputs.map((r) => [r.name, r] as const));
+  const workflowAttributeByName = new Map((flow.attributeDefs ?? []).map((a) => [a.name, a] as const));
 
   // Webhook-wait nodes must declare a correlation key (event path + value) so the
   // matcher can route incoming events to this paused instance.
@@ -269,6 +278,21 @@ export function validateWorkflowInputs(
             continue;
           }
           const root = workflowInputShape(def);
+          actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
+        } else if (parsed.scope === "workflow.attribute") {
+          const def = workflowAttributeByName.get(parsed.fieldPath[0]);
+          if (!def) {
+            warnings.push({
+              code: "dangling-ref-path",
+              message: `${node.id}.${key}: ref '${ref}' points to undeclared attribute '${parsed.fieldPath[0]}'`,
+              nodeId: node.id,
+              inputKey: key,
+              ref,
+              missingPath: parsed.fieldPath.join("."),
+            });
+            continue;
+          }
+          const root = workflowAttributeShape(def);
           actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
         } else {
           const sourceNode = nodesById.get(parsed.source);

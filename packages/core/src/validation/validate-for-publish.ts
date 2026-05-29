@@ -217,10 +217,11 @@ function pushNodeErrors(
       for (const seg of extractTemplateRefs(val.template)) refs.push(seg.ref);
     }
     for (const ref of refs) {
-      // `workflow.input.*` is a pseudo-source for run inputs declared on the
-      // start node. validateWorkflowInputs handles the declaration check —
-      // skip the upstream-node check here.
+      // `workflow.input.*` / `workflow.attribute.*` are pseudo-sources (run
+      // inputs and design-time attributes), not nodes. validateWorkflowInputs
+      // handles their declaration checks — skip the upstream-node check here.
       if (ref.startsWith("workflow.input.")) continue;
+      if (ref.startsWith("workflow.attribute.")) continue;
       const referencedNodeId = parseRefNodeId(ref);
       if (referencedNodeId && !upstream.has(referencedNodeId)) {
         errors.push({

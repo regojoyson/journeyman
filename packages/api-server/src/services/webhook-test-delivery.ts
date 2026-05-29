@@ -45,3 +45,17 @@ export function buildTestDeliveryHeaders(
       return null;
   }
 }
+
+/**
+ * For a sample-event test fire, derive the event-type header a header-based
+ * provider expects (e.g. GitHub's `x-github-event`). Returns null when the
+ * provider reads its event type from the body (e.g. `$.webhookEvent`) or when
+ * no sample key was chosen — in those cases the body already carries the type.
+ */
+export function eventTypeHeaderForSample(
+  eventTypePath: string | undefined,
+  sampleEvent: string | undefined,
+): { name: string; value: string } | null {
+  if (!sampleEvent || !eventTypePath || !eventTypePath.startsWith("header:")) return null;
+  return { name: eventTypePath.slice("header:".length).toLowerCase(), value: sampleEvent };
+}
