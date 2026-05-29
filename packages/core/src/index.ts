@@ -176,6 +176,7 @@ export {
   shapeTag,
 } from "./utils/validate-workflow.ts";
 export { getStartWorkflowInputs } from "./utils/start-node.ts";
+export { pauseNodeOutputSchema } from "./utils/pause-node-output.ts";
 export {
   buildOutgoingEdgeMap,
   walkReachable,
