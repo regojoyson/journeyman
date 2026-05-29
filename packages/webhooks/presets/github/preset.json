@@ -26,6 +26,9 @@
   "payloadSchemaRef": "./schema.json",
   "sampleEvents": {
     "push": "./samples/push.json",
-    "pull_request": "./samples/pull_request.json"
+    "pull_request": "./samples/pull_request.json",
+    "release": "./samples/release.json",
+    "create": "./samples/create.json",
+    "delete": "./samples/delete.json"
   }
 }

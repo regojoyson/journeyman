@@ -84,9 +84,13 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
       const webhookEvent = workflowInstance.webhookEventId
         ? await c.webhookEvents.getById(workflowInstance.webhookEventId)
         : null;
+      const webhook = webhookEvent?.webhookId
+        ? await c.webhooks.getById(webhookEvent.webhookId)
+        : null;
       const webhookEventSummary = webhookEvent ? {
         id: webhookEvent.id,
         provider: webhookEvent.provider,
+        webhookName: webhook?.name ?? null,
         eventType: webhookEvent.eventType,
         deliveryId: webhookEvent.deliveryId,
         receivedAt: webhookEvent.receivedAt.toISOString(),

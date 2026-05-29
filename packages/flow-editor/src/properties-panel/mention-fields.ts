@@ -16,6 +16,7 @@ export interface MentionField {
 function refFor(scope: UpstreamField["scope"], sourceId: string, path: string[]): string {
   const tail = path.join(".");
   if (scope === "run-input") return `workflow.input.${tail}`;
+  if (scope === "workflow-attribute") return `workflow.attribute.${tail}`;
   if (scope === "input") return `${sourceId}.input.${tail}`;
   return `${sourceId}.output.${tail}`;
 }
@@ -23,6 +24,7 @@ function refFor(scope: UpstreamField["scope"], sourceId: string, path: string[])
 function fieldPathFor(scope: UpstreamField["scope"], path: string[]): string {
   const tail = path.join(".");
   if (scope === "run-input") return tail;
+  if (scope === "workflow-attribute") return tail;
   if (scope === "input") return `input.${tail}`;
   return `output.${tail}`;
 }

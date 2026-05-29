@@ -124,10 +124,13 @@ export function WorkflowInstanceViewer(props: WorkflowInstanceViewerProps & { wo
         )}
         {selectedNodeId && <NodeDetailDrawer
           nodeId={selectedNodeId}
+          nodeType={selectedNode?.type ?? null}
           displayName={selectedDisplayName}
           status={selectedNodeId ? (statuses.get(selectedNodeId) ?? null) : null}
           events={eventsForSelected}
           executions={execsForSelected}
+          triggerEvent={props.triggerEvent ?? null}
+          runInputs={(props.workflowInstance.inputs as Record<string, unknown> | null | undefined) ?? null}
           onClose={() => setSelectedNodeId(null)}
           onRetryStep={selectedNodeId && props.onRetryStep
             ? () => props.onRetryStep!(selectedNodeId)

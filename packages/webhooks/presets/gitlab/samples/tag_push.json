@@ -1,0 +1,8 @@
+{
+  "object_kind": "tag_push",
+  "event_name": "tag_push",
+  "ref": "refs/tags/v1.2.0",
+  "checkout_sha": "abc1234",
+  "project": { "id": 1, "name": "demo", "path_with_namespace": "acme/demo" },
+  "user": { "username": "alice" }
+}

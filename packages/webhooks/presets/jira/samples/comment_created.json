@@ -1,0 +1,6 @@
+{
+  "webhookEvent": "comment_created",
+  "timestamp": 1700000000000,
+  "issue": { "id": "10001", "key": "DEMO-7", "fields": { "summary": "Fix login button" } },
+  "comment": { "id": "20001", "body": "A new comment", "author": { "displayName": "Alice" } }
+}

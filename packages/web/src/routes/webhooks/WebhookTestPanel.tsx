@@ -42,9 +42,9 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
     setResult(null);
     setBusy(true);
     try {
-      let body: { sampleEvent?: string; payload?: unknown };
+      let body: { sampleEvent?: string; payload?: unknown; eventType?: string };
       if (customPayload.trim()) {
-        try { body = { payload: JSON.parse(customPayload) }; }
+        try { body = { payload: JSON.parse(customPayload), eventType: selected || undefined }; }
         catch (e) { throw new Error(`Custom payload not JSON: ${e instanceof Error ? e.message : String(e)}`); }
       } else if (selected) {
         body = { sampleEvent: selected };

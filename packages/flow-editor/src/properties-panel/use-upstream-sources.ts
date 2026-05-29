@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { WorkflowGraph, Shape, CustomAiStep } from "@journeyman/core";
-import { getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
+import { getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape } from "@journeyman/core";
 import { customStepToShape } from "@journeyman/custom-steps/shape-adapter";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 import { pauseNodeSource } from "./pause-node-source.ts";
@@ -9,18 +9,18 @@ import { joinSource } from "./join-source.ts";
 export interface UpstreamField {
   name: string;
   description?: string;
-  /** "input" → emit ${node.input.x} ; "output" → emit ${node.output.x} ; "run-input" → ${workflow.input.x} */
-  scope: "input" | "output" | "run-input";
+  /** "input" → ${node.input.x} ; "output" → ${node.output.x} ; "run-input" → ${workflow.input.x} ; "workflow-attribute" → ${workflow.attribute.x} */
+  scope: "input" | "output" | "run-input" | "workflow-attribute";
   shape: Shape;
 }
 
 export interface UpstreamSource {
-  kind: "run-input" | "node";
-  /** node id, or "" for run-input */
+  kind: "run-input" | "workflow-attribute" | "node";
+  /** node id, or "" for run-input / workflow-attribute */
   id: string;
   label: string;
   /** Grouped fields for the picker. */
-  groups: { title: string; scope: "input" | "output" | "run-input"; fields: UpstreamField[] }[];
+  groups: { title: string; scope: "input" | "output" | "run-input" | "workflow-attribute"; fields: UpstreamField[] }[];
 }
 
 /** Reverse-walks graph from `nodeId`; returns sources reachable on every path (dominators only). */
@@ -75,6 +75,24 @@ export function useUpstreamSources(
             description: r.description,
             scope: "run-input" as const,
             shape: workflowInputDefShape(r),
+          })),
+        }],
+      });
+    }
+    const attributeDefs = graph.attributeDefs ?? [];
+    if (attributeDefs.length) {
+      sources.push({
+        kind: "workflow-attribute",
+        id: "",
+        label: "Default attributes",
+        groups: [{
+          title: "Default attributes",
+          scope: "workflow-attribute",
+          fields: attributeDefs.map(a => ({
+            name: a.name,
+            description: a.description,
+            scope: "workflow-attribute" as const,
+            shape: workflowAttributeDefShape(a),
           })),
         }],
       });

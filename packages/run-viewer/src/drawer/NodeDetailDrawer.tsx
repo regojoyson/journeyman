@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDuration, type NodeExecution, type WorkflowInstanceEvent } from "@journeyman/core";
-import type { PendingHumanTask, ResolvedNodeStatus } from "../types.ts";
+import type { PendingHumanTask, ResolvedNodeStatus, TriggerEventSummary } from "../types.ts";
 
 export interface NodeDetailDrawerProps {
   nodeId: string | null;
+  nodeType?: string | null;
   displayName: string | null;
   status: ResolvedNodeStatus | null;
   events: WorkflowInstanceEvent[];
   executions: NodeExecution[];
+  /** Trigger event summary (webhook/api). Shown when the selected node is the webhook trigger. */
+  triggerEvent?: TriggerEventSummary | null;
+  /** The run's start inputs. Shown when the selected node is a manual/non-webhook trigger. */
+  runInputs?: Record<string, unknown> | null;
   onClose?: () => void;
   onRetryStep?: () => void;
   pendingHumanTask?: PendingHumanTask | null;
@@ -66,6 +71,35 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
       </aside>
     );
   }
+
+  // Trigger nodes don't execute (no input/output/attempts). Show how the run was
+  // started instead of an empty Input: the trigger event for webhook/api runs,
+  // or the run's start inputs for manual/other triggers.
+  const isTrigger = typeof p.nodeType === "string" && p.nodeType.startsWith("trigger-");
+  if (isTrigger) {
+    return (
+      <aside className="je-runview__drawer" style={{ position: "relative" }}>
+        {p.onClose && <CloseButton onClose={p.onClose} />}
+        <h2 style={{ paddingRight: 36 }}>{p.displayName ?? p.nodeId}</h2>
+        <div style={{ color: "#aaa", fontSize: 11, marginBottom: 10 }}>
+          {p.status ? p.status.status : "trigger"}
+        </div>
+        {p.nodeType === "trigger-webhook" && p.triggerEvent ? (
+          <TriggerEventSection event={p.triggerEvent} />
+        ) : (
+          <div className="je-runview__section">
+            <h3>Inputs</h3>
+            <pre className="je-runview__pre">
+              {p.runInputs && Object.keys(p.runInputs).length > 0
+                ? JSON.stringify(p.runInputs, null, 2)
+                : "—"}
+            </pre>
+          </div>
+        )}
+      </aside>
+    );
+  }
+
   const lastExec = [...p.executions].sort((a, b) => b.attempt - a.attempt)[0] ?? null;
 
   // Worker-harness steps do not write NodeExecution rows; their input/output
@@ -277,6 +311,29 @@ function HumanTaskResolveForm({
         }}
       >{submitting ? "Resolving…" : "Resolve"}</button>
     </div>
+  );
+}
+
+function TriggerEventSection({ event }: { event: TriggerEventSummary }) {
+  const rows: [string, string][] = [
+    ["Webhook", event.webhookName || event.provider],
+    ["Event", event.eventType ?? "—"],
+    ["Delivery", event.deliveryId ?? "—"],
+    ["Received", new Date(event.receivedAt).toUTCString()],
+  ];
+  return (
+    <>
+      <div className="je-runview__section">
+        <h3>Trigger</h3>
+        <div className="je-runview__kv">
+          {rows.map(([k, v]) => <KvRow key={k} k={k} v={v} />)}
+        </div>
+      </div>
+      <div className="je-runview__section">
+        <h3>Raw payload</h3>
+        <pre className="je-runview__pre">{JSON.stringify(event.rawPayload, null, 2)}</pre>
+      </div>
+    </>
   );
 }
 

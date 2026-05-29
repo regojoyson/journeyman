@@ -47,6 +47,7 @@ export async function listRunsPaged(args: {
 export type WebhookEventSummary = {
   id: string;
   provider: string;
+  webhookName: string | null;
   eventType: string | null;
   deliveryId: string | null;
   receivedAt: string;

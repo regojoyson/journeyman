@@ -16,5 +16,10 @@
     { "key": "issueKey", "path": "$.issue.key" }
   ],
   "payloadSchemaRef": "./schema.json",
-  "sampleEvents": { "issue_updated": "./samples/issue_updated.json" }
+  "sampleEvents": {
+    "issue_updated": "./samples/issue_updated.json",
+    "issue_created": "./samples/issue_created.json",
+    "comment_created": "./samples/comment_created.json",
+    "issue_deleted": "./samples/issue_deleted.json"
+  }
 }

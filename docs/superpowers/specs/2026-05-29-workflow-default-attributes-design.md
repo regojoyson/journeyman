@@ -103,25 +103,34 @@ The value cell is a typed editor that switches on `type`:
 Extract the value editor as a small `AttributeValueField` component (switch-on-type) so
 `InputsTab` stays readable.
 
-**Name validation:** non-empty, unique within attributes, and not colliding with an
-input name (inputs and attributes share the `workflow.*` namespace in the picker).
+**Name validation:** non-empty and unique within attributes. Attributes live in their
+own nested runtime namespace (`workflow.input.attributes.*`), so they cannot collide with
+input names — no cross-namespace rule is needed.
 
 **JSON validation:** invalid JSON in a json-object / json-array value is blocked at edit
 time — a malformed attribute cannot be saved.
 
 ## Runtime Resolution (orchestrator)
 
-Attributes ride the same path as inputs, as `${workflow.attribute.x}` engine refs.
+The Conductor engine resolves only the **`workflow.input.*`** namespace (the object
+passed as the run's start `input`). There is no native `workflow.attribute` namespace.
+So attributes are seeded *into* `workflow.input` under a nested `attributes` key, and the
+editor's `workflow.attribute.{name}` ref is rewritten to a `workflow.input.attributes.*`
+engine ref. Bindings stay symbolic (option B); there is one runtime source of truth.
 
-- `packages/orchestrator/src/flow-json/resolve-inputs.ts` — `parseRef()` already splits
-  `scope.source.field`; add `workflow.attribute` as a recognized scope so a
-  `{ kind: "ref" }` to an attribute resolves to the Conductor template
-  `${workflow.attribute.name}`. The type-validation branch mirrors the input branch.
-- **Run start** — wherever `inputDefs` values are seeded into the run's
-  `workflow.input.*` namespace, also seed `attributeDefs` into `workflow.attribute.*`.
-  Inputs come from the trigger; attributes come from each def's stored `value`. This is
-  the one genuinely new piece of wiring.
-- **Conductor converter** — no change; it already substitutes `${workflow.*}` refs.
+- **Run start** — `packages/orchestrator/src/engines/conductor/conductor-orchestrator.ts`
+  builds the start `input` from `args.inputs` (and has the full graph as
+  `args.definitionSnapshot`). Add an `attributes` key to that object, built from
+  `definitionSnapshot.attributeDefs` as `{ [name]: value }`. Inputs come from the
+  trigger; attributes come from each def's stored `value`. This is the genuinely new
+  wiring.
+- **Ref rewrite** — `packages/orchestrator/src/flow-json/resolve-inputs.ts`: a
+  `{ kind: "ref" }` whose ref starts with `workflow.attribute.` resolves to the Conductor
+  template `${workflow.input.attributes.<name>}`. All other refs are unchanged.
+- **`parseRef()`** — recognize the `workflow.attribute.` prefix (new `RefScope`) so
+  validation treats attribute refs as a known scope rather than rejecting them.
+- **Conductor converter** — no structural change; it emits whatever `resolveInputs`
+  returns.
 
 **Snapshot semantics:** attributes are seeded into the run from the saved graph's
 `attributeDefs[].value` at run-start, so each run snapshots the attribute value at launch
@@ -131,8 +140,6 @@ time.
 
 - **Rename / delete a bound attribute** — same behavior as inputs today (a dangling
   `workflow.attribute.x` ref). No new handling; mirror inputs.
-- **Name collision** across inputs and attributes — blocked in the editor (shared
-  `workflow.*` namespace).
 - **Type change after binding** — the picker re-evaluates compatibility on next open,
   like inputs.
 
@@ -140,8 +147,9 @@ time.
 
 - Core type round-trips (`WorkflowAttributeDef` serialize/deserialize on the graph).
 - `toMentionFields()` emits attribute fields with correct ref and type.
-- `resolve-inputs` maps a `workflow.attribute.x` ref → `${workflow.attribute.x}`.
-- Run-start seeds `attributeDefs[].value` into the `workflow.attribute.*` namespace.
+- `resolve-inputs` maps a `workflow.attribute.x` ref → `${workflow.input.attributes.x}`.
+- `parseRef` recognizes the `workflow.attribute.` prefix as a known scope.
+- Run-start seeds `attributeDefs[].value` into `input.attributes.*`.
 - End-to-end regression: define attribute → bind in a step → value reaches the step
   input, paralleling the existing input test.
 
@@ -153,5 +161,5 @@ time.
 | Inputs tab (two sections) + value editor | `packages/flow-editor/src/inputs-tab/InputsTab.tsx` (+ new `AttributeValueField`) |
 | Picker field mapping | `packages/flow-editor/src/properties-panel/mention-fields.ts` |
 | Upstream sources | `packages/flow-editor/src/properties-panel/use-upstream-sources.ts` |
-| Ref resolution | `packages/orchestrator/src/flow-json/resolve-inputs.ts` |
-| Run-start attribute seeding | orchestrator run-start (alongside input seeding) |
+| Ref rewrite + parseRef scope | `packages/orchestrator/src/flow-json/resolve-inputs.ts` |
+| Run-start attribute seeding | `packages/orchestrator/src/engines/conductor/conductor-orchestrator.ts` |

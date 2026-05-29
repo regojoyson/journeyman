@@ -6,7 +6,7 @@ import type {
   CreateWebhookArgs, PresetId, UpdateWebhookArgs, Webhook,
 } from "@journeyman/core";
 import type { Composition } from "../composition.ts";
-import { buildTestDeliveryHeaders } from "../services/webhook-test-delivery.ts";
+import { buildTestDeliveryHeaders, eventTypeHeaderForSample } from "../services/webhook-test-delivery.ts";
 import {
   resolveWebhookSecret,
   secretRefFromAuth,
@@ -155,7 +155,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
       const r = await load(req, id);
       if ("error" in r) return reply.code(r.code).send({ error: r.error });
 
-      const body = (req.body ?? {}) as { sampleEvent?: string; payload?: unknown };
+      const body = (req.body ?? {}) as { sampleEvent?: string; payload?: unknown; eventType?: string };
       let payload: unknown = body.payload;
       if (payload === undefined && body.sampleEvent) {
         const preset = getPreset(r.preset as PresetId);
@@ -169,6 +169,8 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
       const resolvedSecret = c.pool ? await resolveWebhookSecret(c.pool, r.scope, secretRef) : null;
       const headers = buildTestDeliveryHeaders(r, rawBody, resolvedSecret);
       if (!headers) return reply.code(501).send({ error: "auth_mode_not_synthesizable" });
+      const evtHeader = eventTypeHeaderForSample(r.eventTypePath, body.sampleEvent ?? body.eventType);
+      if (evtHeader) headers[evtHeader.name] = evtHeader.value;
 
       const injected = await app.inject({
         method: "POST",

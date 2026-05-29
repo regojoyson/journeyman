@@ -8,6 +8,7 @@ import type {
 import { createLogger, findManualTriggerNode, isTriggerNode } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import { emitRoutingEvents } from "./emit-routing-events.ts";
+import { buildAttributeInputs } from "../../flow-json/attribute-inputs.ts";
 import type { IWorkflowJsonConverter } from "@journeyman/core";
 import type { ConductorWorkflowDef } from "../../flow-json/conductor-types.ts";
 
@@ -85,6 +86,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       version: 1,
       input: {
         ...args.inputs,
+        attributes: buildAttributeInputs(args.definitionSnapshot.attributeDefs),
         workflowInstanceId: instance.id,
         startedByUserId: args.startedByUserId ?? null,
         startedByOrgId: args.startedByOrgId ?? null,

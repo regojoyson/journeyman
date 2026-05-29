@@ -13,5 +13,10 @@
     { "key": "branch",    "path": "$.ref" }
   ],
   "payloadSchemaRef": "./schema.json",
-  "sampleEvents": { "push": "./samples/push.json" }
+  "sampleEvents": {
+    "push": "./samples/push.json",
+    "merge_request": "./samples/merge_request.json",
+    "pipeline": "./samples/pipeline.json",
+    "tag_push": "./samples/tag_push.json"
+  }
 }

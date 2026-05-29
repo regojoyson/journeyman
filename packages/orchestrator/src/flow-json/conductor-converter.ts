@@ -141,6 +141,7 @@ class ConvertCtx {
       ? this.flow.inputDefs
       : getStartWorkflowInputs(triggers[0]?.config);
     const runInputNames = new Set(runInputDefs.map(d => d.name));
+    const attributeNames = new Set((this.flow.attributeDefs ?? []).map(a => a.name));
 
     for (const node of this.flow.nodes) {
       for (const [field, val] of Object.entries(node.inputs ?? {})) {
@@ -168,6 +169,13 @@ class ConvertCtx {
           if (parsed.source === "workflow.input") {
             if (!runInputNames.has(parsed.field)) {
               throw new WorkflowValidationError(`Node ${this.label(node)} references undeclared run input '${parsed.field}'`);
+            }
+            continue;
+          }
+          if (parsed.source === "workflow.attribute") {
+            const attrName = parsed.field.split(".")[0];
+            if (!attributeNames.has(attrName)) {
+              throw new WorkflowValidationError(`Node ${this.label(node)} references undeclared attribute '${attrName}'`);
             }
             continue;
           }

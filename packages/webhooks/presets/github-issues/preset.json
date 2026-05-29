@@ -19,5 +19,8 @@
     { "key": "issueRef", "path": "$.repository.full_name" }
   ],
   "payloadSchemaRef": "./schema.json",
-  "sampleEvents": { "issues": "./samples/issues.json" }
+  "sampleEvents": {
+    "issues": "./samples/issues.json",
+    "issue_comment": "./samples/issue_comment.json"
+  }
 }
