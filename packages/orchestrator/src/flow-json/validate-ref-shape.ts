@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape, pauseNodeOutputSchema } from "@journeyman/core";
+import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape, pauseNodeOutputSchema, joinNodeOutputSchema } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
@@ -73,6 +73,21 @@ export function resolveRefShape(
     }
     const pauseLeaf = shapeAtPath(pauseRoot, path.slice(1));
     return pauseLeaf ? { ok: true, shape: pauseLeaf } : { ok: false, error: `Path not found: ${ref}` };
+  }
+
+  // Join nodes produce outputs too (winner / output / results, by mode). Resolve
+  // `join.output.*` refs against that schema instead of rejecting as "not a step".
+  const joinSchema = joinNodeOutputSchema(node);
+  if (joinSchema) {
+    if (parsed.scope !== "output") {
+      return { ok: false, error: `Node ${labelNode(node, parsed.source)} only exposes outputs (use output.<field>)` };
+    }
+    const joinRoot = joinSchema[path[0]];
+    if (!joinRoot) {
+      return { ok: false, error: `Field 'output.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
+    }
+    const joinLeaf = shapeAtPath(joinRoot, path.slice(1));
+    return joinLeaf ? { ok: true, shape: joinLeaf } : { ok: false, error: `Path not found: ${ref}` };
   }
 
   if (node.type !== "step" || !node.stepType) return { ok: false, error: `Node ${labelNode(node, parsed.source)} is not a step` };

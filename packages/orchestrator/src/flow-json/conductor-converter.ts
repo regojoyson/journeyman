@@ -1,5 +1,5 @@
-import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
-import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS, DEFAULT_JOIN_MODE } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape, PublishError } from "@journeyman/core";
+import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS, DEFAULT_JOIN_MODE, formatPublishError } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
@@ -55,7 +55,15 @@ export class UnsupportedNodeTypeError extends Error {
 }
 
 export class WorkflowValidationError extends Error {
-  constructor(message: string) { super(message); this.name = "WorkflowValidationError"; }
+  /** Structured diagnostic, when the thrower supplied one. The UI renders this
+   *  as a diagnostic card; `.message` holds its canonical text form for logs
+   *  and string-only consumers. Plain-string throws leave this undefined. */
+  readonly diagnostic?: PublishError;
+  constructor(arg: string | PublishError) {
+    super(typeof arg === "string" ? arg : formatPublishError(arg));
+    this.name = "WorkflowValidationError";
+    this.diagnostic = typeof arg === "string" ? undefined : arg;
+  }
 }
 
 export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorWorkflowDef> {
@@ -184,16 +192,20 @@ class ConvertCtx {
           }
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
-            throw new WorkflowValidationError(
-              [
-                `"${this.label(node)}" can't use input '${field}' from "${this.labelById(parsed.source)}".`,
-                `They sit on different parallel branches, so "${this.labelById(parsed.source)}" may be skipped or cancelled and might not have produced any data by the time "${this.label(node)}" runs.`,
-                `To fix it, do one of these:`,
-                `  1. Remove this input link.`,
-                `  2. Move "${this.labelById(parsed.source)}" onto the main path, before the branches split — then it always runs first.`,
-                `  3. If "${this.label(node)}" runs after a Join, read this value from the Join's output instead of from "${this.labelById(parsed.source)}".`,
-              ].join("\n"),
-            );
+            const sourceLabel = this.labelById(parsed.source);
+            throw new WorkflowValidationError({
+              code: "cross_branch_input",
+              severity: "error",
+              message: `Can't use input '${field}' from ${sourceLabel}.`,
+              detail: `They sit on different parallel branches, so ${sourceLabel} may be skipped or cancelled and might not have produced any data by the time this step runs.`,
+              fixes: [
+                "Remove this input link.",
+                `Move ${sourceLabel} onto the main path, before the branches split — then it always runs first.`,
+                "If this step runs after a Join, read this value from the Join's output instead.",
+              ],
+              nodeId: node.id,
+              nodeLabel: node.displayName ?? node.id,
+            });
           }
           // Shape compatibility (only when a catalog is supplied).
           if (enforceShape && this.catalog && node.type === "step" && node.stepType) {

@@ -57,6 +57,22 @@ function IssueRow({
             onSelectNode={onSelectNode}
             onAfterClick={onCancel}
           />
+          {issue.detail ? (
+            <span className="je-diagnostic__why">
+              <span className="je-diagnostic__label">Why:</span>{" "}
+              <IssueMessage flow={flow} message={issue.detail} onSelectNode={onSelectNode} onAfterClick={onCancel} />
+            </span>
+          ) : null}
+          {issue.fixes && issue.fixes.length > 0 ? (
+            <span className="je-diagnostic__fixes">
+              <span className="je-diagnostic__label">Fixes:</span>
+              {issue.fixes.map((f, i) => (
+                <span className="je-diagnostic__fix" key={i}>
+                  <IssueMessage flow={flow} message={f} onSelectNode={onSelectNode} onAfterClick={onCancel} />
+                </span>
+              ))}
+            </span>
+          ) : null}
         </span>
       </span>
     </li>

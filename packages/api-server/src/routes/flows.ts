@@ -5,14 +5,14 @@ import { createRunBody } from "../schemas/run.ts";
 import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
-import type { WorkflowGraph, WorkflowScope, WorkflowInputValue } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowScope, WorkflowInputValue, PublishError } from "@journeyman/core";
 import { findManualTriggerNode } from "@journeyman/core";
 import {
   refreshTriggerIndexOnPublish,
   refreshTriggerIndexOnUnpublish,
   refreshTriggerIndexOnVersionCreated,
 } from "../services/workflow-trigger-index.ts";
-import { ConductorJsonConverter } from "@journeyman/orchestrator";
+import { ConductorJsonConverter, WorkflowValidationError } from "@journeyman/orchestrator";
 import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
@@ -194,6 +194,7 @@ export interface WorkflowValidationReport {
   missing: string[];                             // required inputs without a typed value or binding
   warnings: string[];                            // refs to undeclared fields — non-blocking
   secretWarnings: WorkflowSaveWarning[];         // inaccessible secret references — non-blocking
+  diagnostics: PublishError[];                   // structured diagnostics (code/summary/why/fixes) — rendered as cards; superset channel for richer errors
 }
 
 /** Pure function — does not mutate any reply. Returns the full report.
@@ -207,11 +208,16 @@ export function computeValidationReport(
   const errors: string[] = [];
   const missing: string[] = [];
   const warnings: string[] = [];
+  const diagnostics: PublishError[] = [];
 
   try {
     ConductorJsonConverter.validateGraph(definition);
   } catch (e: unknown) {
-    errors.push(e instanceof Error ? e.message : String(e));
+    if (e instanceof WorkflowValidationError && e.diagnostic) {
+      diagnostics.push(e.diagnostic);
+    } else {
+      errors.push(e instanceof Error ? e.message : String(e));
+    }
   }
 
   const inputsByStep = new Map(stepCatalog.map((p) => [p.stepType, p.inputFields ?? {}]));
@@ -284,7 +290,11 @@ export function computeValidationReport(
     warnings.push(w.message);
   }
 
-  return { ok: errors.length === 0 && missing.length === 0, errors, missing, warnings, secretWarnings: [] };
+  const hasErrorDiagnostic = diagnostics.some(d => (d.severity ?? "error") === "error");
+  return {
+    ok: errors.length === 0 && missing.length === 0 && !hasErrorDiagnostic,
+    errors, missing, warnings, secretWarnings: [], diagnostics,
+  };
 }
 
 async function loadCustomStepShapes(
@@ -394,13 +404,20 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     try {
       ConductorJsonConverter.validateGraph(body.definition, catalogMap, customStepDefs);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!seenErrors.has(msg)) {
-        report.errors.push(msg);
-        seenErrors.add(msg);
+      if (e instanceof WorkflowValidationError && e.diagnostic) {
+        const d = e.diagnostic;
+        const dup = report.diagnostics.some(x => x.code === d.code && x.nodeId === d.nodeId && x.message === d.message);
+        if (!dup) report.diagnostics.push(d);
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!seenErrors.has(msg)) {
+          report.errors.push(msg);
+          seenErrors.add(msg);
+        }
       }
     }
-    report.ok = report.errors.length === 0 && report.missing.length === 0;
+    const hasErrorDiagnostic = report.diagnostics.some(d => (d.severity ?? "error") === "error");
+    report.ok = report.errors.length === 0 && report.missing.length === 0 && !hasErrorDiagnostic;
 
     return { ...report, secretWarnings };
   });
@@ -585,6 +602,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       ConductorJsonConverter.validateGraph(version.definition, catalogMap, customStepDefs);
     } catch (e) {
       reply.code(400);
+      if (e instanceof WorkflowValidationError && e.diagnostic) {
+        return { errors: [e.diagnostic] };
+      }
       return { errors: [{ code: "shape_mismatch", message: e instanceof Error ? e.message : String(e) }] };
     }
 

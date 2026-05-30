@@ -139,6 +139,7 @@ export type {
 } from "./types/flow.types.ts";
 export {
   validateForPublish,
+  formatPublishError,
 } from "./validation/validate-for-publish.ts";
 export { validateForkJoinPairs } from "./validation/validate-fork-join-pairs.ts";
 export type { ForkJoinPairError } from "./validation/validate-fork-join-pairs.ts";
@@ -178,6 +179,7 @@ export {
 } from "./utils/validate-workflow.ts";
 export { getStartWorkflowInputs } from "./utils/start-node.ts";
 export { pauseNodeOutputSchema } from "./utils/pause-node-output.ts";
+export { joinNodeOutputSchema } from "./utils/join-node-output.ts";
 export { validatePauseNodeOutputNames } from "./utils/pause-node-output-names.ts";
 export type { PauseOutputNameProblem, PauseOutputNameReason } from "./utils/pause-node-output-names.ts";
 export {
