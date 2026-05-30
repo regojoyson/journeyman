@@ -15,14 +15,39 @@ export type PublishError = {
     | "missing_config"
     | "unresolved_binding"
     | "invalid_gate"
-    | "dangling_reference";
+    | "dangling_reference"
+    | "cross_branch_input";
+  /** Short one-line summary of the problem. */
   message: string;
   nodeId?: string;
   /** Human-readable label for the offending node — UI chip text. Resolved from
    *  `displayName` ?? prettified `stepType` ?? capitalized `type`. */
   nodeLabel?: string;
   fieldPath?: string;
+  /** Optional longer explanation of *why* it's a problem (the "Why:" section). */
+  detail?: string;
+  /** Optional ordered list of suggested fixes (the "Fixes:" bullet list). */
+  fixes?: string[];
 };
+
+/**
+ * Canonical plain-text rendering of a diagnostic. Used for log lines, the
+ * `Error.message` of thrown validation errors, and the back-compat string
+ * arrays in the validate report. The structured object (code/message/detail/
+ * fixes) is what the UI renders as a diagnostic card; this is the text fallback
+ * so every consumer shows the same content. Follows a compiler-diagnostic-style
+ * layout: `[code] summary`, then `Why:`, then a `Fixes:` list.
+ */
+export function formatPublishError(e: PublishError): string {
+  const lines: string[] = [];
+  lines.push(`[${e.code}] ${e.message}`);
+  if (e.detail) lines.push(`Why: ${e.detail}`);
+  if (e.fixes && e.fixes.length > 0) {
+    lines.push("Fixes:");
+    for (const f of e.fixes) lines.push(`  • ${f}`);
+  }
+  return lines.join("\n");
+}
 
 export type PublishValidationResult = {
   ok: boolean; // true when no error-severity items

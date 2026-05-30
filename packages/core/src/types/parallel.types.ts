@@ -4,12 +4,19 @@ export type JoinMode =
   | "wait-all-strict"
   | "first-wins";
 
+/**
+ * The mode applied when a Join node has no explicit `mode`. Single source of
+ * truth — every consumer (UI editor, canvas badge, validation, runtime
+ * converter) falls back to this so the displayed and executed defaults agree.
+ */
+export const DEFAULT_JOIN_MODE: JoinMode = "first-wins";
+
 export interface ForkConfig {
   description?: string;
 }
 
 export interface JoinConfig {
-  /** How the join waits for branches, cancels losers, and shapes its output. Default: "fail-fast". */
+  /** How the join waits for branches, cancels losers, and shapes its output. Default: see DEFAULT_JOIN_MODE ("first-wins"). */
   mode?: JoinMode;
   description?: string;
 }

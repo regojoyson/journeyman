@@ -9,14 +9,18 @@ function group(src: ReturnType<typeof joinSource>, title: string) {
   return g!;
 }
 
-// === fail-fast (default) → null ===
+// === fail-fast (explicit) → null ===
 {
   const node: WorkflowNode = { id: "j1", type: "join", config: { mode: "fail-fast" } };
   assert.equal(joinSource(node), null);
 }
+// === no mode → defaults to first-wins (DEFAULT_JOIN_MODE) → winner + output + results ===
 {
   const node: WorkflowNode = { id: "j1", type: "join" };
-  assert.equal(joinSource(node), null);
+  const src = joinSource(node);
+  assert.ok(src, "unset-mode join should default to first-wins, not null");
+  const outs = group(src, "Outputs");
+  assert.deepEqual(outs.fields.map(f => f.name), ["winner", "output", "results"]);
 }
 
 // === wait-all → results only ===

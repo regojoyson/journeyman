@@ -1,5 +1,5 @@
-import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
-import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION } from "@journeyman/core";
+import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape, PublishError } from "@journeyman/core";
+import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS, DEFAULT_JOIN_MODE, formatPublishError } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
@@ -55,7 +55,15 @@ export class UnsupportedNodeTypeError extends Error {
 }
 
 export class WorkflowValidationError extends Error {
-  constructor(message: string) { super(message); this.name = "WorkflowValidationError"; }
+  /** Structured diagnostic, when the thrower supplied one. The UI renders this
+   *  as a diagnostic card; `.message` holds its canonical text form for logs
+   *  and string-only consumers. Plain-string throws leave this undefined. */
+  readonly diagnostic?: PublishError;
+  constructor(arg: string | PublishError) {
+    super(typeof arg === "string" ? arg : formatPublishError(arg));
+    this.name = "WorkflowValidationError";
+    this.diagnostic = typeof arg === "string" ? undefined : arg;
+  }
 }
 
 export class ConductorJsonConverter implements IWorkflowJsonConverter<ConductorWorkflowDef> {
@@ -184,9 +192,20 @@ class ConvertCtx {
           }
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
-            throw new WorkflowValidationError(
-              `${this.label(node)} reads input '${field}' from ${this.labelById(parsed.source)}, but those two steps are on different branches — ${this.labelById(parsed.source)} won't always have run by the time ${this.label(node)} needs it. Either remove this input link, or move the steps so they're on the same path (e.g. place ${this.labelById(parsed.source)} before the fork, or place ${this.label(node)} after the Join).`,
-            );
+            const sourceLabel = this.labelById(parsed.source);
+            throw new WorkflowValidationError({
+              code: "cross_branch_input",
+              severity: "error",
+              message: `Can't use input '${field}' from ${sourceLabel}.`,
+              detail: `They sit on different parallel branches, so ${sourceLabel} may be skipped or cancelled and might not have produced any data by the time this step runs.`,
+              fixes: [
+                "Remove this input link.",
+                `Move ${sourceLabel} onto the main path, before the branches split — then it always runs first.`,
+                "If this step runs after a Join, read this value from the Join's output instead.",
+              ],
+              nodeId: node.id,
+              nodeLabel: node.displayName ?? node.id,
+            });
           }
           // Shape compatibility (only when a catalog is supplied).
           if (enforceShape && this.catalog && node.type === "step" && node.stepType) {
@@ -406,7 +425,7 @@ class ConvertCtx {
   emitHumanTask(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    this.validateOutputNames(node, outputs, ["source", "actor", "resolvedAt", "payload"], "Human-task");
+    this.validateOutputNames(node, outputs, HUMAN_TASK_RESERVED_KEYS, "Human-task");
 
     const human: import("./conductor-types.ts").HumanTask = {
       type: "HUMAN",
@@ -435,7 +454,7 @@ class ConvertCtx {
     }
 
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    this.validateOutputNames(node, outputs, ["source", "resolvedAt", "webhookEventId", "payload"], "Webhook-wait");
+    this.validateOutputNames(node, outputs, WEBHOOK_WAIT_RESERVED_KEYS, "Webhook-wait");
 
     // Resolve correlationKey.value through the same WorkflowInputValue → Conductor-ref
     // pipeline as step inputs. Conductor substitutes the ref(s) at task-execution
@@ -531,7 +550,7 @@ class ConvertCtx {
     }
 
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").JoinConfig>;
-    const mode = cfg.mode ?? "fail-fast";
+    const mode = cfg.mode ?? DEFAULT_JOIN_MODE;
 
     const branchTaskRefs: string[][] = (this.outgoing.get(forkId) ?? []).map(e => {
       const chain: string[] = [];

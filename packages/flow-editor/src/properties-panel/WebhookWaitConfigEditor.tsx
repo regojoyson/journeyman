@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CorrelationKey, WorkflowInputValue, WorkflowNode } from "@journeyman/core";
+import { validatePauseNodeOutputNames } from "@journeyman/core";
 import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { ListensForPicker } from "./ListensForPicker.tsx";
 import { pathsFromSchema, useWebhooksForPicker } from "./useWebhooksForPicker.ts";
@@ -36,6 +37,12 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly, sources }: P
     timeout?: { duration: string; defaults?: Record<string, unknown> };
   };
   const outputs = cfg.outputs ?? [];
+
+  const nameProblems = useMemo(() => {
+    const byIndex = new Map<number, string>();
+    for (const p of validatePauseNodeOutputNames(node)) byIndex.set(p.index, p.message);
+    return byIndex;
+  }, [node]);
 
   const { webhooks, loading: loadingWebhooks } = useWebhooksForPicker();
   const selectedWebhook = useMemo(
@@ -224,6 +231,9 @@ export function WebhookWaitConfigEditor({ node, onChange, readOnly, sources }: P
             >
               ×
             </button>
+            {nameProblems.has(i) && (
+              <p className="je-hint je-hint--error" style={{ flexBasis: "100%" }}>{nameProblems.get(i)}</p>
+            )}
           </div>
         ))}
         {!readOnly && (

@@ -1935,6 +1935,43 @@ label.je-switch,
 .je-issue-link:hover { color: #8fbeff; }
 .je-issue-link:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
 
+/* Structured validation diagnostic card (code + summary + why + fixes). */
+.je-diagnostic-list { display: flex; flex-direction: column; gap: 8px; }
+.je-diagnostic {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.je-diagnostic--error { border-left-color: #ff7675; background: rgba(255, 118, 117, 0.06); }
+.je-diagnostic--warn  { border-left-color: #fdcb6e; background: rgba(253, 203, 110, 0.06); }
+.je-diagnostic__head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.je-diagnostic__icon { font-weight: 700; }
+.je-diagnostic--error .je-diagnostic__icon { color: #ff7675; }
+.je-diagnostic--warn  .je-diagnostic__icon { color: #fdcb6e; }
+.je-diagnostic__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+.je-diagnostic__node { font-weight: 600; }
+.je-diagnostic__summary { color: #e8eaed; }
+.je-diagnostic__why { display: block; margin-top: 4px; color: #b8bcc4; }
+.je-diagnostic__fixes { display: block; margin-top: 4px; }
+.je-diagnostic__label { font-weight: 600; color: #9aa0aa; }
+.je-diagnostic__fix-list { margin: 2px 0 0; padding-left: 18px; }
+.je-diagnostic__fix-list li { margin: 1px 0; }
+/* Span-based fix rows (used where a <ul> can't be nested, e.g. inside the
+   publish modal's inline message span). */
+.je-diagnostic__fix { display: block; padding-left: 16px; margin: 1px 0; }
+.je-diagnostic__fix::before { content: "•"; margin-left: -12px; margin-right: 6px; color: #9aa0aa; }
+
 /* If-else gate condition: LHS picker button (replaces the old <select>). */
 .je-condition-row__lhs {
   position: relative;

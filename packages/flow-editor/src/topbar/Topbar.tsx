@@ -18,6 +18,8 @@ import {
 import { toYaml } from "./yaml-serialize.ts";
 import { IconButton } from "./IconButton.tsx";
 import { IssueMessage } from "../issues/IssueMessage.tsx";
+import { DiagnosticCard } from "../issues/DiagnosticCard.tsx";
+import type { PublishError } from "@journeyman/core";
 
 export interface ValidationReport {
   ok: boolean;
@@ -25,6 +27,7 @@ export interface ValidationReport {
   missing: string[];
   warnings: string[];
   secretWarnings?: WorkflowSaveWarning[];
+  diagnostics?: PublishError[];
 }
 
 export interface TopbarProps {
@@ -481,10 +484,13 @@ function ValidationPanel({
   onFocusNode?: (id: string) => void;
 }) {
   const secretWarnings = report.secretWarnings ?? [];
+  const diagnostics = report.diagnostics ?? [];
+  const errorDiagnostics = diagnostics.filter(d => (d.severity ?? "error") === "error");
+  const warnDiagnostics = diagnostics.filter(d => d.severity === "warning");
   const total =
     report.errors.length + report.missing.length + report.warnings.length +
-    secretWarnings.length;
-  const totalWarn = secretWarnings.length;
+    secretWarnings.length + diagnostics.length;
+  const totalWarn = secretWarnings.length + warnDiagnostics.length;
   return (
     <div className="je-validate-panel">
       <div className="je-validate-panel__header">
@@ -500,6 +506,28 @@ function ValidationPanel({
       <div className="je-validate-panel__body">
         {report.ok && total === 0 && (
           <div className="je-validate-panel__ok">No errors, no missing inputs, no warnings.</div>
+        )}
+        {errorDiagnostics.length > 0 && (
+          <CollapsibleSection title="Errors" tone="error" count={errorDiagnostics.length} defaultOpen>
+            <div className="je-diagnostic-list">
+              {errorDiagnostics.map((d, i) => (
+                flow && onFocusNode
+                  ? <DiagnosticCard key={`d-${i}`} flow={flow} diagnostic={d} onSelectNode={onFocusNode} />
+                  : <div key={`d-${i}`}>{d.message}</div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+        {warnDiagnostics.length > 0 && (
+          <CollapsibleSection title="Warnings" tone="warn" count={warnDiagnostics.length} defaultOpen>
+            <div className="je-diagnostic-list">
+              {warnDiagnostics.map((d, i) => (
+                flow && onFocusNode
+                  ? <DiagnosticCard key={`dw-${i}`} flow={flow} diagnostic={d} onSelectNode={onFocusNode} />
+                  : <div key={`dw-${i}`}>{d.message}</div>
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
         {report.errors.length > 0 && (
           <CollapsibleSection title="Errors" tone="error" count={report.errors.length} defaultOpen>

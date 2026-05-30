@@ -164,6 +164,18 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     const live = await this.deps.client.getWorkflow(instance.engineWorkflowId);
     const mapped = mapConductorStatus(live.status);
 
+    // A workflow waiting on a HUMAN task (human-task / webhook-wait) is `paused`
+    // in our model, but Conductor still reports it as RUNNING — we never call
+    // pauseWorkflow for HUMAN waits. Never let the coarse Conductor status demote
+    // an intentionally-paused instance back to running: that flaps the status and
+    // makes the webhook matcher (findAllWaitingWithCorrelation, WHERE wi.status=
+    // 'paused') unable to route incoming events to the waiting node. The instance
+    // leaves `paused` only via an explicit resume (resolveHumanTask/retry) or a
+    // terminal Conductor status (completed/failed/cancelled), both handled below.
+    if (instance.status === "paused" && mapped === "running") {
+      return "paused";
+    }
+
     if (mapped === "failed" && this.shouldWorkflowRetry(instance)) {
       this.scheduleWorkflowRetry(instance);
       return "running";
