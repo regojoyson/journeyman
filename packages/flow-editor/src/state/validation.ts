@@ -1,5 +1,5 @@
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
-import { isJsonLogicExpr, isTriggerNode, validateForkJoinPairs } from "@journeyman/core";
+import { isJsonLogicExpr, isTriggerNode, validateForkJoinPairs, validatePauseNodeOutputNames } from "@journeyman/core";
 
 export interface ValidationIssue {
   severity: "error" | "warning";
@@ -52,6 +52,9 @@ export function isValidPhase4Graph(flow: WorkflowGraph): ValidationResult {
     }
     if (n.type === "subflow" && !(n.config as { workflowName?: string } | undefined)?.workflowName) {
       push("error", `Subflow ${nodeLabel(n)} is missing config.workflowName`, n.id);
+    }
+    for (const p of validatePauseNodeOutputNames(n)) {
+      push("error", `Output '${p.name}' on ${nodeLabel(n)}: ${p.message}`, n.id);
     }
   }
 

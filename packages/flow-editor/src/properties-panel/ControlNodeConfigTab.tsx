@@ -13,8 +13,9 @@
 // edge inspector exists, plug ValuePicker in there using
 // `surface = "jsonlogic"` and merge the picked `{ var: ref }` into the
 // existing JSONLogic value (or replace if empty).
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
+import { validatePauseNodeOutputNames } from "@journeyman/core";
 import { MentionInput } from "./MentionInput.tsx";
 import { toMentionFields } from "./mention-fields.ts";
 import { parseTemplate, segmentsToTemplate, type Segment } from "./mention-serialize.ts";
@@ -158,6 +159,12 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
   };
   const outputs = cfg.outputs ?? [];
 
+  const nameProblems = useMemo(() => {
+    const byIndex = new Map<number, string>();
+    for (const p of validatePauseNodeOutputNames(node)) byIndex.set(p.index, p.message);
+    return byIndex;
+  }, [node]);
+
   const [defaultsDraft, setDefaultsDraft] = useState<string>(
     cfg.timeout?.defaults ? JSON.stringify(cfg.timeout.defaults, null, 2) : "",
   );
@@ -253,6 +260,9 @@ function HumanTaskConfigEditor({ node, onChange, readOnly }: HumanTaskEditorProp
                   aria-label="Remove output"
                   onClick={() => removeOutput(i)}
                 >×</button>
+              )}
+              {nameProblems.has(i) && (
+                <p className="je-hint je-hint--error" style={{ flexBasis: "100%" }}>{nameProblems.get(i)}</p>
               )}
             </div>
           ))}

@@ -177,6 +177,8 @@ export {
 } from "./utils/validate-workflow.ts";
 export { getStartWorkflowInputs } from "./utils/start-node.ts";
 export { pauseNodeOutputSchema } from "./utils/pause-node-output.ts";
+export { validatePauseNodeOutputNames } from "./utils/pause-node-output-names.ts";
+export type { PauseOutputNameProblem, PauseOutputNameReason } from "./utils/pause-node-output-names.ts";
 export {
   buildOutgoingEdgeMap,
   walkReachable,

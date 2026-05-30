@@ -1,5 +1,5 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
-import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION } from "@journeyman/core";
+import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
@@ -406,7 +406,7 @@ class ConvertCtx {
   emitHumanTask(node: WorkflowNode): { tasks: ConductorTaskDef[]; nextNodeId: string | null } {
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").HumanTaskConfig>;
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    this.validateOutputNames(node, outputs, ["source", "actor", "resolvedAt", "payload"], "Human-task");
+    this.validateOutputNames(node, outputs, HUMAN_TASK_RESERVED_KEYS, "Human-task");
 
     const human: import("./conductor-types.ts").HumanTask = {
       type: "HUMAN",
@@ -435,7 +435,7 @@ class ConvertCtx {
     }
 
     const outputs = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    this.validateOutputNames(node, outputs, ["source", "resolvedAt", "webhookEventId", "payload"], "Webhook-wait");
+    this.validateOutputNames(node, outputs, WEBHOOK_WAIT_RESERVED_KEYS, "Webhook-wait");
 
     // Resolve correlationKey.value through the same WorkflowInputValue → Conductor-ref
     // pipeline as step inputs. Conductor substitutes the ref(s) at task-execution
