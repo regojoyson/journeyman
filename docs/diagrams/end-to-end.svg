@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="940" font-family="-apple-system, Segoe UI, Roboto, sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .box { rx:12; ry:12; stroke-width:2; }
+      .t { font-size:15px; font-weight:700; }
+      .s { font-size:12px; fill:#334155; }
+      .l { font-size:11px; fill:#64748b; }
+      .e { stroke:#475569; stroke-width:2; fill:none; }
+      .eg { stroke:#16a34a; stroke-width:2.5; fill:none; }
+    </style>
+  </defs>
+  <rect width="1200" height="940" fill="#f8fafc"/>
+  <text x="40" y="44" font-size="26" font-weight="800" fill="#0f172a">End-to-End: Ticket → Code → PR</text>
+  <text x="40" y="70" font-size="14" fill="#64748b">The full journey of one run, from a ticket landing to a pull request opened and the ticket updated.</text>
+
+  <!-- Row 1: trigger sources -->
+  <rect class="box" x="40" y="100" width="250" height="96" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="60" y="128" class="t" fill="#5b21b6">1 · Something triggers a run</text>
+  <text x="60" y="150" class="s">• Ticket created/updated (Jira,</text>
+  <text x="60" y="167" class="s">  GitHub Issues, Linear, Monday)</text>
+  <text x="60" y="184" class="s">• Webhook or manual API call</text>
+
+  <!-- API -->
+  <rect class="box" x="340" y="100" width="230" height="96" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="360" y="128" class="t" fill="#075985">2 · API Gateway</text>
+  <text x="360" y="150" class="s">Fastify verifies the webhook,</text>
+  <text x="360" y="167" class="s">picks the flow, and submits</text>
+  <text x="360" y="184" class="s">the run.</text>
+
+  <!-- Conductor -->
+  <rect class="box" x="620" y="100" width="230" height="96" fill="#fef3c7" stroke="#d97706"/>
+  <text x="640" y="128" class="t" fill="#92400e">3 · Conductor</text>
+  <text x="640" y="150" class="s">Durable engine. Knows the</text>
+  <text x="640" y="167" class="s">plan, schedules each step,</text>
+  <text x="640" y="184" class="s">survives restarts.</text>
+
+  <!-- Storage -->
+  <rect class="box" x="900" y="100" width="260" height="96" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="920" y="128" class="t" fill="#334155">Storage</text>
+  <text x="920" y="150" class="s">Postgres — runs, events, state</text>
+  <text x="920" y="167" class="s">Redis — job queue</text>
+  <text x="920" y="184" class="l">used by everything above</text>
+
+  <path class="e" d="M290,148 L340,148" marker-end="url(#ar)"/>
+  <path class="e" d="M570,148 L620,148" marker-end="url(#ar)"/>
+  <path class="e" d="M850,148 L900,148" marker-end="url(#ar)"/>
+
+  <!-- worker band -->
+  <rect x="40" y="236" width="1120" height="60" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="60" y="263" class="t" fill="#166534">4 · The Worker runs each step (asks Conductor "what's next?", does it, reports back — repeat)</text>
+  <text x="60" y="284" class="l" fill="#15803d">worker-harness.ts — each box below is one step handler that returns success(+output) or failure</text>
+  <path class="eg" d="M735,196 L735,236" marker-end="url(#ar)"/>
+  <text x="745" y="222" class="l" fill="#15803d">hands tasks ↕ gets results</text>
+
+  <!-- step chain -->
+  <g>
+    <rect class="box" x="40" y="328" width="172" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="56" y="356" class="t" fill="#14532d">getIssue</text>
+    <text x="56" y="378" class="s">Read the ticket</text>
+    <text x="56" y="395" class="s">title + body.</text>
+
+    <rect class="box" x="236" y="328" width="172" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="252" y="356" class="t" fill="#14532d">cloneRepos</text>
+    <text x="252" y="378" class="s">Pull the repo into</text>
+    <text x="252" y="395" class="s">a workspace.</text>
+
+    <rect class="box" x="432" y="328" width="172" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="448" y="356" class="t" fill="#14532d">analyze</text>
+    <text x="448" y="378" class="s">AI reads code +</text>
+    <text x="448" y="395" class="s">ticket, scopes work.</text>
+
+    <rect class="box" x="628" y="328" width="172" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="644" y="356" class="t" fill="#14532d">plan</text>
+    <text x="644" y="378" class="s">AI drafts a step</text>
+    <text x="644" y="395" class="s">by-step approach.</text>
+
+    <rect class="box" x="824" y="328" width="172" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="840" y="356" class="t" fill="#14532d">implement</text>
+    <text x="840" y="378" class="s">AI writes the code,</text>
+    <text x="840" y="395" class="s">commits, pushes.</text>
+
+    <rect class="box" x="1004" y="328" width="156" height="92" fill="#bbf7d0" stroke="#15803d"/>
+    <text x="1020" y="356" class="t" fill="#14532d">openPR</text>
+    <text x="1020" y="378" class="s">Open the PR /</text>
+    <text x="1020" y="395" class="s">merge request.</text>
+  </g>
+  <path class="e" d="M212,374 L236,374" marker-end="url(#ar)"/>
+  <path class="e" d="M408,374 L432,374" marker-end="url(#ar)"/>
+  <path class="e" d="M604,374 L628,374" marker-end="url(#ar)"/>
+  <path class="e" d="M800,374 L824,374" marker-end="url(#ar)"/>
+  <path class="e" d="M996,374 L1004,374" marker-end="url(#ar)"/>
+  <text x="40" y="448" class="l">Each arrow = one step's output becomes the next step's input (the artifact bag). Conductor decides ordering.</text>
+
+  <!-- notify + ticket update -->
+  <rect class="box" x="40" y="492" width="300" height="92" fill="#fce7f3" stroke="#db2777"/>
+  <text x="60" y="520" class="t" fill="#9d174d">5 · Notify</text>
+  <text x="60" y="542" class="s">Slack message: "PR ready for</text>
+  <text x="60" y="559" class="s">PROJ-123 👉 link".</text>
+
+  <rect class="box" x="372" y="492" width="300" height="92" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="392" y="520" class="t" fill="#5b21b6">6 · Update the ticket</text>
+  <text x="392" y="542" class="s">Comment / move status back</text>
+  <text x="392" y="559" class="s">on the source tracker.</text>
+
+  <rect class="box" x="704" y="492" width="456" height="92" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="724" y="520" class="t" fill="#9a3412">Live the whole time · Run Viewer</text>
+  <text x="724" y="542" class="s">Every step emits events (started, log, heartbeat, completed/failed)</text>
+  <text x="724" y="559" class="s">so you watch the run progress node-by-node in the UI.</text>
+
+  <path class="e" d="M120,420 L120,492" marker-end="url(#ar)"/>
+  <path class="e" d="M340,538 L372,538" marker-end="url(#ar)"/>
+
+  <!-- pauses callout -->
+  <rect class="box" x="40" y="624" width="1120" height="120" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="60" y="654" class="t" fill="#1e40af">⏸ A run can pause at any point — and that's normal</text>
+  <text x="60" y="680" class="s">• Human Task — wait for a person to approve / fill a form (e.g. between "plan" and "implement").</text>
+  <text x="60" y="701" class="s">• Webhook Wait — wait until a provider event arrives (e.g. CI passed, ticket moved to Done).</text>
+  <text x="60" y="722" class="s">While paused, no worker touches it; Conductor holds the state until it's resolved, then the run continues from exactly where it stopped.</text>
+
+  <!-- footer -->
+  <rect x="40" y="772" width="1120" height="120" rx="14" fill="#0f172a"/>
+  <text x="64" y="808" font-size="17" font-weight="800" fill="#f8fafc">In one breath</text>
+  <text x="64" y="838" font-size="14" fill="#e2e8f0">A ticket (or API call) starts a run → the API submits it to Conductor → the Worker runs the steps one by one</text>
+  <text x="64" y="862" font-size="14" fill="#e2e8f0">(read ticket, clone, analyze, plan, implement, open PR) → it notifies Slack and updates the ticket — pausing for humans when asked.</text>
+</svg>

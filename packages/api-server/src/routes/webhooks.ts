@@ -37,7 +37,13 @@ export function registerWebhookRoutes(app: FastifyInstance, c: Composition): voi
         return { error: "schema_invalid", reason: result.reason, eventId: result.eventId };
       case "resolved":
         reply.code(200);
-        return { status: "resolved", matched: result.matched, eventId: result.eventId };
+        return {
+          status: "resolved",
+          matched: result.matched,
+          eventId: result.eventId,
+          ...(result.triggers ? { triggers: result.triggers } : {}),
+          ...(result.waits ? { waits: result.waits } : {}),
+        };
       case "processed":
         reply.code(200);
         return { status: "processed", eventId: result.eventId };
@@ -46,7 +52,13 @@ export function registerWebhookRoutes(app: FastifyInstance, c: Composition): voi
         return { status: "ignored", eventId: result.eventId };
       case "error":
         reply.code(200);
-        return { status: "error", reason: result.reason, eventId: result.eventId };
+        return {
+          status: "error",
+          reason: result.reason,
+          eventId: result.eventId,
+          ...(result.triggers ? { triggers: result.triggers } : {}),
+          ...(result.waits ? { waits: result.waits } : {}),
+        };
     }
   });
 }

@@ -205,8 +205,9 @@ function HumanTaskResolveForm({
   const [data, setData] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => { setValues(initialValues); }, [initialValues]);
+  useEffect(() => { setValues(initialValues); setFieldErrors({}); }, [initialValues]);
 
   const setField = (name: string, value: unknown) => {
     setValues(prev => ({ ...prev, [name]: value }));
@@ -225,6 +226,20 @@ function HumanTaskResolveForm({
   }
 
   const submit = async () => {
+    // Type-aware validation up front — a bad value (invalid JSON, non-numeric
+    // number, missing required field) would otherwise be coerced to junk and
+    // break downstream steps. Block here and show per-field errors instead.
+    const errs: Record<string, string> = {};
+    for (const o of pending.outputs) {
+      const msg = validateField(o, values[o.name]);
+      if (msg) errs[o.name] = msg;
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError("Please fix the highlighted fields.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -274,6 +289,9 @@ function HumanTaskResolveForm({
                 <span style={{ color: "#666", marginLeft: 4 }}>({o.type})</span>
               </label>
               {renderField(o, values[o.name], v => setField(o.name, v))}
+              {fieldErrors[o.name] && (
+                <div style={{ fontSize: 10, color: "#ff7675", marginTop: 2 }}>{fieldErrors[o.name]}</div>
+              )}
               {o.description && (
                 <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>{o.description}</div>
               )}
@@ -290,14 +308,21 @@ function HumanTaskResolveForm({
         style={{ width: "100%", marginBottom: 8 }}
       />
 
-      <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Data (optional, JSON or text)</label>
-      <textarea
-        value={data}
-        onChange={e => setData(e.target.value)}
-        rows={3}
-        placeholder='{"any": "structured data"}'
-        style={{ width: "100%", marginBottom: 8, fontFamily: "ui-monospace, monospace", fontSize: 11 }}
-      />
+      {/* Generic structured-data fallback — only for tasks that declare no
+          outputs. When outputs exist (the user fills those), this would be
+          redundant and can collide with an output literally named "data". */}
+      {pending.outputs.length === 0 && (
+        <>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Data (optional, JSON or text)</label>
+          <textarea
+            value={data}
+            onChange={e => setData(e.target.value)}
+            rows={3}
+            placeholder='{"any": "structured data"}'
+            style={{ width: "100%", marginBottom: 8, fontFamily: "ui-monospace, monospace", fontSize: 11 }}
+          />
+        </>
+      )}
 
       {error && <div style={{ color: "#ff7675", fontSize: 12, marginBottom: 8 }}>{error}</div>}
       <button
@@ -441,6 +466,40 @@ function renderField(
           style={{ width: "100%" }}
         />
       );
+  }
+}
+
+/**
+ * Validate a single human-task field value against its declared type before
+ * resolving. Returns an error message, or null when the value is acceptable.
+ * Empty optional fields are fine; empty required fields and type-mismatched
+ * values (non-numeric number, invalid JSON, unparseable date) are rejected so
+ * they never reach — and break — downstream steps.
+ */
+export function validateField(
+  output: { name: string; label?: string; type: "string" | "number" | "boolean" | "json" | "date"; required?: boolean },
+  raw: unknown,
+): string | null {
+  const label = output.label ?? output.name;
+  const empty = raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
+  if (empty) return output.required ? `${label} is required` : null;
+
+  switch (output.type) {
+    case "number":
+      if (!Number.isFinite(Number(raw))) return `${label} must be a number`;
+      return null;
+    case "json":
+      if (typeof raw === "string") {
+        try { JSON.parse(raw); } catch { return `${label} must be valid JSON`; }
+      }
+      return null;
+    case "date":
+      if (typeof raw === "string" && Number.isNaN(Date.parse(raw))) return `${label} must be a valid date`;
+      return null;
+    case "boolean":
+    case "string":
+    default:
+      return null;
   }
 }
 

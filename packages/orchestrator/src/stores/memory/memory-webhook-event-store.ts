@@ -35,4 +35,20 @@ export class MemoryWebhookEventStore implements IWebhookEventStore {
   async getById(id: string): Promise<WebhookEvent | null> {
     return this.events.get(id) ?? null;
   }
+
+  async listByWebhook(webhookId: string, opts: { limit: number; offset: number }): Promise<WebhookEvent[]> {
+    return [...this.events.values()]
+      .filter((e) => e.webhookId === webhookId)
+      .sort((a, b) => {
+        const d = b.receivedAt.getTime() - a.receivedAt.getTime();
+        return d !== 0 ? d : (a.id < b.id ? 1 : -1);
+      })
+      .slice(opts.offset, opts.offset + opts.limit);
+  }
+
+  async countByWebhook(webhookId: string): Promise<number> {
+    let n = 0;
+    for (const e of this.events.values()) if (e.webhookId === webhookId) n++;
+    return n;
+  }
 }

@@ -61,6 +61,12 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
 
   const sampleKeys = Object.keys(samples);
   const hasSchema = schema != null;
+
+  const body = (result?.ingestBody ?? null) as null | {
+    status?: string;
+    triggers?: Array<{ workflowName: string | null; workflowId: string; ok: boolean; workflowInstanceId: string | null; error: string | null }>;
+    waits?: Array<{ workflowInstanceId: string; nodeId: string; ok: boolean; error: string | null }>;
+  };
   return (
     <div className="space-y-3 text-sm">
       <p className="text-slate-400">
@@ -116,6 +122,34 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
         {busy ? "Sending…" : "Send test event"}
       </button>
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {body && (body.triggers?.length || body.waits?.length) ? (
+        <div className="space-y-1">
+          <div className="text-xs text-slate-400">
+            Outcomes ({[...(body.triggers ?? []), ...(body.waits ?? [])].filter((o) => o.ok).length} ok,
+            {" "}{[...(body.triggers ?? []), ...(body.waits ?? [])].filter((o) => !o.ok).length} failed)
+          </div>
+          {body.triggers?.map((o) => (
+            <div key={`t-${o.workflowId}`} className="flex items-center gap-2 text-xs">
+              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-emerald-900 text-emerald-200" : "bg-red-900 text-red-200"}`}>
+                {o.ok ? "started" : "failed"}
+              </span>
+              <span className="text-slate-200">{o.workflowName ?? o.workflowId}</span>
+              {o.error && <span className="text-red-400 truncate">{o.error}</span>}
+            </div>
+          ))}
+          {body.waits?.map((o) => (
+            <div key={`w-${o.workflowInstanceId}-${o.nodeId}`} className="flex items-center gap-2 text-xs">
+              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-emerald-900 text-emerald-200" : "bg-red-900 text-red-200"}`}>
+                {o.ok ? "resumed" : "failed"}
+              </span>
+              <span className="text-slate-200 font-mono">{o.nodeId}</span>
+              {o.error && <span className="text-red-400 truncate">{o.error}</span>}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {result && (
         <pre className="text-xs rounded bg-slate-900 border border-slate-700 p-2 overflow-x-auto">
 {JSON.stringify(result, null, 2)}

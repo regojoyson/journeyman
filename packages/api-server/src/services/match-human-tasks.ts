@@ -11,7 +11,18 @@ export interface WebhookEventInfo {
   rawPayload: unknown;
 }
 
-export interface MatchResult { matched: number; }
+export interface WaitOutcome {
+  workflowInstanceId: string;
+  nodeId: string;
+  ok: boolean;
+  error: string | null;
+}
+
+export interface MatchResult {
+  matched: number;
+  failed: number;
+  outcomes: WaitOutcome[];
+}
 
 /**
  * Find paused webhook-wait nodes whose declared correlation key matches this
@@ -24,9 +35,9 @@ export interface MatchResult { matched: number; }
  */
 export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEventInfo): Promise<MatchResult> {
   const candidates = await c.nodeExecutions.findAllWaitingWithCorrelation();
-  if (candidates.length === 0) return { matched: 0 };
+  if (candidates.length === 0) return { matched: 0, failed: 0, outcomes: [] };
 
-  let matched = 0;
+  const outcomes: WaitOutcome[] = [];
 
   for (const exec of candidates) {
     if (!exec.correlationEventPath || !exec.correlationValue) continue;
@@ -34,52 +45,65 @@ export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEve
     const eventValue = getByPath(ev.rawPayload, exec.correlationEventPath);
     if (eventValue == null || String(eventValue) !== exec.correlationValue) continue;
 
-    // Reconcile in case Conductor advanced state since we last looked.
-    await reconcileWorkflowInstance(c, exec.workflowInstanceId);
-    const instance = await c.workflowInstances.getById(exec.workflowInstanceId);
-    if (!instance || instance.status !== "paused") continue;
+    // Each correlated wait is isolated: a throw while resolving one paused
+    // instance records a failed outcome and the loop continues, so one bad
+    // resume never discards its siblings' results.
+    try {
+      // Reconcile in case Conductor advanced state since we last looked.
+      await reconcileWorkflowInstance(c, exec.workflowInstanceId);
+      const instance = await c.workflowInstances.getById(exec.workflowInstanceId);
+      if (!instance || instance.status !== "paused") continue;
 
-    const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
-    if (!node || node.type !== "webhook-wait") continue;
+      const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
+      if (!node || node.type !== "webhook-wait") continue;
 
-    const cfg = (node.config ?? {}) as unknown as WebhookWaitConfig;
+      const cfg = (node.config ?? {}) as unknown as WebhookWaitConfig;
 
-    // Filter 1: event type whitelist.
-    if (cfg.listensFor && cfg.listensFor.length > 0 && ev.eventType) {
-      if (!cfg.listensFor.includes(ev.eventType)) continue;
+      // Filter 1: event type whitelist.
+      if (cfg.listensFor && cfg.listensFor.length > 0 && ev.eventType) {
+        if (!cfg.listensFor.includes(ev.eventType)) continue;
+      }
+
+      // Filter 2: acceptIf JSONLogic against the raw payload.
+      if (cfg.acceptIf) {
+        const data = (ev.rawPayload ?? {}) as Record<string, unknown>;
+        const ok = c.conditions.evaluate(cfg.acceptIf as unknown, data);
+        if (!ok) continue;
+      }
+
+      // Extract declared outputs from the payload via fromPath.
+      const outputs: WebhookWaitOutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
+      const values: Record<string, unknown> = {};
+      for (const o of outputs) {
+        if (!o.fromPath) continue;
+        const v = getByPath(ev.rawPayload, o.fromPath);
+        if (v != null) values[o.name] = coerce(v, o.type);
+      }
+
+      const actor = pickActor(ev.rawPayload);
+
+      await resolveHumanTask(c, {
+        workflowInstanceId: instance.id,
+        nodeId: node.id,
+        values,
+        payload: (ev.rawPayload ?? {}) as Record<string, unknown>,
+        actor,
+        source: "webhook",
+        webhookEventId: ev.id,
+      });
+      outcomes.push({ workflowInstanceId: exec.workflowInstanceId, nodeId: exec.nodeId, ok: true, error: null });
+    } catch (err) {
+      outcomes.push({
+        workflowInstanceId: exec.workflowInstanceId,
+        nodeId: exec.nodeId,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-
-    // Filter 2: acceptIf JSONLogic against the raw payload.
-    if (cfg.acceptIf) {
-      const data = (ev.rawPayload ?? {}) as Record<string, unknown>;
-      const ok = c.conditions.evaluate(cfg.acceptIf as unknown, data);
-      if (!ok) continue;
-    }
-
-    // Extract declared outputs from the payload via fromPath.
-    const outputs: WebhookWaitOutputField[] = Array.isArray(cfg.outputs) ? cfg.outputs : [];
-    const values: Record<string, unknown> = {};
-    for (const o of outputs) {
-      if (!o.fromPath) continue;
-      const v = getByPath(ev.rawPayload, o.fromPath);
-      if (v != null) values[o.name] = coerce(v, o.type);
-    }
-
-    const actor = pickActor(ev.rawPayload);
-
-    await resolveHumanTask(c, {
-      workflowInstanceId: instance.id,
-      nodeId: node.id,
-      values,
-      payload: (ev.rawPayload ?? {}) as Record<string, unknown>,
-      actor,
-      source: "webhook",
-      webhookEventId: ev.id,
-    });
-    matched += 1;
   }
 
-  return { matched };
+  const matched = outcomes.filter((o) => o.ok).length;
+  return { matched, failed: outcomes.length - matched, outcomes };
 }
 
 function pickActor(payload: unknown): string | null {

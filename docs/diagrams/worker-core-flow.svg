@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="1320" font-family="-apple-system, Segoe UI, Roboto, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .box { rx:12; ry:12; stroke-width:2; }
+      .title { font-size:17px; font-weight:700; }
+      .sub { font-size:12.5px; fill:#334155; }
+      .lbl { font-size:12px; fill:#64748b; }
+      .badge { font-size:11px; font-weight:700; fill:#fff; }
+      .edge { stroke:#475569; stroke-width:2; fill:none; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="1320" fill="#f8fafc"/>
+  <text x="40" y="44" font-size="26" font-weight="800" fill="#0f172a">Journeyman — How a Workflow Runs</text>
+  <text x="40" y="70" font-size="14" fill="#64748b">From "user starts a run" → Conductor schedules → Worker executes each step → next step</text>
+
+  <!-- 1. User / API -->
+  <rect class="box" x="40" y="100" width="320" height="92" fill="#ede9fe" stroke="#7c3aed"/>
+  <rect x="40" y="100" width="56" height="92" rx="12" fill="#7c3aed"/>
+  <text x="68" y="152" class="badge" text-anchor="middle">1</text>
+  <text x="112" y="132" class="title" fill="#5b21b6">User starts a run</text>
+  <text x="112" y="155" class="sub">API → ConductorOrchestrator.submit()</text>
+  <text x="112" y="174" class="lbl">conductor-orchestrator.ts:40</text>
+
+  <!-- 2. Converter -->
+  <rect class="box" x="40" y="232" width="320" height="110" fill="#e0f2fe" stroke="#0284c7"/>
+  <rect x="40" y="232" width="56" height="110" rx="12" fill="#0284c7"/>
+  <text x="68" y="293" class="badge" text-anchor="middle">2</text>
+  <text x="112" y="262" class="title" fill="#075985">Flow JSON → Conductor tasks</text>
+  <text x="112" y="285" class="sub">Your visual canvas (nodes + edges)</text>
+  <text x="112" y="304" class="sub">becomes a task list Conductor runs.</text>
+  <text x="112" y="324" class="lbl">conductor-converter.ts:78 (toEngineJson)</text>
+
+  <!-- 3. Conductor engine -->
+  <rect class="box" x="40" y="382" width="320" height="150" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="40" y="382" width="56" height="150" rx="12" fill="#d97706"/>
+  <text x="68" y="463" class="badge" text-anchor="middle">3</text>
+  <text x="112" y="412" class="title" fill="#92400e">Conductor (the brain)</text>
+  <text x="112" y="435" class="sub">External durable engine. Holds the</text>
+  <text x="112" y="453" class="sub">state machine: decides which step is</text>
+  <text x="112" y="471" class="sub">next, schedules it, waits for a worker.</text>
+  <text x="112" y="491" class="sub">Handles branches, loops, forks, retries.</text>
+  <text x="112" y="515" class="lbl">conductor-client.ts (HTTP wrapper)</text>
+
+  <!-- big arrow down 1->2->3 -->
+  <path class="edge" d="M200,192 L200,232" marker-end="url(#arrow)"/>
+  <path class="edge" d="M200,342 L200,382" marker-end="url(#arrow)"/>
+
+  <!-- ===== THE WORKER LOOP (the main work) ===== -->
+  <rect x="430" y="100" width="710" height="700" rx="16" fill="#ffffff" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <rect x="430" y="100" width="710" height="40" rx="16" fill="#16a34a"/>
+  <text x="455" y="127" font-size="16" font-weight="800" fill="#fff">THE WORKER — this is where the main work happens</text>
+  <text x="785" y="127" font-size="12" fill="#dcfce7">worker-harness.ts</text>
+
+  <!-- poll -->
+  <rect class="box" x="470" y="168" width="300" height="86" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="490" y="198" class="title" fill="#166534">① Poll for a task</text>
+  <text x="490" y="220" class="sub">Every 500ms: "any step for me?"</text>
+  <text x="490" y="240" class="lbl">pollTask() — worker-harness.ts:68</text>
+
+  <!-- resolve -->
+  <rect class="box" x="470" y="286" width="300" height="120" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="490" y="316" class="title" fill="#166534">② Prepare the step</text>
+  <text x="490" y="338" class="sub">• secrets / credentials</text>
+  <text x="490" y="357" class="sub">• MCP servers + skills</text>
+  <text x="490" y="376" class="sub">• fresh workspace folder</text>
+  <text x="490" y="396" class="lbl">worker-harness.ts:127–263</text>
+
+  <!-- run handler -->
+  <rect class="box" x="470" y="438" width="300" height="120" fill="#bbf7d0" stroke="#15803d" stroke-width="3"/>
+  <text x="490" y="468" class="title" fill="#14532d">③ Run the step handler ★</text>
+  <text x="490" y="490" class="sub">handler.run(input, context)</text>
+  <text x="490" y="509" class="sub">The actual business logic runs here.</text>
+  <text x="490" y="528" class="sub">→ get issue, clone repo, AI plan, PR…</text>
+  <text x="490" y="548" class="lbl">worker-harness.ts:285</text>
+
+  <!-- report -->
+  <rect class="box" x="470" y="590" width="300" height="120" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="490" y="620" class="title" fill="#166534">④ Report result back</text>
+  <text x="490" y="642" class="sub">success → COMPLETED (+ output)</text>
+  <text x="490" y="661" class="sub">failure → FAILED (retryable?)</text>
+  <text x="490" y="680" class="sub">clean up workspace</text>
+  <text x="490" y="700" class="lbl">completeTask() — worker-harness.ts:305</text>
+
+  <!-- handlers panel -->
+  <rect class="box" x="810" y="168" width="300" height="270" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="830" y="196" class="title" fill="#334155">Step handlers (the catalog)</text>
+  <text x="830" y="220" class="sub">One class per node type. Each just</text>
+  <text x="830" y="238" class="sub">does its job and returns success</text>
+  <text x="830" y="256" class="sub">or failure:</text>
+  <text x="830" y="282" class="sub">• GetIssueStepHandler</text>
+  <text x="830" y="301" class="sub">• CloneReposStepHandler</text>
+  <text x="830" y="320" class="sub">• Analyze / Plan / Implement</text>
+  <text x="830" y="339" class="sub">• CustomAiStepHandler</text>
+  <text x="830" y="358" class="sub">• OpenPullRequestStepHandler …</text>
+  <text x="830" y="386" class="lbl">workers/steps/*-step-handler.ts</text>
+  <text x="830" y="406" class="lbl">contract: IStepHandler (core)</text>
+  <text x="830" y="425" class="lbl">return {kind:"success"|"failure"}</text>
+
+  <!-- events panel -->
+  <rect class="box" x="810" y="470" width="300" height="240" fill="#fce7f3" stroke="#db2777"/>
+  <text x="830" y="498" class="title" fill="#9d174d">Events → live UI</text>
+  <text x="830" y="522" class="sub">Each step emits events to the</text>
+  <text x="830" y="540" class="sub">event bus; the run viewer streams</text>
+  <text x="830" y="558" class="sub">them so you watch it live:</text>
+  <text x="830" y="584" class="sub">• step.started</text>
+  <text x="830" y="603" class="sub">• step.log</text>
+  <text x="830" y="622" class="sub">• worker.heartbeat (30s)</text>
+  <text x="830" y="641" class="sub">• step.completed / step.failed</text>
+  <text x="830" y="668" class="lbl">IEventBus (Postgres / memory)</text>
+  <text x="830" y="688" class="lbl">run-viewer reads these</text>
+
+  <!-- internal arrows -->
+  <path class="edge" d="M620,254 L620,286" marker-end="url(#arrow)"/>
+  <path class="edge" d="M620,406 L620,438" marker-end="url(#arrow)"/>
+  <path class="edge" d="M620,558 L620,590" marker-end="url(#arrow)"/>
+  <!-- handler uses catalog -->
+  <path class="edge" d="M770,470 L810,420" marker-end="url(#arrow)"/>
+  <!-- loop back up -->
+  <path class="edge" d="M450,650 C405,650 405,210 470,210" marker-end="url(#arrow)"/>
+  <text x="360" y="445" class="lbl" transform="rotate(-90 360 445)">repeat for next step</text>
+
+  <!-- arrows between Conductor and Worker -->
+  <path class="edge" d="M360,430 C400,430 410,210 470,210" marker-end="url(#arrow)"/>
+  <text x="372" y="300" class="lbl">gives task</text>
+  <path class="edge" d="M770,650 C1000,760 240,760 200,540" marker-end="url(#arrow)"/>
+  <text x="560" y="752" class="lbl">result → Conductor advances to next step</text>
+
+  <!-- ===== bottom: special cases ===== -->
+  <text x="40" y="868" font-size="20" font-weight="800" fill="#0f172a">Special cases Conductor handles for you</text>
+
+  <rect class="box" x="40" y="892" width="262" height="150" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="60" y="922" class="title" fill="#9a3412">🔁 Retry</text>
+  <text x="60" y="946" class="sub">Handler returns retryable:true</text>
+  <text x="60" y="965" class="sub">→ Conductor re-schedules the</text>
+  <text x="60" y="984" class="sub">task with backoff.</text>
+  <text x="60" y="1003" class="sub">retryable:false → terminal fail.</text>
+  <text x="60" y="1028" class="lbl">worker-harness.ts:310</text>
+
+  <rect class="box" x="322" y="892" width="262" height="150" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="342" y="922" class="title" fill="#1e40af">⏸ Human-in-the-loop</text>
+  <text x="342" y="946" class="sub">HUMAN node = no worker claims</text>
+  <text x="342" y="965" class="sub">it. Workflow pauses until a</text>
+  <text x="342" y="984" class="sub">person (or webhook) resolves it.</text>
+  <text x="342" y="1003" class="sub">pause()/resume() APIs.</text>
+  <text x="342" y="1028" class="lbl">conductor-orchestrator.ts:140</text>
+
+  <rect class="box" x="604" y="892" width="262" height="150" fill="#f0fdfa" stroke="#0d9488"/>
+  <text x="624" y="922" class="title" fill="#115e59">⑂ Branch / Loop / Fork</text>
+  <text x="624" y="946" class="sub">SWITCH = if/else branch</text>
+  <text x="624" y="965" class="sub">DO_WHILE = loop</text>
+  <text x="624" y="984" class="sub">FORK/JOIN = run in parallel</text>
+  <text x="624" y="1003" class="sub">All decided by Conductor.</text>
+  <text x="624" y="1028" class="lbl">conductor-converter.ts:402+</text>
+
+  <rect class="box" x="886" y="892" width="254" height="150" fill="#fef2f2" stroke="#dc2626"/>
+  <text x="906" y="922" class="title" fill="#991b1b">♻ Loop guard</text>
+  <text x="906" y="946" class="sub">Each node visit is counted.</text>
+  <text x="906" y="965" class="sub">If a node runs &gt; 100 times,</text>
+  <text x="906" y="984" class="sub">the run fails terminally —</text>
+  <text x="906" y="1003" class="sub">stops infinite cycles.</text>
+  <text x="906" y="1028" class="lbl">visit-counter.ts</text>
+
+  <!-- one-line mental model -->
+  <rect x="40" y="1080" width="1100" height="190" rx="14" fill="#0f172a"/>
+  <text x="64" y="1118" font-size="18" font-weight="800" fill="#f8fafc">The one-sentence mental model</text>
+  <text x="64" y="1152" font-size="15" fill="#e2e8f0">Conductor is the brain that knows the plan and what comes next.</text>
+  <text x="64" y="1178" font-size="15" fill="#e2e8f0">The Worker is the hands: it asks Conductor "what next?", does that one step, reports back — over and over.</text>
+  <text x="64" y="1212" font-size="15" fill="#7dd3fc">The single most important line is worker-harness.ts:285 → handler.run(input, context)</text>
+  <text x="64" y="1238" font-size="14" fill="#94a3b8">Everything around it is just prep (secrets/skills/workspace), reporting (success/fail), and Conductor deciding the next move.</text>
+</svg>

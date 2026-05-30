@@ -108,6 +108,25 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
       return withIngestUrl(req, r);
     });
 
+  app.get("/api/webhooks/:id/events",
+    { preHandler: requireAuth() },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const r = await load(req, id);
+      if ("error" in r) return reply.code(r.code).send({ error: r.error });
+
+      const q = req.query as { page?: string; page_size?: string };
+      const page = Math.max(1, Number(q.page ?? 1) || 1);
+      const pageSize = Math.min(100, Math.max(1, Number(q.page_size ?? 25) || 25));
+      const offset = (page - 1) * pageSize;
+
+      const [events, total] = await Promise.all([
+        c.webhookEvents.listByWebhook(id, { limit: pageSize, offset }),
+        c.webhookEvents.countByWebhook(id),
+      ]);
+      return { events, total, page, pageSize };
+    });
+
   app.patch("/api/webhooks/:id",
     { preHandler: requireAuth() },
     async (req, reply) => {

@@ -229,6 +229,65 @@ class ConvertCtx {
         }
       }
     }
+
+    this.checkForkJoinStructure();
+  }
+
+  /**
+   * Publish-time structural check for parallel sections: every Join must have a
+   * matching Fork, and every Fork's branches must reach exactly one Join. Uses
+   * the same pairing rules as emitJoin/emitForkJoin so validation and runtime
+   * never disagree — surfacing these as structured diagnostics while editing
+   * instead of only when the workflow is converted to run.
+   */
+  private checkForkJoinStructure(): void {
+    for (const node of this.flow.nodes) {
+      if (node.type === "join") {
+        if (!this.findMatchingFork(node.id)) {
+          throw new WorkflowValidationError({
+            code: "join_without_fork",
+            severity: "error",
+            message: "This Join has no matching Fork.",
+            detail: "Parallel branches must be opened by a 'Fork (parallel)' node, and every branch that feeds this Join must trace back to the same Fork.",
+            fixes: [
+              "Add a 'Fork (parallel)' node before the branches and connect it to each branch.",
+              "Make sure every branch that feeds this Join starts from the same Fork.",
+            ],
+            nodeId: node.id,
+            nodeLabel: node.displayName ?? node.id,
+          });
+        }
+      } else if (node.type === "gateway-and") {
+        const branchHeads = (this.outgoing.get(node.id) ?? []).map(e => e.target);
+        const joinIds = new Set<string>();
+        for (const head of branchHeads) {
+          const join = this.findJoinAlongBranch(head);
+          if (!join) {
+            throw new WorkflowValidationError({
+              code: "fork_branch_no_join",
+              severity: "error",
+              message: "A branch of this Fork doesn't reach a Join.",
+              detail: "Every branch that starts at a Fork must end at a Join so the parallel section can close.",
+              fixes: ["Connect each branch of this Fork to a Join node."],
+              nodeId: node.id,
+              nodeLabel: node.displayName ?? node.id,
+            });
+          }
+          joinIds.add(join);
+        }
+        if (joinIds.size > 1) {
+          throw new WorkflowValidationError({
+            code: "fork_multiple_joins",
+            severity: "error",
+            message: "This Fork's branches converge on more than one Join.",
+            detail: "All branches from a single Fork must meet at the same Join.",
+            fixes: ["Route every branch of this Fork into the same Join node."],
+            nodeId: node.id,
+            nodeLabel: node.displayName ?? node.id,
+          });
+        }
+      }
+    }
   }
 
   startNode(): WorkflowNode {

@@ -7,9 +7,9 @@ import {
   type VerifyInput,
 } from "@journeyman/webhooks";
 import type { Composition } from "../composition.ts";
-import { matchAndResolveWebhookWaits } from "./match-human-tasks.ts";
+import { matchAndResolveWebhookWaits, type WaitOutcome } from "./match-human-tasks.ts";
 import { resolveWebhookSecret, secretRefFromAuth } from "./webhook-secret-lookup.ts";
-import { fireWebhookTriggers } from "./webhook-trigger-fire.ts";
+import { fireWebhookTriggers, type TriggerOutcome } from "./webhook-trigger-fire.ts";
 
 const BLOCKED_HEADERS = new Set([
   "authorization", "cookie",
@@ -39,12 +39,12 @@ function isLegacyProvider(preset: string): preset is WebhookProvider {
 }
 
 export type IngestResult =
-  | { status: "resolved"; matched: number; eventId: string }
+  | { status: "resolved"; matched: number; eventId: string; triggers?: TriggerOutcome[]; waits?: WaitOutcome[] }
   | { status: "processed"; eventId: string }
   | { status: "ignored"; eventId: string }
   | { status: "auth_failed"; reason: string }
   | { status: "schema_invalid"; eventId: string; reason: string }
-  | { status: "error"; eventId: string; reason: string };
+  | { status: "error"; eventId: string; reason: string; triggers?: TriggerOutcome[]; waits?: WaitOutcome[] };
 
 export type IngestInput = {
   webhook: Webhook;
@@ -121,31 +121,49 @@ export async function ingestForWebhook(
     }
   }
 
-  // 5. Match against paused webhook-wait nodes.
+  // 5. Match against paused webhook-wait nodes. Each wait is isolated, so the
+  //    result carries per-instance outcomes (resolved AND failed) rather than a
+  //    single pass/fail.
   try {
-    const result = await matchAndResolveWebhookWaits(c, {
+    const waitResult = await matchAndResolveWebhookWaits(c, {
       id: event.id,
       provider: webhook.preset,
       eventType,
       rawPayload: input.rawPayload,
     });
-    if (result.matched > 0) {
-      await c.webhookEvents.setStatus(event.id, "processed");
+    // Resume-wins: if any correlated wait was attempted (resolved or errored),
+    // the event belongs to the wait path — do not also fire start-of-flow triggers.
+    if (waitResult.matched > 0 || waitResult.failed > 0) {
       void c.webhooks.touchLastEvent(webhook.id);
-      return { status: "resolved", matched: result.matched, eventId: event.id };
+      if (waitResult.matched > 0) {
+        await c.webhookEvents.setStatus(event.id, "processed");
+        return { status: "resolved", matched: waitResult.matched, eventId: event.id, waits: waitResult.outcomes };
+      }
+      const reason = waitResult.outcomes.find((o) => !o.ok)?.error ?? "webhook wait resolution failed";
+      await c.webhookEvents.setStatus(event.id, "error", reason);
+      return { status: "error", eventId: event.id, reason, waits: waitResult.outcomes };
     }
 
-    // 7. No waiters → try start-of-flow triggers (resume-wins precedence).
+    // 7. No waiters → try start-of-flow triggers. Each trigger is isolated, so a
+    //    single failing workflow no longer discards its siblings' outcomes.
     const tr = await fireWebhookTriggers(c, {
       webhook,
       eventId: event.id,
       eventType,
       rawPayload: input.rawPayload,
     });
-    if (tr.fired > 0) {
-      await c.webhookEvents.setStatus(event.id, "processed");
+    if (tr.fired > 0 || tr.failed > 0) {
       void c.webhooks.touchLastEvent(webhook.id);
-      return { status: "resolved", matched: tr.fired, eventId: event.id };
+      if (tr.fired > 0) {
+        // At least one workflow started → the event was handled. Any per-trigger
+        // failures are still reported in `triggers` for visibility.
+        await c.webhookEvents.setStatus(event.id, "processed");
+        return { status: "resolved", matched: tr.fired, eventId: event.id, triggers: tr.outcomes };
+      }
+      // Every matching trigger failed to start.
+      const reason = tr.outcomes.find((o) => !o.ok)?.error ?? "trigger failed";
+      await c.webhookEvents.setStatus(event.id, "error", reason);
+      return { status: "error", eventId: event.id, reason, triggers: tr.outcomes };
     }
 
     // 8. Nothing matched → mark ignored.

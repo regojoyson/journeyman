@@ -58,4 +58,23 @@ export class PostgresWebhookEventStore implements IWebhookEventStore {
     );
     return rows[0] ? rowToEvent(rows[0]) : null;
   }
+
+  async listByWebhook(webhookId: string, opts: { limit: number; offset: number }): Promise<WebhookEvent[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM jm_webhook_events
+         WHERE webhook_id = $1
+         ORDER BY received_at DESC
+         LIMIT $2 OFFSET $3`,
+      [webhookId, opts.limit, opts.offset],
+    );
+    return rows.map(rowToEvent);
+  }
+
+  async countByWebhook(webhookId: string): Promise<number> {
+    const { rows } = await this.pool.query(
+      `SELECT COUNT(*)::int AS n FROM jm_webhook_events WHERE webhook_id = $1`,
+      [webhookId],
+    );
+    return rows[0]?.n ?? 0;
+  }
 }

@@ -97,8 +97,19 @@ export function getPresetDetail(id: PresetId): Promise<WebhookPresetDetail> {
   return api<WebhookPresetDetail>(`/api/webhook-presets/${encodeURIComponent(id)}`);
 }
 
-// Recent events for a webhook. Backend doesn't expose a dedicated endpoint yet;
-// for v1 the UI shows an empty state. Wiring a real endpoint is a follow-up.
-export async function listRecentEventsForWebhook(_webhookId: string): Promise<WebhookEvent[]> {
-  return [];
+export interface PagedWebhookEvents {
+  events: WebhookEvent[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function listWebhookEvents(
+  webhookId: string,
+  args: { page: number; pageSize: number },
+): Promise<PagedWebhookEvents> {
+  const qs = new URLSearchParams();
+  qs.set("page", String(args.page));
+  qs.set("page_size", String(args.pageSize));
+  return api<PagedWebhookEvents>(`/api/webhooks/${encodeURIComponent(webhookId)}/events?${qs}`);
 }

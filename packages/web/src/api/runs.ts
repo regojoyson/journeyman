@@ -1,4 +1,5 @@
 import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceListScope } from "@journeyman/core";
+import type { PendingHumanTask, HumanTaskHistoryEntry } from "@journeyman/run-viewer";
 import { api } from "./client.ts";
 
 export async function listRuns(filter: {
@@ -59,6 +60,8 @@ export interface WorkflowInstanceDetail {
   executions: NodeExecution[];
   events: WorkflowInstanceEvent[];
   webhookEvent: WebhookEventSummary | null;
+  pendingHumanTask: PendingHumanTask | null;
+  humanTaskHistory: HumanTaskHistoryEntry[];
 }
 
 export async function getRun(workflowInstanceId: string): Promise<WorkflowInstanceDetail> {
@@ -111,6 +114,17 @@ export async function retryStep(runId: string, nodeId: string): Promise<void> {
   await api(`/workflow-instances/${encodeURIComponent(runId)}/retry-step`, {
     method: "POST", body: JSON.stringify({ node_id: nodeId }),
   });
+}
+
+export async function resolveHumanTask(runId: string, nodeId: string, body: {
+  values?: Record<string, unknown>;
+  comment?: string;
+  data?: unknown;
+}): Promise<void> {
+  await api(
+    `/workflow-instances/${encodeURIComponent(runId)}/human-tasks/${encodeURIComponent(nodeId)}/resolve`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
 }
 
 export async function rerunRun(workflowInstanceId: string): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {

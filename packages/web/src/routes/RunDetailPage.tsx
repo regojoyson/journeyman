@@ -50,7 +50,8 @@ export function RunDetailPage() {
   if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "#ff7675" }}>Run not found.</div>;
 
   const busy = actions.cancel.isPending || actions.pause.isPending || actions.resume.isPending
-    || actions.retry.isPending || actions.rerun.isPending || actions.fork.isPending;
+    || actions.retry.isPending || actions.rerun.isPending || actions.fork.isPending
+    || actions.resolveHuman.isPending;
 
   return (
     <div style={{ height: "100%" }}>
@@ -78,6 +79,9 @@ export function RunDetailPage() {
         events={allEvents}
         executions={detailQ.data.executions}
         triggerEvent={detailQ.data.webhookEvent ?? null}
+        pendingHumanTask={detailQ.data.pendingHumanTask ?? null}
+        humanTaskHistory={detailQ.data.humanTaskHistory ?? []}
+        onResolveHumanTask={isViewer ? undefined : (input) => actions.resolveHuman.mutateAsync(input)}
         onCancel={isViewer ? undefined : () => actions.cancel.mutate()}
         onPause={isViewer ? undefined : () => actions.pause.mutate()}
         onResume={isViewer ? undefined : () => actions.resume.mutate()}

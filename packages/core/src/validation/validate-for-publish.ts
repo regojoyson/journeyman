@@ -16,7 +16,10 @@ export type PublishError = {
     | "unresolved_binding"
     | "invalid_gate"
     | "dangling_reference"
-    | "cross_branch_input";
+    | "cross_branch_input"
+    | "join_without_fork"
+    | "fork_branch_no_join"
+    | "fork_multiple_joins";
   /** Short one-line summary of the problem. */
   message: string;
   nodeId?: string;

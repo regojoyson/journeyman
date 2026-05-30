@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  cancelRun, pauseRun, resumeRun, retryStep, rerunRun, forkRun, exportRunUrl,
+  cancelRun, pauseRun, resumeRun, retryStep, rerunRun, forkRun, exportRunUrl, resolveHumanTask,
 } from "../api/runs.ts";
 
 export function useRunActions(runId: string | undefined) {
@@ -45,6 +45,12 @@ export function useRunActions(runId: string | undefined) {
     },
   });
 
+  const resolveHuman = useMutation({
+    mutationFn: (input: { nodeId: string; values: Record<string, unknown>; comment?: string; data?: unknown }) =>
+      resolveHumanTask(runId!, input.nodeId, { values: input.values, comment: input.comment, data: input.data }),
+    onSuccess: invalidate,
+  });
+
   const exportRun = () => {
     if (!runId) return;
     const a = document.createElement("a");
@@ -55,5 +61,5 @@ export function useRunActions(runId: string | undefined) {
     a.remove();
   };
 
-  return { cancel, pause, resume, retry, rerun, fork, exportRun };
+  return { cancel, pause, resume, retry, rerun, fork, exportRun, resolveHuman };
 }

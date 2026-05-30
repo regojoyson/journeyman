@@ -22,17 +22,30 @@ export async function applyFirstWinsCancellation(
   );
 
   for (const join of joins) {
-    const params = (join.inputData ?? {}) as {
+    // For a JOIN system task, Conductor copies `joinOn` into `inputData` but
+    // drops the user-supplied `inputParameters` (mode, branchTaskRefs) — those
+    // survive only on `workflowTask.inputParameters`. Read config from there
+    // first, falling back to inputData for non-JOIN-mapped shapes / older runs.
+    const wtParams = (join.workflowTask?.inputParameters ?? {}) as {
+      mode?: string;
+      branchTaskRefs?: string[][];
+    };
+    const inData = (join.inputData ?? {}) as {
       mode?: string;
       branchTaskRefs?: string[][];
       joinOn?: string[];
     };
-    if (params.mode !== "first-wins") continue;
-    const branches = params.branchTaskRefs ?? [];
+    const mode = wtParams.mode ?? inData.mode;
+    if (mode !== "first-wins") continue;
+    const branches = wtParams.branchTaskRefs ?? inData.branchTaskRefs ?? [];
     if (branches.length < 2) continue;
 
-    // Conductor records joinOn on the join task; fall back to inputData if not on top-level.
-    const joinOn = (join as unknown as { joinOn?: string[] }).joinOn ?? params.joinOn ?? [];
+    // joinOn lives on inputData / workflowTask for a JOIN; fall back across both.
+    const joinOn =
+      join.workflowTask?.joinOn ??
+      (join as unknown as { joinOn?: string[] }).joinOn ??
+      inData.joinOn ??
+      [];
 
     const completedTerminals = new Set(
       (wf.tasks ?? [])

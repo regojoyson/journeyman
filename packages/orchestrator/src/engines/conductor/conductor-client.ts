@@ -182,6 +182,16 @@ export class ConductorClient {
       status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "CANCELED" | "TIMED_OUT" | "SKIPPED";
       inputData?: Record<string, unknown>;
       outputData?: Record<string, unknown>;
+      /**
+       * The original workflow-task definition as resolved by Conductor. For
+       * JOIN system tasks, Conductor does NOT copy user `inputParameters`
+       * (mode, branchTaskRefs) into `inputData` — they survive only here.
+       */
+      workflowTask?: {
+        type?: string;
+        joinOn?: string[];
+        inputParameters?: Record<string, unknown>;
+      };
     }>;
     output?: Record<string, unknown>;
   }> {

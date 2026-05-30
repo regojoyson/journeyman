@@ -14,9 +14,20 @@ export interface TriggerFireInput {
   rawPayload: unknown;
 }
 
+export interface TriggerOutcome {
+  workflowId: string;
+  workflowName: string | null;
+  triggerNodeId: string;
+  ok: boolean;
+  workflowInstanceId: string | null;
+  error: string | null;
+}
+
 export interface TriggerFireResult {
   fired: number;
+  failed: number;
   workflowInstanceIds: string[];
+  outcomes: TriggerOutcome[];
 }
 
 function coerce(
@@ -43,53 +54,82 @@ export async function fireWebhookTriggers(
   input: TriggerFireInput,
 ): Promise<TriggerFireResult> {
   const rows = await c.workflowTriggers.findActiveWebhookTriggers(input.webhook.id);
-  if (rows.length === 0) return { fired: 0, workflowInstanceIds: [] };
+  if (rows.length === 0) return { fired: 0, failed: 0, workflowInstanceIds: [], outcomes: [] };
 
-  const fired: string[] = [];
+  const outcomes: TriggerOutcome[] = [];
 
   for (const row of rows) {
-    const workflow = await c.workflows.getById(row.workflowId);
-    if (!workflow || workflow.status !== "ready") continue;
-    if (workflow.currentVersionId !== row.workflowVersionId) continue;
-    const version = await c.workflowVersions.getById(row.workflowVersionId);
-    if (!version) continue;
+    // Each trigger is isolated: a throw here records a failed outcome for this
+    // workflow and the loop continues, so one bad trigger never discards the
+    // successes (or failures) of its siblings.
+    let workflowName: string | null = null;
+    try {
+      const workflow = await c.workflows.getById(row.workflowId);
+      if (!workflow || workflow.status !== "ready") continue;
+      workflowName = workflow.name;
+      if (workflow.currentVersionId !== row.workflowVersionId) continue;
+      const version = await c.workflowVersions.getById(row.workflowVersionId);
+      if (!version) continue;
 
-    const node = version.definition.nodes.find((n: WorkflowNode) => n.id === row.triggerNodeId);
-    if (!node || node.type !== "trigger-webhook") continue;
-    const cfg = (node.config ?? {}) as unknown as TriggerWebhookConfig;
+      const node = version.definition.nodes.find((n: WorkflowNode) => n.id === row.triggerNodeId);
+      if (!node || node.type !== "trigger-webhook") continue;
+      const cfg = (node.config ?? {}) as unknown as TriggerWebhookConfig;
 
-    if (!eventPassesListensFor(cfg.listensFor, input.eventType)) continue;
-    if (cfg.acceptIf) {
-      const data = (input.rawPayload ?? {}) as Record<string, unknown>;
-      const ok = c.conditions.evaluate(cfg.acceptIf as unknown, data);
-      if (!ok) continue;
+      if (!eventPassesListensFor(cfg.listensFor, input.eventType)) continue;
+      if (cfg.acceptIf) {
+        const data = (input.rawPayload ?? {}) as Record<string, unknown>;
+        const ok = c.conditions.evaluate(cfg.acceptIf as unknown, data);
+        if (!ok) continue;
+      }
+
+      const inputs: Record<string, unknown> = {};
+      for (const [name, mapping] of Object.entries(cfg.inputsMapping ?? {})) {
+        const v = readPath(input.rawPayload, mapping.fromPath);
+        if (v != null) inputs[name] = coerce(v, mapping.type);
+      }
+
+      const { workflowInstanceId } = await c.orchestrator.submit({
+        workflowId: workflow.id,
+        workflowVersionId: version.id,
+        workflowNameSnapshot: workflow.name,
+        workflowScopeSnapshot: workflow.scope,
+        definitionSnapshot: version.definition,
+        inputs,
+        // No interactive caller on a webhook, so run as the workflow's owner.
+        // `workflow.orgId` is the org for org-scoped flows and the owner's primary
+        // org for user-scoped flows; `ownerUserId` is set only for user scope.
+        // This gives secret resolution a valid org (+ user) instead of blanks.
+        startedByUserId: workflow.ownerUserId,
+        startedByOrgId: workflow.orgId,
+        triggerSource: "webhook",
+        triggerNodeId: node.id,
+        webhookEventId: input.eventId,
+      });
+      outcomes.push({
+        workflowId: row.workflowId,
+        workflowName,
+        triggerNodeId: row.triggerNodeId,
+        ok: true,
+        workflowInstanceId,
+        error: null,
+      });
+    } catch (err) {
+      outcomes.push({
+        workflowId: row.workflowId,
+        workflowName,
+        triggerNodeId: row.triggerNodeId,
+        ok: false,
+        workflowInstanceId: null,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-
-    const inputs: Record<string, unknown> = {};
-    for (const [name, mapping] of Object.entries(cfg.inputsMapping ?? {})) {
-      const v = readPath(input.rawPayload, mapping.fromPath);
-      if (v != null) inputs[name] = coerce(v, mapping.type);
-    }
-
-    const { workflowInstanceId } = await c.orchestrator.submit({
-      workflowId: workflow.id,
-      workflowVersionId: version.id,
-      workflowNameSnapshot: workflow.name,
-      workflowScopeSnapshot: workflow.scope,
-      definitionSnapshot: version.definition,
-      inputs,
-      // No interactive caller on a webhook, so run as the workflow's owner.
-      // `workflow.orgId` is the org for org-scoped flows and the owner's primary
-      // org for user-scoped flows; `ownerUserId` is set only for user scope.
-      // This gives secret resolution a valid org (+ user) instead of blanks.
-      startedByUserId: workflow.ownerUserId,
-      startedByOrgId: workflow.orgId,
-      triggerSource: "webhook",
-      triggerNodeId: node.id,
-      webhookEventId: input.eventId,
-    });
-    fired.push(workflowInstanceId);
   }
 
-  return { fired: fired.length, workflowInstanceIds: fired };
+  const fired = outcomes.filter((o) => o.ok);
+  return {
+    fired: fired.length,
+    failed: outcomes.length - fired.length,
+    workflowInstanceIds: fired.map((o) => o.workflowInstanceId as string),
+    outcomes,
+  };
 }

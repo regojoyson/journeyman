@@ -20,6 +20,8 @@ Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs co
 | **Steps & Providers** | Execution logic per flow node — AI coding, git, tickets, notifications |
 | **Storage** | PostgreSQL (persistence) + Redis (job queue) |
 
+→ **New here?** [How It Works](docs/how-it-works.md) — a plain-English, diagram-led tour of a run from ticket → code → PR, the worker loop, and how a flow becomes runnable tasks.
+
 ## Packages
 
 ### Shared
@@ -127,6 +129,7 @@ Human Task and Webhook Wait are **separate** node types — one is person-driven
 
 | Doc | Description |
 |---|---|
+| [How It Works](docs/how-it-works.md) | Plain-English, diagram-led tour: end-to-end run, the worker loop, and how a flow becomes runnable tasks |
 | [Quickstart](docs/quickstart.md) | 10-minute end-to-end: install, configure, trigger your first run |
 | [Setup](docs/setup.md) | Full install reference: env vars, webhook config, deployment |
 | [Products](docs/products.md) | Logical tenants — isolate flows, repos, and concurrency per team |
