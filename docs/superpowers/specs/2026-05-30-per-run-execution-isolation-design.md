@@ -27,7 +27,7 @@ Resource limits and network controls are *secondary* but included as optional co
 
 ### In scope (this spec)
 1. `IExecutionEnvironment` interface + types in `@journeyman/core`.
-2. New package `@journeyman/execution-env`: `LocalExecutionEnvironment` (passthrough) + `DockerExecutionEnvironment`, sandbox tracking, background reaper.
+2. New package `@journeyman/execution-env`: pluggable **backend registry** (§3.1) with `LocalExecutionEnvironment` (passthrough) + `DockerExecutionEnvironment`, deployment-level backend config, sandbox tracking, background reaper.
 3. New package/module `@journeyman/execution-images`: catalog table + migration, resolver, CRUD + catalog routes, ≥1 system base image.
 4. Base **runner image** (Node + Claude Agent SDK + bundled `@journeyman/coding-cli` + `journeyman-runner` bin), versioned with releases.
 5. **Runner entrypoint** extraction in `coding-cli` — operations runnable in-process *or* via stdin/stdout.
@@ -101,6 +101,35 @@ Implementations:
 - **`DockerExecutionEnvironment`** — first real backend. `provision` = `docker run -d` an idle container from `imageRef` + create a named volume; `exec` = `docker exec -i` the runner; `destroy` = `docker rm -f` container + `docker volume rm`; `list` = enumerate by the `journeyman.runId` label.
 - K8s / cloud — future classes implementing the same interface (`kubectl exec` / ECS `execute-command`; the C-style network agent where remote `exec` is unavailable).
 
+### 3.1 Backend registry & configuration (pluggable, not hardwired)
+
+Backends are pluggable via a registry, following the same provider-pattern used for coding/git providers — a new backend is added by name with zero changes to callers.
+
+```ts
+// each backend exposes a factory keyed by name
+export interface ExecutionEnvironmentBackend {
+  readonly name: string;                                   // "local" | "docker" | future
+  create(config: unknown): IExecutionEnvironment;          // config validated by the backend
+}
+
+// registry resolves a backend by name at run-start
+export interface IExecutionEnvironmentRegistry {
+  register(backend: ExecutionEnvironmentBackend): void;
+  get(name: string): IExecutionEnvironment;                // throws if unknown/unconfigured
+  available(): string[];                                   // names the deployment has configured
+}
+```
+
+- **Two config layers, kept separate:**
+  - **Deployment-level (operator)** — *which backends exist and their connection config*: Docker daemon socket, future kubeconfig/namespace, future cloud creds/region. Supplied via env/config when the worker boots, used to construct + `register` each backend. Example envelope:
+    ```
+    JOURNEYMAN_EXEC_BACKENDS=local,docker
+    JOURNEYMAN_EXEC_DOCKER={"socket":"/var/run/docker.sock","defaultNetwork":"restricted"}
+    ```
+  - **Workflow-level (author)** — *which registered backend this workflow uses*: `sandbox.backend` selects a backend **by name** from `registry.available()` (§5). It never carries connection secrets — only the choice.
+- **Resolution at run start:** `registry.get(sandbox.backend ?? "docker")`. If the named backend isn't registered/configured on this deployment, the run fails fast with a clear error (and the flow editor only offers backends the gateway reports as available).
+- **Default registration:** `local` is always registered; `docker` is registered when Docker config is present. K8s/cloud register themselves the same way once implemented — **no caller or interface change required**, which is the whole point of the registry.
+
 ## 4. Managed Image Catalog — `@journeyman/execution-images`
 
 Mirrors `@journeyman/mcp` (DB-backed, user/org scoped, CRUD + visible-list + catalog + resolver).
@@ -133,7 +162,7 @@ The sandbox is a run-level concern, so config lives in `WorkflowGraph.defaults` 
 // added to WorkflowDefaults
 sandbox?: {
   enabled: boolean;               // default false → LocalExecutionEnvironment (today's behavior)
-  backend?: "docker";             // default "docker" when enabled; future: "kubernetes" | "cloud"
+  backend?: string;               // name from the backend registry (§3.1); default "docker" when enabled, future "kubernetes"|"cloud". Choice only — no connection config here.
   imageId?: string;               // → managed image catalog; omitted = system default base image
   resources?: { cpus?: number; memoryMb?: number; timeoutSec?: number };
   network?: "none" | "restricted" | "full";   // default "restricted"
@@ -214,7 +243,7 @@ Both reaper and manual cleanup go through `IExecutionEnvironment.list/destroy`, 
 
 ## 10. Build Order (suggested)
 
-1. `IExecutionEnvironment` interface + types in `core`; `LocalExecutionEnvironment` passthrough; route `requiresWorkspace` steps through it (local) with zero behavior change.
+1. `IExecutionEnvironment` interface + types + **backend registry** (§3.1) in `core`/`execution-env`; `LocalExecutionEnvironment` passthrough registered by default; route `requiresWorkspace` steps through `registry.get(...)` (local) with zero behavior change.
 2. Runner entrypoint extraction in `coding-cli` (in-process path first).
 3. `@journeyman/execution-images` catalog (table + migration + resolver + routes) + a system base image record.
 4. Base runner image (bundled coding-cli + SDK + `journeyman-runner`).
