@@ -1,5 +1,5 @@
 import type { WorkflowGraph } from "../types/flow.types.ts";
-import type { JoinConfig, JoinMode } from "../types/parallel.types.ts";
+import { type JoinConfig, type JoinMode, DEFAULT_JOIN_MODE } from "../types/parallel.types.ts";
 
 export interface ForkJoinPairError {
   nodeId: string;
@@ -103,7 +103,7 @@ export function validateForkJoinPairs(graph: WorkflowGraph): ForkJoinPairError[]
       pairedJoins.add(joinId);
       const joinNode = nodesById.get(joinId);
       const joinCfg = (joinNode?.config ?? {}) as JoinConfig;
-      const mode: JoinMode = joinCfg.mode ?? "fail-fast";
+      const mode: JoinMode = joinCfg.mode ?? DEFAULT_JOIN_MODE;
       if (mode === "first-wins") {
         for (const { path } of branchPaths) {
           for (const id of path) {

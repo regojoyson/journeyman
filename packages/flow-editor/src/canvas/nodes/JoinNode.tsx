@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { DEFAULT_JOIN_MODE } from "@journeyman/core";
 import { handleBlue } from "../handle-styles.ts";
 import { NodeIssueBadges } from "./NodeIssueBadges.tsx";
 
@@ -20,7 +21,7 @@ const MODE_LABEL: Record<string, string> = {
 
 export function JoinNode(props: NodeProps) {
   const data = props.data as JoinNodeData;
-  const mode = data.mode ?? "fail-fast";
+  const mode = data.mode ?? DEFAULT_JOIN_MODE;
   return (
     <div className="je-node je-node--gateway je-node--join">
       <NodeIssueBadges nodeId={props.id} />

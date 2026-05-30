@@ -1,4 +1,4 @@
-import type { WorkflowNode, Shape, JoinMode } from "@journeyman/core";
+import { type WorkflowNode, type Shape, type JoinMode, DEFAULT_JOIN_MODE } from "@journeyman/core";
 import type { UpstreamSource, UpstreamField } from "./use-upstream-sources.ts";
 
 function field(name: string, shape: Shape): UpstreamField {
@@ -15,7 +15,7 @@ export function joinSource(node: WorkflowNode): UpstreamSource | null {
   if (node.type !== "join") return null;
 
   const cfg = (node.config ?? {}) as { mode?: JoinMode };
-  const mode: JoinMode = cfg.mode ?? "fail-fast";
+  const mode: JoinMode = cfg.mode ?? DEFAULT_JOIN_MODE;
   if (mode === "fail-fast") return null;
 
   const fields: UpstreamField[] = [];

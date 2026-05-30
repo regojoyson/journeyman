@@ -1,5 +1,5 @@
 import type { WorkflowEdge, WorkflowGraph, WorkflowNode, IWorkflowJsonConverter, Shape } from "@journeyman/core";
-import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS } from "@journeyman/core";
+import { getStartWorkflowInputs, isTriggerNode, findTriggerNodes, findManualTriggerNode, WORKFLOW_SCHEMA_VERSION, HUMAN_TASK_RESERVED_KEYS, WEBHOOK_WAIT_RESERVED_KEYS, DEFAULT_JOIN_MODE } from "@journeyman/core";
 import { extractTemplateRefs } from "@journeyman/core";
 import { findConvergence as coreFindConvergence } from "@journeyman/core";
 import type {
@@ -185,7 +185,14 @@ class ConvertCtx {
           const doms = dominators(this.flow, node.id);
           if (!doms.has(parsed.source)) {
             throw new WorkflowValidationError(
-              `${this.label(node)} reads input '${field}' from ${this.labelById(parsed.source)}, but those two steps are on different branches — ${this.labelById(parsed.source)} won't always have run by the time ${this.label(node)} needs it. Either remove this input link, or move the steps so they're on the same path (e.g. place ${this.labelById(parsed.source)} before the fork, or place ${this.label(node)} after the Join).`,
+              [
+                `"${this.label(node)}" can't use input '${field}' from "${this.labelById(parsed.source)}".`,
+                `They sit on different parallel branches, so "${this.labelById(parsed.source)}" may be skipped or cancelled and might not have produced any data by the time "${this.label(node)}" runs.`,
+                `To fix it, do one of these:`,
+                `  1. Remove this input link.`,
+                `  2. Move "${this.labelById(parsed.source)}" onto the main path, before the branches split — then it always runs first.`,
+                `  3. If "${this.label(node)}" runs after a Join, read this value from the Join's output instead of from "${this.labelById(parsed.source)}".`,
+              ].join("\n"),
             );
           }
           // Shape compatibility (only when a catalog is supplied).
@@ -531,7 +538,7 @@ class ConvertCtx {
     }
 
     const cfg = (node.config ?? {}) as Partial<import("@journeyman/core").JoinConfig>;
-    const mode = cfg.mode ?? "fail-fast";
+    const mode = cfg.mode ?? DEFAULT_JOIN_MODE;
 
     const branchTaskRefs: string[][] = (this.outgoing.get(forkId) ?? []).map(e => {
       const chain: string[] = [];

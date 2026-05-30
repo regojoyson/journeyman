@@ -1,4 +1,4 @@
-import type { WorkflowGraph, WorkflowNode, JoinMode } from "@journeyman/core";
+import { type WorkflowGraph, type WorkflowNode, type JoinMode, DEFAULT_JOIN_MODE } from "@journeyman/core";
 
 interface Props {
   flow: WorkflowGraph;
@@ -76,7 +76,7 @@ const MODE_INFO_BY_VALUE: Record<JoinMode, ModeInfo> =
 
 export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
   const cfg = (node.config ?? {}) as { mode?: JoinMode; description?: string };
-  const mode: JoinMode = cfg.mode ?? "fail-fast";
+  const mode: JoinMode = cfg.mode ?? DEFAULT_JOIN_MODE;
   const info = MODE_INFO_BY_VALUE[mode];
   const incomingBranches = flow.edges.filter(e => e.target === node.id).length;
 

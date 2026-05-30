@@ -31,6 +31,7 @@ export type {
   JoinBranchResult,
   JoinNodeOutput,
 } from "./types/parallel.types.ts";
+export { DEFAULT_JOIN_MODE } from "./types/parallel.types.ts";
 export type * from "./types/secret-slot.types.ts";
 export * from "./types/identity.types.ts";
 // Logger
