@@ -4,6 +4,17 @@ export type ExecutionMode = "per-instance" | "shared";
 export type Connectivity = "push" | "agent";
 export type WorkerScope = "user" | "org" | "system";
 
+export interface WorkerTypeDescriptor {
+  type: WorkerType;
+  label: string;
+  status: "available" | "planned";
+  supportedModes: ExecutionMode[];
+  supportedConnectivity: Connectivity[];
+  summary: string;
+}
+
+export interface ConnectionTestResult { ok: boolean; error?: string }
+
 export interface Worker {
   id: string;
   scope: WorkerScope;
@@ -58,6 +69,10 @@ const patchJson = (url: string, body: unknown) =>
 export const workersApi = {
   listVisible: (orgId: string) =>
     fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(jsonOrThrow<Worker[]>),
+  listTypes: (orgId: string) =>
+    fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<WorkerTypeDescriptor[]>),
+  testConnection: (orgId: string, body: { type: WorkerType; config: Record<string, unknown> }) =>
+    postJson(`${orgBase(orgId)}/test-connection`, body).then(jsonOrThrow<ConnectionTestResult>),
 
   listMy: (orgId: string) =>
     fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<Worker[]>),
