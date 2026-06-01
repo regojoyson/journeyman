@@ -11,7 +11,9 @@ export interface DockerExecutionEnvironmentDeps {
   defaultImage?: string;
 }
 
-const DEFAULT_RUNNER_CMD = ["npx", "tsx", "packages/coding-cli/src/runner/cli.ts"];
+// Both the runner-base image and the auto-wrapped bundle expose `journeyman-runner`
+// on PATH, so the invocation is the same regardless of how the image was produced.
+const DEFAULT_RUNNER_CMD = ["journeyman-runner"];
 const WORKSPACE = "/workspace";
 
 export class DockerExecutionEnvironment implements IExecutionEnvironment {
@@ -41,7 +43,7 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
 
   async exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult> {
     const request = JSON.stringify({ op: op.op, opts: { ...((op.stdin as object) ?? {}), cwd: WORKSPACE } });
-    const args = ["exec", "-i", "-w", "/app"];
+    const args = ["exec", "-i"];
     for (const [k, v] of Object.entries(op.env ?? {})) args.push("-e", `${k}=${v}`);
     args.push(env.handle, ...(this.deps.runnerCmd ?? DEFAULT_RUNNER_CMD));
 

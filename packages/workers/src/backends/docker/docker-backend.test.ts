@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { DockerCommandRunner } from "./docker-command-runner.ts";
-import { DockerBackend, dockerSpecFromConfig } from "./docker-backend.ts";
+import { DockerBackend, dockerSpecFromConfig, resolveDockerSpec } from "./docker-backend.ts";
 
 const noopDocker: DockerCommandRunner = async () => ({ stdout: "", stderr: "", exitCode: 0 });
 const deps = { docker: noopDocker, defaultImage: "journeyman/runner-base:dev" };
@@ -53,5 +53,22 @@ describe("DockerBackend", () => {
     const b = new DockerBackend(deps);
     const env = b.create(worker({ image: { kind: "ref", imageRef: "x:1" } }));
     expect(env.type).toBe("docker");
+  });
+});
+
+describe("resolveDockerSpec", () => {
+  it("uses a prebuilt ref directly (no build)", async () => {
+    const calls: string[][] = [];
+    const docker: DockerCommandRunner = async (args) => { calls.push(args); return { stdout: "", stderr: "", exitCode: 0 }; };
+    const spec = await resolveDockerSpec({ image: { kind: "ref", imageRef: "x:1" } }, { docker, defaultImage: "d:1", bundleRef: "b:dev" });
+    expect(spec.imageRef).toBe("x:1");
+    expect(calls.some((c) => c[0] === "build")).toBe(false);
+  });
+
+  it("builds a dockerfile config to a jm-built ref", async () => {
+    const docker: DockerCommandRunner = async (args) =>
+      ({ stdout: "", stderr: "", exitCode: args[0] === "image" ? 1 : 0 }); // missing ⇒ build
+    const spec = await resolveDockerSpec({ image: { kind: "dockerfile", content: "FROM x" } }, { docker, defaultImage: "d:1", bundleRef: "b:dev" });
+    expect(spec.imageRef).toMatch(/^journeyman\/jm-built:/);
   });
 });

@@ -11,7 +11,7 @@
 import { Pool } from "pg";
 import {
   resolveWorker, recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
-  DockerExecutionEnvironment, makeProcessCommandRunner, dockerSpecFromConfig,
+  DockerExecutionEnvironment, makeProcessCommandRunner, resolveDockerSpec,
   SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
 } from "@journeyman/workers";
 import { isTerminalStatus } from "@journeyman/core";
@@ -170,7 +170,10 @@ export function buildComposition(cfg: CompositionConfig): Composition {
         if (worker.type !== "docker") return; // other types: later plans
         await logRun(a.workflowInstanceId, `Provisioning ${worker.type} sandbox…`);
         const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
-        const spec = dockerSpecFromConfig((worker.config as Record<string, unknown>) ?? {}, RUNNER_IMAGE);
+        const spec = await resolveDockerSpec((worker.config as Record<string, unknown>) ?? {}, {
+          docker: dockerCmd, defaultImage: RUNNER_IMAGE,
+          bundleRef: process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev",
+        });
         const provisioned = await env.provision(a.workflowInstanceId, spec);
         await recordSandbox(pool!, {
           runId: a.workflowInstanceId, type: "docker", handle: provisioned.handle,

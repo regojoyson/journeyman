@@ -19,4 +19,21 @@ describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker)", () => {
       await env.destroy(p);
     }
   }, 120_000);
+
+  it("builds an image from a Dockerfile and runs the runner in it", async () => {
+    const bundle = process.env.JM_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
+    const docker = makeProcessCommandRunner("docker");
+    const { buildDockerfileImage } = await import("./build-image.ts");
+    const builtRef = await buildDockerfileImage({ content: "FROM debian:stable-slim", docker, bundleRef: bundle });
+    const env = new DockerExecutionEnvironment({ docker, defaultImage: builtRef });
+    const runId = `it-df-${Date.now()}`;
+    const p = await env.provision(runId, { imageRef: builtRef });
+    try {
+      const res = await env.exec(p, { op: "definitely-not-a-real-op", stdin: {} });
+      expect(res.ok).toBe(false);
+      expect(res.error).toMatch(/unknown op/);
+    } finally {
+      await env.destroy(p);
+    }
+  }, 300_000);
 });

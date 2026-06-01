@@ -18,8 +18,11 @@ export { makeProcessCommandRunner } from "./backends/docker/docker-command-runne
 export type { DockerCommandRunner, DockerRunResult, DockerRunOptions } from "./backends/docker/docker-command-runner.ts";
 export { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";
 export type { DockerExecutionEnvironmentDeps } from "./backends/docker/docker-execution-environment.ts";
-export { DockerBackend, dockerSpecFromConfig } from "./backends/docker/docker-backend.ts";
-export type { DockerBackendDeps } from "./backends/docker/docker-backend.ts";
+export { DockerBackend, dockerSpecFromConfig, resolveDockerSpec } from "./backends/docker/docker-backend.ts";
+export type { DockerBackendDeps, ResolveDockerSpecDeps } from "./backends/docker/docker-backend.ts";
+export { wrapDockerfile } from "./backends/docker/dockerfile-wrap.ts";
+export { buildDockerfileImage } from "./backends/docker/build-image.ts";
+export type { BuildDockerfileImageDeps } from "./backends/docker/build-image.ts";
 export {
   recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
 } from "./sandbox-store.ts";
