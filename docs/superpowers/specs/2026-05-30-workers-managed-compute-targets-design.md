@@ -43,6 +43,8 @@ Resource limits and network controls are secondary but included as optional, def
 - `agent` connectivity (build + distribute the polling agent).
 - Worker types beyond Docker: `machine-linux` / `machine-windows` (push/SSH), `ecs`, `ec2`, `kubernetes`, `cloud`.
 - `shared` execution mode hardening (the model is defined in §10; full machine support lands with the machine type).
+- `per-step` execution mode (fresh container per step) — model leaves room (§7); not built now.
+- Container/volume lifetime decoupling across human-task pauses (§16 future hardening).
 - Windows runner bundle track.
 - Tag/label-based pool routing.
 
@@ -126,7 +128,7 @@ export interface ExecutionEnvironmentSpec {
   imageRef: string;                            // resolved image (built from Dockerfile or prebuilt)
   env?: Record<string, string>;                // non-secret; default none
   resources?: { cpus?: number; memoryMb?: number; timeoutSec?: number };
-  network?: "none" | "restricted" | "full";   // default "restricted"
+  network?: "none" | "full" | { mode: "restricted"; dockerNetwork: string };   // see §11.1
   mounts?: { source: string; target: string; readOnly?: boolean }[];
 }
 
@@ -196,7 +198,9 @@ Per custom phase: harness `docker exec`s the runner → runner runs `query()` + 
 
 ## 7. Workflow Association, Resolution & Management UI
 
-- **Flow-level setting:** a **Worker picker**. A workflow stores `workerId?` in `WorkflowGraph.defaults`. None → the system **default worker**.
+- **Flow-level setting:** a **Worker picker**. A workflow stores `workerId?` in `WorkflowGraph.defaults`. None → the system **default worker** (`local`).
+- **Per-step override (kept feasible):** a `WorkflowNode` may carry an optional `workerId` that overrides the workflow's worker for that step. Resolution precedence: node `workerId` → flow `defaults.workerId` → system default. ⚠️ **Workspace caveat:** the per-run `/workspace` volume belongs to *one* worker; if a step picks a *different* worker, it does **not** see the clone/edits made on the workflow's main worker. So per-step worker override is intended for **workspace-independent** steps; all workspace-touching steps of a run (clone → analyze → plan → implement → commit-push) should share a single worker. The flow editor warns when a workspace-touching step selects a different worker than its run.
+- **Per-step containers (future granularity):** a future `executionMode: "per-step"` will spawn a fresh container per step (instead of one per run). The interface already supports it (`provision` is per `runId` today; a per-step variant keys by `runId+nodeId`). Not built now, but the model leaves room.
 - **Resolution at run start:** load worker → `registry.get(worker.type)` → `validateConfig` → build `ExecutionEnvironmentSpec` from `worker.config` (resolving the image per §8 and any secret refs) → `provision` (per-instance) or attach (shared) → steps run via `exec`.
 - **Management page** ("Workers"): list/create/edit/delete (user/org scope), choose type, mode, connectivity, a **type-specific config form** (Docker: image ref *or* Dockerfile editor + resources/network/env), **test connection / test build**, and **set-as-default**. Mirrors the `@journeyman/mcp` management UI.
 - **API/DB:** Fastify routes `GET/POST/PATCH/DELETE /workers`, `GET /workers/catalog` (system), `POST /workers/:id/test`; one append-only migration adding a `workers` table (+ build/runtime metadata). Read `docs/constitution/DATABASE_ARCHITECTURE.md` before authoring it.
@@ -206,15 +210,23 @@ Per custom phase: harness `docker exec`s the runner → runner runs `query()` + 
 `config` for a `docker` worker:
 ```ts
 {
+  connection:                                            // WHERE the Docker daemon is
+    | { kind: "local" }                                  // /var/run/docker.sock on the harness host
+    | { kind: "remote"; host: string; tlsSecretRef?: string },  // tcp://host:2376 (+ TLS certs from vault)
   image:
     | { kind: "ref"; imageRef: string }                 // prebuilt, e.g. "myorg/jm-runner:java21"
     | { kind: "dockerfile"; content: string },          // user-authored; auto-wrapped + built
   resources?: { cpus?; memoryMb?; timeoutSec? },
-  network?: "none" | "restricted" | "full",             // default "restricted"
+  network?:                                              // egress policy (see §11)
+    | "none"                                             // Journeyman: --network none
+    | "full"                                             // Journeyman: normal bridge
+    | { mode: "restricted"; dockerNetwork: string },     // attach to an operator-provided network/proxy
   env?: Record<string,string>,                           // non-secret
   mounts?: { source; target; readOnly? }[]
 }
 ```
+
+**`connection` (the multi-server fix).** A `local` connection uses the harness host's own Docker socket — fine for a single-server deployment. A `remote` connection points every harness at the **same remote Docker daemon**, so when Journeyman scales to multiple servers, *any* server can reach *any* run's container (the container lives on the shared remote daemon, not on whichever server polled the step). This removes the "single-host only" constraint when configured. TLS client certs are vault references, never stored raw.
 
 **Auto-wrap (any base allowed):** the user writes only their toolchain. Journeyman builds an effective image = *user's Dockerfile* + appended final layers that inject a **self-contained runner bundle**:
 ```dockerfile
@@ -254,8 +266,20 @@ Boundary: **does the step touch the run's workspace or run untrusted/AI code?**
 
 - `secretBindings` resolve into `StepContext.env` as today. For on-worker steps, resolved secret values are passed as `-e` flags on the `exec` (process env of that one exec only) — **never** baked into the image, the container's persistent env, or the volume.
 - Worker/workflow-level non-secret `env` is set once at provision.
-- Network egress (`none`/`restricted`/`full`) enforced at provision (Docker network mode now; per-type equivalent later).
-- Worker connection secrets (SSH/kube/cloud) are vault references resolved by the harness, never persisted in the worker row.
+- Worker connection secrets (Docker TLS, SSH/kube/cloud) are vault references resolved by the harness, never persisted in the worker row.
+
+### 11.1 Network egress — who configures what
+Two layers, because Docker has no built-in domain allowlist:
+- **`none` / `full` — Journeyman controls directly** at provision via `docker run --network none` / normal bridge.
+- **`restricted` — operator-provided network/proxy, referenced by Journeyman.** Domain-level allowlisting (only Git host + `api.anthropic.com` + package registries) requires an **egress proxy or a custom Docker network with firewall rules**, created **outside** Journeyman by the operator. The worker config names that network (`{ mode:"restricted", dockerNetwork }`) and Journeyman attaches the container to it.
+- **Whatever the chosen mode, the egress must permit what coding needs** — cloning/pushing to the Git host, the Anthropic API, and any package registries the toolchain uses — or `clone-repos` / `commit-push` / `npm|pip install` / the SDK call will fail. This requirement is documented prominently in the Workers UI.
+
+### 11.2 MCP servers & Skills inside the container (must behave as today)
+Because the SDK now runs in the container, the tools it relies on must be present there:
+- **Bake common runtimes** (Node, and the stdio MCP server runtimes Journeyman ships) into the runner base image.
+- **Mount** the resolved user/org **Skills** assets and any **stdio MCP** assets into the container at exec time (read-only mount), and **pass the same resolved configs** (`mcps: ResolvedMcpInstance[]`, skills config) in the runner's stdin request — exactly what `analyze`/`custom-ai` consume today.
+- **Remote/HTTP MCPs** need only egress (§11.1) + their auth (injected per-exec like other secrets).
+- Net effect: MCP + Skills work identically to the in-process path; the only change is *where* the servers run (in the container).
 
 ## 12. Backward Compatibility
 
@@ -282,3 +306,30 @@ Each step keeps `npm run check` (typecheck + import boundaries) green.
 - **Workers CRUD + resolution** — route tests + default-fallback + `validateConfig` per type (mirroring `@journeyman/mcp`).
 - **Reaper / manual prune** — orphan detection (crashed-harness scenario) + `sandbox_instances` reconciliation.
 - **Backward-compat regression** — no-worker / `local` default runs identically to today.
+
+## 15. Logging & Observability Continuity
+
+The workflow-instance logs panel must keep working unchanged. Today: SDK message → `logSdkMessage(msg, ctx.log)` → `ctx.log` → harness emits a `step.log` event tagged with `workflowInstanceId`/`nodeId` → `jm_workflow_instance_events` → SSE → run-viewer panel.
+
+With the SDK running in the container, only the **first hop** moves:
+- Inside the container the runner writes each formatted log line to **stderr as a structured NDJSON line** (`{ line, meta }`) — the exact payload `ctx.log` expects.
+- The harness **streams the `docker exec` stderr line-by-line** and calls the real `ctx.log(line, meta)` on the host for each line. From the event bus onward, **nothing changes**.
+- **Guarantees:** (1) **stream, don't buffer** — lines forwarded as they arrive, so the SSE panel stays live; (2) **channel separation** — stdout carries *only* the result envelope, stderr carries logs; (3) **tagging stays host-side** — `workflowInstanceId`/`nodeId` are added by the harness, so per-node attribution is automatic.
+- **New log categories:** image **build logs** (Dockerfile builds) and **provision logs** (pull/start failures) are emitted as **workflow-level events** (`nodeId: null`) so failures like "couldn't build the Java image" surface in the same panel.
+
+## 16. Constraints, Assumptions & Smaller Requirements
+
+**Assumptions (confirmed):**
+- **One container per run; no parallel workspace-touching steps.** A run has a single `/workspace` (one working tree); the design does not isolate concurrent workspace writers. If branches ever edit the workspace in parallel, they share that tree (developer-laptop semantics).
+- **System default worker is `local`** (in-process, today's behavior). Selecting a Docker worker is explicit.
+
+**Constraints / refinements adopted from the dry-run:**
+- **Multi-server reach:** a `local` Docker connection implies a **single harness host**; multi-server deployments must use a **`remote` Docker connection** (shared daemon) so any harness can reach any run's container (§8). (Sticky run→host routing via Conductor domains is an alternative, deferred.)
+- **Pause behavior (now):** during a human-task pause the per-run container is **kept alive** (accepted cost for v1). *Future hardening:* decouple container vs. volume lifetime — drop the idle container on pause, keep the named volume, re-attach a fresh container on resume.
+- **Egress must allow coding traffic** (§11.1) or clone/push/install/SDK calls fail.
+- **MCP + Skills delivered into the container** (§11.2) so behavior matches the in-process path.
+
+**Smaller requirements (from the dry-run):**
+- **Cancellation:** `StepContext.signal` aborting must kill the in-flight `docker exec` and trigger teardown — no orphaned work.
+- **stdout discipline:** the runner emits **only** the JSON result envelope on stdout; any diagnostic output goes to stderr (else result parsing corrupts).
+- **Build latency/caching:** Dockerfile builds happen at first use; cache by content hash (Dockerfile + runner-bundle version) so only the first run pays the cost, and surface build logs (§15).
