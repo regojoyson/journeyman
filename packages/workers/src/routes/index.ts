@@ -5,6 +5,9 @@ import {
   insertWorker, listWorkers, getWorker, updateWorker, deleteWorker, listVisibleWorkers,
 } from "../db.ts";
 import { validateWorkerInput, InvalidWorkerInputError } from "../worker-record.ts";
+import { WORKER_TYPE_CATALOG } from "../worker-type-catalog.ts";
+import { runWorkerConnectionTest } from "../test-connection.ts";
+import { makeDockerClient } from "../backends/docker/docker-client.ts";
 
 export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Promise<void> {
   const requireAuth = makeRequireAuth({ pool });
@@ -15,6 +18,25 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     return listVisibleWorkers(pool, orgId, ctx.user.id);
+  });
+
+  // ---- Capability catalog (all types; unbuilt ones flagged "planned") ----
+  app.get("/api/orgs/:orgId/workers/types", { preHandler: requireAuth() }, async (req, reply) => {
+    const { orgId } = req.params as { orgId: string };
+    if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+    return WORKER_TYPE_CATALOG;
+  });
+
+  // ---- Test connection for a candidate {type, config} ----
+  app.post("/api/orgs/:orgId/workers/test-connection", { preHandler: requireAuth() }, async (req, reply) => {
+    const { orgId } = req.params as { orgId: string };
+    if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+    const body = req.body as { type?: string; config?: Record<string, unknown> };
+    if (!body?.type) return reply.code(400).send({ error: "type is required" });
+    return runWorkerConnectionTest(
+      { type: body.type as never, config: body.config ?? {} },
+      { makeDockerClient },
+    );
   });
 
   // ---- Org-scoped CRUD ----

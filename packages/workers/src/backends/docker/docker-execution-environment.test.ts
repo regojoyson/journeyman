@@ -16,6 +16,7 @@ function fakeClient(over: {
 } = {}): { client: IDockerClient; calls: Calls } {
   const calls: Calls = { createVolume: [], removeVolume: [], runIdle: [], exec: [], removeContainer: [], list: [] };
   const client: IDockerClient = {
+    async ping() {},
     async createVolume(n) { calls.createVolume.push(n); },
     async removeVolume(n) { calls.removeVolume.push(n); },
     async runIdle(o) { calls.runIdle.push(o); return "container123"; },

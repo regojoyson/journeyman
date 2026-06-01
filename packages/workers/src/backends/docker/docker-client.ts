@@ -16,6 +16,8 @@ export interface DockerConnection {
 
 /** Minimal Docker operations the execution environment needs. Faked in unit tests. */
 export interface IDockerClient {
+  /** Round-trip the daemon; throws if unreachable. */
+  ping(): Promise<void>;
   createVolume(name: string): Promise<void>;
   removeVolume(name: string): Promise<void>;
   runIdle(o: {
@@ -54,6 +56,10 @@ function toEnvList(env?: Record<string, string>): string[] | undefined {
 
 class DockerodeClient implements IDockerClient {
   constructor(private docker: Docker) {}
+
+  async ping(): Promise<void> {
+    await this.docker.ping();
+  }
 
   async createVolume(name: string): Promise<void> {
     await this.docker.createVolume({ Name: name });
