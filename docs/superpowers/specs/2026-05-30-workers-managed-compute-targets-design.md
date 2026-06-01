@@ -354,6 +354,15 @@ With a **workflow-level worker** there is one container + one `/workspace` for t
 The run's workspace is **owned by the worker lifecycle, created automatically per run** — the explicit `create-workspace` step is **no longer needed and is removed/superseded**.
 
 - **Per-instance Docker worker:** workspace = an auto-created named volume mounted at a fixed path **`/workspace`**, created at provision (§10), shared by **all** of the run's steps (clone → analyze → plan → implement → commit-push), destroyed at teardown. This replaces both the old create-workspace step *and* the per-step temp dir, and gives cross-step sharing for free.
-- **Local default / future machine workers:** workspace = a **per-run** subfolder under a worker-configured **base directory** (the harness allocates one dir per run, not per step, so steps share it).
+- **Local worker (preserves today's local-run behavior):** runs **in-process on the host, no container, no isolation**, with config:
+  ```ts
+  // config for a `local` worker  (type:"local", executionMode:"shared", connectivity:n/a)
+  {
+    baseDir?: string,          // file path you give; default $JOURNEYMAN_BASE_DIR or <tmp>/journeyman-workspaces
+    retainWorkspace?: boolean  // keep the run folder after completion for local inspection (default false)
+  }
+  ```
+  Per run the harness creates a **dynamic instance folder** `${baseDir}/${workflowInstanceId}/` (shared by all the run's steps; one dir per run, not per step). This is the **system default worker**, so doing nothing keeps today's experience. Steps run via `LocalExecutionEnvironment` (in-process), identical to the current code path.
+- **Future machine workers:** same shape — a worker-configured **base directory** with a per-run instance subfolder — but reached over SSH/agent rather than in-process.
 - **Step contract unchanged:** every step still receives `StepContext.workspaceDir` (= `/workspace` inside a container). Step code keeps working as-is; steps neither create nor pass the path.
 - **Configurable on the worker (not the act of creation):** Docker workers expose the **mount path** (default `/workspace`) and optional **extra mounts** (e.g. a read-only shared cache); machine/shared workers expose the **base directory**.
