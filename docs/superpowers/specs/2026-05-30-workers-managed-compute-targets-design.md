@@ -44,6 +44,7 @@ Resource limits and network controls are secondary but included as optional, def
 - Worker types beyond Docker: `machine-linux` / `machine-windows` (push/SSH), `ecs`, `ec2`, `kubernetes`, `cloud`.
 - `shared` execution mode hardening (the model is defined in §10; full machine support lands with the machine type).
 - `per-step` execution mode (fresh container per step) — model leaves room (§7); not built now.
+- Domain-level network allowlisting (v1 is allow-all/none only; §11.1).
 - Container/volume lifetime decoupling across human-task pauses (§16 future hardening).
 - Windows runner bundle track.
 - Tag/label-based pool routing.
@@ -128,7 +129,7 @@ export interface ExecutionEnvironmentSpec {
   imageRef: string;                            // resolved image (built from Dockerfile or prebuilt)
   env?: Record<string, string>;                // non-secret; default none
   resources?: { cpus?: number; memoryMb?: number; timeoutSec?: number };
-  network?: "none" | "full" | { mode: "restricted"; dockerNetwork: string };   // see §11.1
+  network?: "none" | "full";                   // default "full"; see §11.1
   mounts?: { source: string; target: string; readOnly?: boolean }[];
 }
 
@@ -217,10 +218,7 @@ Per custom phase: harness `docker exec`s the runner → runner runs `query()` + 
     | { kind: "ref"; imageRef: string }                 // prebuilt, e.g. "myorg/jm-runner:java21"
     | { kind: "dockerfile"; content: string },          // user-authored; auto-wrapped + built
   resources?: { cpus?; memoryMb?; timeoutSec? },
-  network?:                                              // egress policy (see §11)
-    | "none"                                             // Journeyman: --network none
-    | "full"                                             // Journeyman: normal bridge
-    | { mode: "restricted"; dockerNetwork: string },     // attach to an operator-provided network/proxy
+  network?: "none" | "full",                             // default "full" (allow-all); see §11.1
   env?: Record<string,string>,                           // non-secret
   mounts?: { source; target; readOnly? }[]
 }
@@ -268,11 +266,12 @@ Boundary: **does the step touch the run's workspace or run untrusted/AI code?**
 - Worker/workflow-level non-secret `env` is set once at provision.
 - Worker connection secrets (Docker TLS, SSH/kube/cloud) are vault references resolved by the harness, never persisted in the worker row.
 
-### 11.1 Network egress — who configures what
-Two layers, because Docker has no built-in domain allowlist:
-- **`none` / `full` — Journeyman controls directly** at provision via `docker run --network none` / normal bridge.
-- **`restricted` — operator-provided network/proxy, referenced by Journeyman.** Domain-level allowlisting (only Git host + `api.anthropic.com` + package registries) requires an **egress proxy or a custom Docker network with firewall rules**, created **outside** Journeyman by the operator. The worker config names that network (`{ mode:"restricted", dockerNetwork }`) and Journeyman attaches the container to it.
-- **Whatever the chosen mode, the egress must permit what coding needs** — cloning/pushing to the Git host, the Anthropic API, and any package registries the toolchain uses — or `clone-repos` / `commit-push` / `npm|pip install` / the SDK call will fail. This requirement is documented prominently in the Workers UI.
+### 11.1 Network egress — allow-all or none (v1)
+Two simple modes, both set by Journeyman at provision via `docker run`:
+- **`full` (default)** — normal bridge networking; the container has internet. Required for cloning/pushing to the Git host, calling the Anthropic API, and package installs.
+- **`none`** — `--network none`; fully offline container (for workers that don't need egress).
+
+Domain-level allowlisting (only specific hosts) is **out of scope for v1** — it would need an external egress proxy / firewalled Docker network and can be added later behind the same `network` field. Default is `full` because coding steps need egress.
 
 ### 11.2 MCP servers & Skills inside the container (must behave as today)
 Because the SDK now runs in the container, the tools it relies on must be present there:
