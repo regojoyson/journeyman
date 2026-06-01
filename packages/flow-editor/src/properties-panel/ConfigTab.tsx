@@ -1,6 +1,6 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState, useEffect, useMemo } from "react";
-import type { WorkflowDefaults, WorkflowGraph, WorkflowNode } from "@journeyman/core";
+import type { WorkflowDefaults, WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -9,6 +9,7 @@ import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { sanitizeRef } from "./sanitize-ref.ts";
 import { MentionInput } from "./MentionInput.tsx";
+import { InputValueEditor } from "./InputValueEditor.tsx";
 import { toMentionFields } from "./mention-fields.ts";
 import { parseTemplate, segmentsToTemplate, soleRefOf, type Segment } from "./mention-serialize.ts";
 import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources.ts";
@@ -90,6 +91,16 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
     delete inputs[fieldKey];
     onChange({ ...node, inputs: inputs as WorkflowNode["inputs"] });
+  };
+
+  const setInputValue = (fieldKey: string, next: WorkflowInputValue | undefined) => {
+    const inputs = { ...((node.inputs ?? {}) as Record<string, WorkflowInputValue>) };
+    const cfg = { ...config };
+    if (next === undefined) delete inputs[fieldKey];
+    else inputs[fieldKey] = next;
+    // Bind-only input values live in node.inputs, never node.config.
+    delete cfg[fieldKey];
+    onChange({ ...node, inputs: inputs as WorkflowNode["inputs"], config: cfg });
   };
 
   const inputsMap = (node.inputs ?? {}) as Record<string, { kind: string; ref?: string; value?: unknown }>;
@@ -321,13 +332,13 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                         {isRequired && <span className="je-props__required-mark">*</span>}
                       </label>
                     </div>
-                    <MentionInput
-                      value={segmentsForField(key)}
+                    <InputValueEditor
+                      value={(node.inputs as Record<string, WorkflowInputValue> | undefined)?.[key]}
+                      expected={expectedForKey(key)}
                       fields={mentionFields}
                       readOnly={readOnly}
-                      expected={expectedForKey(key)}
-                      placeholder={isRequired ? "Required — @ to bind from upstream" : "Optional — @ to bind"}
-                      onChange={segs => commitSegments(key, segs)}
+                      required={isRequired}
+                      onChange={next => setInputValue(key, next)}
                     />
                     {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
                   </div>

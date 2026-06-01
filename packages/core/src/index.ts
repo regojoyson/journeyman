@@ -175,6 +175,7 @@ export { formatDuration } from "./utils/format-duration.ts";
 export {
   validateInputBinding,
   validateWorkflowInputs,
+  literalMatchesShape,
   shapeTag,
 } from "./utils/validate-workflow.ts";
 export { getStartWorkflowInputs } from "./utils/start-node.ts";

@@ -25,6 +25,7 @@ export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
 export { StepRegistryProvider } from "./state/step-registry-context.tsx";
 export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
 export { MentionInput } from "./properties-panel/MentionInput.tsx";
+export { InputValueEditor } from "./properties-panel/InputValueEditor.tsx";
 export { toMentionFields } from "./properties-panel/mention-fields.ts";
 export type { MentionField } from "./properties-panel/mention-fields.ts";
 export { parseTemplate, segmentsToTemplate, soleRefOf } from "./properties-panel/mention-serialize.ts";

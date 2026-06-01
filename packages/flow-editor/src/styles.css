@@ -2109,3 +2109,25 @@ button.je-condition-row__pick:hover {
   cursor: not-allowed;
 }
 .je-mention__item--incompatible:hover { background: transparent; }
+
+/* Typed input value editor — Value | @ Reference toggle + per-type widgets. */
+.je-input-value { display: flex; flex-direction: column; gap: 6px; }
+.je-input-value__modes {
+  display: inline-flex; align-self: flex-start;
+  border: 1px solid #2a2a3a; border-radius: 6px; overflow: hidden;
+}
+.je-input-value__mode {
+  background: transparent; color: #94a3b8; border: none;
+  padding: 2px 10px; font-size: 11px; cursor: pointer;
+}
+.je-input-value__mode--active { background: #2a2a3a; color: #e2e8f0; }
+.je-input-value__number,
+.je-input-value__boolean,
+.je-input-value__json-area {
+  width: 100%; box-sizing: border-box;
+  background: #0f0f1a; color: #e2e8f0;
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 6px 8px; font-size: 12px;
+}
+.je-input-value__json-area { font-family: monospace; min-height: 72px; resize: vertical; }
+.je-input-value__json-error { color: #ff7675; font-size: 11px; }

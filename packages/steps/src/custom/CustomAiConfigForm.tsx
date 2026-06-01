@@ -2,10 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { StepFormProps } from "@journeyman/flow-editor";
 import {
   useOrgId,
-  MentionInput,
+  InputValueEditor,
   toMentionFields,
-  soleRefOf,
-  type Segment,
 } from "@journeyman/flow-editor";
 import type { CustomAiStep, CanonicalTool, WorkflowInputValue, Shape } from "@journeyman/core";
 
@@ -62,15 +60,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
     delete next[name];
     setInputs(next);
   };
-  const setRef = (name: string, ref: string) => {
-    if (!ref) { removeInput(name); return; }
-    setInputs({ ...inputs, [name]: { kind: "ref", ref } as WorkflowInputValue });
-  };
-  const getRef = (name: string): string => {
-    const v = inputs[name];
-    return v && v.kind === "ref" ? v.ref : "";
-  };
-
   return (
     <div className="je-props__field" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
@@ -98,9 +87,14 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
           <div className="je-props__field-help">No inputs declared.</div>
         )}
         {step.inputFields.map((f) => {
-          const ref = getRef(f.name);
-          const isBound = !!ref;
-          const showError = f.required && !isBound;
+          const v = inputs[f.name];
+          const hasValue =
+            v !== undefined && (
+              (v.kind === "ref" && v.ref.trim() !== "") ||
+              (v.kind === "literal" && v.value !== undefined) ||
+              (v.kind === "template" && v.template.trim() !== "")
+            );
+          const showError = f.required && !hasValue;
           return (
             <div key={f.name} className={`je-props__field${showError ? " je-props__field--invalid" : ""}`}>
               <div className="je-props__field-label-row">
@@ -109,13 +103,13 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
                   {f.required && <span className="je-props__required-mark">*</span>}
                 </label>
               </div>
-              <MentionInput
-                value={ref ? [{ kind: "ref", ref }] : []}
+              <InputValueEditor
+                value={v}
+                expected={expectedShapeForType(f.type)}
                 fields={mentionFields}
                 readOnly={readOnly}
-                expected={expectedShapeForType(f.type)}
-                placeholder={f.required ? "Required — @ to bind from upstream" : "Optional — @ to bind"}
-                onChange={(next: Segment[]) => setRef(f.name, soleRefOf(next) ?? "")}
+                required={f.required}
+                onChange={(next) => (next ? setInputs({ ...inputs, [f.name]: next }) : removeInput(f.name))}
               />
               {f.description && <div className="je-props__field-help">{f.description}</div>}
             </div>

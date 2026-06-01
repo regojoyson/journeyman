@@ -65,6 +65,36 @@ export function validateInputBinding(expected: Shape, actual: Shape | undefined)
   return { ok: false, reason: "shape-mismatch", expected, actual };
 }
 
+/** Short JS-type tag for an arbitrary literal value, for warning messages. */
+function jsTypeOf(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+/**
+ * Does a literal value satisfy the declared input Shape? Used to type-check
+ * literal (typed-in) input values at publish time. Permissive for unresolved
+ * "ref" shapes.
+ */
+export function literalMatchesShape(value: unknown, expected: Shape): boolean {
+  switch (expected.type) {
+    case "string":  return typeof value === "string";
+    case "number":  return typeof value === "number";
+    case "boolean": return typeof value === "boolean";
+    case "json":
+      return expected.container === "array"
+        ? Array.isArray(value)
+        : value !== null && typeof value === "object" && !Array.isArray(value);
+    case "object":
+      return value !== null && typeof value === "object" && !Array.isArray(value);
+    case "array":
+      return Array.isArray(value);
+    case "ref":
+      return true;
+  }
+}
+
 type RefScope = "workflow.input" | "workflow.attribute" | "input" | "output";
 interface ParsedRef {
   source: string;
@@ -237,6 +267,18 @@ export function validateWorkflowInputs(
           });
         }
         continue;
+      }
+
+      if (hasLiteral && inputValue!.kind === "literal" && !literalMatchesShape(inputValue!.value, expected)) {
+        warnings.push({
+          code: "shape-mismatch",
+          message: `${node.id}.${key}: literal value (${jsTypeOf(inputValue!.value)}) does not match expected ${shapeTag(expected)}`,
+          nodeId: node.id,
+          inputKey: key,
+          ref: "",
+          expected: shapeTag(expected),
+          actual: jsTypeOf(inputValue!.value),
+        });
       }
 
       const refsToCheck: Array<{ ref: string; enforceShape: boolean }> = [];
