@@ -61,6 +61,7 @@ export { CreateIssueStepHandler } from "./workers/steps/create-issue-step-handle
 export { UpdateIssueFieldsStepHandler } from "./workers/steps/update-issue-fields-step-handler.ts";
 export { CommentOnIssueStepHandler } from "./workers/steps/comment-on-issue-step-handler.ts";
 export { SendMessageStepHandler } from "./workers/steps/send-message-step-handler.ts";
+export { JoinFinalizeStepHandler } from "./workers/steps/join-finalize-step-handler.ts";
 export { createPool } from "./stores/postgres/pg-pool.ts";
 export { WorkflowInstanceSyncer } from "./sync/workflow-instance-syncer.ts";
 export { rerunFromExisting } from "./actions/rerun.ts";

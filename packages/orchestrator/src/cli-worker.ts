@@ -43,6 +43,7 @@ import { UpdateIssueFieldsStepHandler } from "./workers/steps/update-issue-field
 import { CommentOnIssueStepHandler } from "./workers/steps/comment-on-issue-step-handler.ts";
 import { SendMessageStepHandler } from "./workers/steps/send-message-step-handler.ts";
 import { CustomAiStepHandler } from "./workers/steps/custom-ai-step-handler.ts";
+import { JoinFinalizeStepHandler } from "./workers/steps/join-finalize-step-handler.ts";
 
 const log = createLogger("worker:cli");
 const envFile = resolve(process.cwd(), ".env");
@@ -78,6 +79,7 @@ registry.register(new CreateWorkspaceStepHandler({ coding, baseDir: workspaceBas
 registry.register(new StartFeatureBranchStepHandler({ coding }));
 registry.register(new ListWorkspaceFilesStepHandler({ coding }));
 registry.register(new CleanupWorkspaceStepHandler({ coding }));
+registry.register(new JoinFinalizeStepHandler());
 if (pool) {
   // cliBindingResolver is declared later in this file; wrap in a thunk so the
   // reference is captured lazily and avoids the temporal dead zone.
