@@ -37,17 +37,18 @@ export function WorkerTab({ orgId, node, onChange, readOnly }: WorkerTabProps) {
   return (
     <div style={{ padding: 8 }}>
       <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on worker (override)</div>
-      <select
-        value={node.workerId ?? ""}
-        disabled={readOnly}
-        onChange={(e) => setWorkerId(e.target.value || undefined)}
-        style={{ width: "100%", padding: "4px", borderRadius: "4px" }}
-      >
-        <option value="">Use workflow worker</option>
-        {workers.map((w) => (
-          <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
-        ))}
-      </select>
+      <div className="je-props__field">
+        <select
+          value={node.workerId ?? ""}
+          disabled={readOnly}
+          onChange={(e) => setWorkerId(e.target.value || undefined)}
+        >
+          <option value="">Use workflow worker</option>
+          {workers.map((w) => (
+            <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
+          ))}
+        </select>
+      </div>
       {overridden && isPerInstance && (
         <div style={{ marginTop: 6, fontSize: 11, color: "#e0a458" }}>
           ⚠ This worker has its own isolated /workspace. It won't see the clone/edits from this

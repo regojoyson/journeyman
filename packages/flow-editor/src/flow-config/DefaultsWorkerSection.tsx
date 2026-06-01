@@ -36,17 +36,18 @@ export function DefaultsWorkerSection({ defaults, onChange, readOnly }: Props) {
   return (
     <div style={{ borderTop: "1px solid #2a2a3a", paddingTop: 8, marginTop: 8 }}>
       <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Worker (where this workflow runs)</div>
-      <select
-        value={defaults.workerId ?? ""}
-        disabled={readOnly}
-        onChange={(e) => setWorkerId(e.target.value || undefined)}
-        style={{ width: "100%", padding: "4px", borderRadius: "4px" }}
-      >
-        <option value="">Default (system Local Workspace)</option>
-        {workers.map((w) => (
-          <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
-        ))}
-      </select>
+      <div className="je-props__field">
+        <select
+          value={defaults.workerId ?? ""}
+          disabled={readOnly}
+          onChange={(e) => setWorkerId(e.target.value || undefined)}
+        >
+          <option value="">Default (system Local Workspace)</option>
+          {workers.map((w) => (
+            <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
+          ))}
+        </select>
+      </div>
       <div className="je-props__field-help" style={{ marginTop: 4 }}>
         Steps that don't override use this worker. Leave as Default to run in-process.
       </div>

@@ -33,6 +33,7 @@ const flowDefaultsSchema = z.object({
   retry:          retryPolicySchema.optional(),
   executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
   defaultModel:   z.string().optional(),
+  workerId:       z.string().optional(),
 }).optional();
 
 const flowNodeSchema = z.object({

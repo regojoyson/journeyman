@@ -39,6 +39,15 @@ export function parseDockerHost(host: string): { host: string; port: number } {
   return { host: h, port: p ? Number(p) : 2375 };
 }
 
+/**
+ * Normalize a configured Unix socket path. dockerode's `socketPath` wants a bare
+ * filesystem path, but users naturally paste the `unix://…` form shown by
+ * `docker context ls` / DOCKER_HOST. Strip the scheme so either form works.
+ */
+export function normalizeSocketPath(socketPath: string): string {
+  return socketPath.replace(/^unix:\/\//i, "");
+}
+
 function toEnvList(env?: Record<string, string>): string[] | undefined {
   return env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : undefined;
 }
@@ -150,7 +159,7 @@ class DockerodeClient implements IDockerClient {
 export function makeDockerClient(connection?: DockerConnection): IDockerClient {
   if (!connection || connection.kind === "local" || !connection.host) {
     // Precedence: explicit socketPath → DOCKER_HOST → dockerode default.
-    if (connection?.socketPath) return new DockerodeClient(new Docker({ socketPath: connection.socketPath }));
+    if (connection?.socketPath) return new DockerodeClient(new Docker({ socketPath: normalizeSocketPath(connection.socketPath) }));
     // Honor DOCKER_HOST (Rancher Desktop / colima / rootless use non-default sockets).
     const dh = process.env.DOCKER_HOST;
     if (dh?.startsWith("unix://")) return new DockerodeClient(new Docker({ socketPath: dh.slice("unix://".length) }));
