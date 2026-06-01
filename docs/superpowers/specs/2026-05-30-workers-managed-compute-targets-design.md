@@ -332,3 +332,28 @@ With the SDK running in the container, only the **first hop** moves:
 - **Cancellation:** `StepContext.signal` aborting must kill the in-flight `docker exec` and trigger teardown — no orphaned work.
 - **stdout discipline:** the runner emits **only** the JSON result envelope on stdout; any diagnostic output goes to stderr (else result parsing corrupts).
 - **Build latency/caching:** Dockerfile builds happen at first use; cache by content hash (Dockerfile + runner-bundle version) so only the first run pays the cost, and surface build logs (§15).
+
+## 17. Branching & Parallelism on a Shared Worker
+
+With a **workflow-level worker** there is one container + one `/workspace` for the whole run, so branching nodes behave as follows:
+
+**if/else (safe by construction):**
+- The gate evaluates **host-side** on data (e.g. `analyze.complexity`) and selects **one** branch; the other is **skipped** and never `exec`s. So an if/else can never produce two concurrent workspace writers.
+- Data the gate reads (e.g. `analyze`'s output) is the **structured result returned over stdout** from the container step, stored as the node output — confirming the result path feeds Conductor's data flow.
+
+**fork/join:**
+- Parallel branches share the one run container and `/workspace`. **Safe** when the parallel branches are **host-side** (createPR / notify / update-ticket).
+- **Unsafe** when two parallel branches both touch the workspace (two `implement`s, parallel clones, edit + git): they race on the shared working tree and can corrupt git (`.git/index.lock`).
+- **v1 rule (validator-enforced):** *at most one branch of a fork may contain workspace-touching steps; other parallel branches must be host-side.* The flow editor warns/blocks a fork with ≥2 workspace-touching branches on a single shared worker.
+- **Resource budget** (`cpus`/`memoryMb`) is **per-container**, shared across all parallel branches — surfaced in the UI so users know parallel AI steps contend for one budget.
+- **Logs** from concurrent branches are attributed per `nodeId` by the harness (§15), so the panel stays readable.
+- **True parallel code work** (e.g. multi-repo, each branch editing its own tree) needs a **container/volume per branch** → the future `per-step`/per-branch execution mode (§7, out-of-scope).
+
+## 18. Workspace Ownership (create-workspace step removed)
+
+The run's workspace is **owned by the worker lifecycle, created automatically per run** — the explicit `create-workspace` step is **no longer needed and is removed/superseded**.
+
+- **Per-instance Docker worker:** workspace = an auto-created named volume mounted at a fixed path **`/workspace`**, created at provision (§10), shared by **all** of the run's steps (clone → analyze → plan → implement → commit-push), destroyed at teardown. This replaces both the old create-workspace step *and* the per-step temp dir, and gives cross-step sharing for free.
+- **Local default / future machine workers:** workspace = a **per-run** subfolder under a worker-configured **base directory** (the harness allocates one dir per run, not per step, so steps share it).
+- **Step contract unchanged:** every step still receives `StepContext.workspaceDir` (= `/workspace` inside a container). Step code keeps working as-is; steps neither create nor pass the path.
+- **Configurable on the worker (not the act of creation):** Docker workers expose the **mount path** (default `/workspace`) and optional **extra mounts** (e.g. a read-only shared cache); machine/shared workers expose the **base directory**.
