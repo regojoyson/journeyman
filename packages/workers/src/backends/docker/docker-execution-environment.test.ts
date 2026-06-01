@@ -1,107 +1,98 @@
 import { describe, it, expect } from "vitest";
-import type { DockerCommandRunner, DockerRunResult } from "./docker-command-runner.ts";
+import type { IDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
 
-function recorder(responses: Record<string, DockerRunResult>): {
-  runner: DockerCommandRunner;
-  calls: string[][];
-  stdins: (string | undefined)[];
-} {
-  const calls: string[][] = [];
-  const stdins: (string | undefined)[] = [];
-  const runner: DockerCommandRunner = async (args, opts) => {
-    calls.push(args);
-    stdins.push(opts?.stdin);
-    const key = args[0];
-    return responses[key] ?? { stdout: "", stderr: "", exitCode: 0 };
-  };
-  return { runner, calls, stdins };
+interface Calls {
+  createVolume: string[];
+  removeVolume: string[];
+  runIdle: Array<Parameters<IDockerClient["runIdle"]>[0]>;
+  exec: Array<{ id: string; o: Parameters<IDockerClient["exec"]>[1] }>;
+  removeContainer: string[];
+  list: Array<[string, string | undefined]>;
 }
 
-const okExec: DockerRunResult = {
-  stdout: JSON.stringify({ ok: true, structured: { done: 1 } }),
-  stderr: "",
-  exitCode: 0,
-};
+function fakeClient(over: {
+  execStdout?: string; execExit?: number; stderr?: string[]; list?: Array<{ id: string; runId: string }>;
+} = {}): { client: IDockerClient; calls: Calls } {
+  const calls: Calls = { createVolume: [], removeVolume: [], runIdle: [], exec: [], removeContainer: [], list: [] };
+  const client: IDockerClient = {
+    async createVolume(n) { calls.createVolume.push(n); },
+    async removeVolume(n) { calls.removeVolume.push(n); },
+    async runIdle(o) { calls.runIdle.push(o); return "container123"; },
+    async exec(id, o) {
+      calls.exec.push({ id, o });
+      if (o.onStderr && over.stderr) for (const l of over.stderr) o.onStderr(l);
+      return { stdout: over.execStdout ?? JSON.stringify({ ok: true, structured: { done: 1 } }), exitCode: over.execExit ?? 0 };
+    },
+    async removeContainer(id) { calls.removeContainer.push(id); },
+    async listByLabel(k, v) { calls.list.push([k, v]); return over.list ?? []; },
+    async imageExists() { return false; },
+    async buildImage() { /* noop */ },
+  };
+  return { client, calls };
+}
 
 describe("DockerExecutionEnvironment", () => {
   it("provision creates a labeled volume + idle container at /workspace", async () => {
-    const { runner, calls } = recorder({ run: { stdout: "container123\n", stderr: "", exitCode: 0 } });
-    const env = new DockerExecutionEnvironment({ docker: runner });
-    const p = await env.provision("run-1", { imageRef: "img:1" });
-    expect(p.type).toBe("docker");
-    expect(p.workspaceDir).toBe("/workspace");
-    expect(p.volume).toBe("jm-run-run-1");
-    expect(p.handle).toBe("container123");
-    const volumeCreate = calls.find((c) => c[0] === "volume");
-    expect(volumeCreate).toEqual(["volume", "create", "jm-run-run-1"]);
-    const run = calls.find((c) => c[0] === "run")!;
-    expect(run).toContain("-d");
-    expect(run).toContain("--label");
-    expect(run).toContain("journeyman.runId=run-1");
-    expect(run).toContain("-v");
-    expect(run).toContain("jm-run-run-1:/workspace");
-    expect(run).toContain("img:1");
+    const { client, calls } = fakeClient();
+    const env = new DockerExecutionEnvironment({ client });
+    const p = await env.provision("run-1", { imageRef: "img:1", network: "none", resources: { cpus: 2 } });
+    expect(p).toEqual({ runId: "run-1", type: "docker", handle: "container123", volume: "jm-run-run-1", workspaceDir: "/workspace" });
+    expect(calls.createVolume).toEqual(["jm-run-run-1"]);
+    expect(calls.runIdle[0]).toMatchObject({
+      image: "img:1", volume: "jm-run-run-1", mountPath: "/workspace",
+      labels: { "journeyman.runId": "run-1" }, network: "none", cpus: 2,
+    });
   });
 
-  it("exec pipes the {op,opts} request to the runner and parses the response", async () => {
-    const { runner, calls, stdins } = recorder({ exec: okExec });
-    const env = new DockerExecutionEnvironment({ docker: runner });
+  it("exec sends the {op,opts} request and parses the response", async () => {
+    const { client, calls } = fakeClient();
+    const env = new DockerExecutionEnvironment({ client });
     const res = await env.exec(
-      { runId: "run-1", type: "docker", handle: "c1", volume: "v1", workspaceDir: "/workspace" },
+      { runId: "r", type: "docker", handle: "c1", volume: "v1", workspaceDir: "/workspace" },
       { op: "custom-prompt", stdin: { prompt: "hi" }, env: { ANTHROPIC_API_KEY: "k" } },
     );
     expect(res).toEqual({ ok: true, structured: { done: 1 }, error: undefined });
-    const exec = calls.find((c) => c[0] === "exec")!;
-    expect(exec).toContain("c1");
-    expect(exec).toContain("-i");
-    expect(exec).toContain("-e");
-    expect(exec).toContain("ANTHROPIC_API_KEY=k");
-    expect(JSON.parse(stdins.find((s) => s !== undefined)!)).toEqual({
-      op: "custom-prompt",
-      opts: { prompt: "hi", cwd: "/workspace" },
-    });
+    expect(calls.exec[0].id).toBe("c1");
+    expect(calls.exec[0].o.cmd).toEqual(["journeyman-runner"]);
+    expect(calls.exec[0].o.env).toEqual({ ANTHROPIC_API_KEY: "k" });
+    expect(JSON.parse(calls.exec[0].o.stdin!)).toEqual({ op: "custom-prompt", opts: { prompt: "hi", cwd: "/workspace" } });
   });
 
-  it("exec returns an error result when the runner exits non-zero with no JSON", async () => {
-    const { runner } = recorder({ exec: { stdout: "", stderr: "kaboom", exitCode: 1 } });
-    const env = new DockerExecutionEnvironment({ docker: runner });
+  it("exec flattens a text-mode result and forwards NDJSON/raw stderr to onLog", async () => {
+    const logs: Array<[string, unknown]> = [];
+    const { client } = fakeClient({
+      execStdout: JSON.stringify({ ok: true, result: "hello text" }),
+      stderr: [JSON.stringify({ line: "log A", meta: { sdk: 1 } }), "raw B"],
+    });
+    const env = new DockerExecutionEnvironment({ client });
     const res = await env.exec(
       { runId: "r", type: "docker", handle: "c1", workspaceDir: "/workspace" },
-      { op: "x", stdin: {} },
+      { op: "custom-prompt", stdin: {}, onLog: (line, meta) => logs.push([line, meta]) },
     );
-    expect(res.ok).toBe(false);
-    expect(res.error).toContain("kaboom");
+    expect(res.structured).toBe("hello text");
+    expect(logs).toEqual([["log A", { sdk: 1 }], ["raw B", undefined]]);
   });
 
-  it("exec forwards NDJSON stderr to onLog as (line, meta) and raw lines as-is", async () => {
-    const logs: Array<[string, unknown]> = [];
-    const runner: DockerCommandRunner = async (_args, opts) => {
-      opts?.onStderr?.(JSON.stringify({ line: "hello", meta: { sdk: 1 } }));
-      opts?.onStderr?.("plain line");
-      return okExec;
-    };
-    const env = new DockerExecutionEnvironment({ docker: runner });
-    await env.exec(
-      { runId: "r", type: "docker", handle: "c1", workspaceDir: "/workspace" },
-      { op: "x", stdin: {}, onLog: (line, meta) => logs.push([line, meta]) },
-    );
-    expect(logs).toEqual([["hello", { sdk: 1 }], ["plain line", undefined]]);
+  it("exec returns an error result when the runner produced no JSON", async () => {
+    const { client } = fakeClient({ execStdout: "", execExit: 1 });
+    const env = new DockerExecutionEnvironment({ client });
+    const res = await env.exec({ runId: "r", type: "docker", handle: "c1", workspaceDir: "/workspace" }, { op: "x", stdin: {} });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/no JSON/);
   });
 
   it("destroy removes the container and volume", async () => {
-    const { runner, calls } = recorder({});
-    const env = new DockerExecutionEnvironment({ docker: runner });
+    const { client, calls } = fakeClient();
+    const env = new DockerExecutionEnvironment({ client });
     await env.destroy({ runId: "r", type: "docker", handle: "c1", volume: "v1", workspaceDir: "/workspace" });
-    expect(calls).toContainEqual(["rm", "-f", "c1"]);
-    expect(calls).toContainEqual(["volume", "rm", "v1"]);
+    expect(calls.removeContainer).toEqual(["c1"]);
+    expect(calls.removeVolume).toEqual(["v1"]);
   });
 
-  it("list parses runId-labeled containers", async () => {
-    const { runner } = recorder({
-      ps: { stdout: "c1 jm-run-a journeyman.runId=a\nc2 jm-run-b journeyman.runId=b\n", stderr: "", exitCode: 0 },
-    });
-    const env = new DockerExecutionEnvironment({ docker: runner });
+  it("list maps labeled containers to ProvisionedEnv", async () => {
+    const { client } = fakeClient({ list: [{ id: "c1", runId: "a" }, { id: "c2", runId: "b" }] });
+    const env = new DockerExecutionEnvironment({ client });
     const list = await env.list();
     expect(list.map((e) => e.runId).sort()).toEqual(["a", "b"]);
     expect(list.map((e) => e.handle).sort()).toEqual(["c1", "c2"]);

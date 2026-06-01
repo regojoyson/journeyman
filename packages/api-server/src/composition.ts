@@ -11,8 +11,8 @@
 import { Pool } from "pg";
 import {
   resolveWorker, recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
-  DockerExecutionEnvironment, makeProcessCommandRunner, resolveDockerSpec,
-  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
+  DockerExecutionEnvironment, makeDockerClient, resolveDockerSpec,
+  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps, type DockerConnection,
 } from "@journeyman/workers";
 import { isTerminalStatus } from "@journeyman/core";
 import type {
@@ -149,10 +149,11 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   // Sandbox provision/teardown — active only when a pg pool exists. A `local`
   // worker (the default) is a no-op, preserving today's in-process behavior.
   const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
-  const dockerCmd = makeProcessCommandRunner("docker");
+  const RUNNER_BUNDLE = process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
 
   const dockerDestroy = async (sb: SandboxRecord): Promise<void> => {
-    const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
+    const client = makeDockerClient(sb.connection ?? { kind: "local" });
+    const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
     await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
   };
   const isRunActive = async (runId: string): Promise<boolean> => {
@@ -169,15 +170,17 @@ export function buildComposition(cfg: CompositionConfig): Composition {
         if (worker.type === "local") return;
         if (worker.type !== "docker") return; // other types: later plans
         await logRun(a.workflowInstanceId, `Provisioning ${worker.type} sandbox…`);
-        const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
+        const connection = ((worker.config as { connection?: DockerConnection }).connection) ?? { kind: "local" };
+        const client = makeDockerClient(connection);
+        const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
         const spec = await resolveDockerSpec((worker.config as Record<string, unknown>) ?? {}, {
-          docker: dockerCmd, defaultImage: RUNNER_IMAGE,
-          bundleRef: process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev",
+          client, defaultImage: RUNNER_IMAGE, bundleRef: RUNNER_BUNDLE,
         });
         const provisioned = await env.provision(a.workflowInstanceId, spec);
         await recordSandbox(pool!, {
           runId: a.workflowInstanceId, type: "docker", handle: provisioned.handle,
           volume: provisioned.volume ?? null, imageRef: spec.imageRef ?? null, owner: a.orgId,
+          connection,
         });
         await logRun(a.workflowInstanceId, `Sandbox ready (image ${spec.imageRef})`);
       }

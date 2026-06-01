@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { tmpdir } from "node:os";
 import type { OperationRunner } from "@journeyman/core";
-import type { DockerCommandRunner } from "./backends/docker/docker-command-runner.ts";
+import type { IDockerClient } from "./backends/docker/docker-client.ts";
 import { createDefaultRegistry } from "./default-registry.ts";
 
 const runOperation: OperationRunner = async () => ({ ok: true });
-const docker: DockerCommandRunner = async () => ({ stdout: "", stderr: "", exitCode: 0 });
+const client = {} as IDockerClient;
 
 describe("createDefaultRegistry", () => {
   it("always registers the local backend", () => {
@@ -18,7 +18,7 @@ describe("createDefaultRegistry", () => {
     const r = createDefaultRegistry({
       runOperation,
       defaultBaseDir: tmpdir(),
-      docker: { docker, defaultImage: "journeyman/runner-base:dev" },
+      docker: { client, defaultImage: "journeyman/runner-base:dev" },
     });
     expect(r.available()).toContain("local");
     expect(r.available()).toContain("docker");

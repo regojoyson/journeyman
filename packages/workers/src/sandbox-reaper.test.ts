@@ -3,7 +3,7 @@ import { SandboxReaper } from "./sandbox-reaper.ts";
 import type { SandboxRecord } from "./sandbox-store.ts";
 
 function sb(runId: string): SandboxRecord {
-  return { runId, type: "docker", handle: `c-${runId}`, volume: `v-${runId}`, imageRef: null, owner: null, status: "active" };
+  return { runId, type: "docker", handle: `c-${runId}`, volume: `v-${runId}`, imageRef: null, owner: null, connection: null, status: "active" };
 }
 
 describe("SandboxReaper.reapOnce", () => {

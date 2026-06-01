@@ -14,11 +14,22 @@ function fakeDb(rows: any[] = []): Queryable & { calls: Array<{ text: string; pa
 }
 
 describe("sandbox-store", () => {
-  it("recordSandbox upserts the active row", async () => {
+  it("recordSandbox upserts the active row (connection serialized)", async () => {
     const db = fakeDb();
-    await recordSandbox(db, { runId: "r1", type: "docker", handle: "c1", volume: "v1", imageRef: "x:1", owner: "o1" });
+    await recordSandbox(db, {
+      runId: "r1", type: "docker", handle: "c1", volume: "v1", imageRef: "x:1", owner: "o1",
+      connection: { kind: "remote", host: "tcp://h:2376" },
+    });
     expect(db.calls[0].text).toMatch(/insert into jm_sandbox_instances/i);
-    expect(db.calls[0].params).toEqual(["r1", "docker", "c1", "v1", "x:1", "o1"]);
+    expect(db.calls[0].params).toEqual([
+      "r1", "docker", "c1", "v1", "x:1", "o1", JSON.stringify({ kind: "remote", host: "tcp://h:2376" }),
+    ]);
+  });
+
+  it("recordSandbox stores null connection when omitted", async () => {
+    const db = fakeDb();
+    await recordSandbox(db, { runId: "r1", type: "docker", handle: "c1" });
+    expect(db.calls[0].params?.[6]).toBeNull();
   });
 
   it("getSandbox returns the row by runId or null", async () => {

@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { makeProcessCommandRunner } from "./docker-command-runner.ts";
+import { makeDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
 
 const RUN_IT = process.env.JM_DOCKER_IT === "1";
 const IMAGE = process.env.JM_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 
-describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker)", () => {
+describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker via dockerode)", () => {
   it("provisions, execs the runner (unknown op), and destroys", async () => {
-    const env = new DockerExecutionEnvironment({ docker: makeProcessCommandRunner("docker"), defaultImage: IMAGE });
+    const env = new DockerExecutionEnvironment({ client: makeDockerClient(), defaultImage: IMAGE });
     const runId = `it-${Date.now()}`;
     const p = await env.provision(runId, { imageRef: IMAGE });
     try {
@@ -22,10 +22,10 @@ describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker)", () => {
 
   it("builds an image from a Dockerfile and runs the runner in it", async () => {
     const bundle = process.env.JM_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
-    const docker = makeProcessCommandRunner("docker");
+    const client = makeDockerClient();
     const { buildDockerfileImage } = await import("./build-image.ts");
-    const builtRef = await buildDockerfileImage({ content: "FROM debian:stable-slim", docker, bundleRef: bundle });
-    const env = new DockerExecutionEnvironment({ docker, defaultImage: builtRef });
+    const builtRef = await buildDockerfileImage({ content: "FROM debian:stable-slim", client, bundleRef: bundle });
+    const env = new DockerExecutionEnvironment({ client, defaultImage: builtRef });
     const runId = `it-df-${Date.now()}`;
     const p = await env.provision(runId, { imageRef: builtRef });
     try {

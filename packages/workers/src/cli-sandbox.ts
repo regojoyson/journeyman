@@ -6,18 +6,18 @@
  *   journeyman-sandbox prune --run <runId>  # destroy one
  */
 import { Pool } from "pg";
-import { listActiveSandboxes, getSandbox, markSandboxDestroyed } from "./sandbox-store.ts";
+import { listActiveSandboxes, getSandbox, markSandboxDestroyed, type SandboxRecord } from "./sandbox-store.ts";
 import { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";
-import { makeProcessCommandRunner } from "./backends/docker/docker-command-runner.ts";
+import { makeDockerClient } from "./backends/docker/docker-client.ts";
 
 const url = process.env.DATABASE_URL;
 if (!url) { process.stderr.write("DATABASE_URL not set\n"); process.exit(1); }
 const pool = new Pool({ connectionString: url });
-const docker = makeProcessCommandRunner("docker");
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 
-async function destroy(sb: { runId: string; handle: string; volume: string | null }): Promise<void> {
-  const env = new DockerExecutionEnvironment({ docker, defaultImage: RUNNER_IMAGE });
+async function destroy(sb: SandboxRecord): Promise<void> {
+  const client = makeDockerClient(sb.connection ?? { kind: "local" });
+  const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
   await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
   await markSandboxDestroyed(pool, sb.runId);
 }

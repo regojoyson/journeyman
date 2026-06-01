@@ -15,12 +15,13 @@ type ConnKind = "local" | "remote";
 type ImageKind = "ref" | "dockerfile";
 
 function readDockerConfig(cfg: Record<string, unknown>) {
-  const connection = (cfg.connection ?? { kind: "local" }) as { kind?: ConnKind; host?: string };
+  const connection = (cfg.connection ?? { kind: "local" }) as { kind?: ConnKind; host?: string; socketPath?: string };
   const image = (cfg.image ?? { kind: "ref", imageRef: "" }) as
     { kind?: ImageKind; imageRef?: string; content?: string };
   return {
     connKind: (connection.kind ?? "local") as ConnKind,
     host: connection.host ?? "",
+    socketPath: connection.socketPath ?? "",
     imageKind: (image.kind ?? "ref") as ImageKind,
     imageRef: image.imageRef ?? "",
     dockerfile: image.content ?? "",
@@ -42,6 +43,7 @@ export function WorkerFormModal(props: WorkerFormModalProps) {
   const d = readDockerConfig(props.worker?.config ?? {});
   const [connKind, setConnKind] = useState<ConnKind>(d.connKind);
   const [host, setHost] = useState(d.host);
+  const [socketPath, setSocketPath] = useState(d.socketPath);
   const [imageKind, setImageKind] = useState<ImageKind>(d.imageKind);
   const [imageRef, setImageRef] = useState(d.imageRef);
   const [dockerfile, setDockerfile] = useState(d.dockerfile);
@@ -56,7 +58,9 @@ export function WorkerFormModal(props: WorkerFormModalProps) {
     }
     // docker
     return {
-      connection: connKind === "remote" ? { kind: "remote", host } : { kind: "local" },
+      connection: connKind === "remote"
+        ? { kind: "remote", host }
+        : { kind: "local", ...(socketPath ? { socketPath } : {}) },
       image: imageKind === "ref" ? { kind: "ref", imageRef } : { kind: "dockerfile", content: dockerfile },
       network,
     };
@@ -133,6 +137,10 @@ export function WorkerFormModal(props: WorkerFormModalProps) {
                   <option value="remote">Remote daemon</option>
                 </select>
               </label>
+              {connKind === "local" && (
+                <input className={inputCls} placeholder="Socket path (optional — blank = host default / DOCKER_HOST)"
+                  value={socketPath} onChange={(e) => setSocketPath(e.target.value)} />
+              )}
               {connKind === "remote" && (
                 <input className={inputCls} placeholder="tcp://host:2376" value={host}
                   onChange={(e) => setHost(e.target.value)} />

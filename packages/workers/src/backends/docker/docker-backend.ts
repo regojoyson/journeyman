@@ -2,12 +2,12 @@ import type {
   Connectivity, ExecutionEnvironmentBackend, ExecutionEnvironmentSpec, ExecutionMode,
   IExecutionEnvironment, ResolvedWorker, WorkerType,
 } from "@journeyman/core";
-import type { DockerCommandRunner } from "./docker-command-runner.ts";
+import type { IDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
 import { buildDockerfileImage } from "./build-image.ts";
 
 export interface ResolveDockerSpecDeps {
-  docker: DockerCommandRunner;
+  client: IDockerClient;
   defaultImage: string;
   bundleRef: string;
 }
@@ -23,7 +23,7 @@ export async function resolveDockerSpec(
   const image = config.image as { kind?: string; imageRef?: string; content?: string } | undefined;
   let imageRef: string;
   if (image?.kind === "dockerfile" && typeof image.content === "string") {
-    imageRef = await buildDockerfileImage({ content: image.content, docker: deps.docker, bundleRef: deps.bundleRef });
+    imageRef = await buildDockerfileImage({ content: image.content, client: deps.client, bundleRef: deps.bundleRef });
   } else if (image?.kind === "ref" && image.imageRef) {
     imageRef = image.imageRef;
   } else {
@@ -36,30 +36,10 @@ export async function resolveDockerSpec(
 }
 
 export interface DockerBackendDeps {
-  docker: DockerCommandRunner;
+  client: IDockerClient;
   /** Default runner image (e.g. journeyman/runner-base:<version>). */
   defaultImage: string;
   runnerCmd?: string[];
-}
-
-/** Build an ExecutionEnvironmentSpec from a docker worker's config. */
-export function dockerSpecFromConfig(
-  config: Record<string, unknown>,
-  defaultImage: string,
-): ExecutionEnvironmentSpec {
-  const image = config.image as { kind?: string; imageRef?: string; content?: string } | undefined;
-  if (image?.kind === "dockerfile") {
-    throw new Error("docker worker: dockerfile images are not supported yet (Plan 5)");
-  }
-  const network = config.network === "none" ? "none" : "full";
-  const resources = (config.resources as ExecutionEnvironmentSpec["resources"]) ?? undefined;
-  const env = (config.env as Record<string, string>) ?? undefined;
-  return {
-    imageRef: image?.kind === "ref" && image.imageRef ? image.imageRef : defaultImage,
-    network,
-    ...(resources ? { resources } : {}),
-    ...(env ? { env } : {}),
-  };
 }
 
 export class DockerBackend implements ExecutionEnvironmentBackend {
@@ -87,7 +67,7 @@ export class DockerBackend implements ExecutionEnvironmentBackend {
   create(worker: ResolvedWorker): IExecutionEnvironment {
     this.validateConfig(worker.config);
     return new DockerExecutionEnvironment({
-      docker: this.deps.docker,
+      client: this.deps.client,
       defaultImage: this.deps.defaultImage,
       ...(this.deps.runnerCmd ? { runnerCmd: this.deps.runnerCmd } : {}),
     });

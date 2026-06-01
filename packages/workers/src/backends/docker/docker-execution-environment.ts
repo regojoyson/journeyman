@@ -1,18 +1,16 @@
 import type {
   ExecOp, ExecResult, ExecutionEnvironmentSpec, IExecutionEnvironment, ProvisionedEnv, WorkerType,
 } from "@journeyman/core";
-import type { DockerCommandRunner } from "./docker-command-runner.ts";
+import type { IDockerClient } from "./docker-client.ts";
 
 export interface DockerExecutionEnvironmentDeps {
-  docker: DockerCommandRunner;
-  /** How to invoke the runner inside the container. */
+  client: IDockerClient;
+  /** How to invoke the runner inside the container. Both runner-base and the bundle expose this. */
   runnerCmd?: string[];
   /** Fallback image when a spec omits imageRef. */
   defaultImage?: string;
 }
 
-// Both the runner-base image and the auto-wrapped bundle expose `journeyman-runner`
-// on PATH, so the invocation is the same regardless of how the image was produced.
 const DEFAULT_RUNNER_CMD = ["journeyman-runner"];
 const WORKSPACE = "/workspace";
 
@@ -26,71 +24,64 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
     const image = spec.imageRef ?? this.deps.defaultImage;
     if (!image) throw new Error("docker provision requires an imageRef or defaultImage");
 
-    await this.deps.docker(["volume", "create", volume]);
-
-    const args = ["run", "-d", "--label", `journeyman.runId=${runId}`, "-v", `${volume}:${WORKSPACE}`];
-    if (spec.resources?.cpus) args.push("--cpus", String(spec.resources.cpus));
-    if (spec.resources?.memoryMb) args.push("--memory", `${spec.resources.memoryMb}m`);
-    if (spec.network === "none") args.push("--network", "none");
-    for (const [k, v] of Object.entries(spec.env ?? {})) args.push("-e", `${k}=${v}`);
-    args.push("--entrypoint", "sleep", image, "infinity");
-
-    const r = await this.deps.docker(args);
-    if (r.exitCode !== 0) throw new Error(`docker run failed: ${r.stderr.trim()}`);
-    const handle = r.stdout.trim();
+    await this.deps.client.createVolume(volume);
+    const handle = await this.deps.client.runIdle({
+      image,
+      volume,
+      mountPath: WORKSPACE,
+      labels: { "journeyman.runId": runId },
+      ...(spec.env ? { env: spec.env } : {}),
+      ...(spec.resources?.cpus ? { cpus: spec.resources.cpus } : {}),
+      ...(spec.resources?.memoryMb ? { memoryMb: spec.resources.memoryMb } : {}),
+      ...(spec.network ? { network: spec.network } : {}),
+    });
     return { runId, type: "docker", handle, volume, workspaceDir: WORKSPACE };
   }
 
   async exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult> {
     const request = JSON.stringify({ op: op.op, opts: { ...((op.stdin as object) ?? {}), cwd: WORKSPACE } });
-    const args = ["exec", "-i"];
-    for (const [k, v] of Object.entries(op.env ?? {})) args.push("-e", `${k}=${v}`);
-    args.push(env.handle, ...(this.deps.runnerCmd ?? DEFAULT_RUNNER_CMD));
-
-    const r = await this.deps.docker(args, {
+    const r = await this.deps.client.exec(env.handle, {
+      cmd: this.deps.runnerCmd ?? DEFAULT_RUNNER_CMD,
       stdin: request,
+      ...(op.env ? { env: op.env } : {}),
       ...(op.signal ? { signal: op.signal } : {}),
-      ...(op.onLog ? { onStderr: (line: string) => {
-        // The runner emits NDJSON {line, meta} per log; forward parsed, else raw.
-        try {
-          const parsed = JSON.parse(line) as { line?: string; meta?: Record<string, unknown> };
-          if (parsed && typeof parsed.line === "string") { op.onLog!(parsed.line, parsed.meta); return; }
-        } catch { /* not NDJSON */ }
-        op.onLog!(line);
-      } } : {}),
+      ...(op.onLog ? { onStderr: (line: string) => forwardLog(line, op.onLog!) } : {}),
     });
 
     const text = r.stdout.trim();
     if (text) {
       try {
         const parsed = JSON.parse(text) as ExecResult & { result?: string };
-        // The runner envelope carries text-mode output in `result`; flatten it into `structured`.
+        // The runner envelope carries text-mode output in `result`; flatten into `structured`.
         return { ok: parsed.ok, structured: parsed.structured ?? parsed.result, error: parsed.error };
       } catch {
-        // fall through to error handling
+        // fall through
       }
     }
-    return { ok: false, error: `runner produced no JSON (exit ${r.exitCode}): ${r.stderr.trim() || text}` };
+    return { ok: false, error: `runner produced no JSON (exit ${r.exitCode}): ${text}` };
   }
 
   async destroy(env: ProvisionedEnv): Promise<void> {
-    await this.deps.docker(["rm", "-f", env.handle]).catch(() => undefined);
-    if (env.volume) await this.deps.docker(["volume", "rm", env.volume]).catch(() => undefined);
+    await this.deps.client.removeContainer(env.handle).catch(() => undefined);
+    if (env.volume) await this.deps.client.removeVolume(env.volume).catch(() => undefined);
   }
 
   async list(filter?: { runId?: string }): Promise<ProvisionedEnv[]> {
-    const args = ["ps", "-a", "--filter", "label=journeyman.runId"];
-    if (filter?.runId) args.push("--filter", `label=journeyman.runId=${filter.runId}`);
-    args.push("--format", "{{.ID}} {{.Mounts}} {{.Label \"journeyman.runId\"}}");
-    const r = await this.deps.docker(args);
-    return r.stdout
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [handle, , label] = line.split(/\s+/);
-        const runId = (label ?? "").replace(/^journeyman\.runId=/, "");
-        return { runId, type: "docker" as WorkerType, handle, volume: `jm-run-${runId}`, workspaceDir: WORKSPACE };
-      });
+    const rows = await this.deps.client.listByLabel("journeyman.runId", filter?.runId);
+    return rows
+      .filter((r) => r.runId)
+      .map((r) => ({
+        runId: r.runId, type: "docker" as WorkerType, handle: r.id,
+        volume: `jm-run-${r.runId}`, workspaceDir: WORKSPACE,
+      }));
   }
+}
+
+/** Runner emits NDJSON {line, meta} per log; forward parsed, else raw. */
+function forwardLog(line: string, onLog: (line: string, meta?: Record<string, unknown>) => void): void {
+  try {
+    const parsed = JSON.parse(line) as { line?: string; meta?: Record<string, unknown> };
+    if (parsed && typeof parsed.line === "string") { onLog(parsed.line, parsed.meta); return; }
+  } catch { /* not NDJSON */ }
+  onLog(line);
 }
