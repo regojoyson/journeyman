@@ -10,7 +10,7 @@ export interface RerunDeps {
 
 export interface RerunResult {
   workflowInstanceId: string;
-  engineWorkflowId: string;
+  engineWorkflowId: string | null;
 }
 
 /** Submit a fresh workflow instance with the same workflow version + same inputs as `originalWorkflowInstanceId`. */

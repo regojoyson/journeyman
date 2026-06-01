@@ -3,6 +3,7 @@ import type { WorkflowInstanceGrantRole } from "./workflow-instance-grants.types
 
 export type WorkflowInstanceStatus =
   | "pending"
+  | "provisioning"
   | "running"
   | "paused"
   | "completed"

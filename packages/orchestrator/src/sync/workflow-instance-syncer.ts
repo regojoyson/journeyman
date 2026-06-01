@@ -19,7 +19,7 @@ export interface WorkflowInstanceSyncerDeps {
   reconcilePaused?: (workflowInstanceId: string) => Promise<void>;
 }
 
-const NON_TERMINAL: WorkflowInstanceStatus[] = ["pending", "running", "paused"];
+const NON_TERMINAL: WorkflowInstanceStatus[] = ["pending", "provisioning", "running", "paused"];
 
 export class WorkflowInstanceSyncer {
   private running = false;

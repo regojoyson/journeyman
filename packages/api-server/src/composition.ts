@@ -51,6 +51,8 @@ import {
   InMemoryStepRegistry,
   JsonLogicEvaluator,
   createPool,
+  ProvisioningReaper,
+  findStuckProvisioningRuns,
   type IHumanTaskResolutionStore,
 } from "@journeyman/orchestrator";
 import {
@@ -207,6 +209,21 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     reaperStop = reaper.start(Number(process.env.SANDBOX_REAP_INTERVAL_MS ?? 60_000));
   }
 
+  let provisioningReaperStop: (() => void) | undefined;
+  if (pool) {
+    const PROVISION_TIMEOUT_MS = Number(process.env.PROVISION_TIMEOUT_MS ?? 600_000);
+    const provisioningReaper = new ProvisioningReaper({
+      findStuck: () => findStuckProvisioningRuns(pool!, PROVISION_TIMEOUT_MS),
+      failRun: async (id) => {
+        await events
+          .append({ workflowInstanceId: id, eventType: "step.log", payload: { line: "Run failed: sandbox provisioning timed out" } })
+          .catch(() => undefined);
+        await workflowInstances.setStatus(id, "failed", { completedAt: new Date() });
+      },
+    });
+    provisioningReaperStop = provisioningReaper.start(Number(process.env.PROVISION_REAP_INTERVAL_MS ?? 60_000));
+  }
+
   const orchestrator = new ConductorOrchestrator({
     client: conductorClient,
     converter: new ConductorJsonConverter(),
@@ -235,7 +252,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     ...(sandboxRoutesDeps ? { sandboxRoutesDeps } : {}),
     // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.
     webhookWaitSweeper: null as unknown as WebhookWaitSweeper,
-    shutdown: async () => { reaperStop?.(); if (pool) await pool.end(); },
+    shutdown: async () => { reaperStop?.(); provisioningReaperStop?.(); if (pool) await pool.end(); },
   };
 
   const maxAgeStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE ?? "30d").trim();

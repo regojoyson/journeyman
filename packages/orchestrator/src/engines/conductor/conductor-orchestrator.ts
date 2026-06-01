@@ -46,13 +46,14 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
 
   constructor(private deps: ConductorOrchestratorDeps) {}
 
-  async submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+  async submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string | null }> {
     const versionSuffix = args.workflowVersionId ? args.workflowVersionId.replace(/-/g, "_") : "unknown";
     const wfName = `journeyman_v${versionSuffix}`;
     const wfDef = this.deps.converter.toEngineJson(args.definitionSnapshot, {
       workflowName: wfName, workflowVersion: 1,
     });
 
+    // Register the def on the request path so a bad def fails the trigger early.
     await this.deps.client.putWorkflowDef(wfDef);
 
     const instance = await this.deps.workflowInstances.create({
@@ -69,6 +70,9 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       webhookEventId: args.webhookEventId ?? null,
       formSubmissionId: args.formSubmissionId ?? null,
     });
+
+    // Mark the run "provisioning" so the UI shows the phase while the sandbox builds.
+    await this.deps.workflowInstances.setStatus(instance.id, "provisioning");
 
     const grantsToWrite: Array<{
       principalType: "user" | "org" | "global";
@@ -90,62 +94,87 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     }
     if (grantsToWrite.length > 0) await this.deps.workflowInstanceGrants.createForInstance(instance.id, grantsToWrite);
 
-    // Provision the run's sandbox BEFORE Conductor dispatches any task, so the
-    // first workspace-touching step finds it. For a local worker this is a no-op.
-    // A non-local worker that fails to provision fails the run start (we must NOT
-    // silently fall back to host execution for a workflow that asked for isolation).
-    if (this.deps.sandboxProvisioner) {
-      await this.deps.sandboxProvisioner({
-        workflowInstanceId: instance.id,
-        workerId: args.definitionSnapshot.defaults?.workerId,
-        userId: args.startedByUserId ?? null,
-        orgId: args.startedByOrgId ?? null,
-      });
-    }
-
-    const engineWorkflowId = await this.deps.client.startWorkflow({
-      name: wfName,
-      version: 1,
-      input: {
-        ...args.inputs,
-        attributes: buildAttributeInputs(args.definitionSnapshot.attributeDefs),
-        workflowInstanceId: instance.id,
-        startedByUserId: args.startedByUserId ?? null,
-        startedByOrgId: args.startedByOrgId ?? null,
-        workflowId: args.workflowId,
-      },
+    // Provision + start happen OFF the request path. Ordering (provision BEFORE
+    // startWorkflow) is preserved inside runStart, so the "sandbox ready before the
+    // first workspace step" invariant still holds. Provisioning failures mark the run
+    // failed (see runStart's catch). A run left in "provisioning" after a crash is
+    // reaped by the ProvisioningReaper.
+    void this.runStart(instance.id, wfName, args).catch((err) => {
+      log.error({ workflowInstanceId: instance.id, err: (err as Error)?.message }, "background run start failed");
     });
 
-    await this.deps.workflowInstances.setEngineWorkflowId(instance.id, engineWorkflowId);
-    await this.deps.workflowInstances.setStatus(instance.id, "running");
+    return { workflowInstanceId: instance.id, engineWorkflowId: null };
+  }
 
-    // Trigger nodes are graph markers, not steps — conductor-converter begins the task sequence at
-    // successor(trigger), so no worker ever runs for them. Emit node.resolved (the same family used
-    // for human tasks) so the UI doesn't show the entry node stuck at "pending".
-    // Prefer the trigger that actually fired (args.triggerNodeId), else fall back to the manual trigger
-    // (legacy Run-button path), else any trigger in the graph.
-    const startNode = (args.triggerNodeId
-      ? args.definitionSnapshot.nodes.find((n) => n.id === args.triggerNodeId)
-      : null)
-      ?? findManualTriggerNode(args.definitionSnapshot)
-      ?? args.definitionSnapshot.nodes.find((n) => isTriggerNode(n));
-    if (startNode) {
-      try {
-        await this.deps.events.append({
-          workflowInstanceId: instance.id,
-          nodeId: startNode.id,
-          eventType: "node.resolved",
-          payload: {},
+  /**
+   * Provision the run's sandbox, then start the Conductor workflow. Runs detached from
+   * submit() so the slow Docker build never blocks the trigger response. Any failure
+   * marks the run "failed" and emits a step.log; startWorkflow is skipped, so no orphan
+   * Conductor workflow is left behind.
+   */
+  async runStart(workflowInstanceId: string, wfName: string, args: SubmitWorkflowInstanceArgs): Promise<void> {
+    try {
+      if (this.deps.sandboxProvisioner) {
+        await this.deps.sandboxProvisioner({
+          workflowInstanceId,
+          workerId: args.definitionSnapshot.defaults?.workerId,
+          userId: args.startedByUserId ?? null,
+          orgId: args.startedByOrgId ?? null,
         });
-      } catch (err) {
-        log.warn(
-          { workflowInstanceId: instance.id, err: (err as Error)?.message },
-          "failed to emit start-node resolved event",
-        );
       }
-    }
 
-    return { workflowInstanceId: instance.id, engineWorkflowId };
+      const engineWorkflowId = await this.deps.client.startWorkflow({
+        name: wfName,
+        version: 1,
+        input: {
+          ...args.inputs,
+          attributes: buildAttributeInputs(args.definitionSnapshot.attributeDefs),
+          workflowInstanceId,
+          startedByUserId: args.startedByUserId ?? null,
+          startedByOrgId: args.startedByOrgId ?? null,
+          workflowId: args.workflowId,
+        },
+      });
+
+      await this.deps.workflowInstances.setEngineWorkflowId(workflowInstanceId, engineWorkflowId);
+      await this.deps.workflowInstances.setStatus(workflowInstanceId, "running");
+
+      // Trigger nodes are graph markers, not steps — conductor-converter begins the task
+      // sequence at successor(trigger), so no worker ever runs for them. Emit node.resolved
+      // so the UI doesn't show the entry node stuck at "pending". Prefer the trigger that
+      // fired (args.triggerNodeId), else the manual trigger, else any trigger in the graph.
+      const startNode = (args.triggerNodeId
+        ? args.definitionSnapshot.nodes.find((n) => n.id === args.triggerNodeId)
+        : null)
+        ?? findManualTriggerNode(args.definitionSnapshot)
+        ?? args.definitionSnapshot.nodes.find((n) => isTriggerNode(n));
+      if (startNode) {
+        try {
+          await this.deps.events.append({
+            workflowInstanceId,
+            nodeId: startNode.id,
+            eventType: "node.resolved",
+            payload: {},
+          });
+        } catch (err) {
+          log.warn(
+            { workflowInstanceId, err: (err as Error)?.message },
+            "failed to emit start-node resolved event",
+          );
+        }
+      }
+    } catch (err) {
+      const message = (err as Error)?.message ?? String(err);
+      log.error({ workflowInstanceId, err: message }, "run provisioning/start failed");
+      await this.deps.events.append({
+        workflowInstanceId,
+        eventType: "step.log",
+        payload: { line: `Run failed during provisioning: ${message}` },
+      }).catch(() => undefined);
+      await this.deps.workflowInstances
+        .setStatus(workflowInstanceId, "failed", { completedAt: new Date() })
+        .catch(() => undefined);
+    }
   }
 
   async getWorkflowInstance(workflowInstanceId: string): Promise<WorkflowInstance | null> {

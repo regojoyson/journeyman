@@ -12,4 +12,7 @@ describe("isTerminalStatus", () => {
     expect(isTerminalStatus("running")).toBe(false);
     expect(isTerminalStatus("paused")).toBe(false);
   });
+  it("treats provisioning as non-terminal", () => {
+    expect(isTerminalStatus("provisioning")).toBe(false);
+  });
 });

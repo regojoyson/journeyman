@@ -78,3 +78,6 @@ export { PostgresWebhookStore } from "./stores/postgres/postgres-webhook-store.t
 export { MemoryWebhookStore } from "./stores/memory/memory-webhook-store.ts";
 export { MemoryWorkflowTriggerStore } from "./stores/memory/memory-workflow-trigger-store.ts";
 export { PostgresWorkflowTriggerStore } from "./stores/postgres/postgres-workflow-trigger-store.ts";
+export { ProvisioningReaper } from "./sandbox/provisioning-reaper.ts";
+export type { ProvisioningReaperDeps } from "./sandbox/provisioning-reaper.ts";
+export { findStuckProvisioningRuns } from "./stores/postgres/provisioning-queries.ts";

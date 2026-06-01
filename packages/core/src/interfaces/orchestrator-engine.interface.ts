@@ -23,7 +23,7 @@ export interface SubmitWorkflowInstanceArgs {
 
 export interface IOrchestratorEngine {
   /** Hand a workflow to the engine. Returns the persisted WorkflowInstance id. */
-  submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string }>;
+  submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string | null }>;
   /** Fetch current state. */
   getWorkflowInstance(workflowInstanceId: string): Promise<WorkflowInstance | null>;
   /** Best-effort cancel. */
