@@ -34,7 +34,7 @@ Resource limits and network controls are secondary but included as optional, def
 1. **Worker** entity + types + management CRUD/UI + workflow association + run-start resolution.
 2. `IExecutionEnvironment` interface + types in `@journeyman/core`; pluggable **type registry**.
 3. New package `@journeyman/workers`: `LocalExecutionEnvironment` (passthrough default) + `DockerExecutionEnvironment` (per-instance, push), the type registry, sandbox tracking, reaper.
-4. Base **runner bundle/image** (Node + Claude Agent SDK + bundled `@journeyman/coding-cli` + `journeyman-runner`), versioned with releases.
+4. Base **runner bundle/image** — Node + Claude Agent SDK + bundled `@journeyman/coding-cli` + `journeyman-runner` **plus a curated baseline toolset (`git` + CA certs + `ssh` now; extensible later)** — versioned with releases.
 5. **Runner entrypoint** in `coding-cli` — operations runnable in-process *or* via stdin/stdout.
 6. Docker image handling: prebuilt ref **or** Dockerfile with auto-wrap + build/cache.
 7. Worker harness/orchestrator wiring: provision, `requiresWorkspace` exec routing, per-exec secret injection, teardown.
@@ -230,9 +230,11 @@ Per custom phase: harness `docker exec`s the runner → runner runs `query()` + 
 ```dockerfile
 # ── appended by Journeyman; user never writes this ──
 COPY --from=journeyman/runner-bundle:<version> /opt/journeyman /opt/journeyman
-ENV PATH=/opt/journeyman/bin:$PATH
+# runner bin prepended (always resolves); baseline tools (git/ssh/certs) appended (base's own win, these are fallback)
+ENV PATH=/opt/journeyman/bin:$PATH:/opt/journeyman/tools
 ```
 - The bundle carries its **own Node + SDK + `journeyman-runner`** under `/opt/journeyman`, so the user's base needs no Node.
+- **It also carries a curated baseline toolset** that coding requires, so it's present in *every* worker container regardless of base image: **`git`, CA certificates, and `ssh`** to start (git can't clone over HTTPS/SSH without certs + ssh). This list is **versioned with the bundle and extensible** — more defaults can be added later without changing user Dockerfiles. The user's base may still bring its own/newer `git`; PATH is ordered so the base's tools win and the bundled ones are the fallback, guaranteeing availability.
 - Appended **last**, so user layers aren't clobbered; the user's `CMD`/`ENTRYPOINT` is irrelevant (container runs idle; we `docker exec`).
 - **glibc/musl + arch:** the bundle ships in flavors; the builder detects the base's libc/arch and copies the matching one. Unsupported base → build fails with a clear message.
 - **Skip-injection:** if the Dockerfile already `FROM journeyman/runner-base`, detection skips double-injection.
