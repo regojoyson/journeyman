@@ -657,6 +657,12 @@ class ConvertCtx {
         raw: "${" + joinRef + ".output}",
         mode,
         branchTaskRefs,
+        // Carry the run-context meta like emitStep so the worker harness records
+        // events against the Journeyman instance id (not the Conductor id).
+        workflowInstanceId: "${workflow.input.workflowInstanceId}",
+        startedByUserId: "${workflow.input.startedByUserId}",
+        startedByOrgId: "${workflow.input.startedByOrgId}",
+        workflowId: "${workflow.input.workflowId}",
       },
     };
     return { tasks: [join, finalize], nextNodeId: this.successor(node.id) };
