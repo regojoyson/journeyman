@@ -7,6 +7,7 @@ import { createLogger } from "@journeyman/core";
 import { WorkflowInstanceSyncer } from "@journeyman/orchestrator";
 import { buildComposition } from "./composition.ts";
 import { buildServer } from "./server.ts";
+import { reconcileWorkflowInstance } from "./services/engine-reconciler.ts";
 
 const log = createLogger("api-server:cli");
 
@@ -49,6 +50,7 @@ const syncer = new WorkflowInstanceSyncer({
   orchestrator: composition.orchestrator,
   events: composition.events,
   intervalMs: Number(process.env.RUN_SYNC_INTERVAL_MS ?? 1500),
+  reconcilePaused: (id) => reconcileWorkflowInstance(composition, id).then(() => undefined),
 });
 syncer.start();
 composition.webhookWaitSweeper.start();

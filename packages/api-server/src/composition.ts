@@ -9,6 +9,12 @@
 // the boundaries are wrong (see spec §12 "Architectural exit criterion").
 
 import { Pool } from "pg";
+import {
+  resolveWorker, recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
+  DockerExecutionEnvironment, makeProcessCommandRunner, dockerSpecFromConfig,
+  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
+} from "@journeyman/workers";
+import { isTerminalStatus } from "@journeyman/core";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
@@ -77,6 +83,8 @@ export interface Composition {
   conditions: IConditionEvaluator;
   /** The pg Pool (null when using the memory backend). */
   pool: Pool | null;
+  /** Deps for the manual sandbox-cleanup routes (null when no pool). */
+  sandboxRoutesDeps?: SandboxRoutesDeps;
   /** Closed when the server shuts down. */
   shutdown: () => Promise<void>;
 }
@@ -137,12 +145,70 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const humanTaskTimeouts: HumanTaskTimeoutService = new InMemoryHumanTaskTimeoutService();
 
   const conductorClient = new ConductorClient({ baseUrl: cfg.conductorBaseUrl });
+
+  // Sandbox provision/teardown — active only when a pg pool exists. A `local`
+  // worker (the default) is a no-op, preserving today's in-process behavior.
+  const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
+  const dockerCmd = makeProcessCommandRunner("docker");
+
+  const dockerDestroy = async (sb: SandboxRecord): Promise<void> => {
+    const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
+    await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
+  };
+  const isRunActive = async (runId: string): Promise<boolean> => {
+    const inst = await workflowInstances.getById(runId).catch(() => null);
+    return !!inst && !isTerminalStatus(inst.status);
+  };
+  const logRun = (workflowInstanceId: string, line: string) =>
+    events.append({ workflowInstanceId, eventType: "step.log", payload: { line } }).catch(() => undefined);
+
+  const sandboxProvisioner = pool
+    ? async (a: { workflowInstanceId: string; workerId?: string; userId: string | null; orgId: string | null }) => {
+        if (!a.userId || !a.orgId) return;
+        const worker = await resolveWorker(pool!, { orgId: a.orgId, userId: a.userId }, a.workerId);
+        if (worker.type === "local") return;
+        if (worker.type !== "docker") return; // other types: later plans
+        await logRun(a.workflowInstanceId, `Provisioning ${worker.type} sandbox…`);
+        const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
+        const spec = dockerSpecFromConfig((worker.config as Record<string, unknown>) ?? {}, RUNNER_IMAGE);
+        const provisioned = await env.provision(a.workflowInstanceId, spec);
+        await recordSandbox(pool!, {
+          runId: a.workflowInstanceId, type: "docker", handle: provisioned.handle,
+          volume: provisioned.volume ?? null, imageRef: spec.imageRef ?? null, owner: a.orgId,
+        });
+        await logRun(a.workflowInstanceId, `Sandbox ready (image ${spec.imageRef})`);
+      }
+    : undefined;
+  const sandboxReaper = pool
+    ? async (workflowInstanceId: string) => {
+        const sb = await getSandbox(pool!, workflowInstanceId);
+        if (!sb || sb.status !== "active" || sb.type !== "docker") return;
+        await dockerDestroy(sb);
+        await markSandboxDestroyed(pool!, workflowInstanceId);
+        await logRun(workflowInstanceId, "Sandbox destroyed");
+      }
+    : undefined;
+
+  const sandboxRoutesDeps: SandboxRoutesDeps | undefined = pool ? { destroy: dockerDestroy, isRunActive } : undefined;
+  let reaperStop: (() => void) | undefined;
+  if (pool) {
+    const reaper = new SandboxReaper({
+      listActive: () => listActiveSandboxes(pool!),
+      isRunActive,
+      destroy: dockerDestroy,
+      markDestroyed: (id) => markSandboxDestroyed(pool!, id),
+    });
+    reaperStop = reaper.start(Number(process.env.SANDBOX_REAP_INTERVAL_MS ?? 60_000));
+  }
+
   const orchestrator = new ConductorOrchestrator({
     client: conductorClient,
     converter: new ConductorJsonConverter(),
     workflowInstances,
     workflowInstanceGrants,
     events,
+    ...(sandboxProvisioner ? { sandboxProvisioner } : {}),
+    ...(sandboxReaper ? { sandboxReaper } : {}),
   });
 
   const registry = new InMemoryStepRegistry();
@@ -160,9 +226,10 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, workspace, auth, conditions,
     pool,
+    ...(sandboxRoutesDeps ? { sandboxRoutesDeps } : {}),
     // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.
     webhookWaitSweeper: null as unknown as WebhookWaitSweeper,
-    shutdown: async () => { if (pool) await pool.end(); },
+    shutdown: async () => { reaperStop?.(); if (pool) await pool.end(); },
   };
 
   const maxAgeStr = (process.env.JOURNEYMAN_WEBHOOK_WAIT_MAX_AGE ?? "30d").trim();

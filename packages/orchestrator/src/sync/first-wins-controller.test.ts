@@ -92,4 +92,26 @@ describe("applyFirstWinsCancellation", () => {
     expect(cancelled).toContain("webhook-wait_pbfs1v");
     expect(completed.map(c => c.taskId)).toContain("ww");
   });
+
+  it("uses preloaded tasks and skips the extra getWorkflowWithTasks fetch", async () => {
+    const tasks = [
+      { taskId: "ht", taskType: "HUMAN", referenceTaskName: "human-task_vy3p35", status: "COMPLETED", inputData: {} },
+      { taskId: "ww", taskType: "HUMAN", referenceTaskName: "webhook-wait_pbfs1v", status: "IN_PROGRESS", inputData: {} },
+      {
+        taskId: "join-id", taskType: "JOIN", referenceTaskName: "join_8a8gat", status: "IN_PROGRESS",
+        inputData: { joinOn: ["webhook-wait_pbfs1v", "human-task_vy3p35"] },
+        workflowTask: { type: "JOIN", joinOn: ["webhook-wait_pbfs1v", "human-task_vy3p35"],
+          inputParameters: { mode: "first-wins", branchTaskRefs: [["webhook-wait_pbfs1v"], ["human-task_vy3p35"]] } },
+      },
+    ];
+    const completed: Array<{ taskId: string }> = [];
+    const client = {
+      getWorkflowWithTasks: () => { throw new Error("should not fetch"); },
+      completeTask: async (b: { taskId: string }) => { completed.push({ taskId: b.taskId }); },
+    } as never;
+
+    const { cancelled } = await applyFirstWinsCancellation(client, "wf", { tasks: tasks as never });
+    expect(cancelled).toContain("webhook-wait_pbfs1v");
+    expect(completed.map(c => c.taskId)).toContain("ww");
+  });
 });

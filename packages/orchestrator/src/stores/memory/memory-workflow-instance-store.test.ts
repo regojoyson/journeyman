@@ -78,24 +78,29 @@ describe("MemoryNodeExecutionStore.listOverAgePausedNodeExecutions", () => {
     vi.useRealTimers();
   });
 
-  it("returns only waiting executions on paused instances older than maxAgeMs", async () => {
+  it("returns over-age waiting executions on non-terminal instances (excludes terminal)", async () => {
     seedInstance(instances, "inst-old", "paused");
     seedExec(execs, "exec-old", "inst-old", "waiting", now - 7_200_000); // 2h ago
 
     seedInstance(instances, "inst-new", "paused");
-    seedExec(execs, "exec-new", "inst-new", "waiting", now - 600_000); // 10m ago
+    seedExec(execs, "exec-new", "inst-new", "waiting", now - 600_000); // 10m ago — too new
 
-    // completed node on a paused instance — must be excluded
+    // completed node (not waiting) — must be excluded
     seedInstance(instances, "inst-done", "paused");
     seedExec(execs, "exec-done", "inst-done", "completed", now - 7_200_000);
 
-    // waiting node on a non-paused instance — must be excluded
+    // waiting node on a RUNNING instance — now INCLUDED: status is derived, so a
+    // wait can be outstanding on a `running`-labelled instance.
     seedInstance(instances, "inst-running", "running");
     seedExec(execs, "exec-running", "inst-running", "waiting", now - 7_200_000);
 
+    // waiting node on a COMPLETED (terminal) instance — must be excluded
+    seedInstance(instances, "inst-terminal", "completed");
+    seedExec(execs, "exec-terminal", "inst-terminal", "waiting", now - 7_200_000);
+
     const result = await execs.listOverAgePausedNodeExecutions(3_600_000, 100);
 
-    expect(result.map(r => r.id)).toEqual(["exec-old"]);
+    expect(result.map(r => r.id).sort()).toEqual(["exec-old", "exec-running"]);
   });
 
   it("honours the limit", async () => {

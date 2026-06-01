@@ -1,3 +1,5 @@
+import type { ExecOp, ExecResult } from "./execution-environment.types.ts";
+
 export type StepInput = Record<string, unknown>;
 export type StepOutput = Record<string, unknown>;
 
@@ -29,6 +31,11 @@ export interface StepContext {
   workflowInputs: Record<string, unknown>;
   /** Append a step.log event for live UI streaming. */
   log(line: string, meta?: Record<string, unknown>): void;
+  /**
+   * Present only for sandboxed runs (non-local worker) on workspace-touching steps.
+   * Forwards an operation to the run's execution environment (container).
+   */
+  exec?: (op: ExecOp) => Promise<ExecResult>;
 }
 
 export type { OutputSchema } from "./shape.types.ts";

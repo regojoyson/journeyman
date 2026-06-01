@@ -89,6 +89,26 @@ export type {
 export type {
   IWorkspace, IWorkspaceProvider,
 } from "./interfaces/workspace-provider.interface.ts";
+export type {
+  WorkerType,
+  ExecutionMode,
+  Connectivity,
+  ExecutionEnvironmentSpec,
+  ProvisionedEnv,
+  ExecOp,
+  ExecResult,
+  OperationRunner,
+  IExecutionEnvironment,
+  ResolvedWorker,
+  ExecutionEnvironmentBackend,
+  IExecutionEnvironmentRegistry,
+} from "./types/execution-environment.types.ts";
+export type {
+  WorkerScope,
+  WorkerRecord,
+  CreateWorkerArgs,
+  UpdateWorkerArgs,
+} from "./types/worker.types.ts";
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
 export type { IWorkflowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";
@@ -155,6 +175,7 @@ export type {
   WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceEventType, WorkflowInstanceStatus, TriggerSource,
   NodeExecution, NodeExecutionStatus,
 } from "./types/workflow-instance.types.ts";
+export { isTerminalStatus, TERMINAL_STATUSES } from "./types/workflow-instance.types.ts";
 export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
 export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {

@@ -2,11 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { ConductorOrchestrator } from "./conductor-orchestrator.ts";
 
 /**
- * Regression: a workflow waiting on a HUMAN task (human-task / webhook-wait) is
- * `paused` in our model, but Conductor still reports the workflow as RUNNING
- * (we never call pauseWorkflow for HUMAN waits). The 1.5s syncer must NOT demote
- * such an instance back to `running` — doing so flaps the status and makes the
- * webhook matcher (WHERE wi.status='paused') unable to find the waiting node.
+ * A workflow waiting on a HUMAN task is `paused` in our model while Conductor
+ * still reports RUNNING. syncStatus must not overwrite the stored running/paused
+ * value when the engine is RUNNING — the paused/running distinction is owned by
+ * waiting-row derivation (recomputeWaitStatus). syncStatus only propagates
+ * terminal/PAUSED states and promotes a fresh `pending` instance.
  */
 function makeDeps(instanceStatus: string, conductorStatus: string) {
   const setStatus = vi.fn().mockResolvedValue(undefined);

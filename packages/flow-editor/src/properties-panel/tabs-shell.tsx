@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import type { TabVisibility } from "../step-definition.ts";
 
-export type TabId = "config" | "mcp" | "skills" | "requiredSecrets" | "retry" | "io";
+export type TabId = "config" | "mcp" | "skills" | "requiredSecrets" | "retry" | "io" | "worker";
 
 export interface TabsVisibility {
   config?: TabVisibility; // always shown effectively; declared for symmetry
@@ -11,6 +11,8 @@ export interface TabsVisibility {
   mcp: TabVisibility;
   skills: TabVisibility;
   retry: TabVisibility;
+  /** Optional — defaults to "shown" when omitted by a step definition. */
+  worker?: TabVisibility;
 }
 
 export interface TabRequiredFlags {
@@ -19,6 +21,7 @@ export interface TabRequiredFlags {
   mcp?: boolean;
   skills?: boolean;
   retry?: boolean;
+  worker?: boolean;
 }
 
 export interface TabShellProps {
@@ -36,11 +39,13 @@ const ALL_TABS: Array<{ id: TabId; label: string }> = [
   { id: "skills",          label: "Skills"           },
   { id: "requiredSecrets", label: "Required secrets" },
   { id: "retry",           label: "Retry"            },
+  { id: "worker",          label: "Worker"           },
   { id: "io",              label: "I/O"              },
 ];
 
 function visibilityOf(id: TabId, v: TabsVisibility): TabVisibility {
   if (id === "config") return "shown";
+  if (id === "worker") return v.worker ?? "shown";
   return v[id];
 }
 

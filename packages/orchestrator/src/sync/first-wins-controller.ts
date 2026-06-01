@@ -13,11 +13,12 @@ import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 export async function applyFirstWinsCancellation(
   conductor: ConductorClient,
   engineWorkflowId: string,
+  opts?: { tasks?: Awaited<ReturnType<ConductorClient["getWorkflowWithTasks"]>>["tasks"] },
 ): Promise<{ cancelled: string[] }> {
-  const wf = await conductor.getWorkflowWithTasks(engineWorkflowId);
+  const tasks = opts?.tasks ?? (await conductor.getWorkflowWithTasks(engineWorkflowId)).tasks;
   const cancelled: string[] = [];
 
-  const joins = (wf.tasks ?? []).filter(t =>
+  const joins = (tasks ?? []).filter(t =>
     t.taskType === "JOIN" && t.status === "IN_PROGRESS",
   );
 
@@ -48,7 +49,7 @@ export async function applyFirstWinsCancellation(
       [];
 
     const completedTerminals = new Set(
-      (wf.tasks ?? [])
+      (tasks ?? [])
         .filter(t => t.status === "COMPLETED" && joinOn.includes(t.referenceTaskName))
         .map(t => t.referenceTaskName),
     );
@@ -63,7 +64,7 @@ export async function applyFirstWinsCancellation(
     for (let i = 0; i < branches.length; i++) {
       if (i === winningBranchIdx) continue;
       for (const nodeId of branches[i]) {
-        const task = (wf.tasks ?? []).find(t => t.referenceTaskName === nodeId);
+        const task = (tasks ?? []).find(t => t.referenceTaskName === nodeId);
         if (!task) continue;
         if (task.status !== "IN_PROGRESS" && task.status !== "SCHEDULED") continue;
         try {

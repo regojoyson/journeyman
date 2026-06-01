@@ -5,3 +5,8 @@ export { OpenCodeProvider } from "./providers/opencode/index.ts";
 export type { OpenCodeProviderConfig } from "./providers/opencode/index.ts";
 export type { ICodingCLI } from "./interface.ts";
 export { PROVIDER_TOOL_MAPS, unsupportedTools, type ProviderId } from "./providers/tool-maps.ts";
+export { dispatchOperation } from "./runner/dispatch.ts";
+export { createCodingOperationRunner } from "./runner/operation-runner.ts";
+export type { CodingOperationRunnerDeps } from "./runner/operation-runner.ts";
+export { runRunnerCli } from "./runner/run-cli.ts";
+export type { RunnerRequest, RunnerResponse } from "./runner/runner-types.ts";

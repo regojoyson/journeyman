@@ -3,6 +3,7 @@ import type {
   ICodingCLI, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
+import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
 
 const log = createLogger("worker:checkout-repo");
 
@@ -18,6 +19,7 @@ const log = createLogger("worker:checkout-repo");
  */
 export class StartFeatureBranchStepHandler implements IStepHandler {
   readonly stepType = "start-feature-branch";
+  readonly requiresWorkspace = true;
 
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
@@ -57,7 +59,9 @@ export class StartFeatureBranchStepHandler implements IStepHandler {
         ? { id: (issueRaw as { id: string }).id, title: (issueRaw as { title: string }).title }
         : undefined;
 
-    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const coding = ctx.exec
+      ? new SandboxCodingProvider(ctx.exec)
+      : this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Checking out ${repos.length} repo(s)`);
     const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const result = await coding.checkoutRepo({

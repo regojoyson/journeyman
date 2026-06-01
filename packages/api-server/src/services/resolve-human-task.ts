@@ -1,4 +1,6 @@
 import type { Composition } from "../composition.ts";
+import { applyFirstWinsCancellation } from "@journeyman/orchestrator";
+import { recomputeWaitStatus } from "./recompute-wait-status.ts";
 
 /**
  * Resolution source for a paused node. `manual` and `timeout` apply to
@@ -128,9 +130,34 @@ export async function resolveHumanTask(c: Composition, input: ResolveHumanTaskIn
       status: "COMPLETED",
       outputData: output,
     });
+
+    // Event-driven first-wins cleanup: cancel the sibling branches of any
+    // first-wins join this node feeds, and clear their waiting rows so the
+    // derived status and the webhook matcher stay correct.
+    try {
+      const { cancelled } = await applyFirstWinsCancellation(
+        c.conductorClient, workflowInstance.engineWorkflowId,
+      );
+      for (const losingNodeId of cancelled) {
+        const loser = await c.nodeExecutions.latestForNode(input.workflowInstanceId, losingNodeId);
+        if (loser && loser.status === "waiting") {
+          await c.nodeExecutions.markSkipped(loser.id);
+          await c.events.append({
+            workflowInstanceId: input.workflowInstanceId,
+            nodeId: losingNodeId,
+            eventType: "node.resolved",
+            payload: { cancelled: true, cancelledBy: "first-wins" },
+          });
+        }
+      }
+    } catch {
+      // Best-effort — the backstop reconcile will finish cleanup if this throws.
+    }
   }
 
-  await c.workflowInstances.setStatus(input.workflowInstanceId, "running");
+  // Status is derived from remaining waiting rows: running if none, else stays
+  // paused (e.g. a wait-all join with another outstanding branch).
+  await recomputeWaitStatus(c, input.workflowInstanceId);
 }
 
 /**

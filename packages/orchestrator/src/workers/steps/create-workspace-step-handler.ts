@@ -2,6 +2,7 @@ import { createLogger } from "@journeyman/core";
 import type {
   ICodingCLI, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
+import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
 
 const log = createLogger("worker:create-workspace");
 
@@ -19,6 +20,7 @@ const log = createLogger("worker:create-workspace");
  */
 export class CreateWorkspaceStepHandler implements IStepHandler {
   readonly stepType = "create-workspace";
+  readonly requiresWorkspace = true;
 
   constructor(private deps: { coding: ProviderFactory<ICodingCLI>; baseDir: string }) {}
 
@@ -34,7 +36,9 @@ export class CreateWorkspaceStepHandler implements IStepHandler {
         },
       };
     }
-    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const coding = ctx.exec
+      ? new SandboxCodingProvider(ctx.exec)
+      : this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Creating workspace ${ref} under ${this.deps.baseDir}`);
     const result = await coding.createWorkspace({
       ref,

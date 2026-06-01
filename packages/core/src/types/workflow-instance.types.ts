@@ -9,6 +9,13 @@ export type WorkflowInstanceStatus =
   | "failed"
   | "cancelled";
 
+export const TERMINAL_STATUSES: readonly WorkflowInstanceStatus[] = ["completed", "failed", "cancelled"];
+
+/** True for completed/failed/cancelled — states the engine owns and derivation must not touch. */
+export function isTerminalStatus(status: WorkflowInstanceStatus): boolean {
+  return TERMINAL_STATUSES.includes(status);
+}
+
 export type TriggerSource = "manual" | "webhook" | "schedule" | "api" | "human";
 
 export interface WorkflowInstance {

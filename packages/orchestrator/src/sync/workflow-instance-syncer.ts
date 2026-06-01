@@ -11,6 +11,12 @@ export interface WorkflowInstanceSyncerDeps {
   orchestrator: IOrchestratorEngine;
   events: IEventBus;
   intervalMs?: number;
+  /**
+   * Backstop: reconcile a paused instance (cancel first-wins losers, clear
+   * waiting rows, recompute status). Injected by api-server since reconcile
+   * lives there. Optional so the orchestrator stays standalone.
+   */
+  reconcilePaused?: (workflowInstanceId: string) => Promise<void>;
 }
 
 const NON_TERMINAL: WorkflowInstanceStatus[] = ["pending", "running", "paused"];
@@ -46,11 +52,22 @@ export class WorkflowInstanceSyncer {
     const allActive = lists.flat();
     for (const instance of allActive) {
       const previous = instance.status;
+
+      if (previous === "paused" && this.deps.reconcilePaused) {
+        await this.deps.reconcilePaused(instance.id).catch((err) => {
+          log.warn({ workflowInstanceId: instance.id, err: err?.message }, "reconcilePaused failed");
+        });
+      }
+
       const live = await this.deps.orchestrator.syncStatus(instance.id).catch((err) => {
         log.warn({ workflowInstanceId: instance.id, err: err?.message }, "syncStatus failed");
         return null;
       });
       if (!live || live === previous) continue;
+
+      // A paused → running transition is a resume, not a fresh start; don't
+      // re-emit workflow_instance.started.
+      if (previous === "paused" && live === "running") continue;
 
       const eventType = mapStatusToEvent(live);
       if (eventType) {

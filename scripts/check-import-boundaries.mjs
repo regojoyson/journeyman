@@ -44,6 +44,7 @@ const PKG_LAYER = {
   "@journeyman/secrets": "backend",
   "@journeyman/migrations": "backend",
   "@journeyman/webhooks": "backend",
+  "@journeyman/workers": "backend",
 
   "@journeyman/core": "shared",
   "@journeyman/identity": "shared",

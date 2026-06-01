@@ -5,7 +5,7 @@ import type {
   IWorkflowInstanceStore, IWorkflowInstanceGrantsStore, WorkflowInstance, WorkflowInstanceStatus,
   SubmitWorkflowInstanceArgs,
 } from "@journeyman/core";
-import { createLogger, findManualTriggerNode, isTriggerNode } from "@journeyman/core";
+import { createLogger, findManualTriggerNode, isTriggerNode, isTerminalStatus } from "@journeyman/core";
 import type { ConductorClient } from "./conductor-client.ts";
 import { emitRoutingEvents } from "./emit-routing-events.ts";
 import { buildAttributeInputs } from "../../flow-json/attribute-inputs.ts";
@@ -29,6 +29,15 @@ export interface ConductorOrchestratorDeps {
   workflowInstances: IWorkflowInstanceStore;
   workflowInstanceGrants: IWorkflowInstanceGrantsStore;
   events: IEventBus;
+  /** Provisions a sandbox for a run at start; absent/no-op for local-only deployments. */
+  sandboxProvisioner?: (args: {
+    workflowInstanceId: string;
+    workerId?: string;
+    userId: string | null;
+    orgId: string | null;
+  }) => Promise<void>;
+  /** Tears down a run's sandbox when it reaches a terminal state. */
+  sandboxReaper?: (workflowInstanceId: string) => Promise<void>;
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
@@ -80,6 +89,19 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       });
     }
     if (grantsToWrite.length > 0) await this.deps.workflowInstanceGrants.createForInstance(instance.id, grantsToWrite);
+
+    // Provision the run's sandbox BEFORE Conductor dispatches any task, so the
+    // first workspace-touching step finds it. For a local worker this is a no-op.
+    // A non-local worker that fails to provision fails the run start (we must NOT
+    // silently fall back to host execution for a workflow that asked for isolation).
+    if (this.deps.sandboxProvisioner) {
+      await this.deps.sandboxProvisioner({
+        workflowInstanceId: instance.id,
+        workerId: args.definitionSnapshot.defaults?.workerId,
+        userId: args.startedByUserId ?? null,
+        orgId: args.startedByOrgId ?? null,
+      });
+    }
 
     const engineWorkflowId = await this.deps.client.startWorkflow({
       name: wfName,
@@ -164,14 +186,15 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     const live = await this.deps.client.getWorkflow(instance.engineWorkflowId);
     const mapped = mapConductorStatus(live.status);
 
-    // A workflow waiting on a HUMAN task (human-task / webhook-wait) is `paused`
-    // in our model, but Conductor still reports it as RUNNING — we never call
-    // pauseWorkflow for HUMAN waits. Never let the coarse Conductor status demote
-    // an intentionally-paused instance back to running: that flaps the status and
-    // makes the webhook matcher (findAllWaitingWithCorrelation, WHERE wi.status=
-    // 'paused') unable to route incoming events to the waiting node. The instance
-    // leaves `paused` only via an explicit resume (resolveHumanTask/retry) or a
-    // terminal Conductor status (completed/failed/cancelled), both handled below.
+    // The paused/running distinction for a live (engine-RUNNING) workflow is
+    // owned by waiting-row derivation (recomputeWaitStatus, run from
+    // resolveHumanTask and the reconcile backstop) — NOT by the coarse Conductor
+    // status, which reports RUNNING even while waiting on a HUMAN task. So when
+    // the engine reports RUNNING we never overwrite the stored running/paused
+    // value here; derivation sets it correctly and we just surface it. (A manual
+    // pause reports Conductor PAUSED and is handled by the terminal/paused block
+    // below.) Leaving a derived `paused` untouched keeps the webhook matcher
+    // able to find genuinely-waiting instances.
     if (instance.status === "paused" && mapped === "running") {
       return "paused";
     }
@@ -193,6 +216,9 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
         completedAt, durationMs,
         outputs: live.output,
       });
+      if (isTerminalStatus(mapped) && this.deps.sandboxReaper) {
+        await this.deps.sandboxReaper(workflowInstanceId).catch(() => undefined);
+      }
     }
     return mapped;
   }

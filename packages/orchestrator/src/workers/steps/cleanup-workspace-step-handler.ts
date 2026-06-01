@@ -1,10 +1,12 @@
 import { createLogger } from "@journeyman/core";
 import type { ICodingCLI, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory } from "@journeyman/core";
+import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
 
 const log = createLogger("worker:cleanup-repos");
 
 export class CleanupWorkspaceStepHandler implements IStepHandler {
   readonly stepType = "cleanup-workspace";
+  readonly requiresWorkspace = true;
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
@@ -12,7 +14,9 @@ export class CleanupWorkspaceStepHandler implements IStepHandler {
     if (!workspaceDir) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "cleanup-workspace requires `workspaceDir`", retryable: false } };
     }
-    const coding = this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const coding = ctx.exec
+      ? new SandboxCodingProvider(ctx.exec)
+      : this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Scanning workspace ${workspaceDir} before cleanup`);
     const scanResult = await coding.scanRepos({ parentDir: workspaceDir, sessionId: ctx.workflowInstanceId, signal: ctx.signal });
     if (scanResult?.error) {

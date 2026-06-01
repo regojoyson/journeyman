@@ -1,24 +1,23 @@
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 import { getClient } from "./client.ts";
 
-// Test external mode — does not actually start a daemon, just creates HTTP client
-{
-  const client = await getClient({
-    mode: "external",
-    baseUrl: "http://localhost:4096",
-    model: { providerID: "anthropic", modelID: "claude-sonnet-4-6" },
+// External mode does not start a daemon — it only constructs an HTTP client.
+describe("getClient (opencode, external mode)", () => {
+  it("returns an HTTP client with a session namespace", async () => {
+    const client = await getClient({
+      mode: "external",
+      baseUrl: "http://localhost:4096",
+      model: { providerID: "anthropic", modelID: "claude-sonnet-4-6" },
+    });
+    expect(client).toBeTruthy();
+    expect(typeof client.session).toBe("object");
   });
-  assert.ok(client, "client should be returned for external mode");
-  assert.ok(typeof client.session === "object", "client should have session namespace");
-}
 
-// Test external mode with default baseUrl
-{
-  const client = await getClient({
-    mode: "external",
-    model: { providerID: "openai", modelID: "gpt-4o" },
+  it("uses a default baseUrl when none is provided", async () => {
+    const client = await getClient({
+      mode: "external",
+      model: { providerID: "openai", modelID: "gpt-4o" },
+    });
+    expect(client).toBeTruthy();
   });
-  assert.ok(client, "client should be returned with default baseUrl");
-}
-
-console.log("getClient: all assertions passed");
+});

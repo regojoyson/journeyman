@@ -2,6 +2,7 @@ import { createLogger } from "@journeyman/core";
 import type {
   IGitProvider, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
+import { SandboxGitProvider } from "../../sandbox/sandbox-git-provider.ts";
 
 const log = createLogger("worker:clone-repos");
 
@@ -20,6 +21,7 @@ const log = createLogger("worker:clone-repos");
  */
 export class CloneReposStepHandler implements IStepHandler {
   readonly stepType = "clone-repos";
+  readonly requiresWorkspace = true;
 
   constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
@@ -43,7 +45,9 @@ export class CloneReposStepHandler implements IStepHandler {
       };
     }
 
-    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
+      ? new SandboxGitProvider(ctx.exec)
+      : this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
     ctx.log(`Cloning repo(s) into ${workspaceDir}`);
     const result = await git.cloneRepos({ repos, workspaceDir, branch, signal: ctx.signal });
     if (result?.error) {

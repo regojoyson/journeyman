@@ -4,6 +4,7 @@ import type {
   NodeExecution, WorkflowInstance, WorkflowInstanceStatus,
   ActorContext, WorkflowInstanceListScope,
 } from "@journeyman/core";
+import { isTerminalStatus } from "@journeyman/core";
 
 export class MemoryWorkflowInstanceStore implements IWorkflowInstanceStore {
   private rows = new Map<string, WorkflowInstance>();
@@ -163,12 +164,12 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
 
   async findAllWaitingWithCorrelation(): Promise<NodeExecution[]> {
     if (!this.instances) return [];
-    const pausedInstanceIds = new Set(
-      [...this.instances.allInstances()].filter(i => i.status === "paused").map(i => i.id),
+    const liveInstanceIds = new Set(
+      [...this.instances.allInstances()].filter(i => !isTerminalStatus(i.status)).map(i => i.id),
     );
     return [...this.rows.values()].filter(e =>
       e.status === "waiting"
-      && pausedInstanceIds.has(e.workflowInstanceId)
+      && liveInstanceIds.has(e.workflowInstanceId)
       && e.correlationValue != null,
     );
   }
@@ -177,6 +178,14 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
     const row = this.rows.get(executionId);
     if (!row) throw new Error(`node_execution ${executionId} not found`);
     const updated: NodeExecution = { ...row, status: "completed", completedAt: new Date(), output };
+    this.rows.set(executionId, updated);
+    return updated;
+  }
+
+  async markSkipped(executionId: string): Promise<NodeExecution> {
+    const row = this.rows.get(executionId);
+    if (!row) throw new Error(`node_execution ${executionId} not found`);
+    const updated: NodeExecution = { ...row, status: "skipped", completedAt: new Date() };
     this.rows.set(executionId, updated);
     return updated;
   }
@@ -198,13 +207,13 @@ export class MemoryNodeExecutionStore implements INodeExecutionStore {
   async listOverAgePausedNodeExecutions(maxAgeMs: number, limit: number): Promise<NodeExecution[]> {
     if (!this.instances) return [];
     const cutoff = Date.now() - maxAgeMs;
-    const pausedInstanceIds = new Set(
-      [...this.instances.allInstances()].filter(i => i.status === "paused").map(i => i.id),
+    const liveInstanceIds = new Set(
+      [...this.instances.allInstances()].filter(i => !isTerminalStatus(i.status)).map(i => i.id),
     );
     return [...this.rows.values()]
       .filter(e =>
         e.status === "waiting" &&
-        pausedInstanceIds.has(e.workflowInstanceId) &&
+        liveInstanceIds.has(e.workflowInstanceId) &&
         e.startedAt != null &&
         e.startedAt.getTime() < cutoff,
       )

@@ -296,7 +296,7 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
          FROM jm_node_executions ne
          JOIN jm_workflow_instances wi ON wi.id = ne.workflow_instance_id
         WHERE ne.status = 'waiting'
-          AND wi.status = 'paused'
+          AND wi.status NOT IN ('completed','failed','cancelled')
           AND ne.correlation_value IS NOT NULL`,
     );
     return rows.map(rowToExec);
@@ -308,6 +308,17 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
        SET status = 'completed', completed_at = now(), output = $2::jsonb
        WHERE id = $1 RETURNING *`,
       [executionId, JSON.stringify(output)],
+    );
+    if (rows.length === 0) throw new Error(`node_execution ${executionId} not found`);
+    return rowToExec(rows[0]);
+  }
+
+  async markSkipped(executionId: string): Promise<NodeExecution> {
+    const { rows } = await this.pool.query(
+      `UPDATE jm_node_executions
+       SET status = 'skipped', completed_at = now()
+       WHERE id = $1 RETURNING *`,
+      [executionId],
     );
     if (rows.length === 0) throw new Error(`node_execution ${executionId} not found`);
     return rowToExec(rows[0]);
@@ -339,7 +350,7 @@ export class PostgresNodeExecutionStore implements INodeExecutionStore {
        FROM jm_node_executions ne
        JOIN jm_workflow_instances wi ON wi.id = ne.workflow_instance_id
        WHERE ne.status = 'waiting'
-         AND wi.status = 'paused'
+         AND wi.status NOT IN ('completed','failed','cancelled')
          AND ne.started_at IS NOT NULL
          AND ne.started_at < now() - make_interval(secs => $1::numeric / 1000)
        ORDER BY ne.started_at ASC

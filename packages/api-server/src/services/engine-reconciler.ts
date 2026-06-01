@@ -1,6 +1,7 @@
 import type { Composition } from "../composition.ts";
 import type { HumanTaskNotifyConfig } from "@journeyman/core";
 import { applyFirstWinsCancellation } from "@journeyman/orchestrator";
+import { recomputeWaitStatus } from "./recompute-wait-status.ts";
 import { notifyOnHumanTaskPause } from "./notify-on-human-task-pause.ts";
 import { parseDurationMs } from "./parse-duration.ts";
 
@@ -108,14 +109,32 @@ export async function reconcileWorkflowInstance(c: Composition, workflowInstance
     pendingNodeIds.push(nodeId);
   }
 
-  if (humanInProgress.length > 0 && workflowInstance.status !== "paused") {
-    await c.workflowInstances.setStatus(workflowInstanceId, "paused");
-  }
-
+  // First-wins cleanup, reusing the tasks we already fetched (single round-trip).
   try {
-    await applyFirstWinsCancellation(c.conductorClient, workflowInstance.engineWorkflowId);
+    const { cancelled } = await applyFirstWinsCancellation(
+      c.conductorClient, workflowInstance.engineWorkflowId, { tasks: wf.tasks },
+    );
+    for (const losingNodeId of cancelled) {
+      const loser = await c.nodeExecutions.latestForNode(workflowInstanceId, losingNodeId);
+      if (loser && loser.status === "waiting") {
+        await c.nodeExecutions.markSkipped(loser.id);
+        await c.events.append({
+          workflowInstanceId, nodeId: losingNodeId,
+          eventType: "node.resolved",
+          payload: { cancelled: true, cancelledBy: "first-wins" },
+        });
+      }
+    }
   } catch {
     // Best-effort — never let cancellation failure break reconciliation.
+  }
+
+  // Derive paused/running from waiting rows. Only un-pause when the engine is
+  // actually RUNNING (so a manually-paused / PAUSED workflow is never resumed).
+  if (wf.status === "RUNNING") {
+    await recomputeWaitStatus(c, workflowInstanceId);
+  } else if (humanInProgress.length > 0 && workflowInstance.status !== "paused") {
+    await c.workflowInstances.setStatus(workflowInstanceId, "paused");
   }
 
   return { pendingNodeIds };

@@ -60,6 +60,8 @@ export interface INodeExecutionStore {
     correlation?: { eventPath: string; value: string } | null,
   ): Promise<NodeExecution>;
   markCompleted(executionId: string, output: Record<string, unknown>): Promise<NodeExecution>;
+  /** Flip a node execution to `skipped` (e.g. a cancelled first-wins loser). Clears it from waiting lookups. */
+  markSkipped(executionId: string): Promise<NodeExecution>;
   latestForNode(workflowInstanceId: string, nodeId: string): Promise<NodeExecution | null>;
   latestWaitingForInstance(workflowInstanceId: string): Promise<NodeExecution | null>;
   /** Lookup paused-instance waits whose recorded correlation_value matches. Used by the matcher. */

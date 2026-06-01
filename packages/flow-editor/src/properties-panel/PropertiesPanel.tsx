@@ -75,6 +75,7 @@ import type { McpCatalog } from "../types.ts";
 import { TabsShell, type TabId, type TabsVisibility } from "./tabs-shell.tsx";
 import { ConfigTab } from "./ConfigTab.tsx";
 import { McpToolsTab } from "./McpToolsTab.tsx";
+import { WorkerTab } from "./WorkerTab.tsx";
 import { SkillsTab } from "./SkillsTab.tsx";
 import { RequiredSecretsTab } from "./RequiredSecretsTab.tsx";
 import { RetryTab } from "./RetryTab.tsx";
@@ -131,6 +132,7 @@ const DEFAULT_VISIBILITY: TabsVisibility = {
   mcp:             "shown",
   skills:          "hidden",
   retry:           "shown",
+  worker:          "shown",
 };
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
@@ -214,6 +216,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           {effectiveActive === "skills"          && <SkillsTab          node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "requiredSecrets" && <RequiredSecretsTab flow={flow} node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "retry"           && <RetryTab           node={node} onChange={onChange} readOnly={readOnly} flowDefaults={flow.defaults} />}
+          {effectiveActive === "worker"          && <WorkerTab          node={node} orgId={orgId} onChange={onChange} readOnly={readOnly} />}
           {effectiveActive === "io"              && <IoTab              flow={flow} node={node} onChange={onChange} readOnly={readOnly} />}
         </TabsShell>
       ) : node.type === "loop" || node.type === "timer" || node.type === "human-task" || node.type === "webhook-wait" || node.type === "gateway-and" || node.type === "join" ? (

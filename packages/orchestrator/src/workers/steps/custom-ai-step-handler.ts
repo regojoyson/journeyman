@@ -15,6 +15,7 @@ import {
 import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
 import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
+import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
 
 const log = createLogger("worker:custom-ai");
 
@@ -28,6 +29,7 @@ type BindingResolver = (input: {
 
 export class CustomAiStepHandler implements IStepHandler {
   readonly stepType = "custom-ai";
+  readonly requiresWorkspace = true;
 
   constructor(private deps: { coding: CodingFactory; pool: Pool; bindingResolver: BindingResolver }) {}
 
@@ -149,7 +151,9 @@ export class CustomAiStepHandler implements IStepHandler {
           .join(", ") || "(none)"),
     );
 
-    const coding = this.deps.coding(provider, ctx.env);
+    const coding = ctx.exec
+      ? new SandboxCodingProvider(ctx.exec)
+      : this.deps.coding(provider, ctx.env);
 
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     const skills = Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;

@@ -8,6 +8,8 @@ import type {
   SecretBinding,
   ResolvedMcpInstance,
   ResolvedSkillPackage,
+  ExecOp,
+  ExecResult,
 } from "@journeyman/core";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
@@ -40,6 +42,9 @@ export interface WorkerHarnessDeps {
   }) => Promise<ResolvedSkillPackage[]>;
 
   modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
+
+  /** Resolves the active sandbox for a run into an exec fn. Returns null for local/no sandbox. */
+  sandboxResolver?: (workflowInstanceId: string) => Promise<((op: ExecOp) => Promise<ExecResult>) | null>;
 }
 
 export class WorkerHarness {
@@ -280,6 +285,11 @@ export class WorkerHarness {
       },
     });
 
+    let execFn: ((op: ExecOp) => Promise<ExecResult>) | undefined;
+    if (handler.requiresWorkspace && this.deps.sandboxResolver) {
+      execFn = (await this.deps.sandboxResolver(workflowInstanceId)) ?? undefined;
+    }
+
     try {
       const workflowInputs = ((stepInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
       const result = await handler.run(stepInput, {
@@ -294,6 +304,7 @@ export class WorkerHarness {
             workflowInstanceId, nodeId, eventType: "step.log", payload: { line, meta },
           }).catch(err => rlog.error({ err }, "log emit failed"));
         },
+        ...(execFn ? { exec: execFn } : {}),
       });
 
       if (result.kind === "success") {

@@ -3,6 +3,7 @@ import type { WebhookWaitConfig, WebhookWaitOutputField } from "@journeyman/core
 import { getByPath } from "./jsonpath.ts";
 import { resolveHumanTask } from "./resolve-human-task.ts";
 import { reconcileWorkflowInstance } from "./engine-reconciler.ts";
+import { isTerminalStatus } from "@journeyman/core";
 
 export interface WebhookEventInfo {
   id: string;
@@ -52,7 +53,7 @@ export async function matchAndResolveWebhookWaits(c: Composition, ev: WebhookEve
       // Reconcile in case Conductor advanced state since we last looked.
       await reconcileWorkflowInstance(c, exec.workflowInstanceId);
       const instance = await c.workflowInstances.getById(exec.workflowInstanceId);
-      if (!instance || instance.status !== "paused") continue;
+      if (!instance || isTerminalStatus(instance.status)) continue;
 
       const node = instance.definitionSnapshot.nodes.find(n => n.id === exec.nodeId);
       if (!node || node.type !== "webhook-wait") continue;

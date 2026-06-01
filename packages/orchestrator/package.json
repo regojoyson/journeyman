@@ -24,6 +24,7 @@
     "@journeyman/notification-provider": "*",
     "@journeyman/secrets": "*",
     "@journeyman/ticket-provider": "*",
+    "@journeyman/workers": "*",
     "json-logic-js": "^2.0.5",
     "pg": "^8.13.0",
     "yaml": "^2.8.3"

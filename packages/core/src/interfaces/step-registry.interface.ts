@@ -9,6 +9,8 @@ export interface IStepHandler {
   readonly stepType: string;
   /** JSON Schema describing this step's required `config` shape. */
   readonly configSchema?: unknown;
+  /** True ⇒ this step touches the run workspace and should run inside the run's sandbox when one exists. */
+  readonly requiresWorkspace?: boolean;
   run(input: StepInput, ctx: StepContext): Promise<StepRunResult>;
 }
 

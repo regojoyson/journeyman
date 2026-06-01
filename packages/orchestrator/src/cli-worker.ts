@@ -14,7 +14,9 @@ import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@jou
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
   ProviderFactory, SecretBinding,
+  ExecOp, ExecResult, ProvisionedEnv,
 } from "@journeyman/core";
+import { DockerExecutionEnvironment, makeProcessCommandRunner, getSandbox } from "@journeyman/workers";
 import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
@@ -75,6 +77,26 @@ const coding: ProviderFactory<ICodingCLI> = (key, env) => {
   }
 };
 const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
+
+// Sandbox routing: for runs whose worker provisioned a (non-local) container,
+// resolve an exec fn that docker-execs the run's runner. Returns null otherwise
+// (→ handlers run in-process exactly as before).
+const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
+const dockerCmd = makeProcessCommandRunner("docker");
+const sandboxResolver = async (
+  workflowInstanceId: string,
+): Promise<((op: ExecOp) => Promise<ExecResult>) | null> => {
+  if (!pool) return null;
+  const sb = await getSandbox(pool, workflowInstanceId);
+  if (!sb || sb.status !== "active" || sb.type !== "docker") return null;
+  const env = new DockerExecutionEnvironment({ docker: dockerCmd, defaultImage: RUNNER_IMAGE });
+  const provisioned: ProvisionedEnv = {
+    runId: sb.runId, type: "docker", handle: sb.handle,
+    volume: sb.volume ?? undefined, workspaceDir: "/workspace",
+  };
+  return (op: ExecOp) => env.exec(provisioned, op);
+};
+
 registry.register(new CreateWorkspaceStepHandler({ coding, baseDir: workspaceBaseDir }));
 registry.register(new StartFeatureBranchStepHandler({ coding }));
 registry.register(new ListWorkspaceFilesStepHandler({ coding }));
@@ -251,6 +273,7 @@ const harness = new WorkerHarness({
     const m = await findDefaultCodingModel(pool, provider);
     return m?.modelId;
   },
+  sandboxResolver,
 });
 
 log.info({ steps: registry.list().map(h => h.stepType) }, "worker starting");

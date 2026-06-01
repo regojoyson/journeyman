@@ -19,6 +19,7 @@
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
     "@journeyman/mcp": "*",
+    "@journeyman/workers": "*",
     "@journeyman/skills": "*",
     "@journeyman/coding-models": "*",
     "@journeyman/custom-steps": "*",
