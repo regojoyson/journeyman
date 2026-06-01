@@ -625,19 +625,41 @@ class ConvertCtx {
       return chain;
     });
 
+    // fail-fast exposes no join-level fields, so the native JOIN keeps the node
+    // id and no finalize task is needed. Field-bearing modes rename the native
+    // JOIN to an internal ref and add a `join-finalize` worker task that owns
+    // the node id, so downstream `join_<id>.output.*` refs resolve to the
+    // materialized {winner, output, results} shape.
+    if (mode === "fail-fast") {
+      const join: JoinTask = {
+        type: "JOIN",
+        name: `join_${node.id}`,
+        taskReferenceName: node.id,
+        joinOn,
+        inputParameters: { mode, branchTaskRefs, ...(cfg.description ? { description: cfg.description } : {}) },
+      };
+      return { tasks: [join], nextNodeId: this.successor(node.id) };
+    }
+
+    const joinRef = `${node.id}__join`;
     const join: JoinTask = {
       type: "JOIN",
       name: `join_${node.id}`,
-      taskReferenceName: node.id,
+      taskReferenceName: joinRef,
       joinOn,
+      inputParameters: { mode, branchTaskRefs, ...(cfg.description ? { description: cfg.description } : {}) },
+    };
+    const finalize: SimpleTask = {
+      type: "SIMPLE",
+      name: "join-finalize",
+      taskReferenceName: node.id,
       inputParameters: {
+        raw: "${" + joinRef + ".output}",
         mode,
         branchTaskRefs,
-        ...(cfg.description ? { description: cfg.description } : {}),
       },
     };
-
-    return { tasks: [join], nextNodeId: this.successor(node.id) };
+    return { tasks: [join, finalize], nextNodeId: this.successor(node.id) };
   }
 
   private findMatchingFork(joinId: string): string | null {

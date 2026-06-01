@@ -21,7 +21,11 @@ export function joinNodeOutputSchema(node: WorkflowNode): OutputSchema | null {
 
   const jsonObject: Shape = { type: "object", fields: {} };
   if (mode === "first-wins") {
-    return { winner: { type: "string" }, output: jsonObject, results: jsonObject };
+    return {
+      output: { type: "object", fields: {}, description: "The winning branch's result — use this for downstream data." },
+      winner: { type: "string", description: "Name of the branch that won (a label, not data)." },
+      results: { type: "object", fields: {}, description: "All branch results (winning entry only)." },
+    };
   }
   // wait-all / wait-all-strict
   return { results: jsonObject };

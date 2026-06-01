@@ -151,6 +151,6 @@ export function JoinConfigEditor({ flow, node, onChange, readOnly }: Props) {
 
 function outputShapeFor(mode: JoinMode): string {
   if (mode === "fail-fast") return "// no Join-level output; reference branch nodes by id, e.g. stepA.field";
-  if (mode === "first-wins") return JSON.stringify({ winner: "<branchHeadNodeId>", output: "<winning branch's last node output>" }, null, 2);
+  if (mode === "first-wins") return JSON.stringify({ output: "<winning branch's data — bind this>", winner: "<branch label, not data>" }, null, 2);
   return JSON.stringify({ results: { "<branchHeadNodeId>": { status: "success | error | cancelled", output: "<...>" } } }, null, 2);
 }

@@ -7,10 +7,11 @@ function joinNode(mode?: string): WorkflowNode {
 }
 
 describe("joinNodeOutputSchema", () => {
-  it("first-wins exposes winner + output + results", () => {
+  it("first-wins exposes output (first) + winner + results", () => {
     const s = joinNodeOutputSchema(joinNode("first-wins"));
-    expect(s && Object.keys(s)).toEqual(["winner", "output", "results"]);
-    expect(s!.winner).toEqual({ type: "string" });
+    expect(s && Object.keys(s)).toEqual(["output", "winner", "results"]);
+    expect(s!.winner.type).toBe("string");
+    expect(s!.output.type).toBe("object");
   });
 
   it("wait-all / wait-all-strict expose results only", () => {
@@ -23,7 +24,7 @@ describe("joinNodeOutputSchema", () => {
   });
 
   it("no mode defaults to first-wins (DEFAULT_JOIN_MODE)", () => {
-    expect(Object.keys(joinNodeOutputSchema(joinNode())!)).toEqual(["winner", "output", "results"]);
+    expect(Object.keys(joinNodeOutputSchema(joinNode())!)).toEqual(["output", "winner", "results"]);
   });
 
   it("returns null for non-join nodes", () => {
