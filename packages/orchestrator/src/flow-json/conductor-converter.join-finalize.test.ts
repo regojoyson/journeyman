@@ -51,6 +51,9 @@ describe("conductor-converter — join finalize", () => {
     expect(ip.raw).toBe("${join__join.output}");
     expect(ip.mode).toBe("first-wins");
     expect(ip.branchTaskRefs).toEqual([["a"], ["b"]]);
+    // Must carry the Journeyman instance id (like emitStep) so the worker
+    // records events against jm_workflow_instances, not the Conductor id.
+    expect(ip.workflowInstanceId).toBe("${workflow.input.workflowInstanceId}");
   });
 
   it("wait-all: also emits a join-finalize task", () => {
