@@ -9,6 +9,7 @@ export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
 export type * from "./types/coding-models.types.ts";
 export * from "./types/coding-tools.types.ts";
+export { parseRepoList } from "./parse-repo-list.ts";
 export type * from "./types/custom-steps.types.ts";
 export {
   CUSTOM_STEP_EXPORT_KIND,
@@ -102,6 +103,7 @@ export type {
   ResolvedWorker,
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
+  FileBundle,
 } from "./types/execution-environment.types.ts";
 export type {
   WorkerScope,

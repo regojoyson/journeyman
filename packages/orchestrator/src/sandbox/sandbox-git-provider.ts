@@ -1,3 +1,4 @@
+import { parseRepoList } from "@journeyman/core";
 import type {
   CloneReposOptions, CloneReposResult, CloneResult, ExecOp, ExecResult, IGitProvider,
 } from "@journeyman/core";
@@ -5,13 +6,15 @@ import type {
 type ExecFn = (op: ExecOp) => Promise<ExecResult>;
 
 function toUrls(repos: unknown): string[] {
-  if (typeof repos === "string") {
-    return repos.includes(",") ? repos.split(",").map((s) => s.trim()).filter(Boolean) : [repos];
+  if (typeof repos === "string" || (Array.isArray(repos) && repos.every((r) => typeof r === "string"))) {
+    return parseRepoList(repos as string | string[]);
   }
   if (Array.isArray(repos)) {
     return repos
       .map((r) => (typeof r === "string" ? r : (r as { url?: string })?.url))
-      .filter((u): u is string => typeof u === "string");
+      .filter((u): u is string => typeof u === "string")
+      .map((u) => u.trim())
+      .filter((u) => u.length > 0);
   }
   return [];
 }

@@ -43,16 +43,13 @@ export {
 } from "./stores/human-task-resolution-store.ts";
 export { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
 export { MapProviderResolver, ProviderNotImplementedError } from "./registry/map-provider-resolver.ts";
-export { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";
 export { JsonLogicEvaluator } from "./conditions/jsonlogic-evaluator.ts";
 export { WorkerHarness } from "./workers/worker-harness.ts";
-export { CreateWorkspaceStepHandler } from "./workers/steps/create-workspace-step-handler.ts";
 export { StartFeatureBranchStepHandler } from "./workers/steps/start-feature-branch-step-handler.ts";
 export { CloneReposStepHandler } from "./workers/steps/clone-repos-step-handler.ts";
 export { GetIssueStepHandler } from "./workers/steps/get-issue-step-handler.ts";
 export { TransitionIssueStepHandler } from "./workers/steps/transition-issue-step-handler.ts";
 export { ListWorkspaceFilesStepHandler } from "./workers/steps/list-workspace-files-step-handler.ts";
-export { CleanupWorkspaceStepHandler } from "./workers/steps/cleanup-workspace-step-handler.ts";
 export { GetRepositoryStepHandler } from "./workers/steps/get-repository-step-handler.ts";
 export { OpenPullRequestStepHandler } from "./workers/steps/open-pull-request-step-handler.ts";
 export { ListPullRequestsStepHandler } from "./workers/steps/list-pull-requests-step-handler.ts";

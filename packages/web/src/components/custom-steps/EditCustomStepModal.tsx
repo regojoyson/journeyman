@@ -4,7 +4,6 @@ import type {
   CustomStepOutputMode, CustomStepOutputField,
   CanonicalTool, SecretSlotDef,
 } from "@journeyman/core";
-import { toolsRequireWorkspace } from "@journeyman/core";
 import {
   FileText, ListChecks, Send, Wrench, KeyRound, Sparkles, X, AlertTriangle,
 } from "lucide-react";
@@ -45,34 +44,12 @@ export function EditCustomStepModal(props: {
   const [slots, setSlots] = useState<SecretSlotDef[]>(initial?.slots ?? []);
   const [requiresSkills, setRequiresSkills] = useState<boolean>(initial?.requiresSkills ?? false);
   const [requiresMcp, setRequiresMcp] = useState<boolean>(initial?.requiresMcp ?? false);
-  const [pendingTools, setPendingTools] = useState<CanonicalTool[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("definition");
 
   const handleToolsChange = (next: CanonicalTool[]) => {
-    const becomingWorkspace = !toolsRequireWorkspace(defaultTools) && toolsRequireWorkspace(next);
-    const hasWorkspaceField = inputFields.some((f) => f.name === "workspaceDir");
-    if (becomingWorkspace && !hasWorkspaceField) {
-      setPendingTools(next);
-      return;
-    }
     setDefaultTools(next);
-  };
-
-  const confirmAddWorkspaceInput = () => {
-    if (!pendingTools) return;
-    setInputFields((prev) => [
-      ...prev,
-      {
-        name: "workspaceDir",
-        type: "workspaceDir",
-        required: true,
-        description: "Working directory for shell/file tools",
-      },
-    ]);
-    setDefaultTools(pendingTools);
-    setPendingTools(null);
   };
 
   const submit = async () => {
@@ -273,15 +250,9 @@ export function EditCustomStepModal(props: {
               <section className="space-y-4">
                 <SectionHeader
                   title="Tools"
-                  hint="Pick the canonical tools the step prompt may use. Workspace tools require a workspaceDir input."
+                  hint="Pick the canonical tools the step prompt may use."
                 />
                 <ToolsPicker value={defaultTools} onChange={handleToolsChange} />
-                {toolsRequireWorkspace(defaultTools) && (
-                  <p className="text-[11px] text-slate-400">
-                    A workspace tool is selected — flows using this step must wire a{" "}
-                    <code className="text-indigo-300">workspaceDir</code> input.
-                  </p>
-                )}
               </section>
             )}
 
@@ -345,27 +316,6 @@ export function EditCustomStepModal(props: {
         </footer>
       </div>
 
-      {pendingTools !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-semibold text-slate-100">Add required workspaceDir input?</h3>
-            <p className="text-sm text-slate-300">
-              These tools need a workspace (bash, read-file, write-file, edit-file, search).
-              Add a required <code className="text-indigo-300">workspaceDir</code> input to this
-              step? Flows using this step will then need to wire it from an upstream{" "}
-              <em>Create Workspace</em> (or similar) node.
-            </p>
-            <footer className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button type="button" className={btnGhost} onClick={() => setPendingTools(null)}>
-                Cancel
-              </button>
-              <button type="button" className={btnPrimary} onClick={confirmAddWorkspaceInput}>
-                Add workspaceDir input
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

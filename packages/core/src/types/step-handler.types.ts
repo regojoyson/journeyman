@@ -36,6 +36,8 @@ export interface StepContext {
    * Forwards an operation to the run's execution environment (container).
    */
   exec?: (op: ExecOp) => Promise<ExecResult>;
+  /** Present on sandboxed/workspace runs — deliver files into the workspace (replace destDir). */
+  materialize?: (destDir: string, bundle: import("./execution-environment.types.ts").FileBundle) => Promise<void>;
 }
 
 export type { OutputSchema } from "./shape.types.ts";

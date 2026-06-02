@@ -1,9 +1,12 @@
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { extract } from "tar";
 import type {
   ExecOp,
   ExecResult,
   ExecutionEnvironmentSpec,
+  FileBundle,
   IExecutionEnvironment,
   OperationRunner,
   ProvisionedEnv,
@@ -42,5 +45,32 @@ export class LocalExecutionEnvironment implements IExecutionEnvironment {
 
   async list(): Promise<ProvisionedEnv[]> {
     return [];
+  }
+
+  async materialize(env: ProvisionedEnv, destDir: string, bundle: FileBundle): Promise<void> {
+    // Resolve destDir to an absolute path on the local filesystem.
+    // If it's already an absolute sub-path of workspaceDir, use it directly.
+    // If it starts with /workspace (container convention), replace that prefix.
+    // Otherwise join relative to workspaceDir.
+    let abs: string;
+    if (destDir.startsWith(env.workspaceDir)) {
+      abs = destDir;
+    } else if (destDir.startsWith("/workspace")) {
+      abs = join(env.workspaceDir, destDir.replace(/^\/workspace\/?/, ""));
+    } else {
+      abs = join(env.workspaceDir, destDir.replace(/^\//, ""));
+    }
+    await rm(abs, { recursive: true, force: true });
+    await mkdir(abs, { recursive: true });
+    // Skip extraction for an empty bundle (nothing to write).
+    const isEmpty = bundle.tar instanceof Buffer && bundle.tar.length === 0;
+    if (isEmpty) return;
+    await new Promise<void>((resolve, reject) => {
+      const src: Readable =
+        bundle.tar instanceof Buffer
+          ? (Readable.from(bundle.tar as Iterable<number>) as Readable)
+          : (bundle.tar as Readable);
+      src.pipe(extract({ cwd: abs })).on("finish", resolve).on("error", reject);
+    });
   }
 }

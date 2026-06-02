@@ -10,10 +10,7 @@ export class ListWorkspaceFilesStepHandler implements IStepHandler {
   constructor(private deps: { coding: ProviderFactory<ICodingCLI> }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
-    const workspaceDir = typeof input.workspaceDir === "string" ? input.workspaceDir : undefined;
-    if (!workspaceDir) {
-      return { kind: "failure", failure: { errorClass: "InvalidInput", message: "list-workspace-files requires `workspaceDir`", retryable: false } };
-    }
+    const workspaceDir = ctx.workspaceDir;
     const coding = ctx.exec
       ? new SandboxCodingProvider(ctx.exec)
       : this.deps.coding(typeof input.provider === "string" ? input.provider : undefined, ctx.env);

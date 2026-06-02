@@ -47,14 +47,6 @@ export async function dispatchOperation(
       const r = await provider.checkoutRepo(base as Parameters<ICodingCLI["checkoutRepo"]>[0]);
       return r.error ? { ok: false, error: r.error } : { ok: true, structured: r };
     }
-    case "cleanup-repos": {
-      const r = await provider.cleanupRepos(base as Parameters<ICodingCLI["cleanupRepos"]>[0]);
-      return r.error ? { ok: false, error: r.error } : { ok: true, structured: r };
-    }
-    case "create-workspace": {
-      const r = await provider.createWorkspace(base as Parameters<ICodingCLI["createWorkspace"]>[0]);
-      return r.error ? { ok: false, error: r.error } : { ok: true, structured: r };
-    }
     case "clone": {
       const url = String((opts as { repoUrl?: string; url?: string }).repoUrl ?? (opts as { url?: string }).url ?? "");
       const dir = String((opts as { dir?: string }).dir ?? "repo");

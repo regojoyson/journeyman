@@ -4,13 +4,13 @@ import {
   type WorkflowLogCtx,
 } from "@journeyman/core";
 import type {
-  IEventBus, IStepRegistry, IWorkspaceProvider,
+  IEventBus, IStepRegistry,
   SecretBinding,
   ResolvedMcpInstance,
   ResolvedSkillPackage,
   ExecOp,
-  ExecResult,
 } from "@journeyman/core";
+import type { EnsureWorkspaceResult } from "../sandbox/ensure-workspace.ts";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
 import { startHeartbeat } from "./heartbeat.ts";
@@ -20,7 +20,6 @@ const baseLog = createLogger("orchestrator:worker");
 export interface WorkerHarnessDeps {
   client: ConductorClient;
   registry: IStepRegistry;
-  workspace: IWorkspaceProvider;
   events: IEventBus;
   workerId: string;
   pollIntervalMs?: number;
@@ -43,8 +42,16 @@ export interface WorkerHarnessDeps {
 
   modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
 
-  /** Resolves the active sandbox for a run into an exec fn. Returns null for local/no sandbox. */
-  sandboxResolver?: (workflowInstanceId: string) => Promise<((op: ExecOp) => Promise<ExecResult>) | null>;
+  /**
+   * Provision (or reconnect to) the per-run workspace on demand.
+   * Returns the execution environment + provisioned handle for this run.
+   */
+  ensureWorkspace: (args: {
+    runId: string;
+    workerId: string | undefined;
+    userId: string | null;
+    orgId: string | null;
+  }) => Promise<EnsureWorkspaceResult>;
 }
 
 export class WorkerHarness {
@@ -129,7 +136,6 @@ export class WorkerHarness {
 
     const userId = (stepInput as { startedByUserId?: string | null }).startedByUserId ?? null;
     const orgId = (stepInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
-    const ws = await this.deps.workspace.create({ workflowInstanceId, nodeId, userId });
     const abort = new AbortController();
 
     const workflowId = (stepInput as { workflowId?: string | null }).workflowId ?? null;
@@ -285,16 +291,38 @@ export class WorkerHarness {
       },
     });
 
-    let execFn: ((op: ExecOp) => Promise<ExecResult>) | undefined;
-    if (handler.requiresWorkspace && this.deps.sandboxResolver) {
-      execFn = (await this.deps.sandboxResolver(workflowInstanceId)) ?? undefined;
+    // Determine whether this step needs a workspace (static flag OR dynamic predicate).
+    const needsWorkspace =
+      handler.requiresWorkspace === true ||
+      (typeof handler.needsWorkspaceFor === "function" &&
+        (await handler.needsWorkspaceFor(stepInput)) === true);
+
+    let workspaceDir = "";
+    let execFn: ((op: ExecOp) => Promise<import("@journeyman/core").ExecResult>) | undefined;
+    let materializeFn: import("@journeyman/core").StepContext["materialize"];
+
+    if (needsWorkspace) {
+      const workerId = (stepInput as { workerId?: string }).workerId;
+      const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
+        runId: workflowInstanceId,
+        workerId,
+        userId,
+        orgId,
+      });
+      workspaceDir = provisioned.workspaceDir;
+      // Local runs: leave exec undefined — handlers run in-process.
+      // Non-local (docker, etc.): wire exec so operations go into the container.
+      if (provisioned.type !== "local") {
+        execFn = (op) => wsEnv.exec(provisioned, op);
+      }
+      materializeFn = (destDir, bundle) => wsEnv.materialize(provisioned, destDir, bundle);
     }
 
     try {
       const workflowInputs = ((stepInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
       const result = await handler.run(stepInput, {
         workflowInstanceId, nodeId, attempt: task.retryCount + 1,
-        workspaceDir: ws.path, signal: abort.signal,
+        workspaceDir, signal: abort.signal,
         env: resolvedEnv,
         workflowInputs,
         log: (line, meta) => {
@@ -305,6 +333,7 @@ export class WorkerHarness {
           }).catch(err => rlog.error({ err }, "log emit failed"));
         },
         ...(execFn ? { exec: execFn } : {}),
+        ...(materializeFn ? { materialize: materializeFn } : {}),
       });
 
       if (result.kind === "success") {
@@ -365,7 +394,6 @@ export class WorkerHarness {
       });
     } finally {
       stopHeartbeat();
-      await ws.destroy().catch(e => rlog.warn({ err: e }, "workspace destroy failed"));
     }
   }
 }

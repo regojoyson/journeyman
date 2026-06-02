@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * journeyman-runner — reads a RunnerRequest JSON on stdin, runs the operation
- * via the Claude provider, and writes a RunnerResponse JSON on stdout. SDK log
+ * via the selected provider, and writes a RunnerResponse JSON on stdout. SDK log
  * lines go to stderr. `--selftest` prints a fixed ok response without invoking
  * the SDK (used by the image smoke test; needs no API key).
  */
-import { ClaudeProvider } from "../index.ts";
+import { createCodingProvider } from "../index.ts";
 import { runRunnerCli } from "./run-cli.ts";
 
 async function readStdin(): Promise<string> {
@@ -20,9 +20,11 @@ async function main(): Promise<void> {
     return;
   }
   const input = await readStdin();
-  const provider = new ClaudeProvider({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const out = await runRunnerCli(input, provider, (line, meta) =>
-    process.stderr.write(JSON.stringify({ line, meta }) + "\n"));
+  const out = await runRunnerCli(
+    input,
+    (key) => createCodingProvider(key, { env: process.env as Record<string, string> }),
+    (line, meta) => process.stderr.write(JSON.stringify({ line, meta }) + "\n"),
+  );
   process.stdout.write(out);
 }
 

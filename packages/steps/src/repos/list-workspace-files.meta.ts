@@ -17,6 +17,5 @@ export const listWorkspaceFilesOutputSchema: OutputSchema = {
 };
 
 export const listWorkspaceFilesInputFields: InputFields = {
-  pattern:      { shape: { type: "string" }, label: "Pattern" },
-  workspaceDir: { shape: { type: "string" }, label: "Workspace dir", required: true, bindOnly: true },
+  pattern: { shape: { type: "string" }, label: "Pattern" },
 };

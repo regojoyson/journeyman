@@ -16,6 +16,7 @@ import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journe
 import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
+import { placeSkills } from "../skill-placement.ts";
 
 const log = createLogger("worker:custom-ai");
 
@@ -29,9 +30,23 @@ type BindingResolver = (input: {
 
 export class CustomAiStepHandler implements IStepHandler {
   readonly stepType = "custom-ai";
-  readonly requiresWorkspace = true;
+  // Workspace is demand-driven: needsWorkspaceFor() decides per invocation.
+  readonly requiresWorkspace = false;
 
   constructor(private deps: { coding: CodingFactory; pool: Pool; bindingResolver: BindingResolver }) {}
+
+  async needsWorkspaceFor(input: StepInput): Promise<boolean> {
+    const customStepId = typeof input.customStepId === "string" ? input.customStepId : undefined;
+    // Load the step from DB to check defaultTools (tools that might require workspace).
+    const step = customStepId ? await getCustomAiStep(this.deps.pool, customStepId) : null;
+    const effectiveTools: CanonicalTool[] = (
+      Array.isArray(input.tools) ? (input.tools as CanonicalTool[]) :
+      (step?.defaultTools ?? [])
+    );
+    const hasSkills = Array.isArray(input.skills) && (input.skills as unknown[]).length > 0;
+    const hasMcps = Array.isArray(input.mcps) && (input.mcps as unknown[]).length > 0;
+    return toolsRequireWorkspace(effectiveTools) || hasSkills || hasMcps;
+  }
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
     const customStepId = typeof input.customStepId === "string" ? input.customStepId : undefined;
@@ -79,21 +94,9 @@ export class CustomAiStepHandler implements IStepHandler {
     const effectiveTools: CanonicalTool[] = nodeTools ?? step.defaultTools ?? [];
     const needsWorkspace = toolsRequireWorkspace(effectiveTools);
 
-    const cwd = needsWorkspace
-      ? (typeof input.workspaceDir === "string" ? input.workspaceDir : undefined)
-      : undefined;
-    if (needsWorkspace && !cwd) {
-      return {
-        kind: "failure",
-        failure: {
-          errorClass: "InvalidInput",
-          message:
-            "Custom step selected workspace tools (bash/read-file/write-file/edit-file/search) " +
-            "but no workspaceDir input was wired",
-          retryable: false,
-        },
-      };
-    }
+    // ctx.workspaceDir is set by the harness when needsWorkspaceFor() returned true.
+    // For tool-less steps it will be "" — that's fine, cwd is only used when needsWorkspace.
+    const cwd = needsWorkspace && ctx.workspaceDir ? ctx.workspaceDir : undefined;
 
     const provider = typeof input.provider === "string"
       ? input.provider
@@ -107,6 +110,20 @@ export class CustomAiStepHandler implements IStepHandler {
       typeof input.startedByOrgId === "string" ? input.startedByOrgId : null;
     const workflowId =
       typeof input.workflowId === "string" ? input.workflowId : null;
+
+    const wantsContextResources =
+      (Array.isArray(input.skills) && (input.skills as unknown[]).length > 0) ||
+      (Array.isArray(input.mcps) && (input.mcps as unknown[]).length > 0);
+    if (wantsContextResources && (!userId || !orgId)) {
+      return {
+        kind: "failure",
+        failure: {
+          errorClass: "MissingContext",
+          message: "skills/MCP require user/org context on the run",
+          retryable: false,
+        },
+      };
+    }
 
     // Union DB-step slots with the executor provider's framework slots
     // (e.g. ANTHROPIC_API_KEY for coding-cli/claude). Custom-step slots win
@@ -152,12 +169,20 @@ export class CustomAiStepHandler implements IStepHandler {
     );
 
     const coding = ctx.exec
-      ? new SandboxCodingProvider(ctx.exec)
+      ? new SandboxCodingProvider(ctx.exec, provider)
       : this.deps.coding(provider, ctx.env);
 
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
-    const skills = Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;
+    let skills: ResolvedSkillPackage[] | undefined =
+      Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;
     const model = typeof input.model === "string" && input.model ? input.model : undefined;
+
+    // When running in a container (ctx.exec + ctx.materialize), deliver skills into the container
+    // and rewrite localPath to the in-container location. For local runs, skills load from the
+    // pantry path directly — no placement needed.
+    if (ctx.exec && ctx.materialize && skills && skills.length) {
+      skills = await placeSkills(provider, skills, { materialize: ctx.materialize });
+    }
 
     ctx.log(`Running custom step "${step.name}" (${step.outputMode})`);
 

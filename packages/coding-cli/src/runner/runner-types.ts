@@ -1,7 +1,9 @@
 /** Request piped to the runner (stdin) or passed to an in-process dispatch. */
 export interface RunnerRequest {
-  /** Operation id: "custom-prompt" | "scan-repos" | "checkout-repo" | "cleanup-repos" | "create-workspace". */
+  /** Operation id: "custom-prompt" | "scan-repos" | "checkout-repo". */
   op: string;
+  /** Coding provider key; runner builds the matching provider. Defaults to "claude". */
+  provider?: string;
   /** Operation options (the ICodingCLI method's options, minus functions). */
   opts?: Record<string, unknown>;
 }

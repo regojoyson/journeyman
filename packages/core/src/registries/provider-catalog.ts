@@ -75,8 +75,6 @@ export function defaultProviderForKind(kind: ExecutorKind): ProviderEntry | unde
  */
 export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
   // coding-cli
-  "cleanup-workspace":    "coding-cli",
-  "create-workspace":     "coding-cli",
   "custom-ai":            "coding-cli",
   "list-workspace-files": "coding-cli",
   "start-feature-branch": "coding-cli",

@@ -4,6 +4,14 @@
  * See docs/superpowers/specs/2026-05-30-workers-managed-compute-targets-design.md.
  */
 
+import type { Readable } from "node:stream";
+
+/** A streamable set of files to deliver into an environment (a tar stream/buffer). */
+export interface FileBundle {
+  /** tar stream or buffer whose entries are relative paths under the destination dir. */
+  tar: Readable | Buffer;
+}
+
 export type WorkerType =
   | "local"
   | "docker"
@@ -42,6 +50,8 @@ export interface ProvisionedEnv {
 export interface ExecOp {
   /** Operation id, e.g. "analyze" | "plan" | "implement" | "custom-prompt" | "clone". */
   op: string;
+  /** Coding provider key for this op (e.g. "claude"). Selects the SDK in the runner. */
+  provider?: string;
   /** JSON request payload for the operation. */
   stdin: unknown;
   /** Per-exec secrets, injected only for this call. */
@@ -74,6 +84,12 @@ export interface IExecutionEnvironment {
   exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult>;
   destroy(env: ProvisionedEnv): Promise<void>;
   list(filter?: { runId?: string; orphanedOnly?: boolean }): Promise<ProvisionedEnv[]>;
+  /**
+   * Replace the contents of `destDir` (inside the environment) with `bundle`.
+   * Implementations clear destDir first, then extract — so callers get exactly
+   * the bundled files (per-step skill staging relies on this).
+   */
+  materialize(env: ProvisionedEnv, destDir: string, bundle: FileBundle): Promise<void>;
 }
 
 /** A Worker record resolved to the fields a backend needs at run start. */

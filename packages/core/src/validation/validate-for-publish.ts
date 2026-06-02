@@ -2,7 +2,7 @@ import type { WorkflowGraph, WorkflowNode } from "../types/flow.types.ts";
 import type { SecretBinding } from "../types/flow.types.ts";
 import { findTriggerNodes, isTriggerNode } from "../types/flow.types.ts";
 import { isJsonLogicExpr } from "../types/flow-condition.types.ts";
-import { toolsRequireWorkspace, type CanonicalTool } from "../types/coding-tools.types.ts";
+import type { CanonicalTool } from "../types/coding-tools.types.ts";
 import { extractTemplateRefs } from "../utils/template-refs.ts";
 import { validateForkJoinPairs } from "./validate-fork-join-pairs.ts";
 
@@ -291,20 +291,6 @@ function pushNodeErrors(
     let effectiveTools: readonly CanonicalTool[] | undefined = nodeTools;
     if (!effectiveTools && typeof cfg.customStepId === "string" && ctx.customAiStepDefaults) {
       effectiveTools = ctx.customAiStepDefaults.get(cfg.customStepId)?.defaultTools;
-    }
-    if (effectiveTools && toolsRequireWorkspace(effectiveTools)) {
-      const inputs = node.inputs ?? {};
-      if (inputs.workspaceDir == null) {
-        errors.push({
-          code: "missing_config",
-          message:
-            "Custom step selected workspace tools (bash/read-file/write-file/edit-file/search) " +
-            "but no workspaceDir input is wired on this node",
-          nodeId: node.id,
-          nodeLabel: nodeLabelFor(node),
-          fieldPath: "inputs.workspaceDir",
-        });
-      }
     }
   }
 

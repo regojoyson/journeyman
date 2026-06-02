@@ -17,7 +17,6 @@ export const cloneReposOutputSchema: OutputSchema = {
 };
 
 export const cloneReposInputFields: InputFields = {
-  repos:        { shape: { type: "array", items: { type: "string" } }, label: "Repos", required: true },
-  workspaceDir: { shape: { type: "string" }, label: "Workspace directory", required: true, bindOnly: true },
-  branch:       { shape: { type: "string" }, label: "Branch" },
+  repos:  { shape: { type: "array", items: { type: "string" } }, label: "Repos", required: true },
+  branch: { shape: { type: "string" }, label: "Branch" },
 };

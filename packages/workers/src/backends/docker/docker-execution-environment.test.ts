@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { IDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
 
@@ -29,6 +29,7 @@ function fakeClient(over: {
     async listByLabel(k, v) { calls.list.push([k, v]); return over.list ?? []; },
     async imageExists() { return false; },
     async buildImage() { /* noop */ },
+    async putArchive() { /* noop */ },
   };
   return { client, calls };
 }
@@ -98,4 +99,20 @@ describe("DockerExecutionEnvironment", () => {
     expect(list.map((e) => e.runId).sort()).toEqual(["a", "b"]);
     expect(list.map((e) => e.handle).sort()).toEqual(["c1", "c2"]);
   });
+});
+
+it("materialize wipes destDir then putArchives", async () => {
+  const exec = vi.fn().mockResolvedValue({ stdout: "", exitCode: 0 });
+  const putArchive = vi.fn().mockResolvedValue(undefined);
+  const client = { exec, putArchive } as any;
+  const env = new DockerExecutionEnvironment({ client });
+  await env.materialize(
+    { runId: "r", type: "docker", handle: "c1", workspaceDir: "/workspace" } as any,
+    "/workspace/.journeyman/skills",
+    { tar: Buffer.from("x") },
+  );
+  expect(exec).toHaveBeenCalledWith("c1", expect.objectContaining({
+    cmd: expect.arrayContaining(["sh", "-c"]),
+  }));
+  expect(putArchive).toHaveBeenCalledWith("c1", expect.anything(), { path: "/workspace/.journeyman/skills" });
 });

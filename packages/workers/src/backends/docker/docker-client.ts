@@ -32,6 +32,7 @@ export interface IDockerClient {
   listByLabel(labelKey: string, labelValue?: string): Promise<Array<{ id: string; runId: string }>>;
   imageExists(tag: string): Promise<boolean>;
   buildImage(o: { contextDir: string; dockerfileName: string; tag: string }): Promise<void>;
+  putArchive(containerId: string, tar: import("node:stream").Readable | Buffer, opts: { path: string }): Promise<void>;
 }
 
 /** Parse a Docker host string into { host, port }. Scheme (tcp://, https://) is stripped. */
@@ -158,6 +159,15 @@ class DockerodeClient implements IDockerClient {
     await new Promise<void>((resolve, reject) => {
       this.docker.modem.followProgress(stream, (err: Error | null) => (err ? reject(err) : resolve()));
     });
+  }
+
+  async putArchive(
+    containerId: string,
+    tar: import("node:stream").Readable | Buffer,
+    opts: { path: string },
+  ): Promise<void> {
+    const c = this.docker.getContainer(containerId);
+    await c.putArchive(tar, { path: opts.path });
   }
 }
 

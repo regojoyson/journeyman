@@ -1,5 +1,5 @@
 import type {
-  ExecOp, ExecResult, ExecutionEnvironmentSpec, IExecutionEnvironment, ProvisionedEnv, WorkerType,
+  ExecOp, ExecResult, ExecutionEnvironmentSpec, FileBundle, IExecutionEnvironment, ProvisionedEnv, WorkerType,
 } from "@journeyman/core";
 import type { IDockerClient } from "./docker-client.ts";
 
@@ -39,7 +39,7 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
   }
 
   async exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult> {
-    const request = JSON.stringify({ op: op.op, opts: { ...((op.stdin as object) ?? {}), cwd: WORKSPACE } });
+    const request = JSON.stringify({ op: op.op, provider: op.provider, opts: { ...((op.stdin as object) ?? {}), cwd: WORKSPACE } });
     const r = await this.deps.client.exec(env.handle, {
       cmd: this.deps.runnerCmd ?? DEFAULT_RUNNER_CMD,
       stdin: request,
@@ -74,6 +74,15 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
         runId: r.runId, type: "docker" as WorkerType, handle: r.id,
         volume: `jm-run-${r.runId}`, workspaceDir: WORKSPACE,
       }));
+  }
+
+  async materialize(env: ProvisionedEnv, destDir: string, bundle: FileBundle): Promise<void> {
+    // 1. wipe + recreate the dir inside the container
+    await this.deps.client.exec(env.handle, {
+      cmd: ["sh", "-c", `rm -rf "${destDir}"/* 2>/dev/null; mkdir -p "${destDir}"`],
+    });
+    // 2. stream the tar into the container at destDir
+    await this.deps.client.putArchive(env.handle, bundle.tar, { path: destDir });
   }
 }
 

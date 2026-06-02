@@ -78,41 +78,6 @@ export type CheckoutRepoResult = SessionResult & {
   error?: string;
 };
 
-export type CleanupEntry = {
-  repoDir: string;
-};
-
-export type CleanupReposOptions = SessionOptions & {
-  repos: string | string[] | CleanupEntry | CleanupEntry[];
-  signal?: AbortSignal;
-  model?: string;
-};
-
-export type CleanupRepoResult = {
-  folderName: string;
-  repoDir: string;
-  success: boolean;
-  error?: string;
-};
-
-export type CleanupReposResult = SessionResult & {
-  repos: CleanupRepoResult[];
-  error?: string;
-};
-
-export type CreateWorkspaceOptions = SessionOptions & {
-  ref: string;
-  baseDir: string;
-  signal?: AbortSignal;
-  model?: string;
-};
-
-export type CreateWorkspaceResult = SessionResult & {
-  folderName: string;
-  repoDir: string;
-  error?: string;
-};
-
 // ---------------------------------------------------------------------------
 // Git platform API types (used by git-provider providers)
 // ---------------------------------------------------------------------------

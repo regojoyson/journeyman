@@ -23,8 +23,15 @@ export function applyWorkflowDefaults(
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);
   const model          = mergeModel(node.model, defaults.defaultModel, sources);
 
+  // Worker selection: node-level override (workspace-independent steps) wins,
+  // else the flow default. The worker that owns the run's workspace is resolved
+  // from this on the worker side (ensureWorkspace → resolveWorker); without it,
+  // resolveWorker(undefined) falls back to the local default → runs land locally.
+  const workerId = node.workerId ?? defaults.workerId;
+  if (workerId) sources["workerId"] = node.workerId ? "node" : "workflow-default";
+
   return {
-    resolved: { ...node, retry, executorConfig, model },
+    resolved: { ...node, retry, executorConfig, model, ...(workerId ? { workerId } : {}) },
     sources,
   };
 }

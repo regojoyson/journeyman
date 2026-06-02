@@ -10,3 +10,5 @@ export { createCodingOperationRunner } from "./runner/operation-runner.ts";
 export type { CodingOperationRunnerDeps } from "./runner/operation-runner.ts";
 export { runRunnerCli } from "./runner/run-cli.ts";
 export type { RunnerRequest, RunnerResponse } from "./runner/runner-types.ts";
+export { createCodingProvider } from "./providers/factory.ts";
+export type { CreateCodingProviderOpts } from "./providers/factory.ts";

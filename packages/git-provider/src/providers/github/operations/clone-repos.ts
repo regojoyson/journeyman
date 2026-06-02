@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type {
@@ -16,7 +16,9 @@ function normalizeEntries(opts: CloneReposOptions): RepoEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
   const defaultBranch = opts.branch ?? "main";
   return raw.map((r) =>
-    typeof r === "string" ? { url: r, branch: defaultBranch } : r,
+    typeof r === "string"
+      ? { url: r.trim(), branch: defaultBranch }
+      : { ...r, url: (r.url ?? "").trim() },
   );
 }
 
@@ -73,6 +75,7 @@ export async function cloneRepos(
       continue;
     }
     try {
+      await rm(repoDir, { recursive: true, force: true });
       await execFileP(
         "git",
         ["clone", "--branch", entry.branch, "--single-branch", cloneUrl, repoDir],

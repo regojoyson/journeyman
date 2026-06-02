@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { WorkflowNode, CanonicalTool, CustomAiStep } from "@journeyman/core";
-import { CANONICAL_TOOLS, toolsRequireWorkspace } from "@journeyman/core";
+import { CANONICAL_TOOLS } from "@journeyman/core";
 
 interface VisibleMcp {
   id: string;
@@ -100,7 +100,6 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
   const toolsOverride = getToolsOverride(node);
   const effectiveTools: CanonicalTool[] = toolsOverride ?? step?.defaultTools ?? [];
   const overriding = toolsOverride !== undefined;
-  const needsWs = toolsRequireWorkspace(effectiveTools);
 
   const toggleTool = (t: CanonicalTool) => {
     if (readOnly) return;
@@ -207,11 +206,6 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
             >
               Reset to definition default
             </button>
-          )}
-          {needsWs && (
-            <div className="je-props__field-help" style={{ marginTop: 4 }}>
-              A workspace tool is selected — wire a <code>workspaceDir</code> input on this node.
-            </div>
           )}
         </div>
       )}

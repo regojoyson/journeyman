@@ -25,8 +25,6 @@ export type AgentLogLevel = "none" | "light" | "medium" | "all";
 export type CodingCLIStep =
   | "scanRepos"
   | "checkoutRepo"
-  | "cleanupRepos"
-  | "createWorkspace"
   | "runCustomPrompt";
 
 export interface CodingCLIProviderConfig {

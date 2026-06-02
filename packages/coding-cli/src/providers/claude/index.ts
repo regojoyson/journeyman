@@ -2,8 +2,6 @@ import type { ICodingCLI } from "../../interface.ts";
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
   IProviderMeta,
   CodingCLIStep,
   CodingCLIProviderConfig,
@@ -13,8 +11,6 @@ import type {
 } from "@journeyman/core";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { checkoutRepo } from "./operations/checkout-repo.ts";
-import { cleanupRepos } from "./operations/cleanup-repos.ts";
-import { createWorkspace } from "./operations/create-workspace.ts";
 import { runCustomPrompt } from "./operations/run-custom-prompt.ts";
 
 export class ClaudeProvider implements ICodingCLI {
@@ -37,14 +33,6 @@ export class ClaudeProvider implements ICodingCLI {
 
   checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
     return checkoutRepo({ ...opts, model: this.resolveModel("checkoutRepo") });
-  }
-
-  cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
-    return cleanupRepos({ ...opts, model: this.resolveModel("cleanupRepos") });
-  }
-
-  createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
-    return createWorkspace({ ...opts, model: this.resolveModel("createWorkspace") });
   }
 
   runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {

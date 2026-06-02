@@ -15,17 +15,6 @@ import {
   startFeatureBranchOutputSchema, startFeatureBranchInputFields, startFeatureBranchConfigSchema,
 } from "./repos/start-feature-branch.meta.ts";
 import {
-  CLEANUP_WORKSPACE_STEP_TYPE, CLEANUP_WORKSPACE_LABEL, CLEANUP_WORKSPACE_CATEGORY,
-  CLEANUP_WORKSPACE_DESCRIPTION,
-  cleanupWorkspaceOutputSchema, cleanupWorkspaceInputFields, cleanupWorkspaceConfigSchema,
-} from "./repos/cleanup-workspace.meta.ts";
-import {
-  CREATE_WORKSPACE_STEP_TYPE, CREATE_WORKSPACE_LABEL, CREATE_WORKSPACE_CATEGORY,
-  CREATE_WORKSPACE_DESCRIPTION,
-  createWorkspaceOutputSchema, createWorkspaceInputFields, createWorkspaceConfigSchema,
-} from "./repos/create-workspace.meta.ts";
-
-import {
   GET_REPOSITORY_STEP_TYPE, GET_REPOSITORY_LABEL, GET_REPOSITORY_CATEGORY,
   GET_REPOSITORY_DESCRIPTION,
   getRepositoryInputFields, getRepositoryOutputSchema, getRepositoryConfigSchema,
@@ -104,8 +93,6 @@ export const stepCatalog: StepCatalogEntry[] = [
   // Workspace
   { stepType: LIST_WORKSPACE_FILES_STEP_TYPE, label: LIST_WORKSPACE_FILES_LABEL, category: LIST_WORKSPACE_FILES_CATEGORY, description: LIST_WORKSPACE_FILES_DESCRIPTION, inputFields: listWorkspaceFilesInputFields, outputSchema: listWorkspaceFilesOutputSchema, configSchema: listWorkspaceFilesConfigSchema },
   { stepType: START_FEATURE_BRANCH_STEP_TYPE, label: START_FEATURE_BRANCH_LABEL, category: START_FEATURE_BRANCH_CATEGORY, description: START_FEATURE_BRANCH_DESCRIPTION, inputFields: startFeatureBranchInputFields, outputSchema: startFeatureBranchOutputSchema, configSchema: startFeatureBranchConfigSchema },
-  { stepType: CLEANUP_WORKSPACE_STEP_TYPE,    label: CLEANUP_WORKSPACE_LABEL,    category: CLEANUP_WORKSPACE_CATEGORY,    description: CLEANUP_WORKSPACE_DESCRIPTION,    inputFields: cleanupWorkspaceInputFields,    outputSchema: cleanupWorkspaceOutputSchema,    configSchema: cleanupWorkspaceConfigSchema },
-  { stepType: CREATE_WORKSPACE_STEP_TYPE,     label: CREATE_WORKSPACE_LABEL,     category: CREATE_WORKSPACE_CATEGORY,     description: CREATE_WORKSPACE_DESCRIPTION,     inputFields: createWorkspaceInputFields,     outputSchema: createWorkspaceOutputSchema,     configSchema: createWorkspaceConfigSchema },
 
   // Code Host
   { stepType: GET_REPOSITORY_STEP_TYPE,             label: GET_REPOSITORY_LABEL,             category: GET_REPOSITORY_CATEGORY,             description: GET_REPOSITORY_DESCRIPTION,             inputFields: getRepositoryInputFields,             outputSchema: getRepositoryOutputSchema,             configSchema: getRepositoryConfigSchema },
