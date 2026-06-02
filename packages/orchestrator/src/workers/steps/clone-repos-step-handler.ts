@@ -48,8 +48,15 @@ export class CloneReposStepHandler implements IStepHandler {
     const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
       ? new SandboxGitProvider(ctx.exec)
       : this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
-    ctx.log(`Cloning repo(s) into ${workspaceDir}`);
-    const result = await git.cloneRepos({ repos, workspaceDir, branch, signal: ctx.signal });
+
+    const agentLogLevel = typeof input.agentLogLevel === "string" ? input.agentLogLevel : "light";
+    const verbose = agentLogLevel === "medium" || agentLogLevel === "all";
+    for (const r of repos) ctx.log(`Cloning ${r}…`);
+
+    const result = await git.cloneRepos({
+      repos, workspaceDir, branch, signal: ctx.signal,
+      ...(verbose ? { onLog: ctx.log } : {}),
+    });
     if (result?.error) {
       log.error({ result }, "clone-repos failed");
       return {
@@ -57,6 +64,7 @@ export class CloneReposStepHandler implements IStepHandler {
         failure: { errorClass: "CloneReposFailed", message: String(result.error), retryable: true },
       };
     }
+    for (const r of result.repos) if (!r.error) ctx.log(`Cloned ${r.folderName}`);
     return { kind: "success", output: { repos: result.repos } };
   }
 }

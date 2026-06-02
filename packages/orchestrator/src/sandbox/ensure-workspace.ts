@@ -48,16 +48,30 @@ const PROVISION_WAIT_MS = Number(process.env["PROVISION_WAIT_MS"] ?? 300_000);
 
 export async function ensureWorkspace(
   deps: EnsureWorkspaceDeps,
-  args: { runId: string; workerId: string | undefined; userId: string | null; orgId: string | null },
+  args: {
+    runId: string;
+    workerId: string | undefined;
+    userId: string | null;
+    orgId: string | null;
+    /** Optional progress sink (e.g. step.log). Additive — absent ⇒ no-op. */
+    log?: (line: string) => void;
+    /** Emit verbose detail lines (gated by the caller's agentLogLevel). */
+    verbose?: boolean;
+  },
 ): Promise<EnsureWorkspaceResult> {
+  const log = args.log ?? (() => {});
+
   const existing = await deps.getSandbox(args.runId);
   if (existing && existing.status === "active") {
+    log("Using existing workspace");
     return connect(deps, existing);
   }
 
   // For provisioning state: someone else is already provisioning, skip to wait
   if (existing && existing.status === "provisioning") {
+    log("Waiting for workspace…");
     const active = await deps.waitActive(args.runId, PROVISION_WAIT_MS);
+    log("Workspace ready");
     return connect(deps, { runId: args.runId, type: existing.type, ...active });
   }
 
@@ -73,31 +87,49 @@ export async function ensureWorkspace(
     userId: args.userId,
     orgId: args.orgId,
   });
+  if (args.verbose) log(`Resolved worker: ${worker.type}`);
   const won = await deps.claim({ runId: args.runId, type: worker.type, owner: args.orgId });
   if (!won) {
     // Another worker claimed it between our getSandbox() and claim() calls.
+    log("Waiting for workspace…");
     const active = await deps.waitActive(args.runId, PROVISION_WAIT_MS);
+    log("Workspace ready");
     return connect(deps, { runId: args.runId, type: worker.type, ...active });
   }
 
   // We are the builder.
   if (worker.type === "local") {
-    const { env, provisioned } = await deps.provisionLocal(args.runId);
-    await deps.markActive(args.runId, { handle: provisioned.handle });
-    return { env, provisioned };
+    log("Provisioning local workspace…");
+    try {
+      const { env, provisioned } = await deps.provisionLocal(args.runId);
+      await deps.markActive(args.runId, { handle: provisioned.handle });
+      log("Workspace ready");
+      return { env, provisioned };
+    } catch (err) {
+      log(`Workspace provisioning failed: ${(err as Error).message}`);
+      throw err;
+    }
   }
 
-  const { env, provisioned, imageRef, connection } = await deps.provisionDocker(
-    args.runId,
-    worker,
-  );
-  await deps.markActive(args.runId, {
-    handle: provisioned.handle,
-    volume: provisioned.volume ?? null,
-    imageRef: imageRef ?? null,
-    connection,
-  });
-  return { env, provisioned };
+  log("Provisioning docker workspace…");
+  try {
+    const { env, provisioned, imageRef, connection } = await deps.provisionDocker(
+      args.runId,
+      worker,
+    );
+    if (args.verbose && imageRef) log(`Workspace image: ${imageRef}`);
+    await deps.markActive(args.runId, {
+      handle: provisioned.handle,
+      volume: provisioned.volume ?? null,
+      imageRef: imageRef ?? null,
+      connection,
+    });
+    log("Workspace ready");
+    return { env, provisioned };
+  } catch (err) {
+    log(`Workspace provisioning failed: ${(err as Error).message}`);
+    throw err;
+  }
 }
 
 async function connect(

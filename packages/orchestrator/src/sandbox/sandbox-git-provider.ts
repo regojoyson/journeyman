@@ -41,6 +41,7 @@ export class SandboxGitProvider implements Pick<IGitProvider, "cloneRepos"> {
         op: "clone",
         stdin: { repoUrl: url, dir, ...(opts.branch ? { branch: opts.branch } : {}) },
         ...(opts.signal ? { signal: opts.signal } : {}),
+        ...(opts.onLog ? { onLog: opts.onLog } : {}),
       });
       results.push({
         folderName: dir,

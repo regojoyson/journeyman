@@ -104,6 +104,8 @@ const ensureWs = (a: {
   workerId: string | undefined;
   userId: string | null;
   orgId: string | null;
+  log?: (line: string) => void;
+  verbose?: boolean;
 }) =>
   ensureWorkspace(
     {

@@ -60,5 +60,14 @@ Restore visibility for the three silent areas — **provisioning, in-sandbox ops
 - **Unit (clone handler):** concise `Cloning…`/`Cloned` always emitted; raw stderr gated.
 - **Harness:** a `log` line from provisioning lands as a `step.log` event on the node.
 
-## 6. Out of scope (YAGNI)
+## 6. Compatibility (providers + workers)
+
+The logging is **additive and provider/worker-agnostic** — it cannot break a different provider or worker:
+- Lines are emitted *around* the provider (provisioning, clone, materialize), not inside any provider's AI logic, via the generic `ctx.log` / `onLog` hooks every provider already shares. Adding OpenCode (or any provider) changes nothing here.
+- Lifecycle lines come from the single `ensureWorkspace` abstraction, which already covers `local` and `docker` uniformly; future workers (ECS/K8s) implementing `IExecutionEnvironment` get the same lines for free and stream in-box output through the same `onLog` seam.
+- All new hooks (`ensureWorkspace.log?`, `CloneReposOptions.onLog?`) are **optional**. A provider/worker that doesn't wire them just logs less — never an error. Logging never alters control flow, provisioning, or results.
+
+Worst case for an unsupported combo: slightly less visibility, never a crash or behavior change.
+
+## 7. Out of scope (YAGNI)
 - No new UI controls, no new dedicated log-level setting, no structured metrics/spans. Reuse `agentLogLevel` and the existing `step.log` surface.

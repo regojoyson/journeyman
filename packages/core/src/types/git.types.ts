@@ -13,6 +13,8 @@ export type CloneReposOptions = {
   branch?: string;
   workspaceDir?: string;
   signal?: AbortSignal;
+  /** Optional progress sink — forwarded to the sandbox runner's stderr stream. */
+  onLog?: CodingCliLogFn;
 };
 
 export type CloneResult = {

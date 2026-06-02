@@ -51,6 +51,8 @@ export interface WorkerHarnessDeps {
     workerId: string | undefined;
     userId: string | null;
     orgId: string | null;
+    log?: (line: string) => void;
+    verbose?: boolean;
   }) => Promise<EnsureWorkspaceResult>;
 }
 
@@ -303,11 +305,21 @@ export class WorkerHarness {
 
     if (needsWorkspace) {
       const workerId = (stepInput as { workerId?: string }).workerId;
+      const provisionLogLevel =
+        typeof (stepInput as { agentLogLevel?: string }).agentLogLevel === "string"
+          ? (stepInput as { agentLogLevel: string }).agentLogLevel
+          : "light";
+      const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
       const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
         runId: workflowInstanceId,
         workerId,
         userId,
         orgId,
+        log: (line: string) =>
+          this.deps.events
+            .append({ workflowInstanceId, nodeId, eventType: "step.log", payload: { line } })
+            .catch((err) => rlog.error({ err }, "provision log emit failed")),
+        verbose: provisionVerbose,
       });
       workspaceDir = provisioned.workspaceDir;
       // Local runs: leave exec undefined — handlers run in-process.

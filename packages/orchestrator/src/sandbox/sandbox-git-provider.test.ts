@@ -15,6 +15,14 @@ describe("SandboxGitProvider", () => {
     expect((ops[0].stdin as Record<string, unknown>).repoUrl).toBe("https://git/x.git");
   });
 
+  it("forwards onLog on the clone ExecOp", async () => {
+    const ops: ExecOp[] = [];
+    const exec = async (op: ExecOp): Promise<ExecResult> => { ops.push(op); return { ok: true }; };
+    const onLog = () => {};
+    await new SandboxGitProvider(exec).cloneRepos({ repos: "https://git/x.git", onLog });
+    expect(ops[0].onLog).toBe(onLog);
+  });
+
   it("cloneRepos returns an error when a clone fails", async () => {
     const exec = async (): Promise<ExecResult> => ({ ok: false, error: "auth failed" });
     const p = new SandboxGitProvider(exec);

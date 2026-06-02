@@ -181,6 +181,7 @@ export class CustomAiStepHandler implements IStepHandler {
     // and rewrite localPath to the in-container location. For local runs, skills load from the
     // pantry path directly — no placement needed.
     if (ctx.exec && ctx.materialize && skills && skills.length) {
+      ctx.log(`Delivering ${skills.length} skill(s) to workspace`);
       skills = await placeSkills(provider, skills, { materialize: ctx.materialize });
     }
 
