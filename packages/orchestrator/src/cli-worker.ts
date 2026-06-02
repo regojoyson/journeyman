@@ -8,15 +8,20 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
-import { ClaudeProvider } from "@journeyman/coding-cli";
+import { createCodingProvider } from "@journeyman/coding-cli";
 import { GitHubProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
-  ProviderFactory, SecretBinding,
-  ExecOp, ExecResult, ProvisionedEnv,
+  ProviderFactory, SecretBinding, ProvisionedEnv,
 } from "@journeyman/core";
-import { DockerExecutionEnvironment, makeDockerClient, getSandbox } from "@journeyman/workers";
+import {
+  DockerExecutionEnvironment, LocalExecutionEnvironment,
+  makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveWorker,
+  resolveDockerSpec,
+} from "@journeyman/workers";
+import { createCodingOperationRunner } from "@journeyman/coding-cli";
+import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
 import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
@@ -25,17 +30,14 @@ import { findDefaultCodingModel } from "@journeyman/coding-models";
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
 import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
-import { DirectoryWorkspaceProvider } from "./workspace/directory-workspace-provider.ts";
 import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
-import { CreateWorkspaceStepHandler } from "./workers/steps/create-workspace-step-handler.ts";
 import { StartFeatureBranchStepHandler } from "./workers/steps/start-feature-branch-step-handler.ts";
 import { CloneReposStepHandler } from "./workers/steps/clone-repos-step-handler.ts";
 import { GetIssueStepHandler } from "./workers/steps/get-issue-step-handler.ts";
 import { TransitionIssueStepHandler } from "./workers/steps/transition-issue-step-handler.ts";
 import { ListWorkspaceFilesStepHandler } from "./workers/steps/list-workspace-files-step-handler.ts";
-import { CleanupWorkspaceStepHandler } from "./workers/steps/cleanup-workspace-step-handler.ts";
 import { GetRepositoryStepHandler } from "./workers/steps/get-repository-step-handler.ts";
 import { OpenPullRequestStepHandler } from "./workers/steps/open-pull-request-step-handler.ts";
 import { ListPullRequestsStepHandler } from "./workers/steps/list-pull-requests-step-handler.ts";
@@ -65,42 +67,98 @@ const client = new ConductorClient({ baseUrl });
 
 const registry = new InMemoryStepRegistry();
 
-const coding: ProviderFactory<ICodingCLI> = (key, env) => {
-  switch (key ?? "claude") {
-    case "claude":
-      return new ClaudeProvider({ apiKey: env.ANTHROPIC_API_KEY });
-    default: {
-      const err = new Error(`Unknown coding provider: ${key}`) as Error & { name: string };
-      err.name = "ConfigurationError";
-      throw err;
-    }
-  }
-};
+const coding: ProviderFactory<ICodingCLI> = (key, env) => createCodingProvider(key, { env });
 const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
 
-// Sandbox routing: for runs whose worker provisioned a (non-local) container,
-// resolve an exec fn that docker-execs the run's runner. Returns null otherwise
-// (→ handlers run in-process exactly as before).
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
-const sandboxResolver = async (
-  workflowInstanceId: string,
-): Promise<((op: ExecOp) => Promise<ExecResult>) | null> => {
-  if (!pool) return null;
-  const sb = await getSandbox(pool, workflowInstanceId);
-  if (!sb || sb.status !== "active" || sb.type !== "docker") return null;
-  const client = makeDockerClient(sb.connection ?? { kind: "local" });
-  const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
-  const provisioned: ProvisionedEnv = {
-    runId: sb.runId, type: "docker", handle: sb.handle,
-    volume: sb.volume ?? undefined, workspaceDir: "/workspace",
-  };
-  return (op: ExecOp) => env.exec(provisioned, op);
-};
+const RUNNER_BUNDLE = process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
 
-registry.register(new CreateWorkspaceStepHandler({ coding, baseDir: workspaceBaseDir }));
+/**
+ * Poll until the sandbox row for `runId` becomes active, or timeout.
+ * Used by ensureWorkspace when another worker raced us to provisioning.
+ */
+async function waitActive(
+  db: NonNullable<typeof pool>,
+  runId: string,
+  timeoutMs: number,
+): Promise<{ handle: string; volume?: string | null; connection?: unknown }> {
+  const start = Date.now();
+  for (;;) {
+    const sb = await getSandbox(db, runId);
+    if (sb?.status === "active") {
+      return { handle: sb.handle, volume: sb.volume, connection: sb.connection };
+    }
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`workspace provisioning timed out for run ${runId}`);
+    }
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+}
+
+/**
+ * Demand-driven workspace provisioner — provision-if-missing, status-gated,
+ * local + docker. Passed as the `ensureWorkspace` dep to WorkerHarness.
+ */
+const ensureWs = (a: {
+  runId: string;
+  workerId: string | undefined;
+  userId: string | null;
+  orgId: string | null;
+}) =>
+  ensureWorkspace(
+    {
+      getSandbox: (id) => (pool ? getSandbox(pool, id) : Promise.resolve(null)),
+      claim: (row) => (pool ? claimSandbox(pool, row) : Promise.resolve(true)),
+      markActive: (id, patch) => (pool ? markSandboxActive(pool, id, patch) : Promise.resolve()),
+      waitActive: (id, ms) =>
+        pool ? waitActive(pool, id, ms) : Promise.reject(new Error("no pool")),
+      resolveWorker: async (workerId, ctx) => {
+        if (pool) {
+          const w = await resolveWorker(pool, ctx, workerId);
+          return { type: w.type, config: (w.config ?? {}) as Record<string, unknown> };
+        }
+        return { type: "local" as const, config: {} };
+      },
+      provisionLocal: async (runId) => {
+        const env = new LocalExecutionEnvironment({
+          runOperation: createCodingOperationRunner({
+            makeProvider: (envVars) => createCodingProvider(undefined, { env: envVars }),
+          }),
+          baseDir: workspaceBaseDir,
+        });
+        const provisioned = await env.provision(runId, {});
+        return { env, provisioned };
+      },
+      provisionDocker: async (runId, worker) => {
+        const connection = (worker.config as Record<string, unknown>)["connection"] ?? { kind: "local" };
+        const dockerClient = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
+        const env = new DockerExecutionEnvironment({ client: dockerClient, defaultImage: RUNNER_IMAGE });
+        // If we are reconnecting to an existing container (connect() path), skip provisioning.
+        const existingHandle = (worker.config as Record<string, unknown>)["__existingHandle"];
+        if (existingHandle) {
+          const provisioned: ProvisionedEnv = {
+            runId,
+            type: "docker",
+            handle: String(existingHandle),
+            volume: (worker.config as Record<string, unknown>)["__existingVolume"] as string | undefined,
+            workspaceDir: "/workspace",
+          };
+          return { env, provisioned, connection };
+        }
+        const spec = await resolveDockerSpec(worker.config as Record<string, unknown>, {
+          client: dockerClient,
+          defaultImage: RUNNER_IMAGE,
+          bundleRef: RUNNER_BUNDLE,
+        });
+        const provisioned = await env.provision(runId, spec);
+        return { env, provisioned, imageRef: spec.imageRef, connection };
+      },
+    },
+    a,
+  );
+
 registry.register(new StartFeatureBranchStepHandler({ coding }));
 registry.register(new ListWorkspaceFilesStepHandler({ coding }));
-registry.register(new CleanupWorkspaceStepHandler({ coding }));
 registry.register(new JoinFinalizeStepHandler());
 if (pool) {
   // cliBindingResolver is declared later in this file; wrap in a thunk so the
@@ -255,7 +313,6 @@ if (!pool) {
 const harness = new WorkerHarness({
   client,
   registry,
-  workspace: new DirectoryWorkspaceProvider(),
   events,
   workerId: process.env.WORKER_ID ?? `worker-${process.pid}`,
   pollIntervalMs: 500,
@@ -273,7 +330,7 @@ const harness = new WorkerHarness({
     const m = await findDefaultCodingModel(pool, provider);
     return m?.modelId;
   },
-  sandboxResolver,
+  ensureWorkspace: ensureWs,
 });
 
 log.info({ steps: registry.list().map(h => h.stepType) }, "worker starting");

@@ -3,8 +3,6 @@ import type { StepDefinition } from "@journeyman/flow-editor";
 
 import { listWorkspaceFilesStep } from "./repos/list-workspace-files.tsx";
 import { startFeatureBranchStep } from "./repos/start-feature-branch.tsx";
-import { cleanupWorkspaceStep } from "./repos/cleanup-workspace.tsx";
-import { createWorkspaceStep } from "./repos/create-workspace.tsx";
 
 import { getRepositoryStep } from "./git/get-repository.tsx";
 import { cloneReposStep } from "./git/clone-repos.tsx";
@@ -30,7 +28,7 @@ import { customAiStep } from "./custom/custom-ai.tsx";
 // each entry's `TConfig` opaquely.
 export const builtInSteps: StepDefinition<any>[] = [
   // Workspace
-  listWorkspaceFilesStep, startFeatureBranchStep, cleanupWorkspaceStep, createWorkspaceStep,
+  listWorkspaceFilesStep, startFeatureBranchStep,
   // Code Host
   getRepositoryStep, cloneReposStep, openPullRequestStep, listPullRequestsStep, commentOnPullRequestStep, listPullRequestCommentsStep,
   // Issue Tracker

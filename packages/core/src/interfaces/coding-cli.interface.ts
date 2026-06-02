@@ -1,8 +1,6 @@
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
 } from "../types/git.types.ts";
 import type {
   RunCustomPromptOptions, RunCustomPromptResult,
@@ -16,8 +14,6 @@ export interface ICodingCLI {
   // Git operations (executed via CLI bash)
   scanRepos(opts: ScanReposOptions): Promise<ScanReposResult>;
   checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult>;
-  cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult>;
-  createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult>;
 
   // Custom user-defined AI step
   runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult>;

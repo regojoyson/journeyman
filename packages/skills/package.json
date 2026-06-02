@@ -8,15 +8,18 @@
     ".": "./src/index.ts",
     "./sdk-adapter": "./src/sdk-adapter.ts"
   },
-  "scripts": { "typecheck": "tsc --noEmit" },
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
   "dependencies": {
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "tar": "^6.2.1"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/pg": "^8.11.10",
-    "typescript": "^6.0.3"
+    "@types/tar": "^6.1.13",
+    "typescript": "^6.0.3",
+    "vitest": "^2.1.9"
   }
 }

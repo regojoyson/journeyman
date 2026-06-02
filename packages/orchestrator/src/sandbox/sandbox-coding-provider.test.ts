@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { ExecOp, ExecResult } from "@journeyman/core";
 import { SandboxCodingProvider } from "./sandbox-coding-provider.ts";
 
@@ -43,5 +43,14 @@ describe("SandboxCodingProvider", () => {
     const r = await p.scanRepos({ parentDir: "/workspace" });
     expect(r.repos).toEqual([]);
     expect(calls[0].op).toBe("scan-repos");
+  });
+});
+
+describe("SandboxCodingProvider provider key", () => {
+  it("includes the provider key on every ExecOp", async () => {
+    const exec = vi.fn().mockResolvedValue({ ok: true, structured: { result: "ok" } });
+    const p = new SandboxCodingProvider(exec, "claude");
+    await p.runCustomPrompt({ prompt: "hi", outputMode: "text" } as any);
+    expect(exec).toHaveBeenCalledWith(expect.objectContaining({ op: "custom-prompt", provider: "claude" }));
   });
 });

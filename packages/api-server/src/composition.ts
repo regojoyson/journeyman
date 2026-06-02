@@ -8,17 +8,19 @@
 // MUST require changing only this file. If a swap forces edits anywhere else,
 // the boundaries are wrong (see spec §12 "Architectural exit criterion").
 
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { Pool } from "pg";
 import {
-  resolveWorker, recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
-  DockerExecutionEnvironment, makeDockerClient, resolveDockerSpec,
-  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps, type DockerConnection,
+  getSandbox, markSandboxDestroyed, listActiveSandboxes,
+  DockerExecutionEnvironment, makeDockerClient,
+  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
 } from "@journeyman/workers";
 import { isTerminalStatus } from "@journeyman/core";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore, IWorkspaceProvider,
+  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -47,7 +49,6 @@ import {
   MemoryWorkflowTriggerStore,
   PostgresWorkflowTriggerStore,
   MemoryHumanTaskResolutionStore,
-  DirectoryWorkspaceProvider,
   InMemoryStepRegistry,
   JsonLogicEvaluator,
   createPool,
@@ -80,7 +81,6 @@ export interface Composition {
   conductorClient: ConductorClient;
   orchestrator: IOrchestratorEngine;
   registry: IStepRegistry;
-  workspace: IWorkspaceProvider;
   auth: IAuthProvider;
   conditions: IConditionEvaluator;
   /** The pg Pool (null when using the memory backend). */
@@ -151,13 +151,39 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   // Sandbox provision/teardown — active only when a pg pool exists. A `local`
   // worker (the default) is a no-op, preserving today's in-process behavior.
   const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
-  const RUNNER_BUNDLE = process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
+
+  // Local workspace base dir — used by the api-server reaper's local destroy path.
+  // Worker-owned local workspaces live under this dir (best-effort; if unreachable
+  // the rm is a silent no-op due to `force: true`).
+  const LOCAL_WORKSPACE_BASE = process.env.JOURNEYMAN_WORKSPACE_BASE_DIR
+    ?? join(process.cwd(), ".journeyman", "workspaces");
 
   const dockerDestroy = async (sb: SandboxRecord): Promise<void> => {
     const client = makeDockerClient(sb.connection ?? { kind: "local" });
     const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
     await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
   };
+
+  /**
+   * Type-dispatched sandbox destroyer used by both the per-run reaper and the
+   * periodic SandboxReaper.
+   *
+   * - docker: delegate to dockerDestroy (container + volume teardown).
+   * - local: rm -rf the run dir under LOCAL_WORKSPACE_BASE, unless retainWorkspace
+   *   is set on the record (best-effort; the worker-host sweep in the worker handles
+   *   local orphans authoritatively — this path only runs on the owning host).
+   */
+  const destroyByType = async (sb: SandboxRecord): Promise<void> => {
+    if (sb.type === "docker") return dockerDestroy(sb);
+    if (sb.type === "local") {
+      // retainWorkspace is a worker-config flag; it is not stored on the sandbox
+      // record today. If it were ever persisted here, honour it.
+      if ((sb as unknown as { retainWorkspace?: boolean }).retainWorkspace) return;
+      await rm(join(LOCAL_WORKSPACE_BASE, sb.runId), { recursive: true, force: true });
+    }
+    // Other types (ecs, ec2, …): no-op until implemented.
+  };
+
   const isRunActive = async (runId: string): Promise<boolean> => {
     const inst = await workflowInstances.getById(runId).catch(() => null);
     return !!inst && !isTerminalStatus(inst.status);
@@ -165,33 +191,22 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const logRun = (workflowInstanceId: string, line: string) =>
     events.append({ workflowInstanceId, eventType: "step.log", payload: { line } }).catch(() => undefined);
 
+  // Task 16: eager pre-warm removed — the worker provisions on its first step
+  // (provision-if-missing / claimSandbox path in ensureWorkspace). Keeping the
+  // function shape as a no-op so the orchestrator wiring is unchanged.
   const sandboxProvisioner = pool
-    ? async (a: { workflowInstanceId: string; workerId?: string; userId: string | null; orgId: string | null }) => {
-        if (!a.userId || !a.orgId) return;
-        const worker = await resolveWorker(pool!, { orgId: a.orgId, userId: a.userId }, a.workerId);
-        if (worker.type === "local") return;
-        if (worker.type !== "docker") return; // other types: later plans
-        await logRun(a.workflowInstanceId, `Provisioning ${worker.type} sandbox…`);
-        const connection = ((worker.config as { connection?: DockerConnection }).connection) ?? { kind: "local" };
-        const client = makeDockerClient(connection);
-        const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
-        const spec = await resolveDockerSpec((worker.config as Record<string, unknown>) ?? {}, {
-          client, defaultImage: RUNNER_IMAGE, bundleRef: RUNNER_BUNDLE,
-        });
-        const provisioned = await env.provision(a.workflowInstanceId, spec);
-        await recordSandbox(pool!, {
-          runId: a.workflowInstanceId, type: "docker", handle: provisioned.handle,
-          volume: provisioned.volume ?? null, imageRef: spec.imageRef ?? null, owner: a.orgId,
-          connection,
-        });
-        await logRun(a.workflowInstanceId, `Sandbox ready (image ${spec.imageRef})`);
+    ? async (_a: { workflowInstanceId: string; workerId?: string; userId: string | null; orgId: string | null }) => {
+        // No-op: workspace provisioning is now owned by the worker (lazy, status-gated).
+        // The ProvisioningReaper (below) detects stuck provisioning via
+        // jm_sandbox_instances.status = 'provisioning' + age.
       }
     : undefined;
+
   const sandboxReaper = pool
     ? async (workflowInstanceId: string) => {
         const sb = await getSandbox(pool!, workflowInstanceId);
-        if (!sb || sb.status !== "active" || sb.type !== "docker") return;
-        await dockerDestroy(sb);
+        if (!sb || sb.status !== "active") return;
+        await destroyByType(sb);
         await markSandboxDestroyed(pool!, workflowInstanceId);
         await logRun(workflowInstanceId, "Sandbox destroyed");
       }
@@ -203,7 +218,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     const reaper = new SandboxReaper({
       listActive: () => listActiveSandboxes(pool!),
       isRunActive,
-      destroy: dockerDestroy,
+      destroy: destroyByType,
       markDestroyed: (id) => markSandboxDestroyed(pool!, id),
     });
     reaperStop = reaper.start(Number(process.env.SANDBOX_REAP_INTERVAL_MS ?? 60_000));
@@ -235,7 +250,6 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   });
 
   const registry = new InMemoryStepRegistry();
-  const workspace = new DirectoryWorkspaceProvider();
   const auth: IAuthProvider = {
     async authenticate(_req: FastifyRequest) {
       return { userId: null, roles: ["anonymous"] };
@@ -247,7 +261,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
     nodeExecutions, events, webhookEvents, webhooks, workflowTriggers,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
-    orchestrator, registry, workspace, auth, conditions,
+    orchestrator, registry, auth, conditions,
     pool,
     ...(sandboxRoutesDeps ? { sandboxRoutesDeps } : {}),
     // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.

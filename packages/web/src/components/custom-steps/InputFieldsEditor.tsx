@@ -7,7 +7,6 @@ const TYPES: { value: CustomStepInputType; label: string }[] = [
   { value: "boolean", label: "boolean" },
   { value: "json-object", label: "json object" },
   { value: "json-array", label: "json array" },
-  { value: "workspaceDir", label: "workspaceDir" },
 ];
 
 export function InputFieldsEditor(props: {

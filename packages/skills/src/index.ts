@@ -31,3 +31,5 @@ export {
   SKILLS_CACHE_DIR,
 } from "./installer.ts";
 export type { InstallResult } from "./installer.ts";
+export { bundleEnabledSkills } from "./bundle-skills.ts";
+export type { SkillBundleResult } from "./bundle-skills.ts";

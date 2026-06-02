@@ -3,8 +3,6 @@ import type { ICodingCLI, IProviderMeta, CodingCLIProviderConfig } from "@journe
 import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
-  CleanupReposOptions, CleanupReposResult,
-  CreateWorkspaceOptions, CreateWorkspaceResult,
   RunCustomPromptOptions, RunCustomPromptResult,
 } from "@journeyman/core";
 import { getClient } from "./client.ts";
@@ -12,8 +10,6 @@ import type { OpenCodeClient } from "./client.ts";
 import type { OpenCodeProviderConfig } from "./types.ts";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { checkoutRepo } from "./operations/checkout-repo.ts";
-import { cleanupRepos } from "./operations/cleanup-repos.ts";
-import { createWorkspace } from "./operations/create-workspace.ts";
 
 export type { OpenCodeProviderConfig } from "./types.ts";
 
@@ -45,12 +41,6 @@ export class OpenCodeProvider implements ICodingCLI {
   }
   async checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
     return checkoutRepo(await this.client(), this.#config, opts);
-  }
-  async cleanupRepos(opts: CleanupReposOptions): Promise<CleanupReposResult> {
-    return cleanupRepos(opts);
-  }
-  async createWorkspace(opts: CreateWorkspaceOptions): Promise<CreateWorkspaceResult> {
-    return createWorkspace(opts);
   }
   async runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
     throw new Error("OpenCodeProvider.runCustomPrompt not implemented");

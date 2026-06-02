@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type {
@@ -73,6 +73,7 @@ export async function cloneRepos(
       continue;
     }
     try {
+      await rm(repoDir, { recursive: true, force: true });
       await execFileP(
         "git",
         ["clone", "--branch", entry.branch, "--single-branch", cloneUrl, repoDir],

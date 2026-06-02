@@ -6,8 +6,6 @@ function fakeProvider(): ICodingCLI {
   return {
     scanRepos: async () => ({ repos: [] }),
     checkoutRepo: async () => ({ repos: [], newBranch: "x" }),
-    cleanupRepos: async () => ({ repos: [] }),
-    createWorkspace: async () => ({ folderName: "f", repoDir: "/d" }),
     runCustomPrompt: async (o) => ({ structured: { cwd: (o as { cwd?: string }).cwd } }),
   };
 }

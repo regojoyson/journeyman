@@ -20,11 +20,17 @@ function makeDeps(overrides: Partial<any> = {}) {
     completeTask: vi.fn().mockResolvedValue(undefined),
   };
   const registry = { get: vi.fn() };
-  const workspace = {
-    create: vi.fn().mockResolvedValue({ path: "/tmp/ws", destroy: vi.fn().mockResolvedValue(undefined) }),
+  // Stub ensureWorkspace — returns a fake local provisioned env.
+  const fakeEnv = {
+    exec: vi.fn().mockResolvedValue({ ok: true }),
+    materialize: vi.fn().mockResolvedValue(undefined),
   };
+  const ensureWorkspace = vi.fn().mockResolvedValue({
+    env: fakeEnv,
+    provisioned: { runId: "wf-1", type: "local", handle: "local:wf-1", workspaceDir: "/tmp/ws" },
+  });
   return {
-    events, client, registry, workspace,
+    events, client, registry, ensureWorkspace,
     workerId: "worker-1",
     bindingResolver: vi.fn().mockResolvedValue({}),
     mcpResolver: vi.fn().mockResolvedValue([]),

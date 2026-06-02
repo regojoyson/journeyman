@@ -27,6 +27,7 @@ export { buildDockerfileImage } from "./backends/docker/build-image.ts";
 export type { BuildDockerfileImageDeps } from "./backends/docker/build-image.ts";
 export {
   recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
+  claimSandbox, markSandboxActive,
 } from "./sandbox-store.ts";
 export type { SandboxRecord, RecordSandboxArgs } from "./sandbox-store.ts";
 export { SandboxReaper } from "./sandbox-reaper.ts";

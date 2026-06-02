@@ -102,6 +102,7 @@ export type {
   ResolvedWorker,
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
+  FileBundle,
 } from "./types/execution-environment.types.ts";
 export type {
   WorkerScope,

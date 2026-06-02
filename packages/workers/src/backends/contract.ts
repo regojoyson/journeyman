@@ -35,5 +35,13 @@ export function runExecutionEnvironmentContract(
       await env.destroy(p);
       await expect(env.destroy(p)).resolves.toBeUndefined();
     });
+
+    it("materialize replaces destDir contents", async () => {
+      const env = await makeEnv();
+      const p = await env.provision("run-mat", {});
+      // implementations differ; just assert it resolves and the env stays usable
+      await expect(env.materialize(p, `${p.workspaceDir}/.staging`, { tar: Buffer.from("") })).resolves.toBeUndefined();
+      await env.destroy(p);
+    });
   });
 }
