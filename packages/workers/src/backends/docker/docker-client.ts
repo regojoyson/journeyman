@@ -31,6 +31,8 @@ export interface IDockerClient {
   removeContainer(id: string): Promise<void>;
   listByLabel(labelKey: string, labelValue?: string): Promise<Array<{ id: string; runId: string }>>;
   imageExists(tag: string): Promise<boolean>;
+  /** Content ID (digest) of an image tag, or null if it isn't present locally. */
+  imageId(tag: string): Promise<string | null>;
   buildImage(o: { contextDir: string; dockerfileName: string; tag: string }): Promise<void>;
   putArchive(containerId: string, tar: import("node:stream").Readable | Buffer, opts: { path: string }): Promise<void>;
 }
@@ -148,6 +150,15 @@ class DockerodeClient implements IDockerClient {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async imageId(tag: string): Promise<string | null> {
+    try {
+      const info = await this.docker.getImage(tag).inspect();
+      return info.Id ?? null;
+    } catch {
+      return null;
     }
   }
 

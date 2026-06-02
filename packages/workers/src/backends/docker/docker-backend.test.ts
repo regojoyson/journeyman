@@ -4,6 +4,7 @@ import { DockerBackend, resolveDockerSpec } from "./docker-backend.ts";
 
 const fakeClient = {
   async imageExists() { return false; },
+  async imageId() { return null; },
   async buildImage() { /* noop */ },
 } as unknown as IDockerClient;
 
@@ -38,7 +39,7 @@ describe("DockerBackend", () => {
 describe("resolveDockerSpec", () => {
   it("uses a prebuilt ref directly (no build)", async () => {
     const built: string[] = [];
-    const client = { async imageExists() { return false; }, async buildImage(o: { tag: string }) { built.push(o.tag); } } as unknown as IDockerClient;
+    const client = { async imageExists() { return false; }, async imageId() { return null; }, async buildImage(o: { tag: string }) { built.push(o.tag); } } as unknown as IDockerClient;
     const spec = await resolveDockerSpec({ image: { kind: "ref", imageRef: "x:1" } }, { client, defaultImage: "d:1", bundleRef: "b:dev" });
     expect(spec.imageRef).toBe("x:1");
     expect(built).toEqual([]);

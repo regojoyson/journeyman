@@ -1,4 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { toMcpServerConfigs, mergeSystemPrompts } from "@journeyman/mcp/sdk-adapter";
 import { toSdkPluginConfigs, buildSkillSystemPrompt } from "@journeyman/skills/sdk-adapter";
@@ -14,6 +17,21 @@ const log = createLogger("claude:custom-prompt");
 
 export type { RunCustomPromptOptions, RunCustomPromptResult };
 
+/**
+ * Resolve the SDK's bundled `cli.js` — the actual Claude engine the SDK spawns as
+ * a child process. The `./cli.js` subpath isn't exported, so we resolve the package
+ * entry (sdk.mjs) and take its sibling, matching the SDK's own internal resolution.
+ * Returns undefined if the package can't be resolved (let the SDK try on its own).
+ */
+function resolveClaudeCli(): string | undefined {
+  try {
+    const sdkMain = createRequire(import.meta.url).resolve("@anthropic-ai/claude-agent-sdk");
+    return join(dirname(sdkMain), "cli.js");
+  } catch {
+    return undefined;
+  }
+}
+
 export async function runCustomPrompt(
   opts: RunCustomPromptOptions,
 ): Promise<RunCustomPromptResult> {
@@ -28,6 +46,18 @@ export async function runCustomPrompt(
     },
     "runCustomPrompt start",
   );
+
+  // The SDK shells out to its bundled cli.js (the real engine). In a stale or
+  // incomplete runner image it can be absent; fail with an actionable message
+  // instead of the SDK's opaque "executable not found" error.
+  const cliPath = resolveClaudeCli();
+  if (cliPath && !existsSync(cliPath)) {
+    const error =
+      `Claude engine (cli.js) missing at ${cliPath}. The runner image is likely ` +
+      `stale — rebuild the runner bundle and remove cached jm-built images, then retry.`;
+    log.error({ sessionId, cliPath }, "cli.js missing");
+    return { sessionId, error };
+  }
 
   const controller = opts.signal
     ? (() => {
@@ -57,6 +87,7 @@ export async function runCustomPrompt(
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     settingSources: [],
+    ...(cliPath ? { pathToClaudeCodeExecutable: cliPath } : {}),
     settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
     ...(mcpServers ? { mcpServers } : {}),
     ...(plugins?.length ? { plugins } : {}),

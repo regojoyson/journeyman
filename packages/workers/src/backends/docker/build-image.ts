@@ -15,7 +15,17 @@ export interface BuildDockerfileImageDeps {
 /** Build (or reuse) an image from a user Dockerfile, auto-wrapped with the runner bundle. */
 export async function buildDockerfileImage(deps: BuildDockerfileImageDeps): Promise<string> {
   const effective = wrapDockerfile(deps.content, deps.bundleRef);
-  const hash = createHash("sha256").update(effective).digest("hex").slice(0, 16);
+  // Fold the bundle's content digest into the cache key. The wrap references the
+  // bundle by a MUTABLE tag (e.g. runner-bundle:dev) via `COPY --from`; without the
+  // digest, a rebuilt bundle keeps the same Dockerfile text and we'd reuse a stale
+  // jm-built image that copied an older /opt/journeyman (e.g. missing cli.js).
+  const bundleId = (await deps.client.imageId(deps.bundleRef)) ?? "";
+  const hash = createHash("sha256")
+    .update(effective)
+    .update("\0")
+    .update(bundleId)
+    .digest("hex")
+    .slice(0, 16);
   const tag = `${deps.tagPrefix ?? "journeyman/jm-built"}:${hash}`;
 
   if (await deps.client.imageExists(tag)) return tag;

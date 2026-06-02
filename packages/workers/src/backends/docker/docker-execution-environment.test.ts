@@ -28,6 +28,7 @@ function fakeClient(over: {
     async removeContainer(id) { calls.removeContainer.push(id); },
     async listByLabel(k, v) { calls.list.push([k, v]); return over.list ?? []; },
     async imageExists() { return false; },
+    async imageId() { return null; },
     async buildImage() { /* noop */ },
     async putArchive() { /* noop */ },
   };

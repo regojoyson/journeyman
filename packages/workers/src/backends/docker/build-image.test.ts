@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import type { IDockerClient } from "./docker-client.ts";
 import { buildDockerfileImage } from "./build-image.ts";
 
-function fakeClient(exists: boolean): { client: IDockerClient; built: string[] } {
+function fakeClient(exists: boolean, bundleId = "sha256:bundle"): { client: IDockerClient; built: string[] } {
   const built: string[] = [];
   const client = {
     async imageExists() { return exists; },
+    async imageId() { return bundleId; },
     async buildImage(o: { tag: string }) { built.push(o.tag); },
   } as unknown as IDockerClient;
   return { client, built };
@@ -31,5 +32,11 @@ describe("buildDockerfileImage", () => {
     const c = await buildDockerfileImage({ content: "FROM y", client: fakeClient(true).client, bundleRef: "b:dev" });
     expect(a).toBe(b);
     expect(c).not.toBe(a);
+  });
+
+  it("rebuilds when the bundle digest changes even if the Dockerfile text is identical", async () => {
+    const old = await buildDockerfileImage({ content: "FROM x", client: fakeClient(true, "sha256:OLD").client, bundleRef: "b:dev" });
+    const fresh = await buildDockerfileImage({ content: "FROM x", client: fakeClient(true, "sha256:NEW").client, bundleRef: "b:dev" });
+    expect(fresh).not.toBe(old);
   });
 });
