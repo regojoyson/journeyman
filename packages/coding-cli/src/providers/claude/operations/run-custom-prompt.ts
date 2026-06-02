@@ -82,18 +82,36 @@ export async function runCustomPrompt(
 
   const fullPrompt = [opts.prompt, mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n");
 
+  // Capture the engine's stderr. The SDK surfaces a bare "Claude Code process
+  // exited with code N" on a non-zero exit and discards the child's stderr — the
+  // very text that explains WHY (auth failure, bad MCP, schema rejection, …).
+  // We retain a bounded tail and append it to the error so failures are diagnosable.
+  const stderrChunks: string[] = [];
+  let stderrLen = 0;
+  const STDERR_CAP = 8_000;
+  const captureStderr = (data: string) => {
+    if (stderrLen < STDERR_CAP) {
+      stderrChunks.push(data);
+      stderrLen += data.length;
+    }
+    opts.onLog?.(data.replace(/\s+$/, ""), { stream: "engine-stderr" });
+  };
+
   const queryOptions: Record<string, unknown> = {
     ...(tools.length ? { tools, allowedTools: tools } : {}),
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     settingSources: [],
+    stderr: captureStderr,
     ...(cliPath ? { pathToClaudeCodeExecutable: cliPath } : {}),
     settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
     ...(mcpServers ? { mcpServers } : {}),
     ...(plugins?.length ? { plugins } : {}),
     ...(opts.cwd ? { cwd: opts.cwd } : {}),
     ...(opts.model ? { model: opts.model } : {}),
-    ...(opts.env && Object.keys(opts.env).length ? { env: opts.env } : {}),
+    // Merge over process.env (never replace) so PATH and IS_SANDBOX — set by the
+    // runner entrypoint — always reach the engine alongside per-call secrets.
+    ...(opts.env && Object.keys(opts.env).length ? { env: { ...process.env, ...opts.env } } : {}),
     ...(controller !== undefined ? { abortController: controller } : {}),
     ...queryOption,
   };
@@ -107,24 +125,35 @@ export async function runCustomPrompt(
 
   let out: RunCustomPromptResult = { sessionId };
 
-  for await (const msg of query({ prompt: fullPrompt, options: queryOptions as any })) {
-    logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
-    if ((msg as any).type === "result") {
-      const m = msg as any;
-      if (m.subtype !== "success") {
-        const error = m.errors?.[0] ?? m.subtype ?? "unknown failure";
-        log.error({ sessionId, error }, "runCustomPrompt failed");
-        return { sessionId, error };
-      }
-      if (opts.outputMode === "none") {
-        out = { sessionId };
-      } else if (opts.outputMode === "text") {
-        const text = typeof m.result === "string" ? m.result : (m.text ?? "");
-        out = { sessionId, result: text };
-      } else {
-        out = { sessionId, structured: m.structured_output };
+  const withStderr = (msg: string): string => {
+    const tail = stderrChunks.join("").trim();
+    return tail ? `${msg}\n--- engine stderr ---\n${tail.slice(-STDERR_CAP)}` : msg;
+  };
+
+  try {
+    for await (const msg of query({ prompt: fullPrompt, options: queryOptions as any })) {
+      logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
+      if ((msg as any).type === "result") {
+        const m = msg as any;
+        if (m.subtype !== "success") {
+          const error = withStderr(m.errors?.[0] ?? m.subtype ?? "unknown failure");
+          log.error({ sessionId, error }, "runCustomPrompt failed");
+          return { sessionId, error };
+        }
+        if (opts.outputMode === "none") {
+          out = { sessionId };
+        } else if (opts.outputMode === "text") {
+          const text = typeof m.result === "string" ? m.result : (m.text ?? "");
+          out = { sessionId, result: text };
+        } else {
+          out = { sessionId, structured: m.structured_output };
+        }
       }
     }
+  } catch (err) {
+    const error = withStderr(String((err as Error)?.message ?? err));
+    log.error({ sessionId, error }, "runCustomPrompt threw");
+    return { sessionId, error };
   }
 
   log.info({ sessionId, outputMode: opts.outputMode }, "runCustomPrompt done");

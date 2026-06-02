@@ -11,15 +11,22 @@ const isDev = env.NODE_ENV !== "production";
 const isBrowser = typeof process === "undefined"
   || typeof (globalThis as { window?: unknown }).window !== "undefined";
 
-const root = pino({
-  level,
-  // pino-pretty is a Node transport — only enable it server-side.
-  transport: isDev && !isBrowser
-    ? { target: "pino-pretty", options: { colorize: true, translateTime: "HH:MM:ss.l" } }
-    : undefined,
-  // In the browser, pino auto-falls back to a console-based logger.
-  browser: { asObject: true },
-});
+// Logs MUST go to stderr (fd 2), never stdout. The container runner reserves
+// stdout for its result JSON (it parses the child's stdout as JSON), so any log
+// line on stdout corrupts that contract. stderr is also the conventional stream
+// for diagnostics. This applies to both the dev pretty transport and prod JSON.
+const root = isBrowser
+  ? // In the browser, pino auto-falls back to a console-based logger.
+    pino({ level, browser: { asObject: true } })
+  : isDev
+    ? pino({
+        level,
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true, translateTime: "HH:MM:ss.l", destination: 2 },
+        },
+      })
+    : pino({ level }, pino.destination(2));
 
 export type Logger = pino.Logger;
 
