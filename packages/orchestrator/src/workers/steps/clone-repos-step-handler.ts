@@ -1,4 +1,4 @@
-import { createLogger } from "@journeyman/core";
+import { createLogger, parseRepoList } from "@journeyman/core";
 import type {
   IGitProvider, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
@@ -29,20 +29,17 @@ export class CloneReposStepHandler implements IStepHandler {
   constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
-    const reposRaw = input.repos;
     const workspaceDir = ctx.workspaceDir;
     const branch = typeof input.branch === "string" ? input.branch : undefined;
 
-    let repos: string | string[] | undefined;
-    if (typeof reposRaw === "string") repos = reposRaw.includes(",") ? reposRaw.split(",").map(s => s.trim()).filter(Boolean) : reposRaw;
-    else if (Array.isArray(reposRaw) && reposRaw.every((r) => typeof r === "string")) repos = reposRaw as string[];
+    const repos = parseRepoList(input.repos as string | string[] | undefined);
 
-    if (!repos) {
+    if (repos.length === 0) {
       return {
         kind: "failure",
         failure: {
           errorClass: "InvalidInput",
-          message: "clone-repos requires string `repos`",
+          message: "clone-repos requires at least one repo URL",
           retryable: false,
         },
       };

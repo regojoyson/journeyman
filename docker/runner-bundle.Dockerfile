@@ -10,6 +10,7 @@ RUN npm ci --include=dev
 COPY . .
 RUN mkdir -p /opt/journeyman/bin \
  && cp "$(command -v node)" /opt/journeyman/node \
+ && ln -s /opt/journeyman/node /opt/journeyman/bin/node \
  && printf '#!/bin/sh\nexec /opt/journeyman/node /opt/journeyman/app/node_modules/.bin/tsx /opt/journeyman/app/packages/coding-cli/src/runner/cli.ts "$@"\n' \
       > /opt/journeyman/bin/journeyman-runner \
  && chmod +x /opt/journeyman/bin/journeyman-runner
