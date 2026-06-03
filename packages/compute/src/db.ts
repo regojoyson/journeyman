@@ -11,7 +11,7 @@ const COLS =
 
 export async function insertComputeTarget(db: Queryable, input: CreateComputeTargetArgs): Promise<ComputeTarget> {
   const { rows } = await db.query(
-    `INSERT INTO jm_workers
+    `INSERT INTO jm_compute_targets
        (scope, org_id, user_id, name, type, execution_mode, connectivity, config, is_default, tags, enabled, created_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10::jsonb,$11,$12)
      RETURNING ${COLS}`,
@@ -30,13 +30,13 @@ export async function listComputeTargets(
 ): Promise<ComputeTarget[]> {
   if (scope.userId === null) {
     const { rows } = await db.query(
-      `SELECT ${COLS} FROM jm_workers WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
+      `SELECT ${COLS} FROM jm_compute_targets WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
       [scope.orgId],
     );
     return rows.map(rowToComputeTarget);
   }
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_workers WHERE org_id = $1 AND user_id = $2 ORDER BY name`,
+    `SELECT ${COLS} FROM jm_compute_targets WHERE org_id = $1 AND user_id = $2 ORDER BY name`,
     [scope.orgId, scope.userId],
   );
   return rows.map(rowToComputeTarget);
@@ -49,7 +49,7 @@ export async function getComputeTarget(
   userId: string | null,
 ): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_workers
+    `SELECT ${COLS} FROM jm_compute_targets
      WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3`,
     [id, orgId, userId],
   );
@@ -76,7 +76,7 @@ export async function updateComputeTarget(db: Queryable, input: UpdateComputeTar
   sets.push("updated_at = now()");
   params.push(input.id, input.orgId, input.userId);
   const { rows } = await db.query(
-    `UPDATE jm_workers SET ${sets.join(", ")}
+    `UPDATE jm_compute_targets SET ${sets.join(", ")}
      WHERE id = $${i} AND org_id = $${i + 1} AND user_id IS NOT DISTINCT FROM $${i + 2}
      RETURNING id`,
     params,
@@ -91,7 +91,7 @@ export async function deleteComputeTarget(
   userId: string | null,
 ): Promise<boolean> {
   const { rows } = await db.query(
-    `DELETE FROM jm_workers
+    `DELETE FROM jm_compute_targets
      WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3
      RETURNING id`,
     [id, orgId, userId],
@@ -106,7 +106,7 @@ export async function listVisibleComputeTargets(
   userId: string,
 ): Promise<ComputeTarget[]> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_workers
+    `SELECT ${COLS} FROM jm_compute_targets
      WHERE enabled = true AND (
        scope = 'system'
        OR (scope = 'org'  AND org_id = $1)
@@ -126,7 +126,7 @@ export async function fetchComputeTargetById(
   id: string,
 ): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_workers
+    `SELECT ${COLS} FROM jm_compute_targets
      WHERE id = $1 AND enabled = true AND (
        scope = 'system'
        OR (scope = 'org'  AND org_id = $2)
@@ -144,7 +144,7 @@ export async function fetchDefaultComputeTarget(
   userId: string,
 ): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_workers
+    `SELECT ${COLS} FROM jm_compute_targets
      WHERE enabled = true AND is_default = true AND (
        scope = 'system'
        OR (scope = 'org'  AND org_id = $1)

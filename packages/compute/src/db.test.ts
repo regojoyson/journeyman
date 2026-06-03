@@ -36,7 +36,7 @@ describe("workers db store", () => {
       type: "docker", executionMode: "per-instance", connectivity: "push",
       config: {}, createdBy: "u1",
     });
-    expect(db.calls[0].text).toMatch(/insert into jm_workers/i);
+    expect(db.calls[0].text).toMatch(/insert into jm_compute_targets/i);
     expect(rec.id).toBe("w1");
     expect(rec.type).toBe("docker");
   });
