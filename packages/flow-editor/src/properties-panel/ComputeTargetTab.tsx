@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { WorkflowNode } from "@journeyman/core";
 
-interface VisibleWorker {
+interface VisibleComputeTarget {
   id: string;
   name: string;
   type: string;
@@ -9,22 +9,22 @@ interface VisibleWorker {
   enabled: boolean;
 }
 
-export interface WorkerTabProps {
+export interface ComputeTargetTabProps {
   orgId: string;
   node: WorkflowNode;
   onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
-export function WorkerTab({ orgId, node, onChange, readOnly }: WorkerTabProps) {
-  const [workers, setWorkers] = useState<VisibleWorker[]>([]);
+export function ComputeTargetTab({ orgId, node, onChange, readOnly }: ComputeTargetTabProps) {
+  const [workers, setComputeTargets] = useState<VisibleComputeTarget[]>([]);
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/orgs/${orgId}/workers/visible`, { credentials: "include" })
+    fetch(`/api/orgs/${orgId}/compute-targets/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows: VisibleWorker[]) => { if (alive) setWorkers(rows.filter((w) => w.enabled)); })
-      .catch(() => { if (alive) setWorkers([]); });
+      .then((rows: VisibleComputeTarget[]) => { if (alive) setComputeTargets(rows.filter((w) => w.enabled)); })
+      .catch(() => { if (alive) setComputeTargets([]); });
     return () => { alive = false; };
   }, [orgId]);
 
@@ -32,18 +32,18 @@ export function WorkerTab({ orgId, node, onChange, readOnly }: WorkerTabProps) {
   const selected = workers.find((w) => w.id === node.computeTargetId);
   const isPerInstance = selected?.executionMode === "per-instance";
 
-  const setWorkerId = (workerId: string | undefined) => onChange({ ...node, computeTargetId: workerId });
+  const setComputeTargetId = (workerId: string | undefined) => onChange({ ...node, computeTargetId: workerId });
 
   return (
     <div style={{ padding: 8 }}>
-      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on worker (override)</div>
+      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on compute target (override)</div>
       <div className="je-props__field">
         <select
           value={node.computeTargetId ?? ""}
           disabled={readOnly}
-          onChange={(e) => setWorkerId(e.target.value || undefined)}
+          onChange={(e) => setComputeTargetId(e.target.value || undefined)}
         >
-          <option value="">Use workflow worker</option>
+          <option value="">Use workflow compute target</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
           ))}

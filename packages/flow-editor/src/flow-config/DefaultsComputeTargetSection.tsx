@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { WorkflowDefaults } from "@journeyman/core";
 import { useOrgId } from "../state/org-context.tsx";
 
-interface VisibleWorker {
+interface VisibleComputeTarget {
   id: string;
   name: string;
   type: string;
@@ -17,30 +17,30 @@ interface Props {
   readOnly?: boolean;
 }
 
-export function DefaultsWorkerSection({ defaults, onChange, readOnly }: Props) {
+export function DefaultsComputeTargetSection({ defaults, onChange, readOnly }: Props) {
   const orgId = useOrgId();
-  const [workers, setWorkers] = useState<VisibleWorker[]>([]);
+  const [workers, setComputeTargets] = useState<VisibleComputeTarget[]>([]);
 
   useEffect(() => {
     if (!orgId) return;
     let alive = true;
-    fetch(`/api/orgs/${orgId}/workers/visible`, { credentials: "include" })
+    fetch(`/api/orgs/${orgId}/compute-targets/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows: VisibleWorker[]) => { if (alive) setWorkers(rows.filter((w) => w.enabled)); })
-      .catch(() => { if (alive) setWorkers([]); });
+      .then((rows: VisibleComputeTarget[]) => { if (alive) setComputeTargets(rows.filter((w) => w.enabled)); })
+      .catch(() => { if (alive) setComputeTargets([]); });
     return () => { alive = false; };
   }, [orgId]);
 
-  const setWorkerId = (workerId: string | undefined) => onChange({ ...defaults, computeTargetId: workerId });
+  const setComputeTargetId = (workerId: string | undefined) => onChange({ ...defaults, computeTargetId: workerId });
 
   return (
     <div style={{ borderTop: "1px solid #2a2a3a", paddingTop: 8, marginTop: 8 }}>
-      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Worker (where this workflow runs)</div>
+      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>ComputeTarget (where this workflow runs)</div>
       <div className="je-props__field">
         <select
           value={defaults.computeTargetId ?? ""}
           disabled={readOnly}
-          onChange={(e) => setWorkerId(e.target.value || undefined)}
+          onChange={(e) => setComputeTargetId(e.target.value || undefined)}
         >
           <option value="">Default (system Local Workspace)</option>
           {workers.map((w) => (
@@ -49,7 +49,7 @@ export function DefaultsWorkerSection({ defaults, onChange, readOnly }: Props) {
         </select>
       </div>
       <div className="je-props__field-help" style={{ marginTop: 4 }}>
-        Steps that don't override use this worker. Leave as Default to run in-process.
+        Steps that don't override use this compute target. Leave as Default to run in-process.
       </div>
     </div>
   );

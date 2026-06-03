@@ -1,11 +1,11 @@
-export type WorkerType =
+export type ComputeTargetType =
   | "local" | "docker" | "machine-linux" | "machine-windows" | "ecs" | "ec2" | "kubernetes" | "cloud";
 export type ExecutionMode = "per-instance" | "shared";
 export type Connectivity = "push" | "agent";
-export type WorkerScope = "user" | "org" | "system";
+export type ComputeTargetScope = "user" | "org" | "system";
 
-export interface WorkerTypeDescriptor {
-  type: WorkerType;
+export interface ComputeTargetTypeDescriptor {
+  type: ComputeTargetType;
   label: string;
   status: "available" | "planned";
   supportedModes: ExecutionMode[];
@@ -15,11 +15,11 @@ export interface WorkerTypeDescriptor {
 
 export interface ConnectionTestResult { ok: boolean; error?: string }
 
-export interface Worker {
+export interface ComputeTarget {
   id: string;
-  scope: WorkerScope;
+  scope: ComputeTargetScope;
   name: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
@@ -30,9 +30,9 @@ export interface Worker {
   updatedAt: string;
 }
 
-export interface WorkerUpsertBody {
+export interface ComputeTargetUpsertBody {
   name: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
@@ -41,8 +41,8 @@ export interface WorkerUpsertBody {
   enabled?: boolean;
 }
 
-const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/workers`;
-const orgBase = (orgId: string) => `/api/orgs/${orgId}/workers`;
+const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/compute-targets`;
+const orgBase = (orgId: string) => `/api/orgs/${orgId}/compute-targets`;
 
 async function jsonOrThrow<T>(r: Response): Promise<T> {
   if (r.ok) return r.json() as Promise<T>;
@@ -66,28 +66,28 @@ const patchJson = (url: string, body: unknown) =>
     body: JSON.stringify(body),
   });
 
-export const workersApi = {
+export const computeTargetsApi = {
   listVisible: (orgId: string) =>
-    fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(jsonOrThrow<Worker[]>),
+    fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
   listTypes: (orgId: string) =>
-    fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<WorkerTypeDescriptor[]>),
-  testConnection: (orgId: string, body: { type: WorkerType; config: Record<string, unknown> }) =>
+    fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<ComputeTargetTypeDescriptor[]>),
+  testConnection: (orgId: string, body: { type: ComputeTargetType; config: Record<string, unknown> }) =>
     postJson(`${orgBase(orgId)}/test-connection`, body).then(jsonOrThrow<ConnectionTestResult>),
 
   listMy: (orgId: string) =>
-    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<Worker[]>),
-  createMy: (orgId: string, body: WorkerUpsertBody) =>
-    postJson(userBase(orgId), body).then(jsonOrThrow<Worker>),
-  updateMy: (orgId: string, id: string, body: Partial<WorkerUpsertBody>) =>
+    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
+  createMy: (orgId: string, body: ComputeTargetUpsertBody) =>
+    postJson(userBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
+  updateMy: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
     patchJson(`${userBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
   removeMy: (orgId: string, id: string) =>
     fetch(`${userBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),
 
   listOrg: (orgId: string) =>
-    fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<Worker[]>),
-  createOrg: (orgId: string, body: WorkerUpsertBody) =>
-    postJson(orgBase(orgId), body).then(jsonOrThrow<Worker>),
-  updateOrg: (orgId: string, id: string, body: Partial<WorkerUpsertBody>) =>
+    fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
+  createOrg: (orgId: string, body: ComputeTargetUpsertBody) =>
+    postJson(orgBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
+  updateOrg: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
     patchJson(`${orgBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
   removeOrg: (orgId: string, id: string) =>
     fetch(`${orgBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),

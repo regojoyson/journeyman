@@ -1,32 +1,32 @@
 import { useEffect, useState } from "react";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "./admin-styles.ts";
-import { workersApi, type Worker } from "../api/workers.ts";
-import { WorkerFormModal } from "../components/workers/WorkerFormModal.tsx";
+import { computeTargetsApi, type ComputeTarget } from "../api/computeTargets.ts";
+import { ComputeTargetFormModal } from "../components/compute-targets/ComputeTargetFormModal.tsx";
 
-export function WorkersPage(props: { orgId: string; scope: "user" | "org" }) {
-  const [rows, setRows] = useState<Worker[]>([]);
+export function ComputeTargetsPage(props: { orgId: string; scope: "user" | "org" }) {
+  const [rows, setRows] = useState<ComputeTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Worker | null>(null);
+  const [editing, setEditing] = useState<ComputeTarget | null>(null);
 
   async function refresh() {
     setLoading(true);
     try {
-      setRows(props.scope === "user" ? await workersApi.listMy(props.orgId) : await workersApi.listOrg(props.orgId));
+      setRows(props.scope === "user" ? await computeTargetsApi.listMy(props.orgId) : await computeTargetsApi.listOrg(props.orgId));
     } finally {
       setLoading(false);
     }
   }
   useEffect(() => { refresh(); }, [props.orgId, props.scope]);
 
-  async function remove(row: Worker) {
-    if (!confirm(`Delete worker "${row.name}"?`)) return;
-    if (props.scope === "user") await workersApi.removeMy(props.orgId, row.id);
-    else await workersApi.removeOrg(props.orgId, row.id);
+  async function remove(row: ComputeTarget) {
+    if (!confirm(`Delete compute target "${row.name}"?`)) return;
+    if (props.scope === "user") await computeTargetsApi.removeMy(props.orgId, row.id);
+    else await computeTargetsApi.removeOrg(props.orgId, row.id);
     refresh();
   }
 
-  const title = props.scope === "user" ? "My Workers" : "Org Workers";
+  const title = props.scope === "user" ? "My Compute Targets" : "Org Compute Targets";
 
   return (
     <div className="h-full overflow-y-auto">
@@ -36,19 +36,19 @@ export function WorkersPage(props: { orgId: string; scope: "user" | "org" }) {
             <h1 className="text-2xl font-semibold text-slate-100">{title}</h1>
             <p className="mt-1 text-sm text-slate-400">Compute targets your workflows can run on.</p>
           </div>
-          <button onClick={() => setCreating(true)} className={btnPrimary}>+ New worker</button>
+          <button onClick={() => setCreating(true)} className={btnPrimary}>+ New compute target</button>
         </header>
 
         <section className={`${card} overflow-hidden`}>
           <div className="px-6 py-4 border-b border-slate-800">
             <h2 className="text-base font-medium text-slate-100">
-              Workers <span className="text-slate-500 font-normal">({rows.length})</span>
+              Compute Targets <span className="text-slate-500 font-normal">({rows.length})</span>
             </h2>
           </div>
           {loading ? (
             <div className="p-10 text-center text-sm text-slate-500">Loading…</div>
           ) : rows.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500">No workers yet. Use "New worker" above.</div>
+            <div className="p-10 text-center text-sm text-slate-500">No compute targets yet. Use "New compute target" above.</div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
@@ -82,10 +82,10 @@ export function WorkersPage(props: { orgId: string; scope: "user" | "org" }) {
       </div>
 
       {creating && (
-        <WorkerFormModal orgId={props.orgId} scope={props.scope} onClose={() => setCreating(false)} onSaved={refresh} />
+        <ComputeTargetFormModal orgId={props.orgId} scope={props.scope} onClose={() => setCreating(false)} onSaved={refresh} />
       )}
       {editing && (
-        <WorkerFormModal orgId={props.orgId} scope={props.scope} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <ComputeTargetFormModal orgId={props.orgId} scope={props.scope} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

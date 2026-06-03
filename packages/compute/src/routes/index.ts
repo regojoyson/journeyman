@@ -9,11 +9,11 @@ import { COMPUTE_TARGET_CATALOG } from "../compute-target-catalog.ts";
 import { runWorkerConnectionTest } from "../test-connection.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
 
-export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Promise<void> {
+export async function registerComputeTargetRoutes(app: FastifyInstance, pool: Pool): Promise<void> {
   const requireAuth = makeRequireAuth({ pool });
 
   // ---- Visible (system + org + user) ----
-  app.get("/api/orgs/:orgId/workers/visible", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/api/orgs/:orgId/compute-targets/visible", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -21,14 +21,14 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
   });
 
   // ---- Capability catalog (all types; unbuilt ones flagged "planned") ----
-  app.get("/api/orgs/:orgId/workers/types", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/api/orgs/:orgId/compute-targets/types", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     return COMPUTE_TARGET_CATALOG;
   });
 
   // ---- Test connection for a candidate {type, config} ----
-  app.post("/api/orgs/:orgId/workers/test-connection", { preHandler: requireAuth() }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/compute-targets/test-connection", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const body = req.body as { type?: string; config?: Record<string, unknown> };
@@ -40,13 +40,13 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
   });
 
   // ---- Org-scoped CRUD ----
-  app.get("/api/orgs/:orgId/workers", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/api/orgs/:orgId/compute-targets", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     return listComputeTargets(pool, { orgId, userId: null });
   });
 
-  app.post("/api/orgs/:orgId/workers", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/compute-targets", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -67,7 +67,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     }
   });
 
-  app.get("/api/orgs/:orgId/workers/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/api/orgs/:orgId/compute-targets/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const rec = await getComputeTarget(pool, id, orgId, null);
@@ -75,7 +75,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     return rec;
   });
 
-  app.patch("/api/orgs/:orgId/workers/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.patch("/api/orgs/:orgId/compute-targets/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const body = req.body as any;
@@ -88,7 +88,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     return { ok: true };
   });
 
-  app.delete("/api/orgs/:orgId/workers/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.delete("/api/orgs/:orgId/compute-targets/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const ok = await deleteComputeTarget(pool, id, orgId, null);
@@ -97,14 +97,14 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
   });
 
   // ---- User-scoped CRUD ----
-  app.get("/api/orgs/:orgId/users/me/workers", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/api/orgs/:orgId/users/me/compute-targets", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     return listComputeTargets(pool, { orgId, userId: ctx.user.id });
   });
 
-  app.post("/api/orgs/:orgId/users/me/workers", { preHandler: requireAuth() }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/users/me/compute-targets", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -125,7 +125,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     }
   });
 
-  app.patch("/api/orgs/:orgId/users/me/workers/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.patch("/api/orgs/:orgId/users/me/compute-targets/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -139,7 +139,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
     return { ok: true };
   });
 
-  app.delete("/api/orgs/:orgId/users/me/workers/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.delete("/api/orgs/:orgId/users/me/compute-targets/:id", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });

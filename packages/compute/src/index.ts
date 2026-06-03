@@ -15,7 +15,7 @@ export {
 export { rowToComputeTarget, validateComputeTargetInput, InvalidComputeTargetInputError } from "./compute-target-record.ts";
 export { resolveComputeTarget, ComputeTargetNotFoundError } from "./resolver.ts";
 export type { ResolveComputeTargetCtx } from "./resolver.ts";
-export { registerWorkerRoutes } from "./routes/index.ts";
+export { registerComputeTargetRoutes } from "./routes/index.ts";
 export { makeDockerClient, parseDockerHost } from "./backends/docker/docker-client.ts";
 export type { IDockerClient, DockerConnection } from "./backends/docker/docker-client.ts";
 export { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";

@@ -3,7 +3,7 @@ import { FolderOpen, Archive, type LucideIcon } from "lucide-react";
 import { inputCls } from "../../../routes/admin-styles.ts";
 import { Field, CheckField } from "./form-controls.tsx";
 
-export interface WorkerTypeForm {
+export interface ComputeTargetTypeForm {
   icon: LucideIcon;
   readConfig: (raw: Record<string, unknown>) => Record<string, unknown>;
   buildConfig: (state: Record<string, unknown>) => Record<string, unknown>;
@@ -32,7 +32,7 @@ const LocalConfigForm: FC<{ state: Record<string, unknown>; onChange: (s: Record
     );
   };
 
-export const localTypeForm: WorkerTypeForm = {
+export const localTypeForm: ComputeTargetTypeForm = {
   icon: FolderOpen,
   readConfig: (raw) => ({
     baseDir: String((raw.baseDir as string) ?? ""),

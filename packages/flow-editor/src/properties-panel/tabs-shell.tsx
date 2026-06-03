@@ -39,7 +39,7 @@ const ALL_TABS: Array<{ id: TabId; label: string }> = [
   { id: "skills",          label: "Skills"           },
   { id: "requiredSecrets", label: "Required secrets" },
   { id: "retry",           label: "Retry"            },
-  { id: "worker",          label: "Worker"           },
+  { id: "worker",          label: "Compute Target"           },
   { id: "io",              label: "I/O"              },
 ];
 

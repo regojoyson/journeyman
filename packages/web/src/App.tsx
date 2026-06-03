@@ -9,7 +9,7 @@ import { MySecretsPage } from "./routes/MySecretsPage.tsx";
 import { AdminSecretsPage } from "./routes/AdminSecretsPage.tsx";
 import { MyMcpsPage } from "./routes/MyMcpsPage.tsx";
 import { AdminMcpsPage } from "./routes/AdminMcpsPage.tsx";
-import { WorkersPage } from "./routes/WorkersPage.tsx";
+import { ComputeTargetsPage } from "./routes/ComputeTargetsPage.tsx";
 import { MySkillsPage } from "./routes/MySkillsPage.tsx";
 import { AdminSkillsPage } from "./routes/AdminSkillsPage.tsx";
 import { MyCustomStepsPage } from "./routes/MyCustomStepsPage.tsx";
@@ -41,7 +41,7 @@ export default function App() {
         <Route path="/workflow-instances/:id" element={<RunDetailPage />} />
         <Route path="/me/secrets" element={<MySecretsPage orgId={activeOrgId} />} />
         <Route path="/me/mcps" element={<MyMcpsPage orgId={activeOrgId} />} />
-        <Route path="/me/workers" element={<WorkersPage orgId={activeOrgId} scope="user" />} />
+        <Route path="/me/compute-targets" element={<ComputeTargetsPage orgId={activeOrgId} scope="user" />} />
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
         <Route path="/me/custom-steps" element={<MyCustomStepsPage orgId={activeOrgId} />} />
         <Route path="/me/webhooks" element={<MyWebhooksPage />} />
@@ -49,7 +49,7 @@ export default function App() {
         <Route path="/me/password" element={<ChangePasswordPage />} />
         <Route path="/admin/secrets" element={role === "admin" ? <AdminSecretsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/mcps" element={role === "admin" ? <AdminMcpsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
-        <Route path="/admin/workers" element={role === "admin" ? <WorkersPage orgId={activeOrgId} scope="org" /> : <Navigate to="/" replace />} />
+        <Route path="/admin/compute-targets" element={role === "admin" ? <ComputeTargetsPage orgId={activeOrgId} scope="org" /> : <Navigate to="/" replace />} />
         <Route path="/admin/skills" element={role === "admin" ? <AdminSkillsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/custom-steps" element={role === "admin" ? <AdminCustomStepsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/webhooks" element={role === "admin" ? <AdminWebhooksPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
