@@ -1,4 +1,4 @@
-import type { ResolvedWorker, WorkerRecord } from "@journeyman/core";
+import type { ResolvedWorker, ComputeTarget } from "@journeyman/core";
 import type { Queryable } from "./db.ts";
 import { fetchWorkerById, fetchDefaultWorker } from "./db.ts";
 
@@ -9,7 +9,7 @@ export interface ResolveWorkerCtx {
   userId: string;
 }
 
-function toResolved(w: WorkerRecord): ResolvedWorker {
+function toResolved(w: ComputeTarget): ResolvedWorker {
   return {
     id: w.id,
     type: w.type,

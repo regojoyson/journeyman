@@ -106,11 +106,11 @@ export type {
   FileBundle,
 } from "./types/execution-environment.types.ts";
 export type {
-  WorkerScope,
-  WorkerRecord,
-  CreateWorkerArgs,
-  UpdateWorkerArgs,
-} from "./types/worker.types.ts";
+  ComputeTargetScope,
+  ComputeTarget,
+  CreateComputeTargetArgs,
+  UpdateComputeTargetArgs,
+} from "./types/compute-target.types.ts";
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
 export type { IWorkflowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";

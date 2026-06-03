@@ -1,4 +1,4 @@
-import type { CreateWorkerArgs, UpdateWorkerArgs, WorkerRecord } from "@journeyman/core";
+import type { CreateComputeTargetArgs, UpdateComputeTargetArgs, ComputeTarget } from "@journeyman/core";
 import { rowToWorker } from "./worker-record.ts";
 
 /** Minimal structural seam over a pg Pool/Client so the store is unit-testable. */
@@ -9,7 +9,7 @@ export interface Queryable {
 const COLS =
   "id, scope, org_id, user_id, name, type, execution_mode, connectivity, config, is_default, tags, enabled, created_by, created_at, updated_at";
 
-export async function insertWorker(db: Queryable, input: CreateWorkerArgs): Promise<WorkerRecord> {
+export async function insertWorker(db: Queryable, input: CreateComputeTargetArgs): Promise<ComputeTarget> {
   const { rows } = await db.query(
     `INSERT INTO jm_workers
        (scope, org_id, user_id, name, type, execution_mode, connectivity, config, is_default, tags, enabled, created_by)
@@ -27,7 +27,7 @@ export async function insertWorker(db: Queryable, input: CreateWorkerArgs): Prom
 export async function listWorkers(
   db: Queryable,
   scope: { orgId: string; userId: string | null },
-): Promise<WorkerRecord[]> {
+): Promise<ComputeTarget[]> {
   if (scope.userId === null) {
     const { rows } = await db.query(
       `SELECT ${COLS} FROM jm_workers WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
@@ -47,7 +47,7 @@ export async function getWorker(
   id: string,
   orgId: string,
   userId: string | null,
-): Promise<WorkerRecord | null> {
+): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_workers
      WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3`,
@@ -56,7 +56,7 @@ export async function getWorker(
   return rows[0] ? rowToWorker(rows[0]) : null;
 }
 
-export async function updateWorker(db: Queryable, input: UpdateWorkerArgs): Promise<boolean> {
+export async function updateWorker(db: Queryable, input: UpdateComputeTargetArgs): Promise<boolean> {
   const sets: string[] = [];
   const params: unknown[] = [];
   let i = 1;
@@ -104,7 +104,7 @@ export async function listVisibleWorkers(
   db: Queryable,
   orgId: string,
   userId: string,
-): Promise<WorkerRecord[]> {
+): Promise<ComputeTarget[]> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_workers
      WHERE enabled = true AND (
@@ -124,7 +124,7 @@ export async function fetchWorkerById(
   orgId: string,
   userId: string,
   id: string,
-): Promise<WorkerRecord | null> {
+): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_workers
      WHERE id = $1 AND enabled = true AND (
@@ -142,7 +142,7 @@ export async function fetchDefaultWorker(
   db: Queryable,
   orgId: string,
   userId: string,
-): Promise<WorkerRecord | null> {
+): Promise<ComputeTarget | null> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_workers
      WHERE enabled = true AND is_default = true AND (

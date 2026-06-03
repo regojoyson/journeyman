@@ -26,7 +26,7 @@ describe("validateWorkerInput", () => {
 });
 
 describe("rowToWorker", () => {
-  it("maps a snake_case DB row to a WorkerRecord and parses config/tags", () => {
+  it("maps a snake_case DB row to a ComputeTarget and parses config/tags", () => {
     const created = new Date("2026-05-30T00:00:00Z");
     const rec = rowToWorker({
       id: "w1",

@@ -1,11 +1,11 @@
 import type { WorkerType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
 
-export type WorkerScope = "user" | "org" | "system";
+export type ComputeTargetScope = "user" | "org" | "system";
 
 /** A Worker row as stored in jm_workers. */
-export interface WorkerRecord {
+export interface ComputeTarget {
   id: string;
-  scope: WorkerScope;
+  scope: ComputeTargetScope;
   /** Set for org/user scope; null for system. */
   orgId: string | null;
   /** Set for user scope; null for org/system. */
@@ -23,8 +23,8 @@ export interface WorkerRecord {
   updatedAt: Date;
 }
 
-export interface CreateWorkerArgs {
-  scope: WorkerScope;
+export interface CreateComputeTargetArgs {
+  scope: ComputeTargetScope;
   orgId: string | null;
   userId: string | null;
   name: string;
@@ -38,7 +38,7 @@ export interface CreateWorkerArgs {
   createdBy: string | null;
 }
 
-export interface UpdateWorkerArgs {
+export interface UpdateComputeTargetArgs {
   id: string;
   orgId: string | null;
   userId: string | null;

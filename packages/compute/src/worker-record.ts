@@ -1,5 +1,5 @@
 import type { Connectivity, ExecutionMode, WorkerType } from "@journeyman/core";
-import type { WorkerRecord, WorkerScope } from "@journeyman/core";
+import type { ComputeTarget, ComputeTargetScope } from "@journeyman/core";
 
 export class InvalidWorkerInputError extends Error {}
 
@@ -36,11 +36,11 @@ export function validateWorkerInput(input: WorkerInputShape): void {
   }
 }
 
-/** Map a jm_workers DB row (snake_case) to a WorkerRecord (camelCase). */
-export function rowToWorker(r: Record<string, any>): WorkerRecord {
+/** Map a jm_workers DB row (snake_case) to a ComputeTarget (camelCase). */
+export function rowToWorker(r: Record<string, any>): ComputeTarget {
   return {
     id: r.id,
-    scope: r.scope as WorkerScope,
+    scope: r.scope as ComputeTargetScope,
     orgId: r.org_id ?? null,
     userId: r.user_id ?? null,
     name: r.name,
