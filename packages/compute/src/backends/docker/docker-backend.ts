@@ -1,6 +1,6 @@
 import type {
   Connectivity, ExecutionEnvironmentBackend, ExecutionEnvironmentSpec, ExecutionMode,
-  IExecutionEnvironment, ResolvedWorker, WorkerType,
+  IExecutionEnvironment, ResolvedComputeTarget, ComputeTargetType,
 } from "@journeyman/core";
 import type { IDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
@@ -43,7 +43,7 @@ export interface DockerBackendDeps {
 }
 
 export class DockerBackend implements ExecutionEnvironmentBackend {
-  readonly type: WorkerType = "docker";
+  readonly type: ComputeTargetType = "docker";
   readonly supportedModes: ExecutionMode[] = ["per-instance"];
   readonly supportedConnectivity: Connectivity[] = ["push"];
 
@@ -64,7 +64,7 @@ export class DockerBackend implements ExecutionEnvironmentBackend {
     }
   }
 
-  create(worker: ResolvedWorker): IExecutionEnvironment {
+  create(worker: ResolvedComputeTarget): IExecutionEnvironment {
     this.validateConfig(worker.config);
     return new DockerExecutionEnvironment({
       client: this.deps.client,

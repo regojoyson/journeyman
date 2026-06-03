@@ -1,11 +1,11 @@
 import type {
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
-  WorkerType,
+  ComputeTargetType,
 } from "@journeyman/core";
 
 export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironmentRegistry {
-  private byType = new Map<WorkerType, ExecutionEnvironmentBackend>();
+  private byType = new Map<ComputeTargetType, ExecutionEnvironmentBackend>();
 
   register(backend: ExecutionEnvironmentBackend): void {
     if (this.byType.has(backend.type)) {
@@ -14,7 +14,7 @@ export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironme
     this.byType.set(backend.type, backend);
   }
 
-  get(type: WorkerType): ExecutionEnvironmentBackend {
+  get(type: ComputeTargetType): ExecutionEnvironmentBackend {
     const backend = this.byType.get(type);
     if (!backend) {
       throw new Error(`No execution backend registered for type '${type}'`);
@@ -22,7 +22,7 @@ export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironme
     return backend;
   }
 
-  available(): WorkerType[] {
+  available(): ComputeTargetType[] {
     return [...this.byType.keys()];
   }
 }

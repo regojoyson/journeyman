@@ -1,4 +1,4 @@
-import type { ResolvedWorker, ComputeTarget } from "@journeyman/core";
+import type { ResolvedComputeTarget, ComputeTarget } from "@journeyman/core";
 import type { Queryable } from "./db.ts";
 import { fetchWorkerById, fetchDefaultWorker } from "./db.ts";
 
@@ -9,7 +9,7 @@ export interface ResolveWorkerCtx {
   userId: string;
 }
 
-function toResolved(w: ComputeTarget): ResolvedWorker {
+function toResolved(w: ComputeTarget): ResolvedComputeTarget {
   return {
     id: w.id,
     type: w.type,
@@ -27,7 +27,7 @@ export async function resolveWorker(
   db: Queryable,
   ctx: ResolveWorkerCtx,
   workerId: string | undefined,
-): Promise<ResolvedWorker> {
+): Promise<ResolvedComputeTarget> {
   if (workerId) {
     const w = await fetchWorkerById(db, ctx.orgId, ctx.userId, workerId);
     if (!w) throw new WorkerNotFoundError(`worker '${workerId}' not found or not visible`);

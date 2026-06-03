@@ -91,7 +91,7 @@ export type {
   IWorkspace, IWorkspaceProvider,
 } from "./interfaces/workspace-provider.interface.ts";
 export type {
-  WorkerType,
+  ComputeTargetType,
   ExecutionMode,
   Connectivity,
   ExecutionEnvironmentSpec,
@@ -100,7 +100,7 @@ export type {
   ExecResult,
   OperationRunner,
   IExecutionEnvironment,
-  ResolvedWorker,
+  ResolvedComputeTarget,
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
   FileBundle,

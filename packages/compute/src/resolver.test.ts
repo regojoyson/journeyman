@@ -19,7 +19,7 @@ function dbReturning(rows: any[]): Queryable {
 }
 
 describe("resolveWorker", () => {
-  it("resolves an explicit workerId to a ResolvedWorker", async () => {
+  it("resolves an explicit workerId to a ResolvedComputeTarget", async () => {
     const r = await resolveWorker(dbReturning([dockerRow]), { orgId: "o1", userId: "u1" }, "w1");
     expect(r).toEqual({
       id: "w1",

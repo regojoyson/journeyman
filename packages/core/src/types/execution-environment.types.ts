@@ -12,7 +12,7 @@ export interface FileBundle {
   tar: Readable | Buffer;
 }
 
-export type WorkerType =
+export type ComputeTargetType =
   | "local"
   | "docker"
   | "machine-linux"
@@ -37,7 +37,7 @@ export interface ExecutionEnvironmentSpec {
 /** Handle to a provisioned environment for a single run. */
 export interface ProvisionedEnv {
   runId: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   /** Opaque backend handle (e.g. container id, or "local:<runId>"). */
   handle: string;
   /** Optional named volume (Docker). */
@@ -78,7 +78,7 @@ export type OperationRunner = (
 
 /** Uniform contract every worker type implements. */
 export interface IExecutionEnvironment {
-  readonly type: WorkerType;
+  readonly type: ComputeTargetType;
   /** No-op for shared/local; provisions a fresh unit + workspace for per-instance. */
   provision(runId: string, spec: ExecutionEnvironmentSpec): Promise<ProvisionedEnv>;
   exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult>;
@@ -93,9 +93,9 @@ export interface IExecutionEnvironment {
 }
 
 /** A Worker record resolved to the fields a backend needs at run start. */
-export interface ResolvedWorker {
+export interface ResolvedComputeTarget {
   id: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity;
   /** Type-specific config, validated by the backend. */
@@ -104,18 +104,18 @@ export interface ResolvedWorker {
 
 /** A pluggable worker *type*. Registered by name; callers never change. */
 export interface ExecutionEnvironmentBackend {
-  readonly type: WorkerType;
+  readonly type: ComputeTargetType;
   readonly supportedModes: ExecutionMode[];
   readonly supportedConnectivity: Connectivity[];
   /** Throws if the worker's config is invalid for this type. */
   validateConfig(config: unknown): void;
-  create(worker: ResolvedWorker): IExecutionEnvironment;
+  create(worker: ResolvedComputeTarget): IExecutionEnvironment;
 }
 
 export interface IExecutionEnvironmentRegistry {
   register(backend: ExecutionEnvironmentBackend): void;
   /** Throws if no backend registered for the type. */
-  get(type: WorkerType): ExecutionEnvironmentBackend;
+  get(type: ComputeTargetType): ExecutionEnvironmentBackend;
   /** Worker types this deployment has configured. */
-  available(): WorkerType[];
+  available(): ComputeTargetType[];
 }

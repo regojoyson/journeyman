@@ -5,8 +5,8 @@ export { LocalBackend } from "./backends/local/local-backend.ts";
 export type { LocalWorkerConfig, LocalBackendDeps } from "./backends/local/local-backend.ts";
 export { createDefaultRegistry } from "./default-registry.ts";
 export type { DefaultRegistryOptions } from "./default-registry.ts";
-export { WORKER_TYPE_CATALOG } from "./worker-type-catalog.ts";
-export type { WorkerTypeDescriptor } from "./worker-type-catalog.ts";
+export { COMPUTE_TARGET_CATALOG } from "./compute-target-catalog.ts";
+export type { ComputeTargetTypeDescriptor } from "./compute-target-catalog.ts";
 export type { Queryable } from "./db.ts";
 export {
   insertWorker, listWorkers, getWorker, updateWorker, deleteWorker,

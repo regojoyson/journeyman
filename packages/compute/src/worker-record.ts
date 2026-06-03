@@ -1,9 +1,9 @@
-import type { Connectivity, ExecutionMode, WorkerType } from "@journeyman/core";
+import type { Connectivity, ExecutionMode, ComputeTargetType } from "@journeyman/core";
 import type { ComputeTarget, ComputeTargetScope } from "@journeyman/core";
 
 export class InvalidWorkerInputError extends Error {}
 
-const WORKER_TYPES: WorkerType[] = [
+const WORKER_TYPES: ComputeTargetType[] = [
   "local", "docker", "machine-linux", "machine-windows", "ecs", "ec2", "kubernetes", "cloud",
 ];
 const MODES: ExecutionMode[] = ["per-instance", "shared"];
@@ -21,7 +21,7 @@ export function validateWorkerInput(input: WorkerInputShape): void {
   if (typeof input.name !== "string" || input.name.trim().length === 0) {
     throw new InvalidWorkerInputError("worker name is required");
   }
-  if (!WORKER_TYPES.includes(input.type as WorkerType)) {
+  if (!WORKER_TYPES.includes(input.type as ComputeTargetType)) {
     throw new InvalidWorkerInputError(`unknown worker type '${String(input.type)}'`);
   }
   if (!MODES.includes(input.executionMode as ExecutionMode)) {
@@ -44,7 +44,7 @@ export function rowToWorker(r: Record<string, any>): ComputeTarget {
     orgId: r.org_id ?? null,
     userId: r.user_id ?? null,
     name: r.name,
-    type: r.type as WorkerType,
+    type: r.type as ComputeTargetType,
     executionMode: r.execution_mode as ExecutionMode,
     connectivity: (r.connectivity ?? null) as Connectivity | null,
     config: (r.config ?? {}) as Record<string, unknown>,

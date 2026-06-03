@@ -1,4 +1,4 @@
-import type { WorkerType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
+import type { ComputeTargetType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
 
 export type ComputeTargetScope = "user" | "org" | "system";
 
@@ -11,7 +11,7 @@ export interface ComputeTarget {
   /** Set for user scope; null for org/system. */
   userId: string | null;
   name: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
@@ -28,7 +28,7 @@ export interface CreateComputeTargetArgs {
   orgId: string | null;
   userId: string | null;
   name: string;
-  type: WorkerType;
+  type: ComputeTargetType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;

@@ -5,7 +5,7 @@ import {
   insertWorker, listWorkers, getWorker, updateWorker, deleteWorker, listVisibleWorkers,
 } from "../db.ts";
 import { validateWorkerInput, InvalidWorkerInputError } from "../worker-record.ts";
-import { WORKER_TYPE_CATALOG } from "../worker-type-catalog.ts";
+import { COMPUTE_TARGET_CATALOG } from "../compute-target-catalog.ts";
 import { runWorkerConnectionTest } from "../test-connection.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
 
@@ -24,7 +24,7 @@ export async function registerWorkerRoutes(app: FastifyInstance, pool: Pool): Pr
   app.get("/api/orgs/:orgId/workers/types", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
-    return WORKER_TYPE_CATALOG;
+    return COMPUTE_TARGET_CATALOG;
   });
 
   // ---- Test connection for a candidate {type, config} ----

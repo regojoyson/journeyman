@@ -1,7 +1,7 @@
-import type { WorkerType, ExecutionMode, Connectivity } from "@journeyman/core";
+import type { ComputeTargetType, ExecutionMode, Connectivity } from "@journeyman/core";
 
-export interface WorkerTypeDescriptor {
-  type: WorkerType;
+export interface ComputeTargetTypeDescriptor {
+  type: ComputeTargetType;
   label: string;
   status: "available" | "planned";
   supportedModes: ExecutionMode[];
@@ -15,7 +15,7 @@ export interface WorkerTypeDescriptor {
  * sync with the registered backends. Modes/connectivity for planned types come
  * from the managed-compute-targets design (§4 matrix).
  */
-export const WORKER_TYPE_CATALOG: WorkerTypeDescriptor[] = [
+export const COMPUTE_TARGET_CATALOG: ComputeTargetTypeDescriptor[] = [
   { type: "local", label: "Local (no isolation)", status: "available",
     supportedModes: ["shared"], supportedConnectivity: [],
     summary: "Runs in-process on the host with a shared workspace. No isolation." },

@@ -4,8 +4,8 @@ import type {
   ExecutionMode,
   IExecutionEnvironment,
   OperationRunner,
-  ResolvedWorker,
-  WorkerType,
+  ResolvedComputeTarget,
+  ComputeTargetType,
 } from "@journeyman/core";
 import { LocalExecutionEnvironment } from "./local-execution-environment.ts";
 
@@ -20,7 +20,7 @@ export interface LocalBackendDeps {
 }
 
 export class LocalBackend implements ExecutionEnvironmentBackend {
-  readonly type: WorkerType = "local";
+  readonly type: ComputeTargetType = "local";
   readonly supportedModes: ExecutionMode[] = ["shared"];
   readonly supportedConnectivity: Connectivity[] = [];
 
@@ -40,7 +40,7 @@ export class LocalBackend implements ExecutionEnvironmentBackend {
     }
   }
 
-  create(worker: ResolvedWorker): IExecutionEnvironment {
+  create(worker: ResolvedComputeTarget): IExecutionEnvironment {
     this.validateConfig(worker.config);
     const cfg = (worker.config ?? {}) as LocalWorkerConfig;
     return new LocalExecutionEnvironment({
