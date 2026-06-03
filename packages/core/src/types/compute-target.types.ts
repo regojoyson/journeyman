@@ -2,7 +2,7 @@ import type { ComputeTargetType, ExecutionMode, Connectivity } from "./execution
 
 export type ComputeTargetScope = "user" | "org" | "system";
 
-/** A Worker row as stored in jm_workers. */
+/** A Compute Target row as stored in jm_compute_targets. */
 export interface ComputeTarget {
   id: string;
   scope: ComputeTargetScope;

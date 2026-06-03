@@ -36,7 +36,7 @@ export function validateComputeTargetInput(input: ComputeTargetInputShape): void
   }
 }
 
-/** Map a jm_workers DB row (snake_case) to a ComputeTarget (camelCase). */
+/** Map a jm_compute_targets DB row (snake_case) to a ComputeTarget (camelCase). */
 export function rowToComputeTarget(r: Record<string, any>): ComputeTarget {
   return {
     id: r.id,
