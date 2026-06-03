@@ -1,5 +1,5 @@
 {
-  "name": "@journeyman/workers",
+  "name": "@journeyman/compute",
   "version": "0.1.0",
   "private": true,
   "type": "module",

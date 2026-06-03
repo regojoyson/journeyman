@@ -15,7 +15,7 @@ import {
   getSandbox, markSandboxDestroyed, listActiveSandboxes,
   DockerExecutionEnvironment, makeDockerClient,
   SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
-} from "@journeyman/workers";
+} from "@journeyman/compute";
 import { isTerminalStatus } from "@journeyman/core";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,

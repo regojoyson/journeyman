@@ -19,7 +19,7 @@ import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
   makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveWorker,
   resolveDockerSpec,
-} from "@journeyman/workers";
+} from "@journeyman/compute";
 import { createCodingOperationRunner } from "@journeyman/coding-cli";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
 import { ConsoleProvider } from "@journeyman/notification-provider";

@@ -17,7 +17,7 @@ import { registerWorkflowTriggersRoute } from "./routes/workflow-triggers.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
-import { registerWorkerRoutes, registerSandboxRoutes } from "@journeyman/workers";
+import { registerWorkerRoutes, registerSandboxRoutes } from "@journeyman/compute";
 import { registerSkillRoutes } from "@journeyman/skills";
 import { registerCustomStepRoutes } from "@journeyman/custom-steps";
 import { registerCodingModelRoutes } from "@journeyman/coding-models";
