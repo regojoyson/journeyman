@@ -28,18 +28,18 @@ export function WorkerTab({ orgId, node, onChange, readOnly }: WorkerTabProps) {
     return () => { alive = false; };
   }, [orgId]);
 
-  const overridden = Boolean(node.workerId);
-  const selected = workers.find((w) => w.id === node.workerId);
+  const overridden = Boolean(node.computeTargetId);
+  const selected = workers.find((w) => w.id === node.computeTargetId);
   const isPerInstance = selected?.executionMode === "per-instance";
 
-  const setWorkerId = (workerId: string | undefined) => onChange({ ...node, workerId });
+  const setWorkerId = (workerId: string | undefined) => onChange({ ...node, computeTargetId: workerId });
 
   return (
     <div style={{ padding: 8 }}>
       <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on worker (override)</div>
       <div className="je-props__field">
         <select
-          value={node.workerId ?? ""}
+          value={node.computeTargetId ?? ""}
           disabled={readOnly}
           onChange={(e) => setWorkerId(e.target.value || undefined)}
         >

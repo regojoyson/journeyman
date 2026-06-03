@@ -31,14 +31,14 @@ export function DefaultsWorkerSection({ defaults, onChange, readOnly }: Props) {
     return () => { alive = false; };
   }, [orgId]);
 
-  const setWorkerId = (workerId: string | undefined) => onChange({ ...defaults, workerId });
+  const setWorkerId = (workerId: string | undefined) => onChange({ ...defaults, computeTargetId: workerId });
 
   return (
     <div style={{ borderTop: "1px solid #2a2a3a", paddingTop: 8, marginTop: 8 }}>
       <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Worker (where this workflow runs)</div>
       <div className="je-props__field">
         <select
-          value={defaults.workerId ?? ""}
+          value={defaults.computeTargetId ?? ""}
           disabled={readOnly}
           onChange={(e) => setWorkerId(e.target.value || undefined)}
         >

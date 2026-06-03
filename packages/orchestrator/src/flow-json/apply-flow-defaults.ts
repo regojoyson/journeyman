@@ -23,15 +23,18 @@ export function applyWorkflowDefaults(
   const executorConfig = mergeExecutorConfig(node.executorConfig, kindDefault, sources);
   const model          = mergeModel(node.model, defaults.defaultModel, sources);
 
-  // Worker selection: node-level override (workspace-independent steps) wins,
-  // else the flow default. The worker that owns the run's workspace is resolved
+  // Compute-target selection: node-level override (workspace-independent steps) wins,
+  // else the flow default. The compute target that owns the run's workspace is resolved
   // from this on the worker side (ensureWorkspace → resolveComputeTarget); without it,
   // resolveComputeTarget(undefined) falls back to the local default → runs land locally.
-  const workerId = node.workerId ?? defaults.workerId;
-  if (workerId) sources["workerId"] = node.workerId ? "node" : "workflow-default";
+  // Legacy flows used `workerId`; read it as a fallback so saved flows keep working.
+  const nodeCt = node.computeTargetId ?? (node as { workerId?: string }).workerId;
+  const defCt  = defaults.computeTargetId ?? (defaults as { workerId?: string }).workerId;
+  const computeTargetId = nodeCt ?? defCt;
+  if (computeTargetId) sources["computeTargetId"] = nodeCt ? "node" : "workflow-default";
 
   return {
-    resolved: { ...node, retry, executorConfig, model, ...(workerId ? { workerId } : {}) },
+    resolved: { ...node, retry, executorConfig, model, ...(computeTargetId ? { computeTargetId } : {}) },
     sources,
   };
 }

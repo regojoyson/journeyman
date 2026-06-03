@@ -32,7 +32,7 @@ export interface ConductorOrchestratorDeps {
   /** Provisions a sandbox for a run at start; absent/no-op for local-only deployments. */
   sandboxProvisioner?: (args: {
     workflowInstanceId: string;
-    workerId?: string;
+    computeTargetId?: string;
     userId: string | null;
     orgId: string | null;
   }) => Promise<void>;
@@ -117,7 +117,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       if (this.deps.sandboxProvisioner) {
         await this.deps.sandboxProvisioner({
           workflowInstanceId,
-          workerId: args.definitionSnapshot.defaults?.workerId,
+          computeTargetId: args.definitionSnapshot.defaults?.computeTargetId,
           userId: args.startedByUserId ?? null,
           orgId: args.startedByOrgId ?? null,
         });

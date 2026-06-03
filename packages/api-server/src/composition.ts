@@ -195,7 +195,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   // (provision-if-missing / claimSandbox path in ensureWorkspace). Keeping the
   // function shape as a no-op so the orchestrator wiring is unchanged.
   const sandboxProvisioner = pool
-    ? async (_a: { workflowInstanceId: string; workerId?: string; userId: string | null; orgId: string | null }) => {
+    ? async (_a: { workflowInstanceId: string; computeTargetId?: string; userId: string | null; orgId: string | null }) => {
         // No-op: workspace provisioning is now owned by the worker (lazy, status-gated).
         // The ProvisioningReaper (below) detects stuck provisioning via
         // jm_sandbox_instances.status = 'provisioning' + age.

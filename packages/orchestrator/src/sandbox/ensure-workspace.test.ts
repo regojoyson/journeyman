@@ -28,7 +28,7 @@ describe("ensureWorkspace", () => {
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      workerId: undefined,
+      computeTargetId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -48,7 +48,7 @@ describe("ensureWorkspace", () => {
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      workerId: undefined,
+      computeTargetId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -70,7 +70,7 @@ describe("ensureWorkspace", () => {
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      workerId: undefined,
+      computeTargetId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -90,7 +90,7 @@ describe("ensureWorkspace", () => {
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      workerId: undefined,
+      computeTargetId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -113,7 +113,7 @@ describe("ensureWorkspace", () => {
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      workerId: undefined,
+      computeTargetId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -126,7 +126,7 @@ describe("ensureWorkspace", () => {
   it("fails loud when user/org missing", async () => {
     const deps = { getSandbox: vi.fn().mockResolvedValue(null) } as any;
     await expect(
-      ensureWorkspace(deps, { runId: "r", workerId: undefined, userId: null, orgId: null }),
+      ensureWorkspace(deps, { runId: "r", computeTargetId: undefined, userId: null, orgId: null }),
     ).rejects.toThrow(/user\/org/i);
   });
 
@@ -142,7 +142,7 @@ describe("ensureWorkspace", () => {
       provisionLocal: vi.fn(),
     };
     await ensureWorkspace(deps as any, {
-      runId: "r", workerId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+      runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
     });
     expect(lines.some((l) => /provisioning docker workspace/i.test(l))).toBe(true);
     expect(lines.some((l) => /workspace ready/i.test(l))).toBe(true);
@@ -156,7 +156,7 @@ describe("ensureWorkspace", () => {
       claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveComputeTarget: vi.fn(),
     };
     await ensureWorkspace(deps as any, {
-      runId: "r", workerId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+      runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
     });
     expect(lines.some((l) => /using existing workspace/i.test(l))).toBe(true);
   });
@@ -172,7 +172,7 @@ describe("ensureWorkspace", () => {
     };
     await expect(
       ensureWorkspace(deps as any, {
-        runId: "r", workerId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+        runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
       }),
     ).rejects.toThrow(/daemon down/);
     expect(lines.some((l) => /provisioning failed/i.test(l))).toBe(true);

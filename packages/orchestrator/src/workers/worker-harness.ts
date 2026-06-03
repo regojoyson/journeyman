@@ -48,7 +48,7 @@ export interface WorkerHarnessDeps {
    */
   ensureWorkspace: (args: {
     runId: string;
-    workerId: string | undefined;
+    computeTargetId: string | undefined;
     userId: string | null;
     orgId: string | null;
     log?: (line: string) => void;
@@ -304,7 +304,7 @@ export class WorkerHarness {
     let materializeFn: import("@journeyman/core").StepContext["materialize"];
 
     if (needsWorkspace) {
-      const workerId = (stepInput as { workerId?: string }).workerId;
+      const computeTargetId = (stepInput as { computeTargetId?: string }).computeTargetId;
       const provisionLogLevel =
         typeof (stepInput as { agentLogLevel?: string }).agentLogLevel === "string"
           ? (stepInput as { agentLogLevel: string }).agentLogLevel
@@ -312,7 +312,7 @@ export class WorkerHarness {
       const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
       const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
         runId: workflowInstanceId,
-        workerId,
+        computeTargetId,
         userId,
         orgId,
         log: (line: string) =>

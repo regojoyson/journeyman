@@ -101,7 +101,7 @@ async function waitActive(
  */
 const ensureWs = (a: {
   runId: string;
-  workerId: string | undefined;
+  computeTargetId: string | undefined;
   userId: string | null;
   orgId: string | null;
   log?: (line: string) => void;
@@ -114,9 +114,9 @@ const ensureWs = (a: {
       markActive: (id, patch) => (pool ? markSandboxActive(pool, id, patch) : Promise.resolve()),
       waitActive: (id, ms) =>
         pool ? waitActive(pool, id, ms) : Promise.reject(new Error("no pool")),
-      resolveComputeTarget: async (workerId, ctx) => {
+      resolveComputeTarget: async (computeTargetId, ctx) => {
         if (pool) {
-          const w = await resolveComputeTarget(pool, ctx, workerId);
+          const w = await resolveComputeTarget(pool, ctx, computeTargetId);
           return { type: w.type, config: (w.config ?? {}) as Record<string, unknown> };
         }
         return { type: "local" as const, config: {} };

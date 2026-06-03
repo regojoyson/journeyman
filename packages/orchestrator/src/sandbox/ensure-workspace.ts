@@ -24,7 +24,7 @@ export interface EnsureWorkspaceDeps {
     timeoutMs: number,
   ): Promise<{ handle: string; volume?: string | null; connection?: unknown }>;
   resolveComputeTarget(
-    workerId: string | undefined,
+    computeTargetId: string | undefined,
     ctx: { userId: string; orgId: string },
   ): Promise<{ type: string; config: Record<string, unknown> }>;
   provisionDocker(
@@ -50,7 +50,7 @@ export async function ensureWorkspace(
   deps: EnsureWorkspaceDeps,
   args: {
     runId: string;
-    workerId: string | undefined;
+    computeTargetId: string | undefined;
     userId: string | null;
     orgId: string | null;
     /** Optional progress sink (e.g. step.log). Additive — absent ⇒ no-op. */
@@ -83,7 +83,7 @@ export async function ensureWorkspace(
     throw err;
   }
 
-  const worker = await deps.resolveComputeTarget(args.workerId, {
+  const worker = await deps.resolveComputeTarget(args.computeTargetId, {
     userId: args.userId,
     orgId: args.orgId,
   });
