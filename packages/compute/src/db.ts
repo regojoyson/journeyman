@@ -1,5 +1,5 @@
 import type { CreateComputeTargetArgs, UpdateComputeTargetArgs, ComputeTarget } from "@journeyman/core";
-import { rowToWorker } from "./worker-record.ts";
+import { rowToComputeTarget } from "./compute-target-record.ts";
 
 /** Minimal structural seam over a pg Pool/Client so the store is unit-testable. */
 export interface Queryable {
@@ -9,7 +9,7 @@ export interface Queryable {
 const COLS =
   "id, scope, org_id, user_id, name, type, execution_mode, connectivity, config, is_default, tags, enabled, created_by, created_at, updated_at";
 
-export async function insertWorker(db: Queryable, input: CreateComputeTargetArgs): Promise<ComputeTarget> {
+export async function insertComputeTarget(db: Queryable, input: CreateComputeTargetArgs): Promise<ComputeTarget> {
   const { rows } = await db.query(
     `INSERT INTO jm_workers
        (scope, org_id, user_id, name, type, execution_mode, connectivity, config, is_default, tags, enabled, created_by)
@@ -21,10 +21,10 @@ export async function insertWorker(db: Queryable, input: CreateComputeTargetArgs
       JSON.stringify(input.tags ?? []), input.enabled ?? true, input.createdBy,
     ],
   );
-  return rowToWorker(rows[0]);
+  return rowToComputeTarget(rows[0]);
 }
 
-export async function listWorkers(
+export async function listComputeTargets(
   db: Queryable,
   scope: { orgId: string; userId: string | null },
 ): Promise<ComputeTarget[]> {
@@ -33,16 +33,16 @@ export async function listWorkers(
       `SELECT ${COLS} FROM jm_workers WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
       [scope.orgId],
     );
-    return rows.map(rowToWorker);
+    return rows.map(rowToComputeTarget);
   }
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_workers WHERE org_id = $1 AND user_id = $2 ORDER BY name`,
     [scope.orgId, scope.userId],
   );
-  return rows.map(rowToWorker);
+  return rows.map(rowToComputeTarget);
 }
 
-export async function getWorker(
+export async function getComputeTarget(
   db: Queryable,
   id: string,
   orgId: string,
@@ -53,10 +53,10 @@ export async function getWorker(
      WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3`,
     [id, orgId, userId],
   );
-  return rows[0] ? rowToWorker(rows[0]) : null;
+  return rows[0] ? rowToComputeTarget(rows[0]) : null;
 }
 
-export async function updateWorker(db: Queryable, input: UpdateComputeTargetArgs): Promise<boolean> {
+export async function updateComputeTarget(db: Queryable, input: UpdateComputeTargetArgs): Promise<boolean> {
   const sets: string[] = [];
   const params: unknown[] = [];
   let i = 1;
@@ -84,7 +84,7 @@ export async function updateWorker(db: Queryable, input: UpdateComputeTargetArgs
   return rows.length > 0;
 }
 
-export async function deleteWorker(
+export async function deleteComputeTarget(
   db: Queryable,
   id: string,
   orgId: string,
@@ -100,7 +100,7 @@ export async function deleteWorker(
 }
 
 /** System defaults + this org's org-scoped + this user's user-scoped, enabled only. */
-export async function listVisibleWorkers(
+export async function listVisibleComputeTargets(
   db: Queryable,
   orgId: string,
   userId: string,
@@ -115,11 +115,11 @@ export async function listVisibleWorkers(
      ORDER BY scope, name`,
     [orgId, userId],
   );
-  return rows.map(rowToWorker);
+  return rows.map(rowToComputeTarget);
 }
 
 /** Fetch a single worker visible to {orgId,userId} (system OR org OR user scope). */
-export async function fetchWorkerById(
+export async function fetchComputeTargetById(
   db: Queryable,
   orgId: string,
   userId: string,
@@ -134,11 +134,11 @@ export async function fetchWorkerById(
      )`,
     [id, orgId, userId],
   );
-  return rows[0] ? rowToWorker(rows[0]) : null;
+  return rows[0] ? rowToComputeTarget(rows[0]) : null;
 }
 
 /** The org/user's default worker, falling back to the system default. */
-export async function fetchDefaultWorker(
+export async function fetchDefaultComputeTarget(
   db: Queryable,
   orgId: string,
   userId: string,
@@ -154,5 +154,5 @@ export async function fetchDefaultWorker(
      LIMIT 1`,
     [orgId, userId],
   );
-  return rows[0] ? rowToWorker(rows[0]) : null;
+  return rows[0] ? rowToComputeTarget(rows[0]) : null;
 }

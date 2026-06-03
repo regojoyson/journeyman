@@ -1,10 +1,10 @@
 import type { ResolvedComputeTarget, ComputeTarget } from "@journeyman/core";
 import type { Queryable } from "./db.ts";
-import { fetchWorkerById, fetchDefaultWorker } from "./db.ts";
+import { fetchComputeTargetById, fetchDefaultComputeTarget } from "./db.ts";
 
-export class WorkerNotFoundError extends Error {}
+export class ComputeTargetNotFoundError extends Error {}
 
-export interface ResolveWorkerCtx {
+export interface ResolveComputeTargetCtx {
   orgId: string;
   userId: string;
 }
@@ -23,17 +23,17 @@ function toResolved(w: ComputeTarget): ResolvedComputeTarget {
  * Resolve a workflow's worker at run start: an explicit `workerId` (node override
  * or flow default), or the org/user/system default when none is given.
  */
-export async function resolveWorker(
+export async function resolveComputeTarget(
   db: Queryable,
-  ctx: ResolveWorkerCtx,
+  ctx: ResolveComputeTargetCtx,
   workerId: string | undefined,
 ): Promise<ResolvedComputeTarget> {
   if (workerId) {
-    const w = await fetchWorkerById(db, ctx.orgId, ctx.userId, workerId);
-    if (!w) throw new WorkerNotFoundError(`worker '${workerId}' not found or not visible`);
+    const w = await fetchComputeTargetById(db, ctx.orgId, ctx.userId, workerId);
+    if (!w) throw new ComputeTargetNotFoundError(`worker '${workerId}' not found or not visible`);
     return toResolved(w);
   }
-  const def = await fetchDefaultWorker(db, ctx.orgId, ctx.userId);
-  if (!def) throw new WorkerNotFoundError("no default worker configured");
+  const def = await fetchDefaultComputeTarget(db, ctx.orgId, ctx.userId);
+  if (!def) throw new ComputeTargetNotFoundError("no default worker configured");
   return toResolved(def);
 }

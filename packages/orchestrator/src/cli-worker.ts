@@ -17,7 +17,7 @@ import type {
 } from "@journeyman/core";
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
-  makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveWorker,
+  makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveComputeTarget,
   resolveDockerSpec,
 } from "@journeyman/compute";
 import { createCodingOperationRunner } from "@journeyman/coding-cli";
@@ -114,9 +114,9 @@ const ensureWs = (a: {
       markActive: (id, patch) => (pool ? markSandboxActive(pool, id, patch) : Promise.resolve()),
       waitActive: (id, ms) =>
         pool ? waitActive(pool, id, ms) : Promise.reject(new Error("no pool")),
-      resolveWorker: async (workerId, ctx) => {
+      resolveComputeTarget: async (workerId, ctx) => {
         if (pool) {
-          const w = await resolveWorker(pool, ctx, workerId);
+          const w = await resolveComputeTarget(pool, ctx, workerId);
           return { type: w.type, config: (w.config ?? {}) as Record<string, unknown> };
         }
         return { type: "local" as const, config: {} };

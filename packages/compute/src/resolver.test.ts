@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Queryable } from "./db.ts";
-import { resolveWorker, WorkerNotFoundError } from "./resolver.ts";
+import { resolveComputeTarget, ComputeTargetNotFoundError } from "./resolver.ts";
 
 const dockerRow = {
   id: "w1", scope: "org", org_id: "o1", user_id: null, name: "Java builder",
@@ -18,9 +18,9 @@ function dbReturning(rows: any[]): Queryable {
   return { async query() { return { rows }; } };
 }
 
-describe("resolveWorker", () => {
+describe("resolveComputeTarget", () => {
   it("resolves an explicit workerId to a ResolvedComputeTarget", async () => {
-    const r = await resolveWorker(dbReturning([dockerRow]), { orgId: "o1", userId: "u1" }, "w1");
+    const r = await resolveComputeTarget(dbReturning([dockerRow]), { orgId: "o1", userId: "u1" }, "w1");
     expect(r).toEqual({
       id: "w1",
       type: "docker",
@@ -31,21 +31,21 @@ describe("resolveWorker", () => {
   });
 
   it("falls back to the default worker when workerId is undefined", async () => {
-    const r = await resolveWorker(dbReturning([localDefault]), { orgId: "o1", userId: "u1" }, undefined);
+    const r = await resolveComputeTarget(dbReturning([localDefault]), { orgId: "o1", userId: "u1" }, undefined);
     expect(r.id).toBe("sys");
     expect(r.type).toBe("local");
     expect(r.connectivity).toBeUndefined();
   });
 
-  it("throws WorkerNotFoundError when an explicit workerId is missing", async () => {
+  it("throws ComputeTargetNotFoundError when an explicit workerId is missing", async () => {
     await expect(
-      resolveWorker(dbReturning([]), { orgId: "o1", userId: "u1" }, "ghost"),
-    ).rejects.toBeInstanceOf(WorkerNotFoundError);
+      resolveComputeTarget(dbReturning([]), { orgId: "o1", userId: "u1" }, "ghost"),
+    ).rejects.toBeInstanceOf(ComputeTargetNotFoundError);
   });
 
-  it("throws WorkerNotFoundError when no default exists", async () => {
+  it("throws ComputeTargetNotFoundError when no default exists", async () => {
     await expect(
-      resolveWorker(dbReturning([]), { orgId: "o1", userId: "u1" }, undefined),
-    ).rejects.toBeInstanceOf(WorkerNotFoundError);
+      resolveComputeTarget(dbReturning([]), { orgId: "o1", userId: "u1" }, undefined),
+    ).rejects.toBeInstanceOf(ComputeTargetNotFoundError);
   });
 });

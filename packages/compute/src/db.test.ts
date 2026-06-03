@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { Queryable } from "./db.ts";
 import {
-  insertWorker,
-  listWorkers,
-  getWorker,
-  deleteWorker,
-  listVisibleWorkers,
-  fetchWorkerById,
+  insertComputeTarget,
+  listComputeTargets,
+  getComputeTarget,
+  deleteComputeTarget,
+  listVisibleComputeTargets,
+  fetchComputeTargetById,
 } from "./db.ts";
 
 /** Records the last query and returns canned rows. */
@@ -29,9 +29,9 @@ const row = {
 };
 
 describe("workers db store", () => {
-  it("insertWorker INSERTs and returns the mapped record", async () => {
+  it("insertComputeTarget INSERTs and returns the mapped record", async () => {
     const db = fakeDb([row]);
-    const rec = await insertWorker(db, {
+    const rec = await insertComputeTarget(db, {
       scope: "org", orgId: "o1", userId: null, name: "Java builder",
       type: "docker", executionMode: "per-instance", connectivity: "push",
       config: {}, createdBy: "u1",
@@ -41,41 +41,41 @@ describe("workers db store", () => {
     expect(rec.type).toBe("docker");
   });
 
-  it("listWorkers scopes org rows with user_id IS NULL", async () => {
+  it("listComputeTargets scopes org rows with user_id IS NULL", async () => {
     const db = fakeDb([row]);
-    await listWorkers(db, { orgId: "o1", userId: null });
+    await listComputeTargets(db, { orgId: "o1", userId: null });
     expect(db.calls[0].text).toMatch(/user_id is null/i);
     expect(db.calls[0].params).toEqual(["o1"]);
   });
 
-  it("listWorkers scopes user rows with user_id = $2", async () => {
+  it("listComputeTargets scopes user rows with user_id = $2", async () => {
     const db = fakeDb([row]);
-    await listWorkers(db, { orgId: "o1", userId: "u1" });
+    await listComputeTargets(db, { orgId: "o1", userId: "u1" });
     expect(db.calls[0].text).toMatch(/user_id = \$2/i);
     expect(db.calls[0].params).toEqual(["o1", "u1"]);
   });
 
-  it("getWorker returns null when no row", async () => {
+  it("getComputeTarget returns null when no row", async () => {
     const db = fakeDb([]);
-    const rec = await getWorker(db, "missing", "o1", null);
+    const rec = await getComputeTarget(db, "missing", "o1", null);
     expect(rec).toBeNull();
   });
 
-  it("deleteWorker returns false when nothing deleted", async () => {
+  it("deleteComputeTarget returns false when nothing deleted", async () => {
     const db = { async query() { return { rows: [] }; } } as Queryable;
-    expect(await deleteWorker(db, "x", "o1", null)).toBe(false);
+    expect(await deleteComputeTarget(db, "x", "o1", null)).toBe(false);
   });
 
-  it("listVisibleWorkers includes system + org + user scope", async () => {
+  it("listVisibleComputeTargets includes system + org + user scope", async () => {
     const db = fakeDb([row]);
-    await listVisibleWorkers(db, "o1", "u1");
+    await listVisibleComputeTargets(db, "o1", "u1");
     expect(db.calls[0].text).toMatch(/scope = 'system'/i);
     expect(db.calls[0].params).toEqual(["o1", "u1"]);
   });
 
-  it("fetchWorkerById matches system OR org OR user scope", async () => {
+  it("fetchComputeTargetById matches system OR org OR user scope", async () => {
     const db = fakeDb([row]);
-    const rec = await fetchWorkerById(db, "o1", "u1", "w1");
+    const rec = await fetchComputeTargetById(db, "o1", "u1", "w1");
     expect(db.calls[0].text).toMatch(/where id = \$1/i);
     expect(db.calls[0].params).toEqual(["w1", "o1", "u1"]);
     expect(rec?.id).toBe("w1");

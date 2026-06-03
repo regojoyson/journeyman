@@ -1,34 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { validateWorkerInput, rowToWorker, InvalidWorkerInputError } from "./worker-record.ts";
+import { validateComputeTargetInput, rowToComputeTarget, InvalidComputeTargetInputError } from "./compute-target-record.ts";
 
-describe("validateWorkerInput", () => {
+describe("validateComputeTargetInput", () => {
   const ok = { name: "Java builder", type: "docker", executionMode: "per-instance" };
 
   it("accepts a valid worker", () => {
-    expect(() => validateWorkerInput(ok)).not.toThrow();
+    expect(() => validateComputeTargetInput(ok)).not.toThrow();
   });
 
   it("rejects empty name", () => {
-    expect(() => validateWorkerInput({ ...ok, name: "  " })).toThrow(InvalidWorkerInputError);
+    expect(() => validateComputeTargetInput({ ...ok, name: "  " })).toThrow(InvalidComputeTargetInputError);
   });
 
   it("rejects an unknown type", () => {
-    expect(() => validateWorkerInput({ ...ok, type: "mainframe" })).toThrow(/type/);
+    expect(() => validateComputeTargetInput({ ...ok, type: "mainframe" })).toThrow(/type/);
   });
 
   it("rejects an unknown execution mode", () => {
-    expect(() => validateWorkerInput({ ...ok, executionMode: "whenever" })).toThrow(/executionMode/);
+    expect(() => validateComputeTargetInput({ ...ok, executionMode: "whenever" })).toThrow(/executionMode/);
   });
 
   it("rejects an unknown connectivity", () => {
-    expect(() => validateWorkerInput({ ...ok, connectivity: "carrier-pigeon" })).toThrow(/connectivity/);
+    expect(() => validateComputeTargetInput({ ...ok, connectivity: "carrier-pigeon" })).toThrow(/connectivity/);
   });
 });
 
-describe("rowToWorker", () => {
+describe("rowToComputeTarget", () => {
   it("maps a snake_case DB row to a ComputeTarget and parses config/tags", () => {
     const created = new Date("2026-05-30T00:00:00Z");
-    const rec = rowToWorker({
+    const rec = rowToComputeTarget({
       id: "w1",
       scope: "org",
       org_id: "o1",

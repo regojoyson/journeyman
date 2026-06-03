@@ -24,7 +24,7 @@ describe("ensureWorkspace", () => {
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
       waitActive: vi.fn(),
-      resolveWorker: vi.fn(),
+      resolveComputeTarget: vi.fn(),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
@@ -41,7 +41,7 @@ describe("ensureWorkspace", () => {
       getSandbox: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "provisioning" }),
       claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c2", volume: null, connection: null }),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c2")),
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
@@ -63,7 +63,7 @@ describe("ensureWorkspace", () => {
       getSandbox: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c3", volume: null, connection: null }),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c3")),
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
@@ -83,7 +83,7 @@ describe("ensureWorkspace", () => {
       getSandbox: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       waitActive: vi.fn(),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c4"), imageRef: "img:1", connection: { kind: "local" } }),
       provisionLocal: vi.fn(),
       markActive: vi.fn().mockResolvedValue(undefined),
@@ -106,7 +106,7 @@ describe("ensureWorkspace", () => {
       getSandbox: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       waitActive: vi.fn(),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "local", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "local", config: {} }),
       provisionLocal: vi.fn().mockResolvedValue({ env: {}, provisioned: localProvisioned }),
       provisionDocker: vi.fn(),
       markActive: vi.fn().mockResolvedValue(undefined),
@@ -137,7 +137,7 @@ describe("ensureWorkspace", () => {
       claim: vi.fn().mockResolvedValue(true),
       markActive: vi.fn().mockResolvedValue(undefined),
       waitActive: vi.fn(),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c1"), imageRef: "img:dev" }),
       provisionLocal: vi.fn(),
     };
@@ -153,7 +153,7 @@ describe("ensureWorkspace", () => {
     const deps = {
       getSandbox: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { kind: "local" } }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c1")),
-      claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveWorker: vi.fn(),
+      claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveComputeTarget: vi.fn(),
     };
     await ensureWorkspace(deps as any, {
       runId: "r", workerId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
@@ -166,7 +166,7 @@ describe("ensureWorkspace", () => {
     const deps = {
       getSandbox: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
-      resolveWorker: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockRejectedValue(new Error("daemon down")),
       provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(),
     };

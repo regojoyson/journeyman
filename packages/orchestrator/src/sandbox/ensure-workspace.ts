@@ -23,7 +23,7 @@ export interface EnsureWorkspaceDeps {
     runId: string,
     timeoutMs: number,
   ): Promise<{ handle: string; volume?: string | null; connection?: unknown }>;
-  resolveWorker(
+  resolveComputeTarget(
     workerId: string | undefined,
     ctx: { userId: string; orgId: string },
   ): Promise<{ type: string; config: Record<string, unknown> }>;
@@ -83,7 +83,7 @@ export async function ensureWorkspace(
     throw err;
   }
 
-  const worker = await deps.resolveWorker(args.workerId, {
+  const worker = await deps.resolveComputeTarget(args.workerId, {
     userId: args.userId,
     orgId: args.orgId,
   });
