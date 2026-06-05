@@ -1,4 +1,4 @@
-// packages/coding-cli/src/providers/opencode/index.ts
+// packages/agent-runtime/src/providers/opencode/index.ts
 import type { ICodingCLI, IProviderMeta, CodingCLIProviderConfig } from "@journeyman/core";
 import type {
   ScanReposOptions, ScanReposResult,

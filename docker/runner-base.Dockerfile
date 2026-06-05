@@ -26,7 +26,7 @@ ENV PATH=/app/node_modules/.bin:$PATH
 
 # A uniform `journeyman-runner` launcher (the auto-wrap bundle exposes the same name),
 # so DockerExecutionEnvironment can invoke the runner identically across image types.
-RUN printf '#!/bin/sh\nexec npx tsx /app/packages/coding-cli/src/runner/cli.ts "$@"\n' \
+RUN printf '#!/bin/sh\nexec npx tsx /app/packages/agent-runtime/src/runner/cli.ts "$@"\n' \
       > /usr/local/bin/journeyman-runner \
  && chmod +x /usr/local/bin/journeyman-runner
 

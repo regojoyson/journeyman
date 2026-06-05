@@ -1,4 +1,4 @@
-// packages/coding-cli/src/providers/opencode/operations/scan-repos.ts
+// packages/agent-runtime/src/providers/opencode/operations/scan-repos.ts
 import { createLogger } from "@journeyman/core";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import type { OpenCodeClient } from "../client.ts";

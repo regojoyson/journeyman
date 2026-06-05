@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
-import { createCodingProvider } from "@journeyman/coding-cli";
+import { createCodingProvider } from "@journeyman/agent-runtime";
 import { GitHubProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
@@ -20,7 +20,7 @@ import {
   makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveComputeTarget,
   resolveDockerSpec,
 } from "@journeyman/compute";
-import { createCodingOperationRunner } from "@journeyman/coding-cli";
+import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
 import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";

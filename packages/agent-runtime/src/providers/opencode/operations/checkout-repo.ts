@@ -1,4 +1,4 @@
-// packages/coding-cli/src/providers/opencode/operations/checkout-repo.ts
+// packages/agent-runtime/src/providers/opencode/operations/checkout-repo.ts
 import { createLogger } from "@journeyman/core";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import type { OpenCodeClient } from "../client.ts";

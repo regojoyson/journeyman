@@ -1,6 +1,6 @@
 // Canonical, provider-agnostic tool vocabulary used by custom AI steps.
 // Each coding-cli provider owns a mapping from these names to its native tool
-// names. See packages/coding-cli/src/providers/*/tool-mapping.ts.
+// names. See packages/agent-runtime/src/providers/*/tool-mapping.ts.
 
 export const CANONICAL_TOOLS = [
   "bash",

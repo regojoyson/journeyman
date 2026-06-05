@@ -7,7 +7,7 @@
 //             Packages: @journeyman/flow-editor, @journeyman/steps (default entry),
 //             @journeyman/run-viewer, @journeyman/runs-list, @journeyman/web.
 //   backend — must NOT be imported from ui code (drags in node:*, db, secrets, providers).
-//             Packages: @journeyman/api-server, @journeyman/orchestrator, @journeyman/coding-cli,
+//             Packages: @journeyman/api-server, @journeyman/orchestrator, @journeyman/agent-runtime,
 //             @journeyman/git-provider, @journeyman/github-api, @journeyman/ticket-provider,
 //             @journeyman/notification-provider, @journeyman/secrets, @journeyman/migrations.
 //   shared  — universal. Importable from anywhere.
@@ -36,7 +36,7 @@ const PKG_LAYER = {
 
   "@journeyman/api-server": "backend",
   "@journeyman/orchestrator": "backend",
-  "@journeyman/coding-cli": "backend",
+  "@journeyman/agent-runtime": "backend",
   "@journeyman/git-provider": "backend",
   "@journeyman/github-api": "backend",
   "@journeyman/ticket-provider": "backend",
