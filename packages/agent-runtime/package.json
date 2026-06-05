@@ -9,7 +9,8 @@
   "files": ["src"],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bundle": "esbuild src/runner/cli.ts --bundle --platform=node --format=esm --target=node22 --external:pino --external:pg --external:tar --external:@modelcontextprotocol/sdk --external:@anthropic-ai/claude-agent-sdk --external:@opencode-ai/sdk --outfile=dist/runner.js"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.112",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "esbuild": "^0.23.0",
     "typescript": "^6.0.3",
     "vitest": "^2.1.9"
   }
