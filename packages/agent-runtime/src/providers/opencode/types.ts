@@ -1,4 +1,4 @@
-// packages/coding-cli/src/providers/opencode/types.ts
+// packages/agent-runtime/src/providers/opencode/types.ts
 
 export type McpLocalConfig = {
   type: "local"

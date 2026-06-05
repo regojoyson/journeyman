@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@journeyman/coding-cli": "*",
+    "@journeyman/agent-runtime": "*",
     "@journeyman/core": "*",
     "@journeyman/flow-editor": "*",
     "@journeyman/steps": "*",

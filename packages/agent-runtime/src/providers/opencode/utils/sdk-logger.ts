@@ -1,4 +1,4 @@
-// packages/coding-cli/src/providers/opencode/utils/sdk-logger.ts
+// packages/agent-runtime/src/providers/opencode/utils/sdk-logger.ts
 import type { Logger } from "@journeyman/core";
 
 export function logSessionEvent(

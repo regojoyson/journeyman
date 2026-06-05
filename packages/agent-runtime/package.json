@@ -1,0 +1,28 @@
+{
+  "name": "@journeyman/agent-runtime",
+  "version": "0.1.0",
+  "description": "Journeyman box runtime: the stdin/stdout runner, provider-independent workspace ops (clone/scan/checkout), and bundled coding providers (Claude, OpenCode, Gemini, Codex). The only package shipped into a sandbox container.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "journeyman-runner": "./src/runner/cli.ts" },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bundle": "esbuild src/runner/cli.ts --bundle --platform=node --format=esm --target=node22 --external:pino --external:pg --external:tar --external:@modelcontextprotocol/sdk --external:@anthropic-ai/claude-agent-sdk --external:@opencode-ai/sdk --outfile=dist/runner.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.112",
+    "@journeyman/core": "*",
+    "@journeyman/mcp": "*",
+    "@journeyman/skills": "*",
+    "@opencode-ai/sdk": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^2.1.9"
+  }
+}
