@@ -377,7 +377,7 @@ export class WorkerHarness {
       }
     } catch (err: any) {
       const durationMs = Date.now() - startedAt;
-      if (err?.name === "ConfigurationError") {
+      if (err?.name === "ConfigurationError" || err?.name === "ComputeTargetNotFoundError") {
         rlog.error({ message: err.message, durationMs }, "step failed: configuration error");
         await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "configuration_error",

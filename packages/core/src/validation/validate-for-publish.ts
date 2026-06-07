@@ -13,6 +13,7 @@ export type PublishError = {
     | "no_trigger"
     | "orphan_node"
     | "missing_config"
+    | "missing_compute_target"
     | "unresolved_binding"
     | "invalid_gate"
     | "dangling_reference"
@@ -82,6 +83,18 @@ export function validateForPublish(
   const errors: PublishError[] = [];
 
   pushGraphErrors(flow, errors);
+
+  // Every workflow must explicitly choose where its steps run — no default.
+  const defaults = (flow as { defaults?: { computeTargetId?: string; workerId?: string } }).defaults;
+  const computeTargetId = defaults?.computeTargetId ?? defaults?.workerId;
+  if (!computeTargetId || computeTargetId.trim().length === 0) {
+    errors.push({
+      code: "missing_compute_target",
+      message: "Select a compute target for this workflow before publishing.",
+      detail: "Every workflow must explicitly choose where its steps run; there is no default.",
+      fixes: ["Open Flow Defaults → Run target and pick a compute target."],
+    });
+  }
 
   if (!ctx.hasTrigger) {
     errors.push({

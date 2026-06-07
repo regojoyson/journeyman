@@ -55,12 +55,41 @@ describe("rowToComputeTarget", () => {
       executionMode: "per-instance",
       connectivity: "push",
       config: { image: { kind: "ref", imageRef: "x:1" } },
-      isDefault: false,
       tags: ["java"],
       enabled: true,
       createdBy: "u1",
       createdAt: created,
       updatedAt: created,
+      imageState: "none",
+      imageFingerprint: null,
+      imageRef: null,
+      imageError: null,
+      imageBuiltAt: null,
     });
+  });
+
+  it("maps image_* columns when present", () => {
+    const ct = rowToComputeTarget({
+      id: "t1", scope: "org", org_id: "o1", user_id: null, name: "Python",
+      type: "docker", execution_mode: "per-instance", connectivity: "push",
+      config: {}, is_default: false, tags: [], enabled: true, created_by: null,
+      created_at: new Date(0), updated_at: new Date(0),
+      image_state: "ready", image_fingerprint: "abc", image_ref: "journeyman/jm-built:abc",
+      image_error: null, image_built_at: new Date(0),
+    });
+    expect(ct.imageState).toBe("ready");
+    expect(ct.imageRef).toBe("journeyman/jm-built:abc");
+    expect(ct.imageFingerprint).toBe("abc");
+  });
+
+  it("defaults image_state to 'none' when the column is absent", () => {
+    const ct = rowToComputeTarget({
+      id: "t2", scope: "system", org_id: null, user_id: null, name: "Local",
+      type: "local", execution_mode: "shared", connectivity: null,
+      config: {}, is_default: true, tags: [], enabled: true, created_by: null,
+      created_at: new Date(0), updated_at: new Date(0),
+    });
+    expect(ct.imageState).toBe("none");
+    expect(ct.imageRef).toBeNull();
   });
 });

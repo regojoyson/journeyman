@@ -4,12 +4,18 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 
-export const SKILLS_CACHE_DIR =
-  process.env.SKILLS_CACHE_DIR ?? join(homedir(), ".journeyman", "skills");
+// Single data root (Spec 2026-06-07): JOURNEYMAN_BASE_DIR/{workspaces,skills,kit}.
+// Resolved LAZILY (per call) — not at import time — because dotenv loads .env in
+// the app's body, which runs AFTER this module is imported. A top-level const here
+// would capture process.env before .env is loaded and silently use ~/.journeyman.
+export function skillsCacheDir(): string {
+  const base = process.env.JOURNEYMAN_BASE_DIR ?? join(homedir(), ".journeyman");
+  return join(base, "skills");
+}
 
 function packageCacheDir(name: string, gitUrl: string): string {
   const hash = createHash("sha256").update(gitUrl).digest("hex").slice(0, 8);
-  return join(SKILLS_CACHE_DIR, `${name}-${hash}`);
+  return join(skillsCacheDir(), `${name}-${hash}`);
 }
 
 export interface InstallResult {

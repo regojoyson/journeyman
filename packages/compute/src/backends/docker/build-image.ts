@@ -1,41 +1,59 @@
-import { createHash } from "node:crypto";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IDockerClient } from "./docker-client.ts";
-import { wrapDockerfile } from "./dockerfile-wrap.ts";
+import { buildEffectiveRecipe, computeFingerprint, type ImageConfig } from "./recipe.ts";
 
-export interface BuildDockerfileImageDeps {
-  content: string;
+export interface BuildBoxImageDeps {
+  image: ImageConfig;
   client: IDockerClient;
   bundleRef: string;
   tagPrefix?: string;
 }
 
-/** Build (or reuse) an image from a user Dockerfile, auto-wrapped with the runner bundle. */
-export async function buildDockerfileImage(deps: BuildDockerfileImageDeps): Promise<string> {
-  const effective = wrapDockerfile(deps.content, deps.bundleRef);
-  // Fold the bundle's content digest into the cache key. The wrap references the
-  // bundle by a MUTABLE tag (e.g. runner-bundle:dev) via `COPY --from`; without the
-  // digest, a rebuilt bundle keeps the same Dockerfile text and we'd reuse a stale
-  // jm-built image that copied an older /opt/journeyman (e.g. missing cli.js).
-  const bundleId = (await deps.client.imageId(deps.bundleRef)) ?? "";
-  const hash = createHash("sha256")
-    .update(effective)
-    .update("\0")
-    .update(bundleId)
-    .digest("hex")
-    .slice(0, 16);
-  const tag = `${deps.tagPrefix ?? "journeyman/jm-built"}:${hash}`;
+export interface BuildBoxImageResult {
+  imageRef: string;
+  fingerprint: string;
+}
 
-  if (await deps.client.imageExists(tag)) return tag;
+/**
+ * Build (or reuse) a compute target's box image: the user's ref/dockerfile,
+ * auto-wrapped with the runner kit. Throws if the image is empty (the caller
+ * should fall back to the default box instead of building).
+ */
+export async function buildBoxImage(deps: BuildBoxImageDeps): Promise<BuildBoxImageResult> {
+  const effective = buildEffectiveRecipe(deps.image, deps.bundleRef);
+  if (effective === null) throw new Error("no image recipe to build (empty image)");
+
+  const bundleId = (await deps.client.imageId(deps.bundleRef)) ?? "";
+  const fingerprint = computeFingerprint(effective, bundleId);
+  const imageRef = `${deps.tagPrefix ?? "journeyman/jm-built"}:${fingerprint}`;
+
+  if (await deps.client.imageExists(imageRef)) return { imageRef, fingerprint };
 
   const dir = await mkdtemp(join(tmpdir(), "jm-build-"));
   try {
     await writeFile(join(dir, "Dockerfile"), effective, "utf8");
-    await deps.client.buildImage({ contextDir: dir, dockerfileName: "Dockerfile", tag });
-    return tag;
+    await deps.client.buildImage({ contextDir: dir, dockerfileName: "Dockerfile", tag: imageRef });
+    // Guard against a silent build failure: the image must actually exist now,
+    // otherwise we'd commit a 'ready' status pointing at a non-existent tag.
+    if (!(await deps.client.imageExists(imageRef))) {
+      throw new Error(`build reported success but image ${imageRef} is absent`);
+    }
+    return { imageRef, fingerprint };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/** @deprecated dockerfile-only shim retained for compatibility; prefer buildBoxImage. */
+export async function buildDockerfileImage(deps: {
+  content: string; client: IDockerClient; bundleRef: string; tagPrefix?: string;
+}): Promise<string> {
+  const { imageRef } = await buildBoxImage({
+    image: { kind: "dockerfile", content: deps.content },
+    client: deps.client, bundleRef: deps.bundleRef,
+    ...(deps.tagPrefix ? { tagPrefix: deps.tagPrefix } : {}),
+  });
+  return imageRef;
 }

@@ -178,3 +178,58 @@ describe("ensureWorkspace", () => {
     expect(lines.some((l) => /provisioning failed/i.test(l))).toBe(true);
   });
 });
+
+describe("ensureWorkspace run-gating (Spec B managed images)", () => {
+  function baseDeps(target: any, over: Partial<any> = {}) {
+    return {
+      getSandbox: vi.fn().mockResolvedValue(null),
+      claim: vi.fn().mockResolvedValue(true),
+      markActive: vi.fn().mockResolvedValue(undefined),
+      waitActive: vi.fn(),
+      resolveComputeTarget: vi.fn().mockResolvedValue(target),
+      provisionLocal: vi.fn(),
+      provisionDocker: vi.fn().mockResolvedValue({
+        env: {}, provisioned: { handle: "h", workspaceDir: "/workspace", type: "docker" },
+        imageRef: "journeyman/jm-built:fp", connection: {},
+      }),
+      onImagePending: vi.fn(),
+      ...over,
+    };
+  }
+  const args = { runId: "r1", computeTargetId: "t1", userId: "u", orgId: "o" };
+
+  it("provisions a ready docker image with its imageRef", async () => {
+    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+      imageState: "ready", imageRef: "journeyman/jm-built:fp" });
+    await ensureWorkspace(deps as any, args);
+    expect(deps.provisionDocker).toHaveBeenCalledWith("r1",
+      expect.objectContaining({ config: expect.objectContaining({ __imageRef: "journeyman/jm-built:fp" }) }));
+  });
+
+  it("throws a RETRYABLE error while building", async () => {
+    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+      imageState: "building", imageRef: null });
+    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(deps.provisionDocker).not.toHaveBeenCalled();
+  });
+
+  it("throws a TERMINAL ConfigurationError when the build failed", async () => {
+    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+      imageState: "failed", imageRef: null, imageError: "bad Dockerfile" });
+    await expect(ensureWorkspace(deps as any, args))
+      .rejects.toMatchObject({ name: "ConfigurationError", message: expect.stringContaining("bad Dockerfile") });
+  });
+
+  it("re-enqueues + retries when a ready image was pruned (no imageRef)", async () => {
+    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+      imageState: "ready", imageRef: null });
+    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(deps.onImagePending).toHaveBeenCalledWith("t1");
+  });
+
+  it("provisions the default box for an empty image", async () => {
+    const deps = baseDeps({ type: "docker", config: {}, imageState: "none", imageRef: null });
+    await ensureWorkspace(deps as any, args);
+    expect(deps.provisionDocker).toHaveBeenCalledOnce();
+  });
+});

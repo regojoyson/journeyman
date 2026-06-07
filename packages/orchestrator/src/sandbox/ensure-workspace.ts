@@ -1,5 +1,16 @@
 import type { IExecutionEnvironment, ProvisionedEnv } from "@journeyman/core";
 
+/** Image is still building/pending: a RETRYABLE provisioning error (Conductor backs off). */
+class ImageNotReadyError extends Error {
+  constructor(msg: string) { super(msg); this.name = "ImageNotReadyError"; }
+}
+/** A TERMINAL configuration error (worker-harness maps name==='ConfigurationError' to fail-fast). */
+function configurationError(msg: string): Error {
+  const e = new Error(msg) as Error & { name: string };
+  e.name = "ConfigurationError";
+  return e;
+}
+
 export interface EnsureWorkspaceDeps {
   getSandbox(runId: string): Promise<{
     runId: string;
@@ -26,7 +37,15 @@ export interface EnsureWorkspaceDeps {
   resolveComputeTarget(
     computeTargetId: string | undefined,
     ctx: { userId: string; orgId: string },
-  ): Promise<{ type: string; config: Record<string, unknown> }>;
+  ): Promise<{
+    type: string;
+    config: Record<string, unknown>;
+    imageState?: string;
+    imageRef?: string | null;
+    imageError?: string | null;
+  }>;
+  /** Re-enqueue a build when a ready image went missing (pruned). Optional. */
+  onImagePending?(computeTargetId: string): Promise<void>;
   provisionDocker(
     runId: string,
     worker: { type: string; config: Record<string, unknown> },
@@ -88,6 +107,36 @@ export async function ensureWorkspace(
     orgId: args.orgId,
   });
   if (args.verbose) log(`Resolved worker: ${worker.type}`);
+
+  // Run-gating: a docker target with a managed image must be 'ready' before we
+  // provision. We never build inside the run (Spec B).
+  if (worker.type === "docker") {
+    const img = (worker.config as Record<string, unknown>)["image"] as
+      { kind?: string; imageRef?: string; content?: string } | undefined;
+    const hasRecipe =
+      (img?.kind === "ref" && !!img.imageRef?.trim()) ||
+      (img?.kind === "dockerfile" && !!img.content?.trim());
+    if (hasRecipe) {
+      const state = worker.imageState ?? "none";
+      if (state === "failed") {
+        throw configurationError(
+          `compute target image build failed: ${worker.imageError ?? "see build log"}`,
+        );
+      }
+      if (state === "pending" || state === "building" || state === "none") {
+        log("Preparing environment (building image)… this happens once.");
+        throw new ImageNotReadyError("compute target image is not ready yet");
+      }
+      if (state === "ready" && !worker.imageRef) {
+        log("Environment image missing; rebuilding…");
+        if (args.computeTargetId && deps.onImagePending) await deps.onImagePending(args.computeTargetId);
+        throw new ImageNotReadyError("compute target image was pruned; rebuilding");
+      }
+      // ready + imageRef → fall through, passing imageRef to provisionDocker.
+      (worker.config as Record<string, unknown>)["__imageRef"] = worker.imageRef;
+    }
+  }
+
   const won = await deps.claim({ runId: args.runId, type: worker.type, owner: args.orgId });
   if (!won) {
     // Another worker claimed it between our getSandbox() and claim() calls.
@@ -158,3 +207,5 @@ async function connect(
   });
   return { env, provisioned };
 }
+
+export { ImageNotReadyError };

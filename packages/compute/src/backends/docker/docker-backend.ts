@@ -1,39 +1,9 @@
 import type {
-  Connectivity, ExecutionEnvironmentBackend, ExecutionEnvironmentSpec, ExecutionMode,
+  Connectivity, ExecutionEnvironmentBackend, ExecutionMode,
   IExecutionEnvironment, ResolvedComputeTarget, ComputeTargetType,
 } from "@journeyman/core";
 import type { IDockerClient } from "./docker-client.ts";
 import { DockerExecutionEnvironment } from "./docker-execution-environment.ts";
-import { buildDockerfileImage } from "./build-image.ts";
-
-export interface ResolveDockerSpecDeps {
-  client: IDockerClient;
-  defaultImage: string;
-  bundleRef: string;
-}
-
-/**
- * Build an ExecutionEnvironmentSpec from a docker worker's config, BUILDING the
- * image first when the config supplies a Dockerfile (auto-wrapped + cached).
- */
-export async function resolveDockerSpec(
-  config: Record<string, unknown>,
-  deps: ResolveDockerSpecDeps,
-): Promise<ExecutionEnvironmentSpec> {
-  const image = config.image as { kind?: string; imageRef?: string; content?: string } | undefined;
-  let imageRef: string;
-  if (image?.kind === "dockerfile" && typeof image.content === "string") {
-    imageRef = await buildDockerfileImage({ content: image.content, client: deps.client, bundleRef: deps.bundleRef });
-  } else if (image?.kind === "ref" && image.imageRef) {
-    imageRef = image.imageRef;
-  } else {
-    imageRef = deps.defaultImage;
-  }
-  const network = config.network === "none" ? "none" : "full";
-  const resources = (config.resources as ExecutionEnvironmentSpec["resources"]) ?? undefined;
-  const env = (config.env as Record<string, string>) ?? undefined;
-  return { imageRef, network, ...(resources ? { resources } : {}), ...(env ? { env } : {}) };
-}
 
 export interface DockerBackendDeps {
   client: IDockerClient;

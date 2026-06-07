@@ -26,6 +26,9 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true, slots: [
     { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
   ]},
+  { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [
+    { name: "OPENCODE_API_KEY", description: "OpenCode API key.", optional: true },
+  ]},
   { kind: "coding-cli", value: "gemini", label: "Gemini", implemented: false },
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 

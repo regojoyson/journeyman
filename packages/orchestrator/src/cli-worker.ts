@@ -5,7 +5,7 @@
  */
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { createCodingProvider } from "@journeyman/agent-runtime";
@@ -18,7 +18,7 @@ import type {
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
   makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveComputeTarget,
-  resolveDockerSpec,
+  markImagePending, startBuildLoop, ensureKitImage,
 } from "@journeyman/compute";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
@@ -68,10 +68,20 @@ const client = new ConductorClient({ baseUrl });
 const registry = new InMemoryStepRegistry();
 
 const coding: ProviderFactory<ICodingCLI> = (key, env) => createCodingProvider(key, { env });
-const workspaceBaseDir = process.env.JOURNEYMAN_BASE_DIR ?? join(tmpdir(), "journeyman-workspaces");
+
+// Single data root: JOURNEYMAN_BASE_DIR/{workspaces,skills,kit}. (Spec 2026-06-07)
+const JOURNEYMAN_BASE_DIR = process.env.JOURNEYMAN_BASE_DIR ?? join(homedir(), ".journeyman");
+const workspaceBaseDir = join(JOURNEYMAN_BASE_DIR, "workspaces");
+const kitDir = join(JOURNEYMAN_BASE_DIR, "kit");
+log.info(
+  { baseDir: JOURNEYMAN_BASE_DIR, workspaces: workspaceBaseDir, kit: kitDir },
+  "data directories resolved",
+);
 
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 const RUNNER_BUNDLE = process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
+const RUNNER_BUNDLE_TAR = join(kitDir, "runner-bundle.tar");
+const RUNNER_BASE_TAR = join(kitDir, "runner-base.tar");
 
 /**
  * Poll until the sandbox row for `runId` becomes active, or timeout.
@@ -117,10 +127,17 @@ const ensureWs = (a: {
       resolveComputeTarget: async (computeTargetId, ctx) => {
         if (pool) {
           const w = await resolveComputeTarget(pool, ctx, computeTargetId);
-          return { type: w.type, config: (w.config ?? {}) as Record<string, unknown> };
+          return {
+            type: w.type,
+            config: (w.config ?? {}) as Record<string, unknown>,
+            imageState: w.imageState,
+            imageRef: w.imageRef,
+            imageError: w.imageError,
+          };
         }
         return { type: "local" as const, config: {} };
       },
+      onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
       provisionLocal: async (runId) => {
         const env = new LocalExecutionEnvironment({
           runOperation: createCodingOperationRunner({
@@ -147,11 +164,21 @@ const ensureWs = (a: {
           };
           return { env, provisioned, connection };
         }
-        const spec = await resolveDockerSpec(worker.config as Record<string, unknown>, {
-          client: dockerClient,
-          defaultImage: RUNNER_IMAGE,
-          bundleRef: RUNNER_BUNDLE,
-        });
+        // Spec B: never build inside the run. ensure-workspace's run-gating has
+        // already confirmed the image is ready and stamped __imageRef (or left it
+        // unset → use the default runner box).
+        const cfg = worker.config as Record<string, unknown>;
+        const preBuilt = cfg["__imageRef"] as string | undefined;
+        const imageRef = preBuilt ?? RUNNER_IMAGE;
+        // Empty-image targets run the default box directly (no build loop), so the
+        // kit base must be present on this daemon — load it from the tar if missing.
+        if (!preBuilt) await ensureKitImage(dockerClient, RUNNER_IMAGE, RUNNER_BASE_TAR);
+        const spec = {
+          imageRef,
+          network: cfg["network"] === "none" ? ("none" as const) : ("full" as const),
+          ...(cfg["resources"] ? { resources: cfg["resources"] as never } : {}),
+          ...(cfg["env"] ? { env: cfg["env"] as Record<string, string> } : {}),
+        };
         const provisioned = await env.provision(runId, spec);
         return { env, provisioned, imageRef: spec.imageRef, connection };
       },
@@ -334,6 +361,22 @@ const harness = new WorkerHarness({
   },
   ensureWorkspace: ensureWs,
 });
+
+// Spec B: build managed compute-target images ahead of time (this process holds
+// the Docker connection). Claims pending targets, builds, marks ready/failed.
+const stopBuildLoop = pool
+  ? startBuildLoop({
+      db: pool,
+      bundleRef: RUNNER_BUNDLE,
+      bundleTarPath: RUNNER_BUNDLE_TAR,
+      leaseMs: 120_000,
+      intervalMs: 3000,
+      log: (line) => log.info({ line }, "build-loop"),
+    })
+  : () => {};
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.on(sig, () => { stopBuildLoop(); });
+}
 
 log.info({ steps: registry.list().map(h => h.stepType) }, "worker starting");
 await harness.start(registry.list().map(h => h.stepType));

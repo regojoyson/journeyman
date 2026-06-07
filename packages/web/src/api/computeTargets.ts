@@ -15,6 +15,8 @@ export interface ComputeTargetTypeDescriptor {
 
 export interface ConnectionTestResult { ok: boolean; error?: string }
 
+export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
+
 export interface ComputeTarget {
   id: string;
   scope: ComputeTargetScope;
@@ -23,11 +25,13 @@ export interface ComputeTarget {
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
-  isDefault: boolean;
   tags: string[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  imageState?: ImageState;
+  imageRef?: string | null;
+  imageError?: string | null;
 }
 
 export interface ComputeTargetUpsertBody {
@@ -36,7 +40,6 @@ export interface ComputeTargetUpsertBody {
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
-  isDefault?: boolean;
   tags?: string[];
   enabled?: boolean;
 }
@@ -80,6 +83,8 @@ export const computeTargetsApi = {
     postJson(userBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
   updateMy: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
     patchJson(`${userBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
+  rebuildMy: (orgId: string, id: string) =>
+    postJson(`${userBase(orgId)}/${id}/rebuild`, {}).then(jsonOrThrow<{ ok: true }>),
   removeMy: (orgId: string, id: string) =>
     fetch(`${userBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),
 
@@ -89,6 +94,8 @@ export const computeTargetsApi = {
     postJson(orgBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
   updateOrg: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
     patchJson(`${orgBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
+  rebuildOrg: (orgId: string, id: string) =>
+    postJson(`${orgBase(orgId)}/${id}/rebuild`, {}).then(jsonOrThrow<{ ok: true }>),
   removeOrg: (orgId: string, id: string) =>
     fetch(`${orgBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),
 };

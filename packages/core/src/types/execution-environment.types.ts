@@ -100,6 +100,10 @@ export interface ResolvedComputeTarget {
   connectivity?: Connectivity;
   /** Type-specific config, validated by the backend. */
   config: unknown;
+  /** Managed-image build lifecycle (Spec B); used by run-gating. */
+  imageState?: "none" | "pending" | "building" | "ready" | "failed";
+  imageRef?: string | null;
+  imageError?: string | null;
 }
 
 /** A pluggable worker *type*. Registered by name; callers never change. */

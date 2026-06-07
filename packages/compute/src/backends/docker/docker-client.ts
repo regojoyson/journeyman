@@ -1,5 +1,5 @@
 import Docker from "dockerode";
-import { readFileSync } from "node:fs";
+import { createReadStream, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 
@@ -34,6 +34,8 @@ export interface IDockerClient {
   /** Content ID (digest) of an image tag, or null if it isn't present locally. */
   imageId(tag: string): Promise<string | null>;
   buildImage(o: { contextDir: string; dockerfileName: string; tag: string }): Promise<void>;
+  /** Load an image into the daemon from a `docker save` tar at `tarPath` (streams from this process). */
+  loadImage(tarPath: string): Promise<void>;
   putArchive(containerId: string, tar: import("node:stream").Readable | Buffer, opts: { path: string }): Promise<void>;
 }
 
@@ -168,7 +170,39 @@ class DockerodeClient implements IDockerClient {
       { t: o.tag, dockerfile: o.dockerfileName },
     );
     await new Promise<void>((resolve, reject) => {
-      this.docker.modem.followProgress(stream, (err: Error | null) => (err ? reject(err) : resolve()));
+      // followProgress only surfaces transport errors via `err`. A FAILED build
+      // step (e.g. a bad RUN, or a COPY --from a missing image) arrives as an
+      // `{error|errorDetail}` event in the stream and would otherwise resolve as
+      // success — so scan the collected output and reject on any build error.
+      this.docker.modem.followProgress(
+        stream,
+        (err: Error | null, output?: Array<Record<string, any>>) => {
+          if (err) return reject(err);
+          const failed = (output ?? []).find((e) => e && (e.error || e.errorDetail));
+          if (failed) {
+            const msg = String(failed.error ?? failed.errorDetail?.message ?? "docker build failed");
+            return reject(new Error(msg));
+          }
+          resolve();
+        },
+      );
+    });
+  }
+
+  async loadImage(tarPath: string): Promise<void> {
+    const stream = await this.docker.loadImage(createReadStream(tarPath));
+    await new Promise<void>((resolve, reject) => {
+      this.docker.modem.followProgress(
+        stream,
+        (err: Error | null, output?: Array<Record<string, any>>) => {
+          if (err) return reject(err);
+          const failed = (output ?? []).find((e) => e && (e.error || e.errorDetail));
+          if (failed) {
+            return reject(new Error(String(failed.error ?? failed.errorDetail?.message ?? "docker load failed")));
+          }
+          resolve();
+        },
+      );
     });
   }
 

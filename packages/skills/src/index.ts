@@ -28,7 +28,7 @@ export {
   refreshPackage,
   discoverSkills,
   ensureCloned,
-  SKILLS_CACHE_DIR,
+  skillsCacheDir,
 } from "./installer.ts";
 export type { InstallResult } from "./installer.ts";
 export { bundleEnabledSkills } from "./bundle-skills.ts";

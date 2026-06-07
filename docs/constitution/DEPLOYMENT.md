@@ -53,7 +53,9 @@ A committed `.env.example` documents required variables. The `.env` file itself 
 | `JM_GLOBAL_*` | Global secret overrides (prefix pattern). |
 | `ANTHROPIC_API_KEY` | Optional; falls back to logged-in `claude login`. |
 | `GITHUB_ACCESS_TOKEN` | Legacy fallback for GitHub access. |
-| `JOURNEYMAN_BASE_DIR`, `SKILLS_CACHE_DIR`, `WORKER_ID`, `RUN_SYNC_INTERVAL_MS`, `CYCLE_VISIT_LIMIT`, `CONDUCTOR_BASE_URL` | Worker / orchestrator. |
+| `JOURNEYMAN_BASE_DIR` | Single data root: `<base>/{workspaces,skills,kit}` (default `~/.journeyman`). |
+| `JOURNEYMAN_RUNNER_BUNDLE`, `JOURNEYMAN_RUNNER_IMAGE` | Kit image tags loaded from `<base>/kit/*.tar` (build with `npm run build:kit`). |
+| `WORKER_ID`, `RUN_SYNC_INTERVAL_MS`, `CYCLE_VISIT_LIMIT`, `CONDUCTOR_BASE_URL` | Worker / orchestrator. |
 | `SLACK_BOT_TOKEN`, `ATLASSIAN_API_TOKEN` | Optional integrations. |
 
 When adding a new env var:

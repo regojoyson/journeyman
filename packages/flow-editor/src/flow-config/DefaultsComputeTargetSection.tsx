@@ -42,14 +42,19 @@ export function DefaultsComputeTargetSection({ defaults, onChange, readOnly }: P
           disabled={readOnly}
           onChange={(e) => setComputeTargetId(e.target.value || undefined)}
         >
-          <option value="">Default (system Local Workspace)</option>
+          <option value="" disabled>— Select a compute target —</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
           ))}
         </select>
       </div>
+      {!defaults.computeTargetId && (
+        <div className="je-props__field-help" style={{ marginTop: 4, color: "#f0a" }}>
+          Required — pick where this workflow runs. Publishing is blocked until you choose one.
+        </div>
+      )}
       <div className="je-props__field-help" style={{ marginTop: 4 }}>
-        Steps that don't override use this compute target. Leave as Default to run in-process.
+        Every step runs on this compute target. (Per-step overrides are coming later.)
       </div>
     </div>
   );

@@ -48,11 +48,15 @@ export function rowToComputeTarget(r: Record<string, any>): ComputeTarget {
     executionMode: r.execution_mode as ExecutionMode,
     connectivity: (r.connectivity ?? null) as Connectivity | null,
     config: (r.config ?? {}) as Record<string, unknown>,
-    isDefault: Boolean(r.is_default),
     tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
     enabled: Boolean(r.enabled),
     createdBy: r.created_by ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    imageState: (r.image_state ?? "none") as ComputeTarget["imageState"],
+    imageFingerprint: r.image_fingerprint ?? null,
+    imageRef: r.image_ref ?? null,
+    imageError: r.image_error ?? null,
+    imageBuiltAt: r.image_built_at ?? null,
   };
 }

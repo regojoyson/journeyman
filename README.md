@@ -234,6 +234,28 @@ The same env contract drives both deployments. Required at runtime:
 
 Optional: `ANTHROPIC_API_KEY`, `GITHUB_ACCESS_TOKEN`, `JM_GLOBAL_*` secrets — see [`.env.example`](.env.example) for the full list.
 
+#### Data directory & the runner kit
+
+The worker writes everything under one root, **`JOURNEYMAN_BASE_DIR`** (default `~/.journeyman`):
+
+| Subdir | Contents |
+|---|---|
+| `workspaces/<runId>/` | local run workspaces |
+| `skills/<name>-<hash>/` | skill packages cache |
+| `kit/` | runner kit tars (`runner-bundle.tar`, `runner-base.tar`) |
+
+Docker compute targets run inside a **kit** (`runner-bundle` + `runner-base`). The kit is **never pulled
+from a registry** — it ships as tar files that the worker `docker load`s onto the target daemon the first
+time it's needed. Build the tars once (CI or locally) into `JOURNEYMAN_BASE_DIR/kit`:
+
+```bash
+npm run build:kit        # docker build + docker save → <base>/kit/*.tar
+```
+
+The worker (and api-server) container needs **no Docker engine inside it** — it connects to a Docker
+daemon (the compute target's address: a local socket, or `tcp://` for ECS/remote) and loads the kit
+there. No registry, no source shipped at run time.
+
 ### Path 1: Docker Compose
 
 **Prerequisites:** Docker 24+ with Compose v2.

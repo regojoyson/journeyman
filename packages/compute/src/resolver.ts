@@ -1,6 +1,6 @@
 import type { ResolvedComputeTarget, ComputeTarget } from "@journeyman/core";
 import type { Queryable } from "./db.ts";
-import { fetchComputeTargetById, fetchDefaultComputeTarget } from "./db.ts";
+import { fetchComputeTargetById } from "./db.ts";
 
 export class ComputeTargetNotFoundError extends Error {}
 
@@ -16,6 +16,9 @@ function toResolved(w: ComputeTarget): ResolvedComputeTarget {
     executionMode: w.executionMode,
     connectivity: w.connectivity ?? undefined,
     config: w.config,
+    imageState: w.imageState,
+    imageRef: w.imageRef,
+    imageError: w.imageError,
   };
 }
 
@@ -28,12 +31,10 @@ export async function resolveComputeTarget(
   ctx: ResolveComputeTargetCtx,
   workerId: string | undefined,
 ): Promise<ResolvedComputeTarget> {
-  if (workerId) {
-    const w = await fetchComputeTargetById(db, ctx.orgId, ctx.userId, workerId);
-    if (!w) throw new ComputeTargetNotFoundError(`worker '${workerId}' not found or not visible`);
-    return toResolved(w);
+  if (!workerId) {
+    throw new ComputeTargetNotFoundError("no compute target selected for this workflow");
   }
-  const def = await fetchDefaultComputeTarget(db, ctx.orgId, ctx.userId);
-  if (!def) throw new ComputeTargetNotFoundError("no default worker configured");
-  return toResolved(def);
+  const w = await fetchComputeTargetById(db, ctx.orgId, ctx.userId, workerId);
+  if (!w) throw new ComputeTargetNotFoundError(`compute target '${workerId}' not found or not visible`);
+  return toResolved(w);
 }

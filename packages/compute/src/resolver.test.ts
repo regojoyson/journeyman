@@ -27,25 +27,21 @@ describe("resolveComputeTarget", () => {
       executionMode: "per-instance",
       connectivity: "push",
       config: { image: { kind: "ref", imageRef: "x:1" } },
+      imageState: "none",
+      imageRef: null,
+      imageError: null,
     });
   });
 
-  it("falls back to the default worker when workerId is undefined", async () => {
-    const r = await resolveComputeTarget(dbReturning([localDefault]), { orgId: "o1", userId: "u1" }, undefined);
-    expect(r.id).toBe("sys");
-    expect(r.type).toBe("local");
-    expect(r.connectivity).toBeUndefined();
+  it("throws when no workerId is given (no default fallback)", async () => {
+    await expect(
+      resolveComputeTarget(dbReturning([localDefault]), { orgId: "o1", userId: "u1" }, undefined),
+    ).rejects.toBeInstanceOf(ComputeTargetNotFoundError);
   });
 
   it("throws ComputeTargetNotFoundError when an explicit workerId is missing", async () => {
     await expect(
       resolveComputeTarget(dbReturning([]), { orgId: "o1", userId: "u1" }, "ghost"),
-    ).rejects.toBeInstanceOf(ComputeTargetNotFoundError);
-  });
-
-  it("throws ComputeTargetNotFoundError when no default exists", async () => {
-    await expect(
-      resolveComputeTarget(dbReturning([]), { orgId: "o1", userId: "u1" }, undefined),
     ).rejects.toBeInstanceOf(ComputeTargetNotFoundError);
   });
 });

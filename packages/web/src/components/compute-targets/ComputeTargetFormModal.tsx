@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Info, Tag, Server, Star } from "lucide-react";
+import { Info, Tag, Server } from "lucide-react";
 import { btnGhost, btnPrimary, card, inputCls, selectCls } from "../../routes/admin-styles.ts";
 import {
   computeTargetsApi, type ComputeTarget, type ComputeTargetType, type ComputeTargetUpsertBody, type ComputeTargetTypeDescriptor,
 } from "../../api/computeTargets.ts";
-import { Field, CheckField } from "./types/form-controls.tsx";
+import { Field } from "./types/form-controls.tsx";
 import { computeTargetTypeForms } from "./types/registry.ts";
 
 export interface ComputeTargetFormModalProps {
@@ -20,7 +20,6 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
   const editing = Boolean(props.worker);
   const [name, setName] = useState(props.worker?.name ?? "");
   const [type, setType] = useState<ComputeTargetType>(props.worker?.type ?? "local");
-  const [isDefault, setIsDefault] = useState(props.worker?.isDefault ?? false);
   const [types, setTypes] = useState<ComputeTargetTypeDescriptor[]>([]);
   const [config, setConfig] = useState<Record<string, unknown>>(() =>
     (computeTargetTypeForms[props.worker?.type ?? "local"]?.readConfig(props.worker?.config ?? {}) ?? {}) as Record<string, unknown>,
@@ -76,13 +75,12 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
       executionMode: type === "docker" ? "per-instance" : "shared",
       connectivity: type === "docker" ? "push" : null,
       config: builtConfig,
-      isDefault,
     };
     try {
       if (editing) {
         const patch: Partial<ComputeTargetUpsertBody> = {
           name: body.name, executionMode: body.executionMode, connectivity: body.connectivity,
-          config: body.config, isDefault: body.isDefault,
+          config: body.config,
         };
         if (props.scope === "user") await computeTargetsApi.updateMy(props.orgId, props.worker!.id, patch);
         else await computeTargetsApi.updateOrg(props.orgId, props.worker!.id, patch);
@@ -143,10 +141,6 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
               )}
             </div>
           )}
-
-          <CheckField icon={Star} label="Set as default compute target"
-            hint={<>New workflows run on this compute target unless they pick a different one.</>}
-            checked={isDefault} onChange={setIsDefault} />
 
           {error && <div className="text-sm text-rose-400">{error}</div>}
 

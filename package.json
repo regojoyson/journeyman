@@ -24,7 +24,8 @@
     "start:api-server": "npm start -w @journeyman/api-server",
     "start:worker": "tsx packages/orchestrator/src/cli-worker.ts",
     "dev:web": "npm run dev -w @journeyman/web",
-    "build:web": "npm run build -w @journeyman/web"
+    "build:web": "npm run build -w @journeyman/web",
+    "build:kit": "node scripts/build-kit.mjs"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.112",

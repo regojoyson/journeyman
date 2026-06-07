@@ -30,6 +30,7 @@ function fakeClient(over: {
     async imageExists() { return false; },
     async imageId() { return null; },
     async buildImage() { /* noop */ },
+    async loadImage() { /* noop */ },
     async putArchive() { /* noop */ },
   };
   return { client, calls };

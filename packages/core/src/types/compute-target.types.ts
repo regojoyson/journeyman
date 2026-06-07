@@ -2,6 +2,8 @@ import type { ComputeTargetType, ExecutionMode, Connectivity } from "./execution
 
 export type ComputeTargetScope = "user" | "org" | "system";
 
+export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
+
 /** A Compute Target row as stored in jm_compute_targets. */
 export interface ComputeTarget {
   id: string;
@@ -15,12 +17,17 @@ export interface ComputeTarget {
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
-  isDefault: boolean;
   tags: string[];
   enabled: boolean;
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Managed-image build lifecycle (docker targets). 'none' = use the default box. */
+  imageState: ImageState;
+  imageFingerprint: string | null;
+  imageRef: string | null;
+  imageError: string | null;
+  imageBuiltAt: Date | null;
 }
 
 export interface CreateComputeTargetArgs {
@@ -32,7 +39,6 @@ export interface CreateComputeTargetArgs {
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
-  isDefault?: boolean;
   tags?: string[];
   enabled?: boolean;
   createdBy: string | null;
@@ -46,7 +52,6 @@ export interface UpdateComputeTargetArgs {
   executionMode?: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
-  isDefault?: boolean;
   tags?: string[];
   enabled?: boolean;
 }
