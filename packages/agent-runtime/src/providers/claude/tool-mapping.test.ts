@@ -35,8 +35,9 @@ describe("claudeNativeTools", () => {
   // complete.
   it("has a mapping for every canonical tool", () => {
     for (const t of CANONICAL_TOOLS) {
-      expect(CLAUDE_TOOL_MAP[t], `missing CLAUDE_TOOL_MAP entry for '${t}'`).toBeDefined();
-      expect(CLAUDE_TOOL_MAP[t].length).toBeGreaterThan(0);
+      const native = CLAUDE_TOOL_MAP[t];
+      expect(native, `missing CLAUDE_TOOL_MAP entry for '${t}'`).toBeTruthy();
+      expect(native ?? []).not.toHaveLength(0);
     }
   });
 
