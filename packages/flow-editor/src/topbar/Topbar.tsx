@@ -6,7 +6,6 @@ import {
   Copy,
   Download,
   FileCode2,
-  FormInput,
   Loader2,
   Play,
   Save,
@@ -44,9 +43,8 @@ export interface TopbarProps {
   runEnabled?: boolean;
   runDisabledReason?: string;
   validationErrors?: string[];
-  onFlowConfig?: () => void;
-  /** Open the workflow input schema drawer. */
-  onInputsClick?: () => void;
+  /** Open the workflow-setup wizard (workflow config + inputs). */
+  onWorkflowSetup?: () => void;
   /** When provided, an Import button appears that lets the user paste/upload a flow JSON to replace the current one. */
   onImport?: (flow: WorkflowGraph) => void;
   /** Lifecycle status of the flow. When omitted, the pill and transition button are hidden. */
@@ -173,22 +171,13 @@ export function Topbar(p: TopbarProps) {
             onClick={() => setImportOpen(true)}
           />
         )}
-        {p.onInputsClick && (
+        {p.onWorkflowSetup && (
           <IconButton
-            className="je-icon-btn--inputs"
-            label="Inputs"
-            hint="Edit the workflow input schema — shared across all triggers"
-            icon={<FormInput size={16} aria-hidden="true" focusable="false" />}
-            onClick={p.onInputsClick}
-          />
-        )}
-        {p.onFlowConfig && (
-          <IconButton
-            className="je-icon-btn--flow-config"
-            label="Flow Config"
-            hint="Edit workflow-level defaults (provider, retry, secrets, inputs)"
+            className="je-icon-btn--workflow-setup"
+            label="Workflow setup"
+            hint="Edit workflow config (provider, model, sandbox, retry) and inputs"
             icon={<SlidersHorizontal size={16} aria-hidden="true" focusable="false" />}
-            onClick={p.onFlowConfig}
+            onClick={p.onWorkflowSetup}
           />
         )}
         {p.onRun && (

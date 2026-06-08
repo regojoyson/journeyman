@@ -5,12 +5,11 @@ import { PanelResizer } from "./canvas/PanelResizer.tsx";
 import { Palette } from "./palette/Palette.tsx";
 import { PropertiesPanel } from "./properties-panel/PropertiesPanel.tsx";
 import { EdgeInspector } from "./inspector/EdgeInspector.tsx";
-import { FlowConfigPanel } from "./flow-config/FlowConfigPanel.tsx";
+import { CreateFlowWizard } from "./create-wizard/CreateFlowWizard.tsx";
 import { Topbar } from "./topbar/Topbar.tsx";
 import { PublishModal } from "./topbar/PublishModal.tsx";
 import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
-import { InputsTab } from "./inputs-tab/InputsTab.tsx";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { StepRegistryProvider } from "./state/step-registry-context.tsx";
 import { OrgIdProvider } from "./state/org-context.tsx";
@@ -125,8 +124,7 @@ export function FlowEditor(props: FlowEditorProps) {
     try { localStorage.setItem(PALETTE_WIDTH_KEY, String(paletteWidth)); } catch { /* ignore */ }
   }, [paletteWidth]);
 
-  const [flowConfigOpen, setFlowConfigOpen] = useState(false);
-  const [inputsDrawerOpen, setInputsDrawerOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [unpublishOpen, setUnpublishOpen] = useState(false);
   const [unpublishWarning, setUnpublishWarning] = useState<UnpublishWarning | null>(null);
@@ -134,7 +132,6 @@ export function FlowEditor(props: FlowEditorProps) {
 
   const focusNode = useCallback((id: string): void => {
     s.setSelectedNodeId(id);
-    setFlowConfigOpen(false);
     setFocusRequest(prev => ({ nodeId: id, tick: (prev?.tick ?? 0) + 1 }));
   }, [s]);
 
@@ -186,8 +183,7 @@ export function FlowEditor(props: FlowEditorProps) {
               : validity.ok ? undefined : validity.errors[0]
           }
           validationErrors={validity.errors}
-          onFlowConfig={() => setFlowConfigOpen(o => !o)}
-          onInputsClick={() => setInputsDrawerOpen(true)}
+          onWorkflowSetup={() => setSetupOpen(true)}
           onImport={effectiveReadOnly ? undefined : (flow) => props.onChange(flow)}
           status={props.status}
           onPublishClick={props.onPublish ? handlePublishClick : undefined}
@@ -209,12 +205,11 @@ export function FlowEditor(props: FlowEditorProps) {
           </div>
         )}
         {(() => {
-          const rightPanelOpen = flowConfigOpen || !!s.selectedEdge || !!s.selectedNode;
+          const rightPanelOpen = !!s.selectedEdge || !!s.selectedNode;
           const gridCols = rightPanelOpen
             ? `${paletteWidth}px 6px 1fr 6px ${propsWidth}px`
             : `${paletteWidth}px 6px 1fr`;
           const closeRightPanel = (): void => {
-            setFlowConfigOpen(false);
             s.setSelectedNodeId(null);
             s.setSelectedEdgeId(null);
           };
@@ -225,8 +220,8 @@ export function FlowEditor(props: FlowEditorProps) {
               <Canvas
                 flow={heal.healed}
                 selectedNodeId={s.selectedNodeId}
-                onSelect={nodeId => { s.setSelectedNodeId(nodeId); if (nodeId) setFlowConfigOpen(false); }}
-                onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); if (edgeId) setFlowConfigOpen(false); }}
+                onSelect={nodeId => { s.setSelectedNodeId(nodeId); }}
+                onEdgeSelect={edgeId => { s.setSelectedEdgeId(edgeId); }}
                 onChange={props.onChange}
                 readOnly={effectiveReadOnly}
                 stepRunStates={props.stepRunStates}
@@ -235,14 +230,7 @@ export function FlowEditor(props: FlowEditorProps) {
               {rightPanelOpen && (
                 <>
                   <PanelResizer width={propsWidth} onResize={setPropsWidth} side="right" />
-                  {flowConfigOpen ? (
-                    <FlowConfigPanel
-                      flow={heal.healed}
-                      onChange={props.onChange}
-                      onClose={() => setFlowConfigOpen(false)}
-                      readOnly={effectiveReadOnly}
-                    />
-                  ) : s.selectedEdge ? (
+                  {s.selectedEdge ? (
                     <EdgeInspector
                       flow={heal.healed}
                       edge={s.selectedEdge}
@@ -265,41 +253,15 @@ export function FlowEditor(props: FlowEditorProps) {
             </div>
           );
         })()}
-        {inputsDrawerOpen && (
-          <div
-            className="je-inputs-drawer__overlay"
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setInputsDrawerOpen(false)}
-          >
-            <aside
-              className="je-inputs-drawer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <header className="je-inputs-drawer__header">
-                <h2>Workflow inputs</h2>
-                <button
-                  type="button"
-                  className="je-inputs-drawer__close"
-                  aria-label="Close"
-                  onClick={() => setInputsDrawerOpen(false)}
-                >×</button>
-              </header>
-              <div className="je-inputs-drawer__body">
-                <InputsTab
-                  graph={heal.healed}
-                  onPatchInputs={(next) => {
-                    if (effectiveReadOnly) return;
-                    s.update((f) => ({ ...f, inputDefs: next }));
-                  }}
-                  onPatchAttributes={(next) => {
-                    if (effectiveReadOnly) return;
-                    s.update((f) => ({ ...f, attributeDefs: next }));
-                  }}
-                />
-              </div>
-            </aside>
-          </div>
+        {setupOpen && (
+          <CreateFlowWizard
+            mode="edit"
+            initialGraph={heal.healed}
+            initialMeta={{ name: props.flowName, description: "", scope: "user" }}
+            readOnly={effectiveReadOnly}
+            onSave={(graph) => { props.onChange(graph); setSetupOpen(false); }}
+            onCancel={() => setSetupOpen(false)}
+          />
         )}
         {publishOpen && props.onPublish && (
           <PublishModal
