@@ -39,6 +39,9 @@ FROM node:22-alpine AS runtime-api
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
+# Also ship per-workspace node_modules: npm nests un-hoistable deps (e.g. the
+# @octokit/* plugins under packages/github-api) here, and runtime needs them.
+COPY --from=deps /app/packages ./packages
 COPY . .
 EXPOSE 4000
 CMD ["npm", "run", "start", "-w", "@journeyman/api-server"]
@@ -50,6 +53,8 @@ ENV NODE_ENV=production
 # Local-sandbox runs clone + run AI in-process here, so git + ssh must be present.
 RUN apk add --no-cache git openssh-client ca-certificates
 COPY --from=deps /app/node_modules ./node_modules
+# Also ship per-workspace node_modules (see runtime-api).
+COPY --from=deps /app/packages ./packages
 COPY . .
 CMD ["npx", "tsx", "packages/orchestrator/src/cli-worker.ts"]
 
@@ -58,6 +63,8 @@ FROM node:22-alpine AS runtime-migrations
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
+# Also ship per-workspace node_modules (see runtime-api).
+COPY --from=deps /app/packages ./packages
 COPY . .
 CMD ["npm", "run", "migrate", "-w", "@journeyman/migrations"]
 
