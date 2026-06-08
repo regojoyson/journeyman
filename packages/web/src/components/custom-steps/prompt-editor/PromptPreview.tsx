@@ -11,7 +11,7 @@ const chipBase =
   "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-mono font-medium align-baseline";
 
 const components: Components = {
-  span: ({ node, className, children, ...props }) => {
+  span: ({ node, className, children, ref: _ref, ...props }) => {
     const cls = Array.isArray(node?.properties?.className)
       ? (node!.properties!.className as string[])
       : [];

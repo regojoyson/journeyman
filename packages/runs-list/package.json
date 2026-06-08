@@ -7,13 +7,13 @@
   "exports": { ".": "./src/index.ts" },
   "files": ["src"],
   "scripts": { "typecheck": "tsc --noEmit" },
-  "peerDependencies": { "react": "^18.3.0", "react-dom": "^18.3.0" },
+  "peerDependencies": { "react": "^19.2.7", "react-dom": "^19.2.7" },
   "dependencies": { "@journeyman/core": "*" },
   "devDependencies": {
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "typescript": "^6.0.3"
   }
 }

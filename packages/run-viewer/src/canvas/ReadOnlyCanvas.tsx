@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
   Background, Controls, ReactFlow, ReactFlowProvider,
-  type Edge, type Node, type NodeProps,
+  type Edge, type Node, type NodeProps, type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { WorkflowGraph } from "@journeyman/core";
@@ -25,7 +25,7 @@ function makeWrappedNode(InnerComponent: React.ComponentType<NodeProps>) {
   };
 }
 
-const wrappedNodeTypes: Record<string, React.ComponentType<NodeProps>> = {};
+const wrappedNodeTypes: NodeTypes = {};
 for (const [name, Comp] of Object.entries(editorNodeTypes)) {
   wrappedNodeTypes[name] = makeWrappedNode(Comp as unknown as React.ComponentType<NodeProps>);
 }
