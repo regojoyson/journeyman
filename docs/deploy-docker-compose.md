@@ -141,10 +141,29 @@ The worker connects straight to that host, ignoring the built-in engine.
 ## Operations
 
 ```bash
-npm run compose:down     # stop the stack (keep data)
-npm run compose:reset    # stop + delete volumes (DESTROYS data)
+npm run compose:down     # stop the stack (keep everything)
+npm run compose:reset    # stop + remove dind-storage; DB data is PRESERVED
+npm run compose:wipe-db  # DESTRUCTIVE: stop + delete the host postgres/redis folders
 docker compose -f compose.deploy.yml logs -f api-server
 ```
+
+### Data durability
+
+Postgres and redis store their data in **host bind-mounts** under `JOURNEYMAN_BASE_DIR`
+(`$JOURNEYMAN_BASE_DIR/postgres`, `$JOURNEYMAN_BASE_DIR/redis`). Bind-mounts are never
+removed by `docker compose down -v`, so DB data survives `compose:down`/`compose:reset` and
+even a raw `down -v`. The **only** command that deletes it is `compose:wipe-db`.
+
+**Existing deployment → host folders (one-time migration).** If your data is still in the old
+`journeyman-deploy_pgdata` / `journeyman-deploy_redisdata` named volumes, copy it across once
+(stack down):
+```bash
+docker compose -f compose.deploy.yml down    # keep the named volumes (no -v)
+npm run migrate-db-to-host                    # cp the volume contents into the host folders
+npm run compose:up
+```
+Fresh deployments need no migration — `compose:up` creates the folders and postgres
+initializes normally.
 
 ## Troubleshooting
 

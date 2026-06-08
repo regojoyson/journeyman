@@ -17,6 +17,8 @@
     "compose:up": "./scripts/compose-up.sh",
     "compose:down": "docker compose -f compose.deploy.yml down",
     "compose:reset": "docker compose -f compose.deploy.yml down -v",
+    "compose:wipe-db": "./scripts/compose-wipe-db.sh",
+    "migrate-db-to-host": "./scripts/migrate-db-to-host.sh",
     "k8s:up": "./scripts/k8s-up.sh",
     "k8s:down": "kubectl delete -k deploy/k8s/overlays/local --ignore-not-found",
     "k8s:reset": "kubectl delete -k deploy/k8s/overlays/local --ignore-not-found && kubectl -n journeyman delete pvc --all --ignore-not-found",

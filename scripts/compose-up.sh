@@ -29,6 +29,11 @@ require_secret JM_SECRET_ENCRYPTION_KEY
 # worker. Built once; delete the kit dir (or run `npm run build:kit`) to force a rebuild.
 data_dir="$(grep -E '^JOURNEYMAN_BASE_DIR=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 data_dir="${data_dir:-./.journeyman-data}"
+
+# Postgres + redis data live in host bind-mounts under the data dir (durable across
+# `down -v`/compose:reset). Ensure the folders exist so the bind-mounts resolve.
+mkdir -p "${data_dir}/postgres" "${data_dir}/redis"
+
 if [ ! -f "${data_dir}/kit/runner-base.tar" ] || [ ! -f "${data_dir}/kit/runner-bundle.tar" ]; then
   echo ">>> runner kit missing — building into ${data_dir}/kit (one-time, for docker-workspace sandboxes)"
   JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit

@@ -284,17 +284,32 @@ npm run compose:up
 # 3. Open the web UI
 open http://localhost:6080
 
-# 4a. Stop, KEEP data (volumes survive)
+# 4a. Stop, keep everything
 npm run compose:down
 
-# 4b. Stop AND wipe data (drops the named volumes)
+# 4b. Stop + reset — DB data is PRESERVED (only dind-storage is wiped)
 npm run compose:reset
 
+# Destroy the database (explicit, the only command that does):
+#   npm run compose:wipe-db
+
 # Force a kit rebuild later (e.g. after agent-runtime changes):
-#   rm -rf .journeyman-data/kit && npm run compose:up
+#   rm -rf "$JOURNEYMAN_BASE_DIR/kit" && npm run compose:up
 ```
 
-Named volumes are prefixed by the project name, e.g. `journeyman-deploy_pgdata`, `journeyman-deploy_redisdata`, `journeyman-deploy_dind-storage`.
+**Data durability.** Postgres and redis data are **host bind-mounts** under
+`JOURNEYMAN_BASE_DIR` (`$JOURNEYMAN_BASE_DIR/postgres`, `…/redis`), so they survive
+`compose:down`, `compose:reset`, and even a raw `docker compose down -v`. Only
+`npm run compose:wipe-db` deletes them. The single project-managed named volume is
+`journeyman-deploy_dind-storage` (the dind image cache — safe to wipe).
+
+**Migrating an existing deployment** (data currently in the old `journeyman-deploy_pgdata`/
+`_redisdata` named volumes) to host folders — run once, stack down:
+```bash
+docker compose -f compose.deploy.yml down   # keep the named volumes (no -v)
+npm run migrate-db-to-host                   # copy data into $JOURNEYMAN_BASE_DIR/{postgres,redis}
+npm run compose:up
+```
 
 Port map (host → container) — a **6000 series** so it never clashes with the dev stack:
 
