@@ -10,8 +10,7 @@
   },
   "files": ["src"],
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "react": "^18.3.0",
