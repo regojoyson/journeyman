@@ -89,6 +89,31 @@ the pipeline runs steps sequentially, the per-poll wait is paid at every hop.
 most of the idle traffic. Operators wanting snappier pickup or even less chatter set
 `WORKER_POLL_INTERVAL_MS` per environment.
 
+### 3. Document the env var everywhere it belongs
+
+Per the env-var policy in
+[`DEPLOYMENT.md`](../../constitution/DEPLOYMENT.md) ("Add it to `.env.example` with a
+placeholder and short comment"), the new var must be documented alongside the code in
+the same change:
+
+| File | Change |
+|---|---|
+| [`.env.example`](../../../.env.example) | Add a commented example next to the other worker vars (`WORKER_ID`, `RUN_SYNC_INTERVAL_MS`, `CYCLE_VISIT_LIMIT`, `CONDUCTOR_BASE_URL`): `# WORKER_POLL_INTERVAL_MS=2000` with a one-line comment (interval each step-type loop waits between Conductor polls; lower = faster pickup + more load). |
+| [`docs/constitution/DEPLOYMENT.md`](../../constitution/DEPLOYMENT.md) | Add `WORKER_POLL_INTERVAL_MS` to the existing "Worker / orchestrator" row of the env-var table. |
+| [`packages/orchestrator/README.md`](../../../packages/orchestrator/README.md) | Add a row to the worker env-var table (`WORKER_POLL_INTERVAL_MS` / poll interval per step-type loop / `2000`). Replace the stale note "The worker poll interval is 500 ms; tune in cli-worker.ts if needed" with a pointer to the env var. |
+
+No `compose.deploy.yml` change is needed — the worker service uses `env_file: .env`, so
+the var flows through automatically once an operator sets it.
+
+`SECURITY.md` is **not** touched — this var carries no credentials.
+
+**Config-helper note:** `DEPLOYMENT.md` also asks new vars to be read "through a typed
+config helper, not raw `process.env`." The existing sibling vars
+(`WORKER_HEARTBEAT_MS`, `CYCLE_VISIT_LIMIT`, `WORKER_ID`) are all read inline via
+`process.env … ?? default`. To stay consistent with the surrounding code, this change
+follows the same inline pattern; introducing a typed config helper is a separate,
+broader refactor and is out of scope here.
+
 ## Out of scope (YAGNI)
 
 - **Conductor server logging** (`conductor.properties`) — not the source.
