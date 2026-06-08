@@ -51,10 +51,11 @@ npm run infra:up   # starts Postgres + Conductor + Redis via docker-compose
 |---|---|---|
 | `CONDUCTOR_BASE_URL` | Conductor API root | `http://localhost:8080/api` |
 | `WORKER_ID` | Worker identifier sent to Conductor (visible in its UI) | `worker-<pid>` |
+| `WORKER_POLL_INTERVAL_MS` | Interval (ms) each step-type loop waits between Conductor polls | `2000` |
 | `ANTHROPIC_API_KEY` | Required by `ClaudeProvider` for `custom-ai` steps (omit if `claude login` is used in local dev) | — |
 | Per-product secrets (e.g. `SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN`) | Resolved by `EnvCredentialStore` when a step declares `requiredSecrets` | — |
 
-The worker poll interval is 500 ms; tune in [cli-worker.ts](src/cli-worker.ts) if needed.
+The worker poll interval defaults to 2000 ms; override per environment with `WORKER_POLL_INTERVAL_MS` (lower = faster step pickup but more requests/logs).
 
 ---
 
