@@ -26,7 +26,7 @@ require_secret JM_SECRET_ENCRYPTION_KEY
 # Ensure the runner kit exists (docker-workspace sandboxes load these tars into dind).
 # Build into the SAME host folder that's bind-mounted into the worker at /data/journeyman
 # (JOURNEYMAN_BASE_DIR from .env), so the kit lands at /data/journeyman/kit inside the
-# worker. Built once; delete the kit dir (or run `npm run build:kit`) to force a rebuild.
+# worker. Rebuilt on every `compose:up` so the kit always reflects current source.
 data_dir="$(grep -E '^JOURNEYMAN_BASE_DIR=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 data_dir="${data_dir:-./.journeyman-data}"
 
@@ -34,12 +34,8 @@ data_dir="${data_dir:-./.journeyman-data}"
 # `down -v`/compose:reset). Ensure the folders exist so the bind-mounts resolve.
 mkdir -p "${data_dir}/postgres" "${data_dir}/redis"
 
-if [ ! -f "${data_dir}/kit/runner-base.tar" ] || [ ! -f "${data_dir}/kit/runner-bundle.tar" ]; then
-  echo ">>> runner kit missing — building into ${data_dir}/kit (one-time, for docker-workspace sandboxes)"
-  JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
-else
-  echo ">>> runner kit present in ${data_dir}/kit — skipping build:kit"
-fi
+echo ">>> building runner kit into ${data_dir}/kit (for docker-workspace sandboxes)"
+JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
 
 ./scripts/build-images.sh
 docker compose -f compose.deploy.yml up -d
