@@ -33,6 +33,7 @@ import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
 import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
+import { resolvePollIntervalMs } from "./workers/poll-interval.ts";
 import { StartFeatureBranchStepHandler } from "./workers/steps/start-feature-branch-step-handler.ts";
 import { CloneReposStepHandler } from "./workers/steps/clone-repos-step-handler.ts";
 import { GetIssueStepHandler } from "./workers/steps/get-issue-step-handler.ts";
@@ -372,7 +373,7 @@ const harness = new WorkerHarness({
   registry,
   events,
   workerId: process.env.WORKER_ID ?? `worker-${process.pid}`,
-  pollIntervalMs: 500,
+  pollIntervalMs: resolvePollIntervalMs(),
   bindingResolver: cliBindingResolver,
   mcpResolver: ({ ctx, instanceIds }) => {
     if (!pool) return Promise.resolve([]);
