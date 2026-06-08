@@ -98,7 +98,9 @@ export const PromptCodeMirror = forwardRef<
       theme="none"
       extensions={extensions}
       onChange={onChange}
-      basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false }}
+      // closeBrackets off: auto-closing `{` to `{}` would duplicate the `}}`
+      // that the {{token}} autocomplete already inserts (→ `{{name}}}}`).
+      basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false, closeBrackets: false }}
       placeholder="Write your prompt. Reference inputs with {{name}} and env secrets with $SLOT_NAME."
     />
   );
