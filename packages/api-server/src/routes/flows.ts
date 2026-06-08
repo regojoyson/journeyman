@@ -251,6 +251,19 @@ export function computeValidationReport(
     }
   }
 
+  // Check 1b: webhook triggers must map every required workflow input.
+  for (const node of definition.nodes) {
+    if (node.type !== "trigger-webhook") continue;
+    const mapping = ((node.config ?? {}) as { inputsMapping?: Record<string, { fromPath?: string }> }).inputsMapping ?? {};
+    for (const inp of definition.inputDefs ?? []) {
+      if (!inp.required) continue;
+      const fromPath = mapping[inp.name]?.fromPath;
+      if (!fromPath || fromPath.trim() === "") {
+        missing.push(`'${node.displayName ?? node.id}' (${node.id}) is missing payload mapping for required input '${inp.name}'`);
+      }
+    }
+  }
+
   // Check 2: shape-aware ref + binding validation (delegates to @journeyman/core).
   // Walks every step node, validates each input against its catalog declaration:
   // shape-mismatch, dangling-ref-node, dangling-ref-path, missing-input-shape.
