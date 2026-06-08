@@ -179,6 +179,25 @@ export function validateWorkflowInputs(
     }
   }
 
+  // Trigger-webhook nodes must map every required workflow input to a payload path.
+  for (const node of flow.nodes) {
+    if (node.type !== "trigger-webhook") continue;
+    const cfg = (node.config ?? {}) as { inputsMapping?: Record<string, { fromPath?: string }> };
+    const mapping = cfg.inputsMapping ?? {};
+    for (const inp of flow.inputDefs ?? []) {
+      if (!inp.required) continue;
+      const fromPath = mapping[inp.name]?.fromPath;
+      if (!fromPath || fromPath.trim() === "") {
+        warnings.push({
+          code: "missing-required",
+          message: `Webhook trigger: required input '${inp.name}' has no payload mapping (set a "From path").`,
+          nodeId: node.id,
+          inputKey: inp.name,
+        });
+      }
+    }
+  }
+
   // Resolve a node's per-customStepId overlay (if any) on the catalog entry
   // for "custom-ai". Returns undefined for non-custom-ai or unknown ids.
   function cpDefFor(n: WorkflowNode | undefined): CustomStepValidationEntry | undefined {
