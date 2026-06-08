@@ -25,6 +25,6 @@
     "typescript": "^6.0.3",
     "vitest": "^2.1.9"
   },
-  "peerDependencies": { "fastify": "^4.28.1" },
+  "peerDependencies": { "fastify": "^5.8.5" },
   "peerDependenciesMeta": { "fastify": { "optional": true } }
 }
