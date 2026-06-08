@@ -23,7 +23,7 @@
     "@types/pg": "^8.11.10",
     "@types/tar": "^7.0.87",
     "typescript": "^6.0.3",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.8"
   },
   "peerDependencies": { "fastify": "^5.8.5" },
   "peerDependenciesMeta": { "fastify": { "optional": true } }
