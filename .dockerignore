@@ -19,4 +19,5 @@ deploy/
 .claude/
 .dockerignore
 Dockerfile
-docker-compose.yml
+compose.deploy.yml
+infra/compose.dev.yml

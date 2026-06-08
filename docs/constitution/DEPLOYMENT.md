@@ -4,7 +4,7 @@ Linked from [AGENTS.md](../../AGENTS.md).
 
 ## Local infrastructure
 
-Journeyman depends on PostgreSQL, Redis, and Conductor. The compose file is `infra/docker-compose.yml`.
+Journeyman depends on PostgreSQL, Redis, and Conductor. The dev dependency stack is `infra/compose.dev.yml` (`npm run infra:up`). The full containerized stack (infra + apps + dind) is `compose.deploy.yml` (`npm run compose:up`); see [deploy-docker-compose.md](../deploy-docker-compose.md).
 
 | Service | Image | Host port |
 |---|---|---|

@@ -258,40 +258,53 @@ there. No registry, no source shipped at run time.
 
 ### Path 1: Docker Compose
 
+There are **two** compose files, by purpose:
+
+| File | Purpose | Project | Driven by |
+|---|---|---|---|
+| `compose.deploy.yml` (repo root) | full stack — infra + apps + built-in Docker engine | `journeyman-deploy` | `npm run compose:*` |
+| `infra/compose.dev.yml` | dev dependencies only (Postgres, Redis, Conductor) — run the apps on your host | `journeyman-dev` | `npm run infra:*` |
+
+Full guide: [docs/deploy-docker-compose.md](docs/deploy-docker-compose.md).
+
 **Prerequisites:** Docker 24+ with Compose v2.
 
 ```bash
-# 1. Seed an env file with dev secrets
+# 1. Seed env + required secrets
 cp .env.example .env
-# Generate strong values for JWT_SECRET and JM_SECRET_ENCRYPTION_KEY:
-#   openssl rand -hex 32
-# Edit .env and paste them in.
+printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env
+# set ANTHROPIC_API_KEY=sk-ant-... in .env for AI steps
 
-# 2. Bring up the full stack (builds images, then `docker compose up -d`)
+# 2. (Only for docker-workspace sandboxes) build the runner kit into the bind-mount folder
+JOURNEYMAN_BASE_DIR="$(pwd)/.journeyman-data" npm run build:kit
+
+# 3. Bring up the full stack (builds images, then `docker compose -f compose.deploy.yml up -d`)
 npm run compose:up
 
-# 3. Open the web UI
-open http://localhost:8081
+# 4. Open the web UI
+open http://localhost:6080
 
-# 4a. Stop, KEEP data (postgres + redis volumes survive)
+# 5a. Stop, KEEP data (volumes survive)
 npm run compose:down
 
-# 4b. Stop AND wipe data (drops `pgdata` and `redisdata`)
+# 5b. Stop AND wipe data (drops the named volumes)
 npm run compose:reset
 ```
 
-Volumes live inside the Rancher Desktop VM at `/var/lib/docker/volumes/journeyman_pgdata/_data` and `/var/lib/docker/volumes/journeyman_redisdata/_data`.
+Named volumes are prefixed by the project name, e.g. `journeyman-deploy_pgdata`, `journeyman-deploy_redisdata`, `journeyman-deploy_dind-storage`.
 
-Port map (host → container):
+Port map (host → container) — a **6000 series** so it never clashes with the dev stack:
 
 | Host | Service | Notes |
 |---|---|---|
-| 8081 | web (nginx) | UI; also proxies `/api` to api-server |
-| 4000 | api-server | REST + SSE |
-| 8080 | conductor | Conductor REST |
-| 5001 | conductor | UI (5000 is taken by macOS AirPlay) |
-| 5433 | postgres | dev access |
-| 6380 | redis | dev access |
+| 6080 | web (nginx) | UI; also proxies `/api` to api-server |
+| 6000 | api-server | REST + SSE |
+| 6008 | conductor | Conductor REST |
+| 6005 | conductor | UI |
+| 6032 | postgres | dev access |
+| 6079 | redis | dev access |
+| — | docker (dind) | internal only (`tcp://docker:2375`) — runs docker-workspace jobs |
 
 The `migrations` service runs once, exits 0, and gates `api-server` + `worker` via `depends_on: service_completed_successfully`.
 

@@ -50,7 +50,7 @@ and the operator guide [docs/deploy-docker-compose.md](../../deploy-docker-compo
 ## Host ports (6000 series)
 
 Host-exposed ports use a 6000 series so the full-stack deployment doesn't clash with the dev
-infra stack (`infra/docker-compose.yml`) or common local services. **Container ports are
+infra stack (`infra/compose.dev.yml`) or common local services. **Container ports are
 unchanged**, so in-network service URLs (`postgres:5432`, `api-server:4000`, `conductor:8080`)
 stay the same — only the `ports:` host side moves.
 
@@ -69,10 +69,10 @@ stay the same — only the `ports:` host side moves.
 | File | Change |
 |---|---|
 | `Dockerfile` | `runtime-worker` target: `RUN apk add --no-cache git openssh-client`. |
-| `docker-compose.yml` | Add `docker` (dind) service + `dind-storage` volume. Worker: bind-mount `/data/journeyman`, `JOURNEYMAN_BASE_DIR=/data/journeyman`, `DOCKER_HOST=tcp://docker:2375`, `ANTHROPIC_API_KEY`. Add `api-server` healthcheck; make `web`/`worker` depend on `api-server: service_healthy`. |
+| `compose.deploy.yml` (renamed from `docker-compose.yml`) | Add `docker` (dind) service + `dind-storage` volume. Worker: bind-mount `/data/journeyman`, `JOURNEYMAN_BASE_DIR=/data/journeyman`, `DOCKER_HOST=tcp://docker:2375`, `IS_SANDBOX=1`. Add `api-server` healthcheck; make `web`/`worker` depend on `api-server: service_healthy`. Distinct project name `journeyman-deploy`. |
 | `.env.example` | Document `ANTHROPIC_API_KEY` (uncomment), `JOURNEYMAN_DATA_DIR`, and that `JWT_SECRET` / `JM_SECRET_ENCRYPTION_KEY` are required. |
 | `scripts/compose-up.sh` | Fail fast on missing required secrets (no silent blank-`.env` copy); add secret-generation helper; remind to run `build:kit` for docker workspaces. |
-| `infra/docker-compose.yml` | Remove obsolete `version: "3.9"` key. |
+| `infra/compose.dev.yml` (renamed from `infra/docker-compose.yml`) | Remove obsolete `version: "3.9"` key; distinct project name `journeyman-dev`. |
 | `docs/deploy-docker-compose.md` | New operator guide (done). |
 | `docs/diagrams/docker-compose-deployment.svg` | New diagram (done). |
 

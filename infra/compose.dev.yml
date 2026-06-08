@@ -1,5 +1,8 @@
-# infra/docker-compose.yml
-# Local dev stack for Phase 1: Conductor + Redis + Postgres.
+# infra/compose.dev.yml — DEV dependency stack only: Postgres + Redis + Conductor.
+# Run with: npm run infra:up / infra:down / infra:reset
+# You then run api-server/worker/web on your host via npm. For the full
+# containerized stack (incl. apps + dind) see compose.deploy.yml at the repo root.
+name: journeyman-dev
 
 services:
   postgres:

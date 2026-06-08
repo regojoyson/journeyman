@@ -15,7 +15,7 @@ Docker engine so AI coding jobs can run in isolated containers.
 ### Services
 
 Host ports use a **6000 series** to avoid clashing with the dev infra stack
-(`infra/docker-compose.yml`) and common local services. Only host-side ports change —
+(`infra/compose.dev.yml`) and common local services. Only host-side ports change —
 container ports stay standard, so all in-network URLs (`postgres:5432`, `api-server:4000`,
 `conductor:8080`) are unchanged.
 
@@ -103,8 +103,8 @@ exits; `api-server`/`web` wait until it has completed and the DB is healthy.
 Check status and logs:
 
 ```bash
-docker compose ps
-docker compose logs -f worker
+docker compose -f compose.deploy.yml ps
+docker compose -f compose.deploy.yml logs -f worker
 ```
 
 Open the UI: **http://localhost:6080**  (Conductor UI: http://localhost:6005)
@@ -137,7 +137,7 @@ The worker connects straight to that host, ignoring the built-in engine.
 ```bash
 npm run compose:down     # stop the stack (keep data)
 npm run compose:reset    # stop + delete volumes (DESTROYS data)
-docker compose logs -f api-server
+docker compose -f compose.deploy.yml logs -f api-server
 ```
 
 ## Troubleshooting
@@ -145,9 +145,9 @@ docker compose logs -f api-server
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `compose-up` aborts naming `JWT_SECRET` | secrets not set | add them to `.env` (step 1) |
-| Docker-sandbox "Test connection" fails | dind not up, or kit missing | `docker compose ps` shows `docker`; run `npm run build:kit` (step 2) |
-| AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env`, `docker compose up -d worker` |
-| `web` loads but `/api` calls fail | api-server not healthy yet | `docker compose logs api-server` |
+| Docker-sandbox "Test connection" fails | dind not up, or kit missing | `docker compose -f compose.deploy.yml ps` shows `docker`; run `npm run build:kit` (step 2) |
+| AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env`, `docker compose -f compose.deploy.yml up -d worker` |
+| `web` loads but `/api` calls fail | api-server not healthy yet | `docker compose -f compose.deploy.yml logs api-server` |
 | Local-sandbox clone fails with `git: not found` | worker image missing git | rebuild images (`npm run images:build`) |
 
 ## Security notes

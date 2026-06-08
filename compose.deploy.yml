@@ -1,7 +1,9 @@
-# Full Journeyman stack: infra + apps.
-# Infra services mirror infra/docker-compose.yml so `npm run infra:up` stays valid.
-# Host ports use a 6000 series to avoid clashing with the dev infra stack.
+# compose.deploy.yml — FULL Journeyman deployment (infra + all apps).
+# Run with: npm run compose:up / compose:down / compose:reset
+# For the dev-only dependency stack (postgres+redis+conductor) see infra/compose.dev.yml.
+# Host ports use a 6000 series to avoid clashing with the dev stack.
 # Container ports are unchanged, so in-network URLs stay standard.
+name: journeyman-deploy
 
 services:
   postgres:

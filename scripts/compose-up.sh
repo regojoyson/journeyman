@@ -33,5 +33,5 @@ if [ ! -f "${data_dir}/kit/runner-base.tar" ]; then
 fi
 
 ./scripts/build-images.sh
-docker compose up -d
-docker compose ps
+docker compose -f compose.deploy.yml up -d
+docker compose -f compose.deploy.yml ps

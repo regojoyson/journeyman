@@ -65,7 +65,7 @@ Before requesting review, confirm:
 
 ### 8. Migrations & infra
 - Migrations are append-only; no destructive operations without explicit approval.
-- No silent changes to `infra/docker-compose.yml` ports or service versions.
+- No silent changes to `infra/compose.dev.yml` / `compose.deploy.yml` ports or service versions.
 - No new env vars without an entry in `.env.example`.
 
 ## Review tone
