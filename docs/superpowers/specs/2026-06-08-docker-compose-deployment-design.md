@@ -42,7 +42,7 @@ and the operator guide [docs/deploy-docker-compose.md](../../deploy-docker-compo
 |---|---|
 | Built-in Docker engine? | **Yes** — ship `docker:27-dind` as a default. |
 | Connection transport | **TCP** — worker `DOCKER_HOST=tcp://docker:2375`; blank socket → dind. |
-| Worker data dir | **Host bind-mount** (`${JOURNEYMAN_DATA_DIR:-./.journeyman-data}` → `/data/journeyman`) so the kit tars (produced on the host by `build:kit`) are readable by the worker. |
+| Worker data dir | **Host bind-mount** (`${JOURNEYMAN_BASE_DIR:-./.journeyman-data}` → `/data/journeyman`) so the kit tars (produced on the host by `build:kit`) are readable by the worker. A single env var (`JOURNEYMAN_BASE_DIR`) is the host folder; the in-container path is pinned to `/data/journeyman`. |
 | dind storage | named volume `dind-storage` → `/var/lib/docker`. |
 | Secrets | **Fail fast** if `JWT_SECRET` / `JM_SECRET_ENCRYPTION_KEY` are missing; never copy a blank `.env`. |
 | Custom remote hosts | Supported per-sandbox (`Remote daemon` → any `tcp://ip:port`, optional TLS certDir). |
@@ -70,7 +70,7 @@ stay the same — only the `ports:` host side moves.
 |---|---|
 | `Dockerfile` | `runtime-worker` target: `RUN apk add --no-cache git openssh-client`. |
 | `compose.deploy.yml` (renamed from `docker-compose.yml`) | Add `docker` (dind) service + `dind-storage` volume. Worker: bind-mount `/data/journeyman`, `JOURNEYMAN_BASE_DIR=/data/journeyman`, `DOCKER_HOST=tcp://docker:2375`, `IS_SANDBOX=1`. Add `api-server` healthcheck; make `web`/`worker` depend on `api-server: service_healthy`. Distinct project name `journeyman-deploy`. |
-| `.env.example` | Document `ANTHROPIC_API_KEY` (uncomment), `JOURNEYMAN_DATA_DIR`, and that `JWT_SECRET` / `JM_SECRET_ENCRYPTION_KEY` are required. |
+| `.env.example` | Document `ANTHROPIC_API_KEY` (uncomment), that `JOURNEYMAN_BASE_DIR` doubles as the compose host bind-mount folder, and that `JWT_SECRET` / `JM_SECRET_ENCRYPTION_KEY` are required. |
 | `scripts/compose-up.sh` | Fail fast on missing required secrets (no silent blank-`.env` copy); **auto-build the runner kit into the bind-mounted data dir when missing** (`JOURNEYMAN_BASE_DIR="$data_dir" npm run build:kit`), skip when present. |
 | `infra/compose.dev.yml` (renamed from `infra/docker-compose.yml`) | Remove obsolete `version: "3.9"` key; distinct project name `journeyman-dev`. |
 | `docs/deploy-docker-compose.md` | New operator guide (done). |
@@ -98,7 +98,7 @@ stay the same — only the `ports:` host side moves.
       JOURNEYMAN_BASE_DIR: /data/journeyman
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     volumes:
-      - ${JOURNEYMAN_DATA_DIR:-./.journeyman-data}:/data/journeyman
+      - ${JOURNEYMAN_BASE_DIR:-./.journeyman-data}:/data/journeyman
     depends_on:
       docker:
         condition: service_started

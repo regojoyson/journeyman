@@ -86,7 +86,7 @@
   <rect x="840" y="530" width="300" height="200" rx="10" fill="#FAFAFA" stroke="#bdbdbd" stroke-width="1.2"/>
   <text x="856" y="556" font-size="13" font-weight="700" fill="#444">Volumes</text>
   <text x="856" y="577" font-size="11" fill="#555">named: pgdata · redisdata · dind-storage</text>
-  <text x="856" y="595" font-size="11" fill="#555">bind: ${JOURNEYMAN_DATA_DIR}</text>
+  <text x="856" y="595" font-size="11" fill="#555">bind: ${JOURNEYMAN_BASE_DIR}</text>
   <text x="856" y="612" font-size="11" fill="#555">      → /data/journeyman</text>
   <text x="856" y="640" font-size="13" font-weight="700" fill="#444">Secrets (.env)</text>
   <text x="856" y="661" font-size="11" fill="#555">JWT_SECRET</text>

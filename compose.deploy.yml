@@ -95,7 +95,8 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       STORE_BACKEND: postgres
-      # In-container data root (overrides any JOURNEYMAN_BASE_DIR in .env).
+      # Inside the container the data root is always /data/journeyman (the mount target
+      # below). The host folder behind it is set via JOURNEYMAN_BASE_DIR in .env.
       JOURNEYMAN_BASE_DIR: /data/journeyman
       # Default Docker engine for docker-workspace sandboxes (the built-in dind).
       DOCKER_HOST: tcp://docker:2375
@@ -103,7 +104,9 @@ services:
       # bypassPermissions as root unless IS_SANDBOX=1.
       IS_SANDBOX: "1"
     volumes:
-      - ${JOURNEYMAN_DATA_DIR:-./.journeyman-data}:/data/journeyman
+      # Host side = JOURNEYMAN_BASE_DIR from .env (default ./.journeyman-data);
+      # mounted to the fixed in-container root /data/journeyman.
+      - ${JOURNEYMAN_BASE_DIR:-./.journeyman-data}:/data/journeyman
     depends_on:
       migrations:
         condition: service_completed_successfully

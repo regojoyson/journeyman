@@ -61,7 +61,7 @@ cp .env.example .env
 | `JWT_SECRET` | ✅ | `openssl rand -hex 32` |
 | `JM_SECRET_ENCRYPTION_KEY` | ✅ | `openssl rand -hex 32` |
 | `ANTHROPIC_API_KEY` | ✅ for AI steps | `sk-ant-…` (no `claude login` inside a container) |
-| `JOURNEYMAN_DATA_DIR` | optional | host folder bind-mounted to `/data/journeyman`. Default: `./.journeyman-data` |
+| `JOURNEYMAN_BASE_DIR` | optional | host folder bind-mounted to `/data/journeyman` (workspaces + kit). Default: `./.journeyman-data` |
 | `GITHUB_ACCESS_TOKEN` / `JM_GLOBAL_GITHUB_TOKEN` | optional | default git token if not set per-user |
 
 Generate both secrets quickly:
@@ -77,7 +77,7 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" 
 
 The worker loads prebuilt runner images into dind from `*.tar` files — it never builds them
 at run time. **`compose:up` builds the kit for you on the first run** if it's missing,
-writing it into the bind-mounted data dir (`${JOURNEYMAN_DATA_DIR:-./.journeyman-data}/kit`)
+writing it into the bind-mounted data dir (`${JOURNEYMAN_BASE_DIR:-./.journeyman-data}/kit`)
 so the worker sees it at `/data/journeyman/kit`. You normally don't run anything here.
 
 - `runner-base.tar` → the **default box** (docker sandboxes with no custom image).
