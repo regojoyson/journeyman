@@ -9,25 +9,29 @@ RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {}
 RUN npm ci --include=dev
 
 # ---------- build (web only — others run via tsx) ----------
-FROM node:22-alpine AS build
+# Built on Debian/glibc (not Alpine/musl): native frontend build tools
+# (Rolldown, lightningcss, esbuild) ship first-class glibc prebuilts, so a plain
+# `npm ci` installs the correct per-platform binaries. This avoids the npm
+# optional-deps bug (npm/cli#4828) that silently skips musl natives on Alpine.
+# This stage is discarded — only packages/web/dist is copied into nginx below —
+# so its larger base image has no effect on the final web image size.
+FROM node:22 AS build
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY packages ./packages
+RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {} + 2>/dev/null || true
+# Resolve dependencies fresh for the build platform (note: NO package-lock.json
+# is copied here). npm's optional-dependencies bug (npm/cli#4828, present in npm
+# 10 AND 11) makes it skip per-platform native packages — Rolldown/lightningcss/
+# esbuild compiled bindings — whenever a lockfile generated on another OS
+# (ours is committed from macOS) is present. Installing without that lockfile
+# lets npm fetch the correct Linux binaries for every native tool at once, so no
+# new native dependency can silently break the build again.
+# This stage is discarded (only packages/web/dist is copied into nginx below);
+# the runtime stages still install from the committed lockfile via `deps`, so
+# backend dependency determinism is unaffected.
+RUN npm install --include=dev
 COPY . .
-# Work around npm optional-deps bug for native bundler binaries on alpine/musl.
-# https://github.com/npm/cli/issues/4828
-# Vite 8 bundles with Rolldown (Rust), replacing Rollup; its native binding
-# must match the installed rolldown version. Install the matching musl binding
-# for the build platform.
-RUN case "$(uname -m)" in \
-      aarch64|arm64) ARCH="arm64" ;; \
-      x86_64)        ARCH="x64" ;; \
-      *)             ARCH="" ;; \
-    esac && \
-    if [ -n "$ARCH" ]; then \
-      RDV="$(node -e "const fs=require('fs');process.stdout.write(JSON.parse(fs.readFileSync('/app/node_modules/rolldown/package.json','utf8')).version)")" && \
-      echo "Installing @rolldown/binding-linux-${ARCH}-musl@${RDV}" && \
-      npm install --no-save "@rolldown/binding-linux-${ARCH}-musl@${RDV}"; \
-    fi
 RUN npm run build -w @journeyman/web
 
 # ---------- runtime-api ----------
