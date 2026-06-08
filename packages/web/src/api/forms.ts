@@ -24,12 +24,12 @@ export interface FormSchema {
 }
 
 export async function listMyForms(): Promise<FormListItem[]> {
-  const res = await api<{ forms: FormListItem[] }>(`/me/forms`);
+  const res = await api<{ forms: FormListItem[] }>(`/api/me/forms`);
   return res.forms;
 }
 
 export async function getForm(workflowId: string): Promise<FormSchema> {
-  const res = await api<{ form: FormSchema }>(`/workflows/${encodeURIComponent(workflowId)}/form`);
+  const res = await api<{ form: FormSchema }>(`/api/workflows/${encodeURIComponent(workflowId)}/form`);
   return res.form;
 }
 
@@ -38,7 +38,7 @@ export function submitForm(
   values: Record<string, unknown>,
 ): Promise<{ workflowInstanceId: string; formSubmissionId: string }> {
   return api<{ workflowInstanceId: string; formSubmissionId: string }>(
-    `/workflows/${encodeURIComponent(workflowId)}/form-submissions`,
+    `/api/workflows/${encodeURIComponent(workflowId)}/form-submissions`,
     { method: "POST", body: JSON.stringify({ values }) },
   );
 }

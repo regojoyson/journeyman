@@ -11,7 +11,7 @@ export async function publishFlow(
 ): Promise<{ ok: true; workflow: Workflow; warnings: PublishError[] } | { ok: false; errors: PublishError[] }> {
   try {
     const res = await api<{ workflow: Workflow; warnings?: PublishError[] }>(
-      `/workflows/${encodeURIComponent(workflowId)}/publish`,
+      `/api/workflows/${encodeURIComponent(workflowId)}/publish`,
       { method: "POST", body: "{}" },
     );
     return { ok: true, workflow: res.workflow, warnings: res.warnings ?? [] };
@@ -30,7 +30,7 @@ export async function unpublishFlow(
 ): Promise<{ ok: true; workflow: Workflow } | { ok: false; warning: UnpublishWarning }> {
   try {
     const res = await api<{ workflow: Workflow }>(
-      `/workflows/${encodeURIComponent(workflowId)}/unpublish`,
+      `/api/workflows/${encodeURIComponent(workflowId)}/unpublish`,
       { method: "POST", body: JSON.stringify({ confirm }) },
     );
     return { ok: true, workflow: res.workflow };
@@ -50,7 +50,7 @@ export async function listFlows(
   if (filter?.scope) params.set("scope", filter.scope);
   if (filter?.orgId) params.set("orgId", filter.orgId);
   const qs = params.toString();
-  const res = await api<{ workflows: Workflow[] }>(`/workflows${qs ? `?${qs}` : ""}`);
+  const res = await api<{ workflows: Workflow[] }>(`/api/workflows${qs ? `?${qs}` : ""}`);
   return res.workflows;
 }
 
@@ -72,12 +72,12 @@ export async function listFlowsPaged(args: {
   if (args.orgId) params.set("orgId", args.orgId);
   params.set("page", String(args.page));
   params.set("page_size", String(args.pageSize));
-  return await api<PagedFlows>(`/workflows?${params.toString()}`);
+  return await api<PagedFlows>(`/api/workflows?${params.toString()}`);
 }
 
 export async function getFlow(id: string): Promise<Workflow | null> {
   try {
-    const res = await api<{ workflow: Workflow }>(`/workflows/${encodeURIComponent(id)}`);
+    const res = await api<{ workflow: Workflow }>(`/api/workflows/${encodeURIComponent(id)}`);
     return res.workflow;
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
@@ -92,14 +92,14 @@ export async function createFlow(args: {
   description?: string;
   definition: WorkflowGraph;
 }): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-  return await api<{ workflow: Workflow; version: WorkflowVersion }>("/workflows", {
+  return await api<{ workflow: Workflow; version: WorkflowVersion }>("/api/workflows", {
     method: "POST", body: JSON.stringify(args),
   });
 }
 
 export async function updateFlowDefinition(workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
   return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
-    `/workflows/${encodeURIComponent(workflowId)}`,
+    `/api/workflows/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify({ definition }) },
   );
 }
@@ -109,20 +109,20 @@ export async function updateFlowMeta(
   meta: { name?: string; description?: string },
 ): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
   return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
-    `/workflows/${encodeURIComponent(workflowId)}`,
+    `/api/workflows/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify(meta) },
   );
 }
 
 export async function runFlow(workflowId: string, inputs: Record<string, unknown>): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
   return await api<{ workflowInstanceId: string; engineWorkflowId: string }>(
-    `/workflows/${encodeURIComponent(workflowId)}/workflow-instances`,
+    `/api/workflows/${encodeURIComponent(workflowId)}/workflow-instances`,
     { method: "POST", body: JSON.stringify({ inputs }) },
   );
 }
 
 export async function getCurrentWorkflowVersion(workflowId: string): Promise<WorkflowVersion> {
-  const res = await api<{ version: WorkflowVersion }>(`/workflows/${encodeURIComponent(workflowId)}/versions/current`);
+  const res = await api<{ version: WorkflowVersion }>(`/api/workflows/${encodeURIComponent(workflowId)}/versions/current`);
   return res.version;
 }
 
@@ -136,7 +136,7 @@ export interface FlowValidationReport {
 
 export async function validateFlowDefinition(definition: WorkflowGraph): Promise<FlowValidationReport> {
   return await api<FlowValidationReport>(
-    "/workflows/validate",
+    "/api/workflows/validate",
     { method: "POST", body: JSON.stringify({ definition }) },
   );
 }

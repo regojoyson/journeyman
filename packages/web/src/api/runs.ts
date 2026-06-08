@@ -16,7 +16,7 @@ export async function listRuns(filter: {
   if (filter.limit)      qs.set("limit",        String(filter.limit));
   if (filter.scope)      qs.set("scope",        filter.scope);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  const res = await api<{ workflowInstances: WorkflowInstance[] }>(`/workflow-instances${suffix}`);
+  const res = await api<{ workflowInstances: WorkflowInstance[] }>(`/api/workflow-instances${suffix}`);
   return res.workflowInstances;
 }
 
@@ -42,7 +42,7 @@ export async function listRunsPaged(args: {
   if (args.scope)      qs.set("scope",        args.scope);
   qs.set("page",       String(args.page));
   qs.set("page_size",  String(args.pageSize));
-  return await api<PagedRuns>(`/workflow-instances?${qs.toString()}`);
+  return await api<PagedRuns>(`/api/workflow-instances?${qs.toString()}`);
 }
 
 export type WebhookEventSummary = {
@@ -65,7 +65,7 @@ export interface WorkflowInstanceDetail {
 }
 
 export async function getRun(workflowInstanceId: string): Promise<WorkflowInstanceDetail> {
-  return await api<WorkflowInstanceDetail>(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}`);
+  return await api<WorkflowInstanceDetail>(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}`);
 }
 
 // Same-origin default; localhost dev value lives in packages/web/.env.development.
@@ -78,7 +78,7 @@ export function openWorkflowInstanceEventStream(args: {
   onError?: (e: Event) => void;
   onOpen?: () => void;
 }): () => void {
-  const url = `${baseUrl}/workflow-instances/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
+  const url = `${baseUrl}/api/workflow-instances/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
   const es = new EventSource(url, { withCredentials: true });
   es.onopen = () => args.onOpen?.();
   es.onerror = (e) => args.onError?.(e);
@@ -97,21 +97,21 @@ export function openWorkflowInstanceEventStream(args: {
 }
 
 export async function cancelRun(runId: string, reason?: string): Promise<void> {
-  await api(`/workflow-instances/${encodeURIComponent(runId)}/cancel`, {
+  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/cancel`, {
     method: "POST", body: JSON.stringify({ reason }),
   });
 }
 
 export async function pauseRun(runId: string): Promise<void> {
-  await api(`/workflow-instances/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
+  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
 }
 
 export async function resumeRun(runId: string): Promise<void> {
-  await api(`/workflow-instances/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
+  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
 }
 
 export async function retryStep(runId: string, nodeId: string): Promise<void> {
-  await api(`/workflow-instances/${encodeURIComponent(runId)}/retry-step`, {
+  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/retry-step`, {
     method: "POST", body: JSON.stringify({ node_id: nodeId }),
   });
 }
@@ -122,23 +122,23 @@ export async function resolveHumanTask(runId: string, nodeId: string, body: {
   data?: unknown;
 }): Promise<void> {
   await api(
-    `/workflow-instances/${encodeURIComponent(runId)}/human-tasks/${encodeURIComponent(nodeId)}/resolve`,
+    `/api/workflow-instances/${encodeURIComponent(runId)}/human-tasks/${encodeURIComponent(nodeId)}/resolve`,
     { method: "POST", body: JSON.stringify(body) },
   );
 }
 
 export async function rerunRun(workflowInstanceId: string): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
-  return await api(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}/rerun`, {
+  return await api(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}/rerun`, {
     method: "POST", body: "{}",
   });
 }
 
 export async function forkRun(workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-  return await api(`/workflow-instances/${encodeURIComponent(workflowInstanceId)}/fork`, {
+  return await api(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}/fork`, {
     method: "POST", body: JSON.stringify({ name }),
   });
 }
 
 export function exportRunUrl(runId: string): string {
-  return `${baseUrl}/workflow-instances/${encodeURIComponent(runId)}/export`;
+  return `${baseUrl}/api/workflow-instances/${encodeURIComponent(runId)}/export`;
 }

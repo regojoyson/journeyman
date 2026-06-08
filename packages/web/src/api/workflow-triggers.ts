@@ -8,7 +8,7 @@ export interface TriggerSummary {
 
 export async function getWorkflowTriggers(workflowId: string): Promise<TriggerSummary[]> {
   const res = await api<{ triggers: TriggerSummary[] }>(
-    `/workflows/${encodeURIComponent(workflowId)}/triggers`,
+    `/api/workflows/${encodeURIComponent(workflowId)}/triggers`,
   );
   return res.triggers;
 }
