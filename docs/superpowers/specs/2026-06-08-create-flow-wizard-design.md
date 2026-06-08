@@ -49,6 +49,11 @@ to fill what" feeling does not return on the next edit.
   flow-editor).
 - **Re-openable** — the editor gets a "Workflow setup" button that reopens the
   same wizard against the live graph.
+- **Single home** — the canvas's standalone "Flow Defaults" panel and "Inputs"
+  drawer entry points are **removed**. The re-openable wizard becomes the only
+  way to edit config + inputs. The underlying section components are kept (the
+  wizard is built from them) — only their standalone mount points and toolbar
+  buttons go away.
 
 ## Reused building blocks
 
@@ -88,13 +93,32 @@ by two host surfaces:
 1. **Creation host** — `web/NewFlowPage` renders `CreateFlowWizard` in
    `mode="create"`, seeded from `createBlankFlow()`. On finish it calls
    `createFlow(...)` once and navigates to `/workflows/:id/edit`.
-2. **Re-open host** — `FlowEditor` adds a "Workflow setup" toolbar button that
-   opens `CreateFlowWizard` in `mode="edit"`, seeded from a deep copy of the live
-   graph. On finish it patches the editor's graph state via the same `onChange`
-   path "Save" already uses; no new flow, no navigation.
+2. **Re-open host** — `FlowEditor` adds a single "Workflow setup" toolbar button
+   that opens `CreateFlowWizard` in `mode="edit"`, seeded from a deep copy of the
+   live graph. On finish it patches the editor's graph state via the same
+   `onChange` / `s.update` path "Save" already uses; no new flow, no navigation.
 
 The wizard only ever touches `defaults`, `inputDefs`, `attributeDefs`, and (in
 create mode) the flow's name/description/scope. It never touches nodes or edges.
+
+### Removing the old canvas entry points
+
+Both standalone entry points live in
+[`FlowEditor.tsx`](../../../packages/flow-editor/src/FlowEditor.tsx) and are
+removed in favor of the single "Workflow setup" button:
+
+- The **`FlowConfigPanel`** right-aside branch and its `flowConfigOpen` state
+  (toggled today by the toolbar's `onFlowConfig`).
+- The **`InputsTab` drawer** modal and its `inputsDrawerOpen` state (toggled
+  today by the toolbar's `onInputsClick`).
+- The toolbar's `onFlowConfig` and `onInputsClick` buttons/props are replaced by
+  a single `onWorkflowSetup` button.
+
+`FlowConfigPanel` itself may be deleted (its only consumer was the canvas), or
+retained purely as a composition of the `Defaults*Section`s if convenient for
+the wizard's `ConfigStep`. `InputsTab` is **kept** — the wizard's `InputsStep`
+wraps it directly. The right-panel grid logic (`rightPanelOpen`) drops its
+`flowConfigOpen` term and keys only off selected node/edge.
 
 ## Wizard steps & data flow
 
@@ -195,5 +219,7 @@ already check:
 | `packages/flow-editor/src/create-wizard/*` | New wizard component + steps + state |
 | `packages/flow-editor/src/index.ts` | Export `CreateFlowWizard` |
 | `packages/flow-editor/src/canvas/create-blank-flow.ts` (or equivalent) | Seed default `defaults` (primary option) |
-| `packages/flow-editor/src/FlowEditor.tsx` | "Workflow setup" button → open wizard in edit mode |
+| `packages/flow-editor/src/FlowEditor.tsx` | Remove `FlowConfigPanel` aside + `flowConfigOpen` state, remove `InputsTab` drawer + `inputsDrawerOpen` state; add single "Workflow setup" button opening the wizard in edit mode |
+| `packages/flow-editor/src/<toolbar>.tsx` | Replace `onFlowConfig` / `onInputsClick` buttons+props with `onWorkflowSetup` |
+| `packages/flow-editor/src/flow-config/FlowConfigPanel.tsx` | Deleted (or repurposed as the wizard `ConfigStep` body) — `Defaults*Section`s kept |
 | `packages/web/src/routes/NewFlowPage.tsx` | Render `CreateFlowWizard` in create mode |
