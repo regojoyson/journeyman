@@ -1,11 +1,14 @@
-# Local Infra
+# Local Infra (dev dependency stack)
 
-Phase 1 stack: Postgres, Redis, Conductor.
+`compose.dev.yml` — Postgres, Redis, Conductor only. Use this when you run
+api-server/worker/web on your host via npm. For the **full** containerized stack
+(infra + apps + built-in Docker engine) see [`../compose.deploy.yml`](../compose.deploy.yml)
+(`npm run compose:up`) and [`../docs/deploy-docker-compose.md`](../docs/deploy-docker-compose.md).
 
 ## Bring up
 
 ```bash
-npm run infra:up        # docker compose up -d
+npm run infra:up        # docker compose -f infra/compose.dev.yml up -d
 npm run migrate         # apply Journeyman SQL migrations against Postgres
 ```
 
@@ -19,8 +22,8 @@ npm run migrate         # apply Journeyman SQL migrations against Postgres
 ## Bring down
 
 ```bash
-npm run infra:down      # docker compose down
-npm run infra:reset     # docker compose down -v   (DESTROYS volumes)
+npm run infra:down      # docker compose -f infra/compose.dev.yml down
+npm run infra:reset     # docker compose -f infra/compose.dev.yml down -v   (DESTROYS volumes)
 ```
 
 ## Phase 1 smoke test

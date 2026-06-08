@@ -94,7 +94,7 @@ The worker loads these into dind on first use (it never pulls or builds the kit 
 ## 3. Bring the stack up
 
 ```bash
-npm run compose:up      # builds app images + docker compose up -d
+npm run compose:up      # builds app images + docker compose -f compose.deploy.yml up -d
 ```
 
 This builds the four app images, then starts every service. `migrations` runs first and

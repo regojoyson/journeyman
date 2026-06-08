@@ -23,10 +23,11 @@ journeyman/                  ← repo root
 ├── CLAUDE.md
 ├── README.md
 ├── package.json             ← workspaces: ["packages/*"]
+├── compose.deploy.yml       ← full stack: infra + apps + dind (`npm run compose:up`)
 ├── docs/                    ← architecture diagrams, quickstart, setup
 │   └── constitution/        ← developer guidelines (ARCHITECTURE, DATABASE_ARCHITECTURE, CONSTITUTION, SECURITY, …)
 ├── examples/
-├── infra/                   ← docker-compose (Postgres, Redis, Conductor)
+├── infra/                   ← compose.dev.yml: dev deps only — Postgres, Redis, Conductor (`npm run infra:up`)
 ├── scripts/                 ← check-import-boundaries.mjs, etc.
 ├── .claude/
 │   ├── sdk.d.ts             ← @anthropic-ai/claude-agent-sdk type declarations

@@ -366,7 +366,7 @@ Deploying to a remote cluster: copy [`deploy/k8s/overlays/example-registry/`](de
 
 | Symptom | Cause / Fix |
 |---|---|
-| `web` container returns 502 from `/api/...` | api-server not yet listening — wait for `migrations` to complete and `api-server` to become Ready. Check `docker compose logs api-server`. |
+| `web` container returns 502 from `/api/...` | api-server not yet listening — wait for `migrations` to complete and `api-server` to become Ready. Check `docker compose -f compose.deploy.yml logs api-server`. |
 | K8s pods stuck `ImagePullBackOff` with `journeyman/*:dev` | Images aren't in the cluster's runtime. Run the `kind load` / `minikube image load` step above. |
 | `worker` pod in `Error` shortly after apply | Usually because Conductor is still starting (its readiness probe has `initialDelaySeconds: 30`). It restarts and stabilises automatically. |
 | api-server crashes with secret-related errors | `JWT_SECRET` or `JM_SECRET_ENCRYPTION_KEY` missing/too short. Generate with `openssl rand -hex 32`. |
