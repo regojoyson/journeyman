@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  HANDLES, NODES, EDGES, INTERACTIONS, ADDING_PARAGRAPH,
+  BUILD_STEPS, NODE_GROUPS, HANDLES, EDGES, PUBLISH_STEPS,
   type LegendRow, type NodeRow,
 } from "./help-content.tsx";
 
@@ -108,22 +108,29 @@ export function HelpPanel() {
           </button>
         </header>
         <div className="je-help-panel__body">
-          <Section title="Handles">
-            {HANDLES.map(r => <LegendItem key={r.label} row={r} />)}
+          <Section title="Build a flow">
+            <ol className="je-help-panel__list">
+              {BUILD_STEPS.map(s => <li key={s}>{s}</li>)}
+            </ol>
           </Section>
           <Section title="Node types">
-            {NODES.map(n => <NodeItem key={n.label} row={n} />)}
+            {NODE_GROUPS.map(g => (
+              <div key={g.title}>
+                <div className="je-help-panel__subhead">{g.title}</div>
+                {g.rows.map(n => <NodeItem key={n.label} row={n} />)}
+              </div>
+            ))}
           </Section>
-          <Section title="Edge types">
+          <Section title="Handles &amp; edges">
+            <div className="je-help-panel__subhead">Handles</div>
+            {HANDLES.map(r => <LegendItem key={r.label} row={r} />)}
+            <div className="je-help-panel__subhead">Edges</div>
             {EDGES.map(r => <LegendItem key={r.label} row={r} />)}
           </Section>
-          <Section title="Interactions">
+          <Section title="Publish &amp; read-only">
             <ul className="je-help-panel__list">
-              {INTERACTIONS.map(s => <li key={s}>{s}</li>)}
+              {PUBLISH_STEPS.map(s => <li key={s}>{s}</li>)}
             </ul>
-          </Section>
-          <Section title="Adding a node">
-            <p className="je-help-panel__para">{ADDING_PARAGRAPH}</p>
           </Section>
         </div>
         <footer className="je-help-panel__footer">
