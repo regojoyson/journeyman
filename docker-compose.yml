@@ -1,5 +1,7 @@
 # Full Journeyman stack: infra + apps.
 # Infra services mirror infra/docker-compose.yml so `npm run infra:up` stays valid.
+# Host ports use a 6000 series to avoid clashing with the dev infra stack.
+# Container ports are unchanged, so in-network URLs stay standard.
 
 services:
   postgres:
@@ -8,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: journeyman
-    ports: ["5433:5432"]
+    ports: ["6032:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -18,7 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports: ["6380:6379"]
+    ports: ["6079:6379"]
     volumes: ["redisdata:/data"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -28,8 +30,8 @@ services:
   conductor:
     image: orkesio/orkes-conductor-community-standalone:latest
     ports:
-      - "8080:8080"
-      - "5001:5000"
+      - "6008:8080"
+      - "6005:5000"
     environment:
       - CONFIG_PROP=/app/config/conductor.properties
     volumes:
@@ -39,6 +41,17 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+
+  # Built-in Docker engine for docker-workspace sandboxes (Docker-in-Docker).
+  # Reachable only on the private compose network at tcp://docker:2375.
+  docker:
+    image: docker:27-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command: ["--host=tcp://0.0.0.0:2375"]
+    volumes:
+      - dind-storage:/var/lib/docker
 
   migrations:
     image: journeyman/migrations:dev
@@ -59,7 +72,12 @@ services:
       STORE_BACKEND: postgres
       IDENTITY_ENFORCE: "true"
       PORT: "4000"
-    ports: ["4000:4000"]
+    ports: ["6000:4000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -75,6 +93,15 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       STORE_BACKEND: postgres
+      # In-container data root (overrides any JOURNEYMAN_BASE_DIR in .env).
+      JOURNEYMAN_BASE_DIR: /data/journeyman
+      # Default Docker engine for docker-workspace sandboxes (the built-in dind).
+      DOCKER_HOST: tcp://docker:2375
+      # Local-sandbox AI runs in-process as root here; the Claude engine refuses
+      # bypassPermissions as root unless IS_SANDBOX=1.
+      IS_SANDBOX: "1"
+    volumes:
+      - ${JOURNEYMAN_DATA_DIR:-./.journeyman-data}:/data/journeyman
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -82,14 +109,17 @@ services:
         condition: service_healthy
       conductor:
         condition: service_started
+      docker:
+        condition: service_started
 
   web:
     image: journeyman/web:dev
-    ports: ["8081:8080"]
+    ports: ["6080:8080"]
     depends_on:
       api-server:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   pgdata:
   redisdata:
+  dind-storage:
