@@ -1,6 +1,7 @@
 // packages/agent-runtime/src/providers/opencode/operations/checkout-repo.ts
 import { createLogger } from "@journeyman/core";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
+import { resolveOpenCodeModel } from "../model.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
 import type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult } from "@journeyman/core";
@@ -114,7 +115,7 @@ export async function checkoutRepo(
   const result = await client.session.prompt({
     sessionID: sid,
     parts: [{ type: "text", text: buildPrompt(entries, opts.issue) }],
-    model: config.model,
+    model: resolveOpenCodeModel(opts.model, config.model),
     tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },
   });

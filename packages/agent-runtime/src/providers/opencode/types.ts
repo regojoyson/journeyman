@@ -27,7 +27,7 @@ export type OpenCodeMode =
   | { mode: "external"; baseUrl?: string }
 
 export type OpenCodeProviderConfig = OpenCodeMode & {
-  model: { providerID: string; modelID: string }
+  model?: { providerID: string; modelID: string }
   mcp?: Record<string, McpLocalConfig | McpRemoteConfig>
   tools?: Record<string, boolean>
   permission?: OpenCodePermission

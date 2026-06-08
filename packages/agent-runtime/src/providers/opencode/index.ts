@@ -4,12 +4,14 @@ import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
   RunCustomPromptOptions, RunCustomPromptResult,
+  ResolvedMcpInstance,
 } from "@journeyman/core";
-import { getClient } from "./client.ts";
-import type { OpenCodeClient } from "./client.ts";
+import { startServer } from "./client.ts";
 import type { OpenCodeProviderConfig } from "./types.ts";
+import { buildServerConfig } from "./server-config.ts";
 import { scanRepos } from "./operations/scan-repos.ts";
 import { checkoutRepo } from "./operations/checkout-repo.ts";
+import { runCustomPrompt } from "./operations/run-custom-prompt.ts";
 
 export type { OpenCodeProviderConfig } from "./types.ts";
 
@@ -22,27 +24,36 @@ export class OpenCodeProvider implements ICodingCLI {
   };
 
   readonly #config: OpenCodeProviderConfig;
-  #client: OpenCodeClient | null = null;
 
   constructor(config: OpenCodeProviderConfig, private _providerConfig: CodingCLIProviderConfig = {}) {
     if (!config.mode) throw new Error("OpenCodeProvider: config.mode is required ('managed' | 'external')");
-    if (!config.model?.providerID) throw new Error("OpenCodeProvider: config.model.providerID is required");
-    if (!config.model?.modelID) throw new Error("OpenCodeProvider: config.model.modelID is required");
     this.#config = config;
   }
 
-  private async client(): Promise<OpenCodeClient> {
-    if (!this.#client) this.#client = await getClient(this.#config);
-    return this.#client;
+  /** Start a managed server with op-specific config, run `fn`, always close. */
+  async #withServer<T>(
+    mcps: ResolvedMcpInstance[] | undefined,
+    env: Record<string, string> | undefined,
+    fn: (client: Awaited<ReturnType<typeof startServer>>["client"]) => Promise<T>,
+  ): Promise<T> {
+    const serverConfig = buildServerConfig(this.#config, mcps);
+    const handle = await startServer(this.#config, serverConfig, env);
+    try {
+      return await fn(handle.client);
+    } finally {
+      handle.close();
+    }
   }
 
   async scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
-    return scanRepos(await this.client(), this.#config, opts);
+    return this.#withServer(undefined, undefined, (client) => scanRepos(client, this.#config, opts));
   }
+
   async checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
-    return checkoutRepo(await this.client(), this.#config, opts);
+    return this.#withServer(undefined, undefined, (client) => checkoutRepo(client, this.#config, opts));
   }
-  async runCustomPrompt(_opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
-    throw new Error("OpenCodeProvider.runCustomPrompt not implemented");
+
+  async runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
+    return this.#withServer(opts.mcps, opts.env, (client) => runCustomPrompt(client, this.#config, opts));
   }
 }
