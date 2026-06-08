@@ -11,7 +11,7 @@ import { InputFieldsEditor } from "./InputFieldsEditor.tsx";
 import { OutputSchemaEditor } from "./OutputSchemaEditor.tsx";
 import { ToolsPicker } from "./ToolsPicker.tsx";
 import { SecretsEditor } from "./SecretsEditor.tsx";
-import { PromptEditor } from "./PromptEditor.tsx";
+import { PromptEditor } from "./prompt-editor/PromptEditor.tsx";
 import { IconPicker } from "./IconPicker.tsx";
 import { btnGhost, btnPrimary, inputCls } from "../../routes/admin-styles.ts";
 
