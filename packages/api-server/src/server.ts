@@ -46,17 +46,24 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerCustomStepRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);
   }
-  registerWorkflowRoutes(app, c);
   registerStepsRoutes(app);
-  registerWorkflowGrantsRoutes(app, c);
-  registerWorkflowInstanceRoutes(app, c);
   registerWebhookRoutes(app, c);
   if (c.pool) {
     registerWebhookManagementRoutes(app, c);
     registerWebhookPresetRoutes(app, c);
   }
-  registerHumanTaskRoutes(app, c);
-  registerFormRoutes(app, c);
-  registerWorkflowTriggersRoute(app, c);
+  // These registrars historically registered at root (/workflows, /workflow-instances,
+  // …). Namespace them under /api so the single nginx `/api/` proxy reaches them and they
+  // don't collide with the SPA's /workflows & /workflow-instances page routes. Auth is a
+  // per-route preHandler (reads token from request headers; closured pool), so this
+  // encapsulation does not change auth/role/ownership behavior.
+  await app.register(async (s) => {
+    registerWorkflowRoutes(s, c);
+    registerWorkflowGrantsRoutes(s, c);
+    registerWorkflowInstanceRoutes(s, c);
+    registerHumanTaskRoutes(s, c);
+    registerFormRoutes(s, c);
+    registerWorkflowTriggersRoute(s, c);
+  }, { prefix: "/api" });
   return app;
 }
