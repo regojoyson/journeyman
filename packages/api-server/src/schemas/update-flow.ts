@@ -33,7 +33,11 @@ const flowDefaultsSchema = z.object({
   retry:          retryPolicySchema.optional(),
   executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
   defaultModel:   z.string().optional(),
-  workerId:       z.string().optional(),
+  // The editor picker writes `computeTargetId`; `workerId` is the legacy field
+  // kept for back-compat reading. Both must be accepted or the picker's value is
+  // silently stripped on save (Zod .object() drops unknown keys).
+  computeTargetId: z.string().optional(),
+  workerId:        z.string().optional(),
 }).optional();
 
 const flowNodeSchema = z.object({
