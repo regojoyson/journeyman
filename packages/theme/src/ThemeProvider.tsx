@@ -21,39 +21,25 @@ function readStored(): Theme | null {
   }
 }
 
-function detectOS(): Theme {
-  if (typeof window === "undefined" || !window.matchMedia) return "dark";
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
+const DEFAULT_THEME: Theme = "dark";
 
 function initialTheme(): Theme {
   if (typeof document !== "undefined") {
     const attr = document.documentElement.dataset.theme;
     if (attr === "dark" || attr === "light") return attr;
   }
-  return readStored() ?? detectOS();
+  return readStored() ?? DEFAULT_THEME;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(initialTheme);
-  const [hasExplicitChoice, setHasExplicitChoice] = useState<boolean>(() => readStored() !== null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  useEffect(() => {
-    if (hasExplicitChoice) return;
-    if (!window.matchMedia) return;
-    const mql = window.matchMedia("(prefers-color-scheme: light)");
-    const onChange = (e: MediaQueryListEvent) => setThemeState(e.matches ? "light" : "dark");
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, [hasExplicitChoice]);
-
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    setHasExplicitChoice(true);
     try {
       localStorage.setItem(STORAGE_KEY, t);
     } catch {

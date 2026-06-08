@@ -73,6 +73,9 @@ services:
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       STORE_BACKEND: postgres
       IDENTITY_ENFORCE: "true"
+      # Browser reaches the app over HTTPS (Cloudflare Tunnel); production mode
+      # makes auth cookies set the Secure flag (see identity/src/middleware.ts).
+      NODE_ENV: production
       PORT: "4000"
     ports: ["6000:4000"]
     healthcheck:
