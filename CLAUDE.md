@@ -255,7 +255,7 @@ npm run k8s:reset
 |---|---|
 | `ClaudeProvider.scanRepos` / `checkoutRepo` | Implemented |
 | `ClaudeProvider.runCustomPrompt` | Implemented (Claude Agent SDK + json_schema structured output) |
-| `OpenCodeProvider` | Implemented |
+| `OpenCodeProvider` | Implemented (`scanRepos`/`checkoutRepo`/`runCustomPrompt` via `@opencode-ai/sdk` managed server; MCP, native skills, canonical tools, json_schema structured output; local + Docker) |
 | `GeminiProvider` / `CodexProvider` | Stub |
 | `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via `@journeyman/github-api`) |
 | `GitHubIssuesProvider` | Implemented (REST via `@journeyman/github-api`) |
