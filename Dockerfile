@@ -36,6 +36,8 @@ CMD ["npm", "run", "start", "-w", "@journeyman/api-server"]
 FROM node:22-alpine AS runtime-worker
 WORKDIR /app
 ENV NODE_ENV=production
+# Local-sandbox runs clone + run AI in-process here, so git + ssh must be present.
+RUN apk add --no-cache git openssh-client ca-certificates
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 CMD ["npx", "tsx", "packages/orchestrator/src/cli-worker.ts"]
