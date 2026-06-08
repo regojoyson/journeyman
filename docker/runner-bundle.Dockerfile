@@ -18,7 +18,7 @@ RUN mkdir -p /opt/journeyman/bin \
  && ln -s /opt/journeyman/node /opt/journeyman/bin/node \
  && cp /app/packages/agent-runtime/dist/runner.js /opt/journeyman/runner.js \
  && cp -R /app/node_modules /opt/journeyman/node_modules \
- && printf '#!/bin/sh\nexport NODE_ENV=production\nexec /opt/journeyman/node /opt/journeyman/runner.js "$@"\n' \
+ && printf '#!/bin/sh\nexport NODE_ENV=production\nexport PATH="/opt/journeyman/bin:/opt/journeyman/node_modules/.bin:$PATH"\nexec /opt/journeyman/node /opt/journeyman/runner.js "$@"\n' \
       > /opt/journeyman/bin/journeyman-runner \
  && chmod +x /opt/journeyman/bin/journeyman-runner
 
