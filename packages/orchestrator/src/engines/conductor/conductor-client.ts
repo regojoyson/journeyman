@@ -127,14 +127,19 @@ export class ConductorClient {
 
   async pollTask(taskType: string, workerId: string): Promise<PolledTask | null> {
     const reqStart = Date.now();
-    log.debug({ stepType: taskType, workerId }, "conductor.poll.request.start");
     try {
       const r = await this.request<PolledTask | null>(
         `/tasks/poll/${encodeURIComponent(taskType)}?workerid=${encodeURIComponent(workerId)}`,
       );
-      log.debug({
+      const fields = {
         stepType: taskType, workerId, hasTask: !!r, durationMs: Date.now() - reqStart,
-      }, "conductor.poll.request.end");
+      };
+      // Empty polls are pure idle noise (one per step type, every interval) —
+      // keep them at `trace` so `debug` stays useful. A real pickup is worth a
+      // `debug` line. The old per-poll `request.start` line is dropped: it
+      // carried nothing the `request.end` line lacks.
+      if (r) log.debug(fields, "conductor.poll.request.end");
+      else log.trace(fields, "conductor.poll.request.end");
       return r ?? null;
     } catch (err) {
       log.error({
