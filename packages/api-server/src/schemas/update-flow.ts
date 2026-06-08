@@ -27,11 +27,11 @@ const retryPolicySchema = z.object({
   onFailure: z.enum(["error-edge", "fail-flow"]).optional(),
 });
 
-const executorKindSchema = z.enum(["coding-cli", "git-provider", "issue-provider", "notification"]);
-
 const flowDefaultsSchema = z.object({
   retry:          retryPolicySchema.optional(),
-  executorConfig: z.record(executorKindSchema, z.object({ provider: z.string().optional() })).optional(),
+  // Two-arg z.record(keySchema, valueSchema): required by zod 4, valid in zod 3.
+  // (A string key avoids zod 4's exhaustive enum-keyed-record behavior.)
+  executorConfig: z.record(z.string(), z.object({ provider: z.string().optional() })).optional(),
   defaultModel:   z.string().optional(),
   // The editor picker writes `sandboxId`. It must be accepted explicitly or the
   // picker's value is silently stripped on save (Zod .object() drops unknown keys).
@@ -43,10 +43,10 @@ const flowNodeSchema = z.object({
   type: z.string(),
   displayName: z.string().optional(),
   stepType: z.string().optional(),
-  config: z.record(z.unknown()).optional(),
-  inputs: z.record(flowInputValueSchema).nullable().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+  inputs: z.record(z.string(), flowInputValueSchema).nullable().optional(),
   executorConfig: z.object({ provider: z.string().optional() }).passthrough().nullable().optional(),
-  secretBindings: z.record(secretBindingSchema).nullable().optional(),
+  secretBindings: z.record(z.string(), secretBindingSchema).nullable().optional(),
   position: z.object({ x: z.number(), y: z.number() }).optional(),
   outcome: z.string().optional(),
   retry: retryPolicySchema.nullable().optional(),
