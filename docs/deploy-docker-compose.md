@@ -73,32 +73,38 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" 
 `compose-up.sh` will **stop with a clear error** if `JWT_SECRET` or
 `JM_SECRET_ENCRYPTION_KEY` is missing — it will not boot with blank secrets.
 
-## 2. Build the runner kit (needed for docker workspaces)
+## 2. (Automatic) The runner kit
 
-The worker loads prebuilt runner images into dind from `*.tar` files — it never builds
-them at run time. Produce them once into your data dir:
-
-```bash
-JOURNEYMAN_BASE_DIR="$(pwd)/.journeyman-data" npm run build:kit
-# → .journeyman-data/kit/runner-base.tar, runner-bundle.tar
-```
+The worker loads prebuilt runner images into dind from `*.tar` files — it never builds them
+at run time. **`compose:up` builds the kit for you on the first run** if it's missing,
+writing it into the bind-mounted data dir (`${JOURNEYMAN_DATA_DIR:-./.journeyman-data}/kit`)
+so the worker sees it at `/data/journeyman/kit`. You normally don't run anything here.
 
 - `runner-base.tar` → the **default box** (docker sandboxes with no custom image).
 - `runner-bundle.tar` → grafted into **custom** sandbox images.
 
-The worker loads these into dind on first use (it never pulls or builds the kit at run time).
-**Rebuild the kit whenever `@journeyman/agent-runtime` changes** — the tars embed the runner.
+Once built, `compose:up` detects the tars and skips the build. To **force a rebuild** (e.g.
+after `@journeyman/agent-runtime` changes — the tars embed the runner), delete the kit dir
+or run it manually:
 
-(Skip this if you only use **local** sandboxes.)
+```bash
+rm -rf .journeyman-data/kit
+# or, build explicitly into the data dir:
+JOURNEYMAN_BASE_DIR="$(pwd)/.journeyman-data" npm run build:kit
+```
+
+(Local-only sandboxes never use the kit — the one-time build still runs on first `compose:up`;
+delete the kit dir afterward if you want to skip it.)
 
 ## 3. Bring the stack up
 
 ```bash
-npm run compose:up      # builds app images + docker compose -f compose.deploy.yml up -d
+npm run compose:up      # builds kit (if missing) + app images, then `docker compose -f compose.deploy.yml up -d`
 ```
 
-This builds the four app images, then starts every service. `migrations` runs first and
-exits; `api-server`/`web` wait until it has completed and the DB is healthy.
+This builds the runner kit (first run only), builds the four app images, then starts every
+service. `migrations` runs first and exits; `api-server`/`web` wait until it has completed
+and the DB is healthy.
 
 Check status and logs:
 
@@ -145,7 +151,7 @@ docker compose -f compose.deploy.yml logs -f api-server
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `compose-up` aborts naming `JWT_SECRET` | secrets not set | add them to `.env` (step 1) |
-| Docker-sandbox "Test connection" fails | dind not up, or kit missing | `docker compose -f compose.deploy.yml ps` shows `docker`; run `npm run build:kit` (step 2) |
+| Docker-sandbox "Test connection" fails | dind not up, or kit missing | check `docker compose -f compose.deploy.yml ps` shows `docker`; if the kit is stale, `rm -rf .journeyman-data/kit && npm run compose:up` rebuilds it |
 | AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env`, `docker compose -f compose.deploy.yml up -d worker` |
 | `web` loads but `/api` calls fail | api-server not healthy yet | `docker compose -f compose.deploy.yml logs api-server` |
 | Local-sandbox clone fails with `git: not found` | worker image missing git | rebuild images (`npm run images:build`) |

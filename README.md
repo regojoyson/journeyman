@@ -276,20 +276,22 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env
 # set ANTHROPIC_API_KEY=sk-ant-... in .env for AI steps
 
-# 2. (Only for docker-workspace sandboxes) build the runner kit into the bind-mount folder
-JOURNEYMAN_BASE_DIR="$(pwd)/.journeyman-data" npm run build:kit
-
-# 3. Bring up the full stack (builds images, then `docker compose -f compose.deploy.yml up -d`)
+# 2. Bring up the full stack
+#    First run also builds the runner kit (for docker-workspace sandboxes) into
+#    .journeyman-data/kit and the four app images, then `docker compose -f compose.deploy.yml up -d`.
 npm run compose:up
 
-# 4. Open the web UI
+# 3. Open the web UI
 open http://localhost:6080
 
-# 5a. Stop, KEEP data (volumes survive)
+# 4a. Stop, KEEP data (volumes survive)
 npm run compose:down
 
-# 5b. Stop AND wipe data (drops the named volumes)
+# 4b. Stop AND wipe data (drops the named volumes)
 npm run compose:reset
+
+# Force a kit rebuild later (e.g. after agent-runtime changes):
+#   rm -rf .journeyman-data/kit && npm run compose:up
 ```
 
 Named volumes are prefixed by the project name, e.g. `journeyman-deploy_pgdata`, `journeyman-deploy_redisdata`, `journeyman-deploy_dind-storage`.

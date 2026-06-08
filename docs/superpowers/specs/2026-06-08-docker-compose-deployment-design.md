@@ -71,7 +71,7 @@ stay the same — only the `ports:` host side moves.
 | `Dockerfile` | `runtime-worker` target: `RUN apk add --no-cache git openssh-client`. |
 | `compose.deploy.yml` (renamed from `docker-compose.yml`) | Add `docker` (dind) service + `dind-storage` volume. Worker: bind-mount `/data/journeyman`, `JOURNEYMAN_BASE_DIR=/data/journeyman`, `DOCKER_HOST=tcp://docker:2375`, `IS_SANDBOX=1`. Add `api-server` healthcheck; make `web`/`worker` depend on `api-server: service_healthy`. Distinct project name `journeyman-deploy`. |
 | `.env.example` | Document `ANTHROPIC_API_KEY` (uncomment), `JOURNEYMAN_DATA_DIR`, and that `JWT_SECRET` / `JM_SECRET_ENCRYPTION_KEY` are required. |
-| `scripts/compose-up.sh` | Fail fast on missing required secrets (no silent blank-`.env` copy); add secret-generation helper; remind to run `build:kit` for docker workspaces. |
+| `scripts/compose-up.sh` | Fail fast on missing required secrets (no silent blank-`.env` copy); **auto-build the runner kit into the bind-mounted data dir when missing** (`JOURNEYMAN_BASE_DIR="$data_dir" npm run build:kit`), skip when present. |
 | `infra/compose.dev.yml` (renamed from `infra/docker-compose.yml`) | Remove obsolete `version: "3.9"` key; distinct project name `journeyman-dev`. |
 | `docs/deploy-docker-compose.md` | New operator guide (done). |
 | `docs/diagrams/docker-compose-deployment.svg` | New diagram (done). |
@@ -127,12 +127,13 @@ the daemon (dind) over the Docker connection.
 
 **Deployment requirements (covered by the bind-mount + env):**
 
-1. Build on the host: `JOURNEYMAN_BASE_DIR=$(pwd)/.journeyman-data npm run build:kit` → writes
-   **both** tars into `.journeyman-data/kit/`.
+1. `compose:up` auto-builds the kit on the host into the data dir when missing
+   (`JOURNEYMAN_BASE_DIR="$data_dir" npm run build:kit` → writes **both** tars into
+   `.journeyman-data/kit/`); it's skipped once present. Force a rebuild with `rm -rf
+   .journeyman-data/kit` (or run `build:kit` manually).
 2. Worker bind-mounts `.journeyman-data → /data/journeyman` with `JOURNEYMAN_BASE_DIR=/data/journeyman`,
    so `kitDir` resolves and both tars are readable.
-3. dind starts empty; the worker loads tars into it lazily on first use. Missing kit → a clear
-   *"run npm run build:kit"* error.
+3. dind starts empty; the worker loads tars into it lazily on first use.
 
 **Operational:** rebuild the kit whenever `@journeyman/agent-runtime` changes — the tars embed
 the bundled runner. The kit must match the daemon architecture (build on the same host arch as dind).

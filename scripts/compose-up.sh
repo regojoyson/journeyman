@@ -23,13 +23,17 @@ require_secret() {
 require_secret JWT_SECRET
 require_secret JM_SECRET_ENCRYPTION_KEY
 
-# Warn (non-fatal) if the runner kit is absent — docker-workspace sandboxes need it.
+# Ensure the runner kit exists (docker-workspace sandboxes load these tars into dind).
+# Build into the SAME host folder that's bind-mounted into the worker at /data/journeyman,
+# so the kit lands at /data/journeyman/kit inside the worker. Built once; delete the kit
+# dir (or run `npm run build:kit` manually) to force a rebuild after agent-runtime changes.
 data_dir="$(grep -E '^JOURNEYMAN_DATA_DIR=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 data_dir="${data_dir:-./.journeyman-data}"
-if [ ! -f "${data_dir}/kit/runner-base.tar" ]; then
-  echo "NOTE: runner kit not found under ${data_dir}/kit — docker-workspace sandboxes" >&2
-  echo "      will fail until you run:" >&2
-  echo "        JOURNEYMAN_BASE_DIR=\"\$(pwd)/.journeyman-data\" npm run build:kit" >&2
+if [ ! -f "${data_dir}/kit/runner-base.tar" ] || [ ! -f "${data_dir}/kit/runner-bundle.tar" ]; then
+  echo ">>> runner kit missing — building into ${data_dir}/kit (one-time, for docker-workspace sandboxes)"
+  JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
+else
+  echo ">>> runner kit present in ${data_dir}/kit — skipping build:kit"
 fi
 
 ./scripts/build-images.sh
