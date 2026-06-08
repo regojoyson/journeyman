@@ -1,6 +1,10 @@
 // packages/flow-editor/src/index.ts
 export { FlowEditor } from "./FlowEditor.tsx";
 export { createBlankFlow, isLinearAndComplete, isValidPhase4Graph } from "./state/flow-graph.ts";
+export { CreateFlowWizard } from "./create-wizard/CreateFlowWizard.tsx";
+export type { CreateFlowWizardProps } from "./create-wizard/CreateFlowWizard.tsx";
+export { buildCreateArgs, createDraft } from "./create-wizard/wizard-state.ts";
+export type { CreateFlowArgs, WizardMeta } from "./create-wizard/wizard-state.ts";
 export type {
   FlowEditorProps,
   ControlNodeCatalog, ControlNodeCatalogEntry,
