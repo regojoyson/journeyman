@@ -4,6 +4,7 @@ import { Maximize2, Minimize2, AlertTriangle, Pencil, Eye } from "lucide-react";
 import { analyzeReferences, namesOf } from "./prompt-tokens.ts";
 import { PromptCodeMirror, type PromptCodeMirrorHandle } from "./PromptCodeMirror.tsx";
 import { PromptPreview } from "./PromptPreview.tsx";
+import { PromptToolbar } from "./PromptToolbar.tsx";
 import { TokenSidebar } from "./TokenSidebar.tsx";
 
 export interface PromptEditorProps {
@@ -61,6 +62,11 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
             {fullscreen ? "Exit" : "Expand"}
           </button>
         </div>
+
+        {/* Formatting toolbar (edit mode only) */}
+        {mode === "edit" && (
+          <PromptToolbar onCommand={build => cmRef.current?.applyCommand(build)} />
+        )}
 
         {/* Body */}
         <div

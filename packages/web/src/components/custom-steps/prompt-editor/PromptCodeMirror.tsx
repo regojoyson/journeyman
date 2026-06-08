@@ -1,15 +1,23 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
+import type { EditorState, TransactionSpec } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
 import { namesOf } from "./prompt-tokens.ts";
 import { tokenHighlighter } from "./tokenHighlight.ts";
 import { tokenAutocomplete } from "./tokenAutocomplete.ts";
+import { wrapSelection } from "./editor-commands.ts";
 
 export interface PromptCodeMirrorHandle {
   insertAtCursor: (snippet: string) => void;
+  applyCommand: (build: (state: EditorState) => TransactionSpec) => void;
 }
+
+const formattingKeymap = keymap.of([
+  { key: "Mod-b", run: v => { v.dispatch(wrapSelection(v.state, "**", "**")); return true; } },
+  { key: "Mod-i", run: v => { v.dispatch(wrapSelection(v.state, "*", "*")); return true; } },
+]);
 
 // Token class names must match TOKEN_CLASS in token-ranges.ts.
 const editorTheme = EditorView.theme(
@@ -48,6 +56,7 @@ export const PromptCodeMirror = forwardRef<
     () => [
       markdown(),
       EditorView.lineWrapping,
+      formattingKeymap,
       tokenHighlighter(namesOf(inputFields), namesOf(slots)),
       tokenAutocomplete(inputFields, slots),
       editorTheme,
@@ -69,6 +78,12 @@ export const PromptCodeMirror = forwardRef<
           changes: { from, to, insert: snippet },
           selection: { anchor: from + snippet.length },
         });
+        view.focus();
+      },
+      applyCommand(build: (state: EditorState) => TransactionSpec) {
+        const view = cmRef.current?.view;
+        if (!view) return;
+        view.dispatch(build(view.state));
         view.focus();
       },
     }),
