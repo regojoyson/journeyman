@@ -6,7 +6,7 @@ import type { StepConfigValidator } from "@journeyman/core";
 interface ZodLikeSchema {
   safeParse: (v: unknown) => {
     success: boolean;
-    error?: { issues?: Array<{ path?: (string | number)[]; message?: string }> };
+    error?: { issues?: Array<{ path?: PropertyKey[]; message?: string }> };
   };
 }
 
@@ -26,7 +26,12 @@ export function buildStepConfigValidators(
       const r = schema.safeParse(config);
       if (r.success) return [];
       return (r.error?.issues ?? []).map((i) => ({
-        path: i.path ?? [],
+        // zod 4.4 types issue paths as PropertyKey[]; config-schema paths are
+        // always string/number at runtime, so drop any symbol to satisfy
+        // StepConfigIssue's (string | number)[] path.
+        path: (i.path ?? []).filter(
+          (p): p is string | number => typeof p === "string" || typeof p === "number",
+        ),
         message: i.message ?? "Invalid value",
       }));
     });

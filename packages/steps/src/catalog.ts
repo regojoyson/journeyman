@@ -86,7 +86,7 @@ export interface StepCatalogEntry {
   description: string;
   inputFields: InputFields;
   outputSchema: OutputSchema | null;
-  configSchema?: { safeParse: (v: unknown) => { success: boolean; error?: { issues?: Array<{ path?: (string | number)[]; message?: string }> } } };
+  configSchema?: { safeParse: (v: unknown) => { success: boolean; error?: { issues?: Array<{ path?: PropertyKey[]; message?: string }> } } };
 }
 
 export const stepCatalog: StepCatalogEntry[] = [
