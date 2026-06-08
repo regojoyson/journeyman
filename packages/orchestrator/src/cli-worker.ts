@@ -258,18 +258,46 @@ registry.register(new SendMessageStepHandler({ notification }));
 // retryCount here is a catalog-level cap. Per-flow retry policy (defaults.retry)
 // sets the actual count per workflow task — it cannot exceed this cap.
 // Keeping it at 10 gives flows enough headroom while preventing runaway retries.
-for (const handler of registry.list()) {
-  await client.putTaskDef({
-    name: handler.stepType,
-    retryCount: 10,
-    timeoutSeconds: 600,
-    timeoutPolicy: "TIME_OUT_WF",
-    retryLogic: "EXPONENTIAL_BACKOFF",
-    retryDelaySeconds: 5,
-    backoffScaleFactor: 2,
-    responseTimeoutSeconds: 600,
-    ownerEmail: "ops@journeyman.local",
-  });
+async function registerTaskDefs(): Promise<void> {
+  for (const handler of registry.list()) {
+    await client.putTaskDef({
+      name: handler.stepType,
+      retryCount: 10,
+      timeoutSeconds: 600,
+      timeoutPolicy: "TIME_OUT_WF",
+      retryLogic: "EXPONENTIAL_BACKOFF",
+      retryDelaySeconds: 5,
+      backoffScaleFactor: 2,
+      responseTimeoutSeconds: 600,
+      ownerEmail: "ops@journeyman.local",
+    });
+  }
+}
+
+// Conductor is a heavy JVM service that may not accept connections yet when the
+// worker boots (depends_on only waits for the container to start). Retry the
+// idempotent registration with exponential backoff instead of crashing on a
+// transient ECONNREFUSED. Tune the ceiling with CONDUCTOR_STARTUP_TIMEOUT_MS.
+{
+  const startedAt = Date.now();
+  const maxWaitMs = Number(process.env.CONDUCTOR_STARTUP_TIMEOUT_MS ?? 180_000);
+  let delayMs = 1_000;
+  for (;;) {
+    try {
+      await registerTaskDefs();
+      log.info("task definitions registered with Conductor");
+      break;
+    } catch (err) {
+      const message = (err as Error)?.message ?? String(err);
+      if (Date.now() - startedAt > maxWaitMs) {
+        log.error({ err: message, maxWaitMs }, "Conductor unreachable; giving up task-def registration");
+        throw err;
+      }
+      log.info({ delayMs, err: message }, "Conductor not ready yet — retrying task-def registration");
+      await new Promise((r) => setTimeout(r, delayMs));
+      delayMs = Math.min(delayMs * 2, 10_000);
+    }
+  }
 }
 
 const cliBindingResolver = async (input: {
