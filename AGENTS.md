@@ -40,15 +40,27 @@ Currently `test` is configured in `core`, `custom-steps`, `coding-models`, `noti
 
 ## Running services locally
 
+Two ways, via two compose files:
+
+- **Dev (`infra/compose.dev.yml`)** — only the dependencies in Docker, apps on your host:
+
 ```bash
-npm run infra:up         # Postgres (5433), Redis (6380), Conductor (8080/5001)
+npm run infra:up         # infra/compose.dev.yml — Postgres (5433), Redis (6380), Conductor (8080/5001)
 npm run migrate          # apply SQL migrations via @journeyman/migrations
 npm run start:api-server
 npm run start:worker     # tsx packages/orchestrator/src/cli-worker.ts
 npm run dev:web
 ```
 
-See [DEPLOYMENT.md](docs/constitution/DEPLOYMENT.md) for details and `.env` configuration.
+- **Full stack (`compose.deploy.yml`)** — everything containerized, incl. a built-in Docker
+  engine for docker-workspace sandboxes, on a 6000-series port set:
+
+```bash
+npm run compose:up       # compose.deploy.yml — full stack; UI at http://localhost:6080
+npm run compose:down     # stop (keep data)
+```
+
+See [DEPLOYMENT.md](docs/constitution/DEPLOYMENT.md) and [deploy-docker-compose.md](docs/deploy-docker-compose.md) for details and `.env` configuration.
 
 ## Core workflow expectations
 
