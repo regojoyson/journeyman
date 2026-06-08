@@ -86,6 +86,7 @@ import { TriggerManualPanel } from "./trigger-manual-panel.tsx";
 import { TriggerWebhookPanel } from "./trigger-webhook-panel.tsx";
 import { TriggerHumanPanel } from "./trigger-human-panel.tsx";
 import { useWebhooksForPicker } from "./useWebhooksForPicker.ts";
+import { useNodeWarningsByKey } from "../state/validation-context.tsx";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import type { TriggerWebhookConfig } from "@journeyman/core";
 
@@ -99,6 +100,7 @@ function TriggerWebhookPanelWrapper(props: {
   readOnly?: boolean;
 }): JSX.Element {
   const { webhooks } = useWebhooksForPicker();
+  const warningsByKey = useNodeWarningsByKey(props.node.id);
   return (
     <TriggerWebhookPanel
       node={props.node}
@@ -111,6 +113,7 @@ function TriggerWebhookPanelWrapper(props: {
       }))}
       onPatchConfig={props.onPatchConfig}
       readOnly={props.readOnly}
+      warningsByKey={warningsByKey}
     />
   );
 }

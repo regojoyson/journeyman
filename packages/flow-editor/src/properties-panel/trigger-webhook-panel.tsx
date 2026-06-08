@@ -6,6 +6,7 @@ import type {
   TriggerWebhookConfig,
   WorkflowGraph,
   WorkflowNode,
+  WorkflowSaveWarning,
 } from "@journeyman/core";
 import { AcceptIfBuilder } from "./AcceptIfBuilder.tsx";
 import { ListensForPicker } from "./ListensForPicker.tsx";
@@ -24,6 +25,7 @@ export interface TriggerWebhookPanelProps {
   webhooks: WebhookOption[];
   onPatchConfig: (patch: Partial<TriggerWebhookConfig>) => void;
   readOnly?: boolean;
+  warningsByKey?: Map<string, WorkflowSaveWarning>;
 }
 
 export function TriggerWebhookPanel({
@@ -32,6 +34,7 @@ export function TriggerWebhookPanel({
   webhooks,
   onPatchConfig,
   readOnly,
+  warningsByKey,
 }: TriggerWebhookPanelProps): JSX.Element {
   const cfg = (node.config ?? {}) as unknown as TriggerWebhookConfig;
   const inputs = graph.inputDefs ?? [];
@@ -104,25 +107,29 @@ export function TriggerWebhookPanel({
           <tbody>
             {inputs.map((inp) => {
               const m = mapping[inp.name];
+              const warning = warningsByKey?.get(inp.name);
               return (
                 <tr key={inp.name}>
                   <td>{inp.name}{inp.required ? " *" : ""}</td>
                   <td>
-                    <input
-                      type="text"
-                      list={`trigger-input-paths-${node.id}`}
-                      placeholder="$.path.to.value"
-                      value={m?.fromPath ?? ""}
-                      disabled={readOnly}
-                      onChange={(e) => {
-                        const next = { ...mapping };
-                        next[inp.name] = {
-                          fromPath: e.target.value,
-                          type: (m?.type ?? (inp.type as TriggerInputMappingType)),
-                        };
-                        onPatchConfig({ inputsMapping: next });
-                      }}
-                    />
+                    <div className={`je-props__field${warning ? " je-props__field--invalid" : ""}`}>
+                      <input
+                        type="text"
+                        list={`trigger-input-paths-${node.id}`}
+                        placeholder="$.path.to.value"
+                        value={m?.fromPath ?? ""}
+                        disabled={readOnly}
+                        onChange={(e) => {
+                          const next = { ...mapping };
+                          next[inp.name] = {
+                            fromPath: e.target.value,
+                            type: (m?.type ?? (inp.type as TriggerInputMappingType)),
+                          };
+                          onPatchConfig({ inputsMapping: next });
+                        }}
+                      />
+                      {warning && <div className="je-props__field-error-msg">{warning.message}</div>}
+                    </div>
                   </td>
                   <td>
                     <select
