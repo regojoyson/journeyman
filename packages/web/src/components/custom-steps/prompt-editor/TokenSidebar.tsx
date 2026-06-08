@@ -17,7 +17,7 @@ export function TokenSidebar({
     <aside className="border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/40 overflow-y-auto p-3 text-xs space-y-4">
       <section>
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400 mb-2">
-          <Variable className="w-3.5 h-3.5 text-emerald-400" />
+          <Variable className="w-3.5 h-3.5 text-success" />
           <span>Inputs</span>
           {inputFields.length > 0 && (
             <span className="ml-auto text-[10px] text-slate-500">click to insert</span>
@@ -37,13 +37,13 @@ export function TokenSidebar({
                     className={
                       "w-full text-left font-mono rounded px-2 py-1 transition flex items-center gap-2 " +
                       (isUsed
-                        ? "text-emerald-300 bg-emerald-950/30 hover:bg-emerald-950/50"
-                        : "text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60")
+                        ? "text-success bg-success/10 hover:bg-success/20"
+                        : "text-slate-400 hover:text-success hover:bg-slate-800/60")
                     }
                     title={f.description || `${f.type}${f.required ? " · required" : ""}`}
                   >
                     <span className="truncate">{`{{${f.name}}}`}</span>
-                    {isUsed && <span className="ml-auto text-[10px] text-emerald-400">used</span>}
+                    {isUsed && <span className="ml-auto text-[10px] text-success">used</span>}
                   </button>
                 </li>
               );
@@ -54,7 +54,7 @@ export function TokenSidebar({
 
       <section>
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400 mb-2">
-          <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+          <KeyRound className="w-3.5 h-3.5 text-accent" />
           <span>Env in $bash</span>
           {slots.length > 0 && (
             <span className="ml-auto text-[10px] text-slate-500">click to insert</span>
@@ -74,13 +74,13 @@ export function TokenSidebar({
                     className={
                       "w-full text-left font-mono rounded px-2 py-1 transition flex items-center gap-2 " +
                       (isUsed
-                        ? "text-indigo-300 bg-indigo-950/30 hover:bg-indigo-950/50"
-                        : "text-slate-400 hover:text-indigo-300 hover:bg-slate-800/60")
+                        ? "text-accent bg-accent/10 hover:bg-accent/20"
+                        : "text-slate-400 hover:text-accent hover:bg-slate-800/60")
                     }
                     title={s.description}
                   >
                     <span className="truncate">${s.name}</span>
-                    {isUsed && <span className="ml-auto text-[10px] text-indigo-400">used</span>}
+                    {isUsed && <span className="ml-auto text-[10px] text-accent">used</span>}
                   </button>
                 </li>
               );

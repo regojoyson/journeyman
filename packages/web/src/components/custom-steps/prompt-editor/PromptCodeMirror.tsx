@@ -3,6 +3,7 @@ import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { EditorView, keymap } from "@codemirror/view";
 import type { EditorState, TransactionSpec } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
+import { useTheme } from "@journeyman/theme";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
 import { namesOf } from "./prompt-tokens.ts";
 import { tokenHighlighter } from "./tokenHighlight.ts";
@@ -19,26 +20,36 @@ const formattingKeymap = keymap.of([
   { key: "Mod-i", run: v => { v.dispatch(wrapSelection(v.state, "*", "*")); return true; } },
 ]);
 
+// Colors come from the theme CSS variables so the editor follows light/dark.
 // Token class names must match TOKEN_CLASS in token-ranges.ts.
-const editorTheme = EditorView.theme(
-  {
-    "&": { backgroundColor: "transparent", color: "#e2e8f0", fontSize: "13px" },
-    ".cm-content": {
-      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-      caretColor: "#a5b4fc",
-      lineHeight: "1.55",
+function makeEditorTheme(dark: boolean) {
+  return EditorView.theme(
+    {
+      "&": { backgroundColor: "transparent", color: "rgb(var(--color-text))", fontSize: "13px" },
+      ".cm-content": {
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        caretColor: "rgb(var(--color-accent))",
+        lineHeight: "1.55",
+      },
+      ".cm-gutters": {
+        backgroundColor: "transparent",
+        color: "rgb(var(--color-text-subtle))",
+        border: "none",
+      },
+      ".cm-token-input": { color: "rgb(var(--color-success))" },
+      ".cm-token-slot": { color: "rgb(var(--color-accent))" },
+      ".cm-token-unknown": {
+        color: "rgb(var(--color-warning))",
+        textDecoration: "underline wavy rgb(var(--color-warning))",
+      },
+      "&.cm-focused": { outline: "none" },
+      ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+        backgroundColor: "rgb(var(--color-accent) / 0.3)",
+      },
     },
-    ".cm-gutters": { backgroundColor: "transparent", color: "#475569", border: "none" },
-    ".cm-token-input": { color: "#6ee7b7" },
-    ".cm-token-slot": { color: "#a5b4fc" },
-    ".cm-token-unknown": { color: "#fcd34d", textDecoration: "underline wavy #f59e0b" },
-    "&.cm-focused": { outline: "none" },
-    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-      backgroundColor: "rgba(99,102,241,0.4)",
-    },
-  },
-  { dark: true },
-);
+    { dark },
+  );
+}
 
 export const PromptCodeMirror = forwardRef<
   PromptCodeMirrorHandle,
@@ -51,6 +62,7 @@ export const PromptCodeMirror = forwardRef<
   }
 >(function PromptCodeMirror({ value, onChange, inputFields, slots, height }, ref) {
   const cmRef = useRef<ReactCodeMirrorRef | null>(null);
+  const { theme } = useTheme();
 
   const extensions = useMemo(
     () => [
@@ -59,9 +71,9 @@ export const PromptCodeMirror = forwardRef<
       formattingKeymap,
       tokenHighlighter(namesOf(inputFields), namesOf(slots)),
       tokenAutocomplete(inputFields, slots),
-      editorTheme,
+      makeEditorTheme(theme === "dark"),
     ],
-    [inputFields, slots],
+    [inputFields, slots, theme],
   );
 
   useImperativeHandle(

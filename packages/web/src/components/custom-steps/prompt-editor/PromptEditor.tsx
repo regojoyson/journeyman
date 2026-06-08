@@ -27,7 +27,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
   );
 
   const wrapperCls = fullscreen
-    ? "fixed inset-4 z-[70] bg-slate-950 border border-slate-700 rounded-xl shadow-2xl flex flex-col"
+    ? "fixed inset-4 z-[70] bg-bg border border-slate-700 rounded-xl shadow-2xl flex flex-col"
     : "flex flex-col rounded-md border border-slate-700 bg-slate-900/50 overflow-hidden";
 
   const tabBtn = (active: boolean) =>
@@ -75,7 +75,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
             (mode === "edit" ? "grid-cols-1 lg:grid-cols-[1fr_220px]" : "grid-cols-1")
           }
         >
-          <div className="min-w-0 overflow-auto bg-slate-950">
+          <div className="min-w-0 overflow-auto bg-bg">
             {mode === "edit" ? (
               <PromptCodeMirror
                 ref={cmRef}
@@ -102,7 +102,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
 
         {/* Footer: unknown-token summary */}
         {(refs.unknownInputs.length > 0 || refs.unknownSlots.length > 0) && (
-          <div className="flex items-start gap-2 border-t border-slate-800 bg-amber-950/20 text-amber-200 text-xs px-3 py-2">
+          <div className="flex items-start gap-2 border-t border-slate-800 bg-warning/10 text-warning text-xs px-3 py-2">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <div className="space-y-0.5">
               {refs.unknownInputs.length > 0 && (
@@ -111,7 +111,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
                   {refs.unknownInputs.map((n, i) => (
                     <span key={n}>
                       {i > 0 && ", "}
-                      <code className="text-amber-300">{`{{${n}}}`}</code>
+                      <code className="text-warning font-semibold">{`{{${n}}}`}</code>
                     </span>
                   ))}{" "}
                   — declare them in the Inputs tab or fix the spelling.
@@ -123,7 +123,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
                   {refs.unknownSlots.map((n, i) => (
                     <span key={n}>
                       {i > 0 && ", "}
-                      <code className="text-amber-300">${n}</code>
+                      <code className="text-warning font-semibold">${n}</code>
                     </span>
                   ))}{" "}
                   — declare them in the Secrets tab if you want them injected.

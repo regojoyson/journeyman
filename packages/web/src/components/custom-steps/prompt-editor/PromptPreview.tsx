@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { PluggableList } from "unified";
+import { useTheme } from "@journeyman/theme";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
 import { namesOf } from "./prompt-tokens.ts";
 import { rehypePromptTokens } from "./rehype-prompt-tokens.ts";
@@ -22,10 +23,10 @@ const components: Components = {
       );
     }
     const tone = cls.includes("jm-token-unknown")
-      ? "bg-amber-950/40 text-amber-300 border border-amber-900/50"
+      ? "bg-warning/15 text-warning border border-warning/30"
       : cls.includes("jm-token-input")
-        ? "bg-emerald-950/40 text-emerald-300 border border-emerald-900/50"
-        : "bg-indigo-950/40 text-indigo-300 border border-indigo-900/50";
+        ? "bg-success/15 text-success border border-success/30"
+        : "bg-accent/15 text-accent border border-accent/30";
     return <span className={`${chipBase} ${tone}`}>{children}</span>;
   },
 };
@@ -39,6 +40,8 @@ export function PromptPreview({
   inputFields: CustomStepInputField[];
   slots: SecretSlotDef[];
 }) {
+  const { theme } = useTheme();
+
   // Tuple form `[plugin, options]` — unified calls the factory with the options.
   // Passing the pre-applied transformer directly would make unified call it as a
   // factory with no tree and crash.
@@ -53,7 +56,7 @@ export function PromptPreview({
   }
 
   return (
-    <div className="prose prose-invert prose-sm max-w-none p-3 overflow-auto">
+    <div className={`prose prose-sm max-w-none p-3 overflow-auto ${theme === "dark" ? "prose-invert" : ""}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components}>
         {value}
       </ReactMarkdown>
