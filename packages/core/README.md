@@ -10,9 +10,9 @@ No logic lives here — only TypeScript interfaces and types. Every other `@jour
 
 | Interface | Description |
 |---|---|
-| `ICodingCLI` | AI coding CLI operations (clone, analyze, plan, implement, commit/push, cleanup) |
+| `ICodingCLI` | Coding-runtime operations: workspace/git ops (`scanRepos`, `checkoutRepo`) + AI custom prompt (`runCustomPrompt`) |
 | `IGitProvider` | Git hosting API operations (get repo, create PR, list PRs) |
-| `ITicketProvider` | Issue tracker operations (get, create, update, list tickets; add comments; update status) |
+| `IIssueProvider` | Issue tracker operations (get, create, update, list issues; add comments; transition status) |
 | `INotificationProvider` | Notification delivery (send messages to channels) |
 
 ### Pipeline interfaces
@@ -33,8 +33,9 @@ No logic lives here — only TypeScript interfaces and types. Every other `@jour
 | Module | Description |
 |---|---|
 | `git.types` | `RepoConfig`, `CloneResult`, `PRResult`, `PROptions`, etc. |
-| `coding.types` | `AnalyzeOptions`, `PlanOptions`, `ImplementOptions`, `CommitPushResult`, etc. |
-| `ticket.types` | `Ticket`, `TicketStatus`, `CreateTicketOptions`, `TicketSchema`, etc. |
+| `coding.types` | `RunCustomPromptOptions`, `RunCustomPromptResult`, `CodingCLIProviderConfig`, `AgentLogLevel`, etc. |
+| `coding-tools.types` | `CanonicalTool`, `CANONICAL_TOOLS`, `WORKSPACE_TOOLS`, `toolsRequireWorkspace()` |
+| `issue.types` | `Issue`, `IssueComment`, `IssueField`, `CreateIssueOptions`, `UpdateIssueOptions`, `GetIssueOptions`, `ListIssuesOptions`, etc. |
 | `notification.types` | `NotifyOptions`, `NotifyResult` |
 | `session.types` | `SessionId`, `RunStatus`, `RunRecord`, `StepRecord`, etc. |
 | `pipeline.types` | `FlowDefinition`, `FlowStepDefinition`, `PipelineConfig`, `ProductConfig`, etc. |

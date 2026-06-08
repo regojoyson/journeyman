@@ -50,10 +50,10 @@ Rules:
 Conventional commit prefixes are preferred:
 
 ```
-feat(coding-cli): add Gemini provider scanRepos
-fix(coding-cli): handle empty branch list in scanRepos
+feat(agent-runtime): add Gemini provider scanRepos
+fix(agent-runtime): handle empty branch list in scanRepos
 chore(deps): bump octokit to 22.x
-docs(architecture): clarify coding-cli vs git-provider split
+docs(architecture): clarify agent-runtime vs git-provider split
 ```
 
 Body explains **why**, not what. Reference ticket/PR when relevant.
@@ -88,5 +88,5 @@ A breaking change requires:
 - Push tags.
 - Force-push to any shared branch.
 - Amend or rebase commits that have already been pushed to a shared branch.
-- Decouple a package's version from the rest (e.g. bump only `coding-cli` to `0.2.0`) without a documented decision to switch to independent versioning.
+- Decouple a package's version from the rest (e.g. bump only `agent-runtime` to `0.2.0`) without a documented decision to switch to independent versioning.
 - Create release notes or tags speculatively.

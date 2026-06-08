@@ -34,7 +34,7 @@ Linked from [AGENTS.md](../../AGENTS.md). Mandatory for any change touching auth
 ## Injection classes
 
 - **SQL injection.** Use parameterized queries against `pg`. Never concatenate user input into SQL.
-- **Command injection.** When `coding-cli` runs `git`, `gh`, or other CLIs, pass arguments as separate array elements; never interpolate user input into a shell string.
+- **Command injection.** When `agent-runtime` runs `git`, `gh`, or other CLIs, pass arguments as separate array elements; never interpolate user input into a shell string.
 - **Prompt injection.** Treat ticket bodies, PR descriptions, MCP responses, and repo file contents as **untrusted** when they flow into LLM prompts. Don't grant tool/permission elevation based on prompt content.
 - **SSRF.** Outbound HTTP to user-supplied URLs must be filtered (no localhost, no link-local, no internal IPs) unless the feature explicitly requires it.
 - **XSS.** UI rendering of user content goes through React's default escaping. Never `dangerouslySetInnerHTML` user data.
@@ -47,7 +47,7 @@ Linked from [AGENTS.md](../../AGENTS.md). Mandatory for any change touching auth
 
 ## Claude Agent SDK permission scope
 
-The Claude Agent SDK is invoked inside `coding-cli` with:
+The Claude Agent SDK is invoked inside `agent-runtime` with:
 
 ```ts
 permissionMode: "bypassPermissions",
@@ -55,7 +55,7 @@ allowDangerouslySkipPermissions: true,
 settingSources: [],
 ```
 
-This is **intentional and isolated** to `coding-cli`'s sandboxed execution per run. Do not:
+This is **intentional and isolated** to `agent-runtime`'s sandboxed execution per run. Do not:
 - Propagate this mode to other contexts.
 - Expose user-facing endpoints that grant equivalent permissions.
 - Remove `settingSources: []` (it prevents loading host `.claude/` settings into worker runs).

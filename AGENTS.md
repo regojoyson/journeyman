@@ -12,7 +12,7 @@ If your runtime has its own convention file (`CLAUDE.md`, `.cursorrules`, `GEMIN
 
 ## Project summary
 
-Journeyman is a configurable, step-based AI pipeline that automates **ticket → code → PR** workflows. It is an **npm-workspaces monorepo** (`packages/*`, currently 21 packages, all at version `0.1.0`) using a provider pattern. Interfaces (`ICodingCLI`, `IGitProvider`, `ITicketProvider`, `INotificationProvider`) live in `@journeyman/core`; implementations live in their respective packages. Storage is **PostgreSQL 16** via direct SQL (no ORM) + Redis for the job queue.
+Journeyman is a configurable, step-based AI pipeline that automates **ticket → code → PR** workflows. It is an **npm-workspaces monorepo** (`packages/*`, currently 23 packages, all at version `0.1.0`) using a provider pattern. Interfaces (`ICodingCLI`, `IGitProvider`, `IIssueProvider`, `INotificationProvider`) live in `@journeyman/core`; implementations live in their respective packages. Storage is **PostgreSQL 16** via direct SQL (no ORM) + Redis for the job queue.
 
 ## Instruction index
 
@@ -36,7 +36,7 @@ npm run check:boundaries # scripts/check-import-boundaries.mjs
 npm test                 # vitest run, per-workspace (only where configured)
 ```
 
-Currently `test` is configured in `core`, `custom-steps`, `coding-models`, and `notification-provider`. Other packages have no test script yet — adding one is welcome.
+Currently `test` is configured in `core`, `custom-steps`, `coding-models`, `notification-provider`, `agent-runtime`, `git-provider`, `sandbox`, `skills`, and `web`. Other packages have no test script yet — adding one is welcome.
 
 ## Running services locally
 

@@ -37,7 +37,7 @@ A prior approval for action X does **not** authorize action Y, or action X in a 
 1. All cross-package types live in `@journeyman/core`. Never duplicate.
 2. `@journeyman/core` imports from no other `@journeyman/*` package.
 3. Unimplemented interface methods must `throw new Error("<Class>.<method> not implemented")` — never return `undefined`, never silently succeed.
-4. The `coding-cli` ↔ `git-provider` split is sacred: local bash git ops in `coding-cli`, remote REST ops in `git-provider`.
+4. The `agent-runtime` ↔ `git-provider` split is sacred: local bash git ops in `agent-runtime`, remote REST ops in `git-provider`.
 
 ## 6. Security defaults
 

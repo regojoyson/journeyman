@@ -2,7 +2,7 @@
 
 Git hosting API providers for Journeyman. Implements `IGitProvider` from `@journeyman/core` with REST API clients for GitHub and GitLab.
 
-Handles remote API operations — repository metadata, pull requests, merge requests. Local git operations (clone, push) are handled by `@journeyman/coding-cli`.
+Handles remote API operations — repository metadata, pull requests, merge requests. Local git operations (clone, push) are handled by `@journeyman/agent-runtime`.
 
 ## Providers
 

@@ -40,7 +40,7 @@ Before requesting review, confirm:
 - UI bucket ↛ backend bucket and vice versa (`scripts/check-import-boundaries.mjs`).
 - `@journeyman/steps/catalog` is the only sanctioned steps subpath that backend may import.
 - All GitHub access goes through `@journeyman/github-api`; no ad-hoc Octokit instantiation.
-- The `coding-cli` (local bash) vs `git-provider` (remote REST) split is preserved.
+- The `agent-runtime` (local bash) vs `git-provider` (remote REST) split is preserved.
 
 ### 4. Readability
 - Names describe intent; comments explain non-obvious *why*, never the *what*.
@@ -55,7 +55,7 @@ Before requesting review, confirm:
 ### 6. Security
 - Inputs at trust boundaries are validated.
 - No new logging of secrets or PII.
-- Shell commands in `coding-cli` use argv arrays, not interpolated strings.
+- Shell commands in `agent-runtime` use argv arrays, not interpolated strings.
 - LLM prompts treat user-supplied content as untrusted. See [SECURITY.md](SECURITY.md).
 
 ### 7. Performance

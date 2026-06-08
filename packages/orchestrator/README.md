@@ -51,7 +51,7 @@ npm run infra:up   # starts Postgres + Conductor + Redis via docker-compose
 |---|---|---|
 | `CONDUCTOR_BASE_URL` | Conductor API root | `http://localhost:8080/api` |
 | `WORKER_ID` | Worker identifier sent to Conductor (visible in its UI) | `worker-<pid>` |
-| `ANTHROPIC_API_KEY` | Required by `ClaudeProvider` for `analyze` / `plan` / `implement` steps | — |
+| `ANTHROPIC_API_KEY` | Required by `ClaudeProvider` for `custom-ai` steps (omit if `claude login` is used in local dev) | — |
 | Per-product secrets (e.g. `SAM_PORTFOLIO_GITHUB_ACCESS_TOKEN`) | Resolved by `EnvCredentialStore` when a step declares `requiredSecrets` | — |
 
 The worker poll interval is 500 ms; tune in [cli-worker.ts](src/cli-worker.ts) if needed.
@@ -60,26 +60,34 @@ The worker poll interval is 500 ms; tune in [cli-worker.ts](src/cli-worker.ts) i
 
 ## What the cli-worker.ts file does
 
-55 lines, four jobs:
+The standalone worker process. Its jobs:
 
 ```ts
-// 1. Load .env (idempotent — no-op if api-server already loaded one)
+// 1. Load .env (idempotent) and connect to Postgres + Conductor
 loadDotenv({ path: ".env", override: false });
-
-// 2. Connect to Conductor
 const client = new ConductorClient({ baseUrl: process.env.CONDUCTOR_BASE_URL });
 
-// 3. Build a registry of step handlers we know how to execute
+// 2. Build provider factories (ProviderFactory<T>) keyed by provider id
+const coding: ProviderFactory<ICodingCLI> = (key, env) => createCodingProvider(key, { env });
+const git: ProviderFactory<IGitProvider> = (key, env) => /* GitHubProvider … */;
+const issue: ProviderFactory<IIssueProvider> = (key, env) => /* Jira / GitHubIssues / GitHubProjects … */;
+const notification: ProviderFactory<INotificationProvider> = (key) => /* ConsoleProvider … */;
+
+// 3. Register a handler per step type into the registry
 const registry = new InMemoryStepRegistry();
-registry.register(new AnalyzeStepHandler({ coding: new ClaudeProvider() }));
-// ↑ register more handlers here to expand worker coverage
+registry.register(new CustomAiStepHandler({ coding, pool, bindingResolver }));
+registry.register(new CloneReposStepHandler({ git }));
+registry.register(new GetIssueStepHandler({ issue }));
+// … ~15 handlers total (see the file)
 
 // 4. Start the harness — polls Conductor for tasks of those step types
-const harness = new WorkerHarness({ client, registry, /* … */ });
+const harness = new WorkerHarness({ client, registry, events, mcpResolver, skillsResolver, modelResolver, ensureWorkspace /* … */ });
 await harness.start(registry.list().map(h => h.stepType));
 ```
 
-The harness handles: task polling, input resolution (Conductor `${...}` refs are already resolved by Conductor before the worker sees them), running the handler with a `StepContext`, retry/timeout per Conductor's task config, and reporting the result.
+Handlers take **provider factories**, not concrete providers — the harness picks the provider per step via `executorConfig.provider` and resolves secrets/MCPs/skills/model before calling `run()`. The worker also owns **workspace provisioning** (`ensureWorkspace`, local + Docker via `@journeyman/sandbox`) and an ahead-of-time managed-image **build loop**.
+
+The harness handles: task polling, input resolution (Conductor `${...}` refs are already resolved before the worker sees them), provider/secret/MCP/skill resolution, running the handler with a `StepContext`, retry/timeout per Conductor's task config, and reporting the result.
 
 ---
 
@@ -89,64 +97,57 @@ The editor and the worker register steps independently. Editor-side definitions 
 
 ```
 packages/orchestrator/src/workers/steps/
-└── analyze-step-handler.ts        ← currently the only one
+├── custom-ai-step-handler.ts          ← AI step (runCustomPrompt)
+├── clone-repos-step-handler.ts
+├── start-feature-branch-step-handler.ts
+├── get-issue / create-issue / comment-on-issue / transition-issue / update-issue-fields-step-handler.ts
+├── get-repository / open-pull-request / list-pull-requests / list-pull-request-comments-step-handler.ts
+├── list-workspace-files-step-handler.ts
+├── send-message-step-handler.ts
+└── join-finalize-step-handler.ts
 ```
 
-To add `checkout-repo` execution support:
+To add a new step's execution support:
 
-1. **Write the handler.** Create `src/workers/steps/checkout-repo-step-handler.ts`:
+1. **Write the handler.** Create `src/workers/steps/<name>-step-handler.ts` implementing `IStepHandler`. Take a **provider factory** (`ProviderFactory<T>`) as a dep rather than a concrete provider, so the harness can select the provider per step:
 
    ```ts
-   import type { IStepHandler, StepContext, StepInput, StepOutput, StepFailure } from "@journeyman/core";
-   import type { ICodingCLI } from "@journeyman/core";
+   import type { IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory, IGitProvider } from "@journeyman/core";
 
-   export class CheckoutRepoStepHandler implements IStepHandler {
-     readonly stepType = "checkout-repo";
-     constructor(private deps: { coding: ICodingCLI }) {}
+   export class GetRepositoryStepHandler implements IStepHandler {
+     readonly stepType = "get-repository";
+     constructor(private deps: { git: ProviderFactory<IGitProvider> }) {}
 
-     async run(input: StepInput, ctx: StepContext): Promise<{ kind: "success"; output: StepOutput } | { kind: "failure"; failure: StepFailure }> {
-       try {
-         const result = await this.deps.coding.checkoutRepo({
-           repos: input.url ? [{ dirPath: `${input.workspaceDir}/${repoName(input.url as string)}`, branch: (input.branch as string) ?? "main" }] : [],
-           branch: (input.branch as string) ?? "main",
-         });
-         return { kind: "success", output: { branch: result.newBranch, dirPath: result.repos[0]?.dirPath, commitSha: "" /* fill in */ } };
-       } catch (e) {
-         return { kind: "failure", failure: { errorClass: "CheckoutFailed", message: (e as Error).message, retryable: true } };
-       }
+     async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
+       const git = this.deps.git(input.provider as string | undefined, ctx.env);
+       // … call git.getRepo(...) and return { kind: "success", output } / { kind: "failure", failure }
      }
    }
    ```
 
-2. **Register it in [cli-worker.ts](src/cli-worker.ts)**:
-
-   ```ts
-   registry.register(new CheckoutRepoStepHandler({ coding: new ClaudeProvider() }));
-   ```
+2. **Register it in [cli-worker.ts](src/cli-worker.ts)**: `registry.register(new GetRepositoryStepHandler({ git }));`
 
 3. **Restart the worker.** Conductor task definitions are registered idempotently on startup, so just `Ctrl+C` and `npm run start:worker` again.
 
-That's the whole loop. Editor metadata (label, color, configFields, outputSchema) is independent of this — it's already declared in `@journeyman/steps` and consumed by the editor + api-server.
+Editor metadata (label, category, configSchema, outputSchema) is independent — it's declared in `@journeyman/steps` and consumed by the editor + api-server.
 
 ---
 
 ## Current handler coverage
 
-| Step type | Editor definition | Worker handler |
-|---|---|---|
-| `analyze` | ✅ | ✅ |
-| `plan` | ✅ | ❌ |
-| `implement` | ✅ | ❌ |
-| `checkout-repo` | ✅ | ❌ |
-| `scan-repos` | ✅ | ❌ |
-| `cleanup-repos` | ✅ | ❌ |
-| `commit-push` | ✅ | ❌ |
-| `create-workspace` | ✅ | ❌ |
-| `get-ticket` / `create-ticket` / `update-ticket` / `update-status` / `add-ticket-comment` | ✅ | ❌ |
-| `clone-repos` / `get-repo` / `create-pr` / `list-prs` / `add-pr-comment` / `fetch-pr-comments` | ✅ | ❌ |
-| `notify` | ✅ | ❌ |
+Registered worker handlers (matching the `@journeyman/steps` catalog):
 
-A flow that uses any step without a worker handler will queue tasks that never get picked up. Conductor will eventually time them out per the per-task `timeoutSeconds` (default 600 s).
+| Step type | Worker handler |
+|---|---|
+| `custom-ai` | ✅ |
+| `clone-repos`, `start-feature-branch`, `list-workspace-files` | ✅ |
+| `get-issue`, `create-issue`, `comment-on-issue`, `transition-issue`, `update-issue-fields` | ✅ |
+| `get-repository`, `open-pull-request`, `list-pull-requests`, `list-pull-request-comments` | ✅ |
+| `send-message` | ✅ |
+| `join-finalize` (internal fork/join) | ✅ |
+| `comment-on-pull-request` | ❌ (catalog only — no worker handler yet) |
+
+A flow that uses a step without a worker handler will queue tasks that never get picked up. Conductor will eventually time them out per the per-task `timeoutSeconds` (default 600 s).
 
 ---
 
@@ -163,4 +164,4 @@ A flow that uses any step without a worker handler will queue tasks that never g
 
 - [Visual flow orchestration design](../../docs/superpowers/specs/2026-04-27-visual-flow-orchestration-design.md) — the canvas → Conductor architecture this worker fits into.
 - [`@journeyman/api-server`](../api-server) — the HTTP gateway that submits runs to Conductor.
-- [`@journeyman/steps`](../phases) — step definitions consumed by the editor (and `stepCatalog` consumed by the api-server).
+- [`@journeyman/steps`](../steps) — step definitions consumed by the editor (and `stepCatalog` consumed by the api-server).
