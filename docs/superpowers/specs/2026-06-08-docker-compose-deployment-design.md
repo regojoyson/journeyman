@@ -137,12 +137,20 @@ the daemon (dind) over the Docker connection.
 **Operational:** rebuild the kit whenever `@journeyman/agent-runtime` changes — the tars embed
 the bundled runner. The kit must match the daemon architecture (build on the same host arch as dind).
 
-## Open item to verify during implementation
+## Resolved during planning
 
-- **Docker-mode clone target.** Confirm the `clone-repos` step in docker mode writes into
-  the sandbox container's volume (visible to the AI running inside dind), not the worker's
-  filesystem. If it currently clones to the worker FS, the docker path needs the clone to
-  run via the execution environment instead. Verify before/while implementing.
+- **Docker-mode clone target — OK.** `CloneReposStepHandler` uses `ctx.exec` when present
+  (`SandboxInstanceGitProvider`), so in docker mode the clone runs *inside the sandbox
+  container* (runner image has git); in local mode it clones on the worker. No code change
+  needed beyond adding git to the worker image.
+- **`IS_SANDBOX=1` required on the worker (new).** Local-sandbox AI runs in-process in the
+  worker as root via `operation-runner.ts`, which (unlike `runner/cli.ts`) does **not** set
+  `IS_SANDBOX`. The Claude engine refuses `bypassPermissions` as root without it. The worker
+  service must set `IS_SANDBOX=1`. Captured in the implementation plan (Task 3).
+
+## Implementation plan
+
+[docs/superpowers/plans/2026-06-08-docker-compose-deployment.md](../plans/2026-06-08-docker-compose-deployment.md)
 
 ## Out of scope
 
