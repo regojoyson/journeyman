@@ -1,5 +1,6 @@
 import type { ICodingCLI } from "@journeyman/core";
 import { ClaudeProvider } from "./claude/index.ts";
+import { OpenCodeProvider } from "./opencode/index.ts";
 
 export interface CreateCodingProviderOpts {
   env: Record<string, string>;
@@ -19,7 +20,11 @@ export function createCodingProvider(
   switch (key ?? "claude") {
     case "claude":
       return new ClaudeProvider({ apiKey: opts.env.ANTHROPIC_API_KEY });
-    // future providers (opencode, …) add one case here
+    case "opencode":
+      // Model arrives per-operation via opts.model ("providerID/modelID"); the
+      // managed server spawns the bundled `opencode` binary. Per-call secret env
+      // reaches the spawn via process.env (Docker) or applyEnv (local).
+      return new OpenCodeProvider({ mode: "managed" });
     default: {
       const err = new Error(`Unknown coding provider: ${key}`) as Error & { name: string };
       err.name = "ConfigurationError";
