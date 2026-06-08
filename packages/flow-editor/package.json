@@ -21,7 +21,7 @@
     "@journeyman/custom-steps": "*",
     "@xyflow/react": "^12.3.5",
     "lucide-react": "^0.400.0",
-    "zod": "^3.23.8"
+    "zod": "^4"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
