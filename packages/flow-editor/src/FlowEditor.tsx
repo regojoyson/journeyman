@@ -258,6 +258,7 @@ export function FlowEditor(props: FlowEditorProps) {
             mode="edit"
             initialGraph={heal.healed}
             initialMeta={{ name: props.flowName, description: "", scope: "user" }}
+            orgId={props.orgId}
             readOnly={effectiveReadOnly}
             onSave={(graph) => { props.onChange(graph); setSetupOpen(false); }}
             onCancel={() => setSetupOpen(false)}

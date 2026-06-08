@@ -7,7 +7,7 @@ import { useAuth } from "../AuthContext.tsx";
 export function NewFlowPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { role, isPlatformAdmin } = useAuth();
+  const { role, isPlatformAdmin, activeOrgId } = useAuth();
 
   const allowedScopes: ("user" | "org" | "global")[] = [
     "user",
@@ -28,6 +28,7 @@ export function NewFlowPage() {
     <CreateFlowWizard
       mode="create"
       allowedScopes={allowedScopes}
+      orgId={activeOrgId || undefined}
       busy={m.isPending}
       error={m.isError ? (m.error as Error).message : null}
       onCreate={(args) => m.mutate(args)}

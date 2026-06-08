@@ -22,6 +22,7 @@ import { BasicDetailsStep } from "./steps/BasicDetailsStep.tsx";
 import { ConfigStep } from "./steps/ConfigStep.tsx";
 import { InputsStep } from "./steps/InputsStep.tsx";
 import { ReviewStep } from "./steps/ReviewStep.tsx";
+import { OrgIdProvider } from "../state/org-context.tsx";
 
 export interface CreateFlowWizardProps {
   mode: WizardMode;
@@ -31,6 +32,8 @@ export interface CreateFlowWizardProps {
   initialMeta?: WizardMeta;
   /** create mode: scopes the user may choose. Defaults to ["user"]. */
   allowedScopes?: WorkflowScope[];
+  /** Active org id — required for the sandbox picker to load options. */
+  orgId?: string;
   readOnly?: boolean;
   busy?: boolean;
   error?: string | null;
@@ -81,7 +84,7 @@ export function CreateFlowWizard(props: CreateFlowWizardProps): JSX.Element {
   const canSkip = mode === "create" && !readOnly && canAdvance("basics", draft);
   const canNext = canAdvance(step, draft);
 
-  return (
+  const content = (
     <div className="je-wizard__overlay" role="dialog" aria-modal="true" onClick={props.onCancel}>
       <div className="je-wizard" onClick={e => e.stopPropagation()}>
         <header className="je-wizard__header">
@@ -137,4 +140,6 @@ export function CreateFlowWizard(props: CreateFlowWizardProps): JSX.Element {
       </div>
     </div>
   );
+
+  return props.orgId ? <OrgIdProvider orgId={props.orgId}>{content}</OrgIdProvider> : content;
 }
