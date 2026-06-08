@@ -15,7 +15,7 @@
 ## Conventions used in this plan
 
 - **Rename mapping tables** list every `old symbol` → `new symbol`. Apply them as exact-identifier replacements in the listed files (whole-word; do not partially match inside other words).
-- A pure rename of shared `@journeyman/core` types breaks all dependents until every layer is updated. **Per-task `typecheck` will not pass mid-stream.** Each task ends with a commit; the repo-wide green build is verified in the final task (Task 11). Where a task's own package can compile in isolation it is noted.
+- **No per-task commits and no per-task typechecks** (per user instruction). Tasks 1–10 only make file changes. A single repo-wide typecheck + test pass and a single commit happen at the end, in Task 11. The one exception is Task 2 Step "Reinstall workspace links" (`npm install`), which is required for later tasks to resolve the renamed package, and Task 9's DB migration apply (a DB action, not a typecheck).
 - After the directory rename in Task 2, all compute-package paths are `packages/sandbox/...` (not `packages/compute/...`). Tasks 3–4 use the new paths.
 - Run all commands from the repo root `/Users/admin/data/workspace/claude-skils/journeyman`.
 
@@ -219,18 +219,6 @@ In `packages/core/src/validation/validate-for-publish.test.ts`, replace every oc
 | `computeTargetId:` (in test flow fixtures) | `sandboxId:` |
 | `workerId:` (in test flow fixtures, if present) | remove / replace with `sandboxId:` |
 
-- [ ] **Step 8: Verify core compiles and its tests pass**
-
-Run: `npm run typecheck -w @journeyman/core && npm test -w @journeyman/core`
-Expected: PASS (core is self-contained; no cross-package deps for these types).
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add packages/core
-git commit -m "refactor(core): rename ComputeTarget types to Sandbox, computeTargetId to sandboxId"
-```
-
 ---
 
 ## Task 2: Rename package `@journeyman/compute` → `@journeyman/sandbox` (name + directory + imports)
@@ -288,13 +276,6 @@ Expected: completes; `node_modules/@journeyman/sandbox` symlink now exists, `@jo
 
 Run: `grep -rn "@journeyman/compute" packages scripts tsconfig*.json --include="*.ts" --include="*.tsx" --include="*.mjs" --include="*.json" 2>/dev/null`
 Expected: no output (zero matches).
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add -A
-git commit -m "refactor: rename @journeyman/compute package to @journeyman/sandbox"
-```
 
 ---
 
@@ -380,7 +361,7 @@ In `packages/sandbox/src/routes/sandbox-instances.ts`, change the route paths:
 
 In `packages/orchestrator/src/sandbox/ensure-workspace.ts` (+ `ensure-workspace.test.ts`), rename the dep method `getSandbox` → `getSandboxInstance` in the `EnsureWorkspaceDeps` interface and every call site / mock.
 
-- [ ] **Step 6: Update api-server wiring**
+- [ ] **Step 6: Update api-server wiring (runtime)**
 
 In `packages/api-server/src/composition.ts`, the import (already on `@journeyman/sandbox` after Task 2) becomes:
 
@@ -398,13 +379,6 @@ In `packages/api-server/src/server.ts`, update the runtime route registration (t
 
 ```typescript
     if (c.sandboxInstanceRoutesDeps) await registerSandboxInstanceRoutes(app, c.pool, c.sandboxInstanceRoutesDeps);
-```
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add -A
-git commit -m "refactor(sandbox): rename runtime sandbox concept to sandbox instance"
 ```
 
 ---
@@ -496,18 +470,6 @@ Replace every route path segment:
 
 This covers `/compute-targets`, `/compute-targets/visible`, `/compute-targets/types`, `/compute-targets/test-connection`, `/compute-targets/:id`, `/compute-targets/:id/rebuild`, and the `/users/me/compute-targets[...]` variants.
 
-- [ ] **Step 6: Verify the sandbox package compiles and tests pass**
-
-Run: `npm run typecheck -w @journeyman/sandbox && npm test -w @journeyman/sandbox`
-Expected: PASS (package depends only on core, which was updated in Task 1).
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add -A
-git commit -m "refactor(sandbox): rename ComputeTarget config concept to Sandbox"
-```
-
 ---
 
 ## Task 5: Orchestrator flow-json + worker harness — `computeTargetId` → `sandboxId`, drop legacy
@@ -557,18 +519,6 @@ In `packages/orchestrator/src/workers/worker-harness.ts`, find where the task in
 
 Apply the same identifier renames from Step 4 to `packages/orchestrator/src/cli-worker.ts` (it imports from `@journeyman/sandbox` — specifier already fixed in Task 2). Update any imported symbol names (`resolveSandbox`, `SandboxNotFoundError`, etc.).
 
-- [ ] **Step 6: Verify orchestrator compiles and tests pass**
-
-Run: `npm run typecheck -w @journeyman/orchestrator && npm test -w @journeyman/orchestrator`
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add packages/orchestrator
-git commit -m "refactor(orchestrator): use sandboxId, drop legacy computeTargetId/workerId fallback"
-```
-
 ---
 
 ## Task 6: API server — flow schema + config route registration
@@ -600,18 +550,6 @@ and the registration line:
 
 ```typescript
     await registerSandboxRoutes(app, c.pool);
-```
-
-- [ ] **Step 3: Verify api-server compiles and tests pass**
-
-Run: `npm run typecheck -w @journeyman/api-server && npm test -w @journeyman/api-server`
-Expected: PASS.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add packages/api-server
-git commit -m "refactor(api-server): accept sandboxId and register sandbox routes"
 ```
 
 ---
@@ -688,18 +626,6 @@ Also update any nav/menu links elsewhere in web that point to `/me/compute-targe
 Run: `grep -rn "compute-target\|computeTarget\|ComputeTarget\|Compute Target" packages/web/src`
 Expected: no output. Fix any remaining (e.g. sidebar labels, breadcrumb text).
 
-- [ ] **Step 7: Verify web compiles**
-
-Run: `npm run typecheck -w @journeyman/web`
-Expected: PASS.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add packages/web
-git commit -m "refactor(web): rename compute target UI to sandbox"
-```
-
 ---
 
 ## Task 8: Flow-editor UI — sandbox tab + defaults section
@@ -744,18 +670,6 @@ In `PropertiesPanel.tsx` and `FlowConfigPanel.tsx`, update imports and JSX usage
 Run: `grep -rn "compute-target\|computeTarget\|ComputeTarget\|Compute Target" packages/flow-editor/src`
 Expected: no output.
 
-- [ ] **Step 5: Verify flow-editor compiles**
-
-Run: `npm run typecheck -w @journeyman/flow-editor`
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add packages/flow-editor
-git commit -m "refactor(flow-editor): rename compute target tab/section to sandbox"
-```
-
 ---
 
 ## Task 9: Database migration — rename `jm_compute_targets` → `jm_sandboxes`
@@ -789,13 +703,6 @@ Expected: lists `jm_sandboxes` and `jm_sandbox_instances`; no `jm_compute_target
 
 (If the psql connection details differ, use the project's documented DB connection from `docs/constitution/DATABASE_ARCHITECTURE.md`.)
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add packages/migrations
-git commit -m "feat(migrations): rename jm_compute_targets to jm_sandboxes"
-```
-
 ---
 
 ## Task 10: Documentation
@@ -819,18 +726,11 @@ Replace "Docker compute targets" / "compute target's address" / any "compute tar
 Run: `grep -rn "compute target\|computeTarget\|compute-target\|ComputeTarget" README.md CLAUDE.md`
 Expected: no output.
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add README.md CLAUDE.md
-git commit -m "docs: update README and CLAUDE.md for sandbox rename"
-```
-
 ---
 
-## Task 11: Repo-wide verification
+## Task 11: Repo-wide verification + single commit
 
-**Files:** none (verification only)
+**Files:** none (verification only, then one commit of all accumulated changes)
 
 - [ ] **Step 1: Full typecheck + import boundaries**
 
@@ -861,11 +761,22 @@ Expected: matches refer ONLY to the config layer (`registerSandboxRoutes` in `ro
 
 Start infra + api + web, then: create a Sandbox in the UI (`/me/sandboxes`), open a flow, pick the Sandbox in Flow Defaults (writes `sandboxId`), run it, and confirm a Sandbox Instance is provisioned (`GET /api/sandbox-instances` lists it).
 
-- [ ] **Step 6: Final commit (if any verification fixes were needed)**
+- [ ] **Step 6: Single commit of the entire rename**
+
+Only after Steps 1–4 are green, commit everything at once:
 
 ```bash
 git add -A
-git commit -m "chore: finalize compute target -> sandbox rename"
+git commit -m "refactor: rename compute target to sandbox across code, db, ui, and docs
+
+- core: ComputeTarget* types -> Sandbox*, computeTargetId -> sandboxId
+- package @journeyman/compute -> @journeyman/sandbox
+- runtime concept renamed to SandboxInstance* (/api/sandbox-instances)
+- config routes /compute-targets -> /sandboxes; table jm_compute_targets -> jm_sandboxes
+- drop legacy computeTargetId/workerId fallbacks
+- web + flow-editor UI, README, CLAUDE.md updated
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
