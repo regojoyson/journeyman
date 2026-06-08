@@ -13,14 +13,21 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Work around npm optional-deps bug for rollup native binaries on alpine/musl.
+# Work around npm optional-deps bug for native bundler binaries on alpine/musl.
 # https://github.com/npm/cli/issues/4828
+# Vite 8 bundles with Rolldown (Rust), replacing Rollup; its native binding
+# must match the installed rolldown version. Install the matching musl binding
+# for the build platform.
 RUN case "$(uname -m)" in \
-      aarch64|arm64) PKG="@rollup/rollup-linux-arm64-musl" ;; \
-      x86_64)        PKG="@rollup/rollup-linux-x64-musl" ;; \
-      *)             PKG="" ;; \
+      aarch64|arm64) ARCH="arm64" ;; \
+      x86_64)        ARCH="x64" ;; \
+      *)             ARCH="" ;; \
     esac && \
-    if [ -n "$PKG" ]; then npm install --no-save "$PKG"; fi
+    if [ -n "$ARCH" ]; then \
+      RDV="$(node -e "const fs=require('fs');process.stdout.write(JSON.parse(fs.readFileSync('/app/node_modules/rolldown/package.json','utf8')).version)")" && \
+      echo "Installing @rolldown/binding-linux-${ARCH}-musl@${RDV}" && \
+      npm install --no-save "@rolldown/binding-linux-${ARCH}-musl@${RDV}"; \
+    fi
 RUN npm run build -w @journeyman/web
 
 # ---------- runtime-api ----------
