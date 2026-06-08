@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { PluggableList } from "unified";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
 import { namesOf } from "./prompt-tokens.ts";
 import { rehypePromptTokens } from "./rehype-prompt-tokens.ts";
@@ -38,8 +39,12 @@ export function PromptPreview({
   inputFields: CustomStepInputField[];
   slots: SecretSlotDef[];
 }) {
+  // Tuple form `[plugin, options]` — unified calls the factory with the options.
+  // Passing the pre-applied transformer directly would make unified call it as a
+  // factory with no tree and crash.
   const rehypePlugins = useMemo(
-    () => [rehypePromptTokens({ inputs: namesOf(inputFields), slots: namesOf(slots) })],
+    () =>
+      [[rehypePromptTokens, { inputs: namesOf(inputFields), slots: namesOf(slots) }]] as PluggableList,
     [inputFields, slots],
   );
 
