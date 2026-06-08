@@ -18,7 +18,8 @@ import type {
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
-  markImagePending, startBuildLoop, ensureKitImage,
+  markImagePending, startBuildLoop, reconcileKitImage, resolveBuildInputs, pruneBuiltImages,
+  listReadyImageRefs,
 } from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
@@ -132,6 +133,7 @@ const ensureWs = (a: {
             type: w.type,
             config: (w.config ?? {}) as Record<string, unknown>,
             imageState: w.imageState,
+            imageFingerprint: w.imageFingerprint,
             imageRef: w.imageRef,
             imageError: w.imageError,
           };
@@ -139,6 +141,26 @@ const ensureWs = (a: {
         return { type: "local" as const, config: {} };
       },
       onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
+      verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
+        const connection = (config as Record<string, unknown>)["connection"] ?? { kind: "local" };
+        const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
+        // Refresh the kit (bundle) first so its image id is current before we
+        // recompute the expected fingerprint.
+        await reconcileKitImage(client, RUNNER_BUNDLE, RUNNER_BUNDLE_TAR);
+        const inputs = await resolveBuildInputs({
+          image: (config as Record<string, unknown>)["image"] as never,
+          client,
+          bundleRef: RUNNER_BUNDLE,
+        });
+        const present = await client.imageExists(storedImageRef);
+        const fresh = present && inputs.fingerprint === storedFingerprint;
+        return {
+          fresh,
+          ...(fresh
+            ? {}
+            : { reason: `image drift: expected ${inputs.fingerprint}, have ${storedFingerprint || "none"}${present ? "" : " (image pruned)"}` }),
+        };
+      },
       provisionLocal: async (runId) => {
         const env = new LocalExecutionEnvironment({
           runOperation: createCodingOperationRunner({
@@ -173,7 +195,7 @@ const ensureWs = (a: {
         const imageRef = preBuilt ?? RUNNER_IMAGE;
         // Empty-image targets run the default box directly (no build loop), so the
         // kit base must be present on this daemon — load it from the tar if missing.
-        if (!preBuilt) await ensureKitImage(dockerClient, RUNNER_IMAGE, RUNNER_BASE_TAR);
+        if (!preBuilt) await reconcileKitImage(dockerClient, RUNNER_IMAGE, RUNNER_BASE_TAR);
         const spec = {
           imageRef,
           network: cfg["network"] === "none" ? ("none" as const) : ("full" as const),
@@ -403,8 +425,29 @@ const stopBuildLoop = pool
       log: (line) => log.info({ line }, "build-loop"),
     })
   : () => {};
+// Periodically prune orphaned jm-built images (keep set = ready boxes' refs) so
+// disk doesn't grow as fingerprints churn. Targets the local daemon only.
+const stopPrune = pool
+  ? (() => {
+      const timer = setInterval(() => {
+        void (async () => {
+          try {
+            const refs = await listReadyImageRefs(pool);
+            const client = makeDockerClient({ kind: "local" });
+            const removed = await pruneBuiltImages(client, new Set(refs), (line) => log.info({ line }, "prune"));
+            if (removed.length) log.info({ removed }, "pruned orphaned built images");
+          } catch (err) {
+            log.warn({ err: String(err) }, "image prune sweep failed");
+          }
+        })();
+      }, 600_000); // every 10 min
+      if ("unref" in timer) (timer as { unref: () => void }).unref();
+      return () => clearInterval(timer);
+    })()
+  : () => {};
+
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
-  process.on(sig, () => { stopBuildLoop(); });
+  process.on(sig, () => { stopBuildLoop(); stopPrune(); });
 }
 
 log.info({ steps: registry.list().map(h => h.stepType) }, "worker starting");

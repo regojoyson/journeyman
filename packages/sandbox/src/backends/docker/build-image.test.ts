@@ -8,6 +8,7 @@ function fakeClient(exists: boolean, bundleId = "sha256:bundle"): { client: IDoc
     // True if pre-existing (cache) OR we just built that tag (real docker behavior).
     async imageExists(tag: string) { return exists || built.includes(tag); },
     async imageId() { return bundleId; },
+    async pullImage() { /* no-op in tests */ },
     async buildImage(o: { tag: string }) { built.push(o.tag); },
   } as unknown as IDockerClient;
   return { client, built };
@@ -74,6 +75,7 @@ describe("buildBoxImage", () => {
     const client = {
       async imageExists() { return false; },      // never present, even after build
       async imageId() { return "sha256:bundle"; },
+      async pullImage() { /* no-op in tests */ },
       async buildImage() { /* no-op: pretends success without tagging */ },
     } as unknown as IDockerClient;
     await expect(buildBoxImage({

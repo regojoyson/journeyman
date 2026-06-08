@@ -101,6 +101,7 @@ export interface ResolvedSandbox {
   config: unknown;
   /** Managed-image build lifecycle (Spec B); used by run-gating. */
   imageState?: "none" | "pending" | "building" | "ready" | "failed";
+  imageFingerprint?: string | null;
   imageRef?: string | null;
   imageError?: string | null;
 }

@@ -229,6 +229,15 @@ export async function failBuild(
   );
 }
 
+/** Image refs of all docker sandboxes whose managed image is currently `ready`. */
+export async function listReadyImageRefs(db: Queryable): Promise<string[]> {
+  const { rows } = await db.query(
+    `SELECT image_ref FROM jm_sandboxes
+      WHERE type = 'docker' AND image_state = 'ready' AND image_ref IS NOT NULL`,
+  );
+  return rows.map((r) => r.image_ref as string);
+}
+
 /** After create/update of a target, sync its image lifecycle state from config. */
 export async function applyImageStateOnSave(
   db: Queryable, id: string, type: string, config: Record<string, unknown>,

@@ -17,6 +17,7 @@ function toResolved(w: Sandbox): ResolvedSandbox {
     connectivity: w.connectivity ?? undefined,
     config: w.config,
     imageState: w.imageState,
+    imageFingerprint: w.imageFingerprint,
     imageRef: w.imageRef,
     imageError: w.imageError,
   };

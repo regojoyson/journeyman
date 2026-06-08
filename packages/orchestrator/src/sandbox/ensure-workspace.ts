@@ -41,11 +41,19 @@ export interface EnsureWorkspaceDeps {
     type: string;
     config: Record<string, unknown>;
     imageState?: string;
+    imageFingerprint?: string | null;
     imageRef?: string | null;
     imageError?: string | null;
   }>;
   /** Re-enqueue a build when a ready image went missing (pruned). Optional. */
   onImagePending?(sandboxId: string): Promise<void>;
+  /** Re-verify a ready image is still the latest; on drift the gate re-enqueues a build. Optional. */
+  verifyImageFresh?(args: {
+    sandboxId: string;
+    config: Record<string, unknown>;
+    storedFingerprint: string;
+    storedImageRef: string;
+  }): Promise<{ fresh: boolean; reason?: string }>;
   provisionDocker(
     runId: string,
     worker: { type: string; config: Record<string, unknown> },
@@ -132,7 +140,21 @@ export async function ensureWorkspace(
         if (args.sandboxId && deps.onImagePending) await deps.onImagePending(args.sandboxId);
         throw new ImageNotReadyError("sandbox image was pruned; rebuilding");
       }
-      // ready + imageRef → fall through, passing imageRef to provisionDocker.
+      // ready + imageRef: re-verify it's still the latest before using it.
+      if (args.sandboxId && deps.verifyImageFresh) {
+        const v = await deps.verifyImageFresh({
+          sandboxId: args.sandboxId,
+          config: worker.config,
+          storedFingerprint: worker.imageFingerprint ?? "",
+          storedImageRef: worker.imageRef ?? "",
+        });
+        if (!v.fresh) {
+          log("Environment changed; rebuilding…");
+          if (deps.onImagePending) await deps.onImagePending(args.sandboxId);
+          throw new ImageNotReadyError(v.reason ?? "sandbox image is stale; rebuilding");
+        }
+      }
+      // ready + fresh → fall through, passing imageRef to provisionDocker.
       (worker.config as Record<string, unknown>)["__imageRef"] = worker.imageRef;
     }
   }

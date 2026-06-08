@@ -33,9 +33,15 @@ export interface IDockerClient {
   imageExists(tag: string): Promise<boolean>;
   /** Content ID (digest) of an image tag, or null if it isn't present locally. */
   imageId(tag: string): Promise<string | null>;
-  buildImage(o: { contextDir: string; dockerfileName: string; tag: string }): Promise<void>;
+  buildImage(o: { contextDir: string; dockerfileName: string; tag: string; pull?: boolean }): Promise<void>;
   /** Load an image into the daemon from a `docker save` tar at `tarPath` (streams from this process). */
   loadImage(tarPath: string): Promise<void>;
+  /** Pull `ref` from its registry. Best-effort: callers decide how to handle failure. */
+  pullImage(ref: string): Promise<void>;
+  /** All repo:tag strings present on the daemon (skips `<none>` dangling tags). */
+  listImageTags(): Promise<string[]>;
+  /** Remove an image by tag; rejects if the daemon refuses (e.g. in use). */
+  removeImage(tag: string): Promise<void>;
   putArchive(containerId: string, tar: import("node:stream").Readable | Buffer, opts: { path: string }): Promise<void>;
 }
 
@@ -59,7 +65,7 @@ function toEnvList(env?: Record<string, string>): string[] | undefined {
   return env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : undefined;
 }
 
-class DockerodeClient implements IDockerClient {
+export class DockerodeClient implements IDockerClient {
   constructor(private docker: Docker) {}
 
   async ping(): Promise<void> {
@@ -164,10 +170,10 @@ class DockerodeClient implements IDockerClient {
     }
   }
 
-  async buildImage(o: { contextDir: string; dockerfileName: string; tag: string }): Promise<void> {
+  async buildImage(o: { contextDir: string; dockerfileName: string; tag: string; pull?: boolean }): Promise<void> {
     const stream = await this.docker.buildImage(
       { context: o.contextDir, src: [o.dockerfileName] },
-      { t: o.tag, dockerfile: o.dockerfileName },
+      { t: o.tag, dockerfile: o.dockerfileName, ...(o.pull ? { pull: true } : {}) },
     );
     await new Promise<void>((resolve, reject) => {
       // followProgress only surfaces transport errors via `err`. A FAILED build
@@ -204,6 +210,38 @@ class DockerodeClient implements IDockerClient {
         },
       );
     });
+  }
+
+  async pullImage(ref: string): Promise<void> {
+    const stream = await this.docker.pull(ref);
+    await new Promise<void>((resolve, reject) => {
+      this.docker.modem.followProgress(
+        stream,
+        (err: Error | null, output?: Array<Record<string, any>>) => {
+          if (err) return reject(err);
+          const failed = (output ?? []).find((e) => e && (e.error || e.errorDetail));
+          if (failed) {
+            return reject(new Error(String(failed.error ?? failed.errorDetail?.message ?? "docker pull failed")));
+          }
+          resolve();
+        },
+      );
+    });
+  }
+
+  async listImageTags(): Promise<string[]> {
+    const images = await this.docker.listImages();
+    const tags: string[] = [];
+    for (const img of images) {
+      for (const t of img.RepoTags ?? []) {
+        if (t && t !== "<none>:<none>") tags.push(t);
+      }
+    }
+    return tags;
+  }
+
+  async removeImage(tag: string): Promise<void> {
+    await this.docker.getImage(tag).remove();
   }
 
   async putArchive(

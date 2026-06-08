@@ -28,6 +28,7 @@ describe("resolveSandbox", () => {
       connectivity: "push",
       config: { image: { kind: "ref", imageRef: "x:1" } },
       imageState: "none",
+      imageFingerprint: null,
       imageRef: null,
       imageError: null,
     });

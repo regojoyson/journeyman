@@ -33,4 +33,12 @@ describe("computeFingerprint", () => {
     expect(computeFingerprint("FROM x\n", "sha256:abc"))
       .not.toBe(computeFingerprint("FROM x\n", "sha256:def"));
   });
+  it("changes when the base-ref id changes", () => {
+    expect(computeFingerprint("FROM x\n", "sha256:abc", "sha256:ref1"))
+      .not.toBe(computeFingerprint("FROM x\n", "sha256:abc", "sha256:ref2"));
+  });
+  it("is unchanged for the legacy 2-arg call (baseRefId defaults to empty)", () => {
+    expect(computeFingerprint("FROM x\n", "sha256:abc"))
+      .toBe(computeFingerprint("FROM x\n", "sha256:abc", ""));
+  });
 });

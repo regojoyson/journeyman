@@ -21,12 +21,18 @@ export function buildEffectiveRecipe(image: ImageConfig, bundleRef: string): str
   return null;
 }
 
-/** Stable 16-hex fingerprint of (recipe + kit/bundle digest). */
-export function computeFingerprint(effectiveRecipe: string, bundleId: string): string {
+/** Stable 16-hex fingerprint of (recipe + kit/bundle digest + base-ref digest). */
+export function computeFingerprint(
+  effectiveRecipe: string,
+  bundleId: string,
+  baseRefId = "",
+): string {
   return createHash("sha256")
     .update(effectiveRecipe)
     .update("\0")
     .update(bundleId)
+    .update("\0")
+    .update(baseRefId)
     .digest("hex")
     .slice(0, 16);
 }

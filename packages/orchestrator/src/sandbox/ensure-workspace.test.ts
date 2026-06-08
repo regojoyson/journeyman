@@ -232,4 +232,29 @@ describe("ensureWorkspace run-gating (Spec B managed images)", () => {
     await ensureWorkspace(deps as any, args);
     expect(deps.provisionDocker).toHaveBeenCalledOnce();
   });
+
+  it("re-verifies a ready image and proceeds when fresh", async () => {
+    const verifyImageFresh = vi.fn().mockResolvedValue({ fresh: true });
+    const deps = baseDeps(
+      { type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+        imageState: "ready", imageRef: "journeyman/jm-built:fp", imageFingerprint: "fp" },
+      { verifyImageFresh },
+    );
+    await ensureWorkspace(deps as any, args);
+    expect(verifyImageFresh).toHaveBeenCalled();
+    expect(deps.provisionDocker).toHaveBeenCalledWith("r1",
+      expect.objectContaining({ config: expect.objectContaining({ __imageRef: "journeyman/jm-built:fp" }) }));
+  });
+
+  it("re-enqueues + retries when the ready image drifted (stale)", async () => {
+    const verifyImageFresh = vi.fn().mockResolvedValue({ fresh: false, reason: "image drift" });
+    const deps = baseDeps(
+      { type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
+        imageState: "ready", imageRef: "journeyman/jm-built:fp", imageFingerprint: "fp" },
+      { verifyImageFresh },
+    );
+    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(deps.onImagePending).toHaveBeenCalledWith("t1");
+    expect(deps.provisionDocker).not.toHaveBeenCalled();
+  });
 });

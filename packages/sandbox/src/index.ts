@@ -27,12 +27,16 @@ export { buildDockerfileImage, buildBoxImage } from "./backends/docker/build-ima
 export type { BuildBoxImageDeps, BuildBoxImageResult } from "./backends/docker/build-image.ts";
 export { buildEffectiveRecipe, computeFingerprint } from "./backends/docker/recipe.ts";
 export type { ImageConfig } from "./backends/docker/recipe.ts";
-export { ensureKitImage } from "./backends/docker/ensure-kit.ts";
+export { reconcileKitImage } from "./backends/docker/ensure-kit.ts";
+export { resolveBuildInputs } from "./backends/docker/resolve-build-inputs.ts";
+export type { BuildInputs, ResolveBuildInputsArgs } from "./backends/docker/resolve-build-inputs.ts";
+export { pruneBuiltImages } from "./backends/docker/prune-built-images.ts";
 export { runBuildTick, startBuildLoop } from "./build/build-loop.ts";
 export type { BuildTickDeps, StartBuildLoopDeps } from "./build/build-loop.ts";
 export {
   markImagePending, clearImageState, claimPendingBuild,
   renewBuildLease, commitBuildResult, failBuild, applyImageStateOnSave,
+  listReadyImageRefs,
 } from "./db.ts";
 export {
   recordSandboxInstance, getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,

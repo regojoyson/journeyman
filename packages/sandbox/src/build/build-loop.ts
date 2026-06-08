@@ -3,7 +3,7 @@ import type { Queryable } from "../db.ts";
 import { claimPendingBuild, commitBuildResult, failBuild } from "../db.ts";
 import { buildBoxImage, type BuildBoxImageResult } from "../backends/docker/build-image.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
-import { ensureKitImage } from "../backends/docker/ensure-kit.ts";
+import { reconcileKitImage } from "../backends/docker/ensure-kit.ts";
 
 export interface BuildTickDeps {
   db: Queryable;
@@ -27,7 +27,7 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   const claim = deps.claim ?? claimPendingBuild;
   const makeClient: (conn: unknown) => ReturnType<typeof makeDockerClient> =
     deps.makeClient ?? ((conn) => makeDockerClient(conn as Parameters<typeof makeDockerClient>[0]));
-  const ensureKit = deps.ensureKit ?? ensureKitImage;
+  const ensureKit = deps.ensureKit ?? reconcileKitImage;
   const build = deps.build ?? ((a) => buildBoxImage(a as Parameters<typeof buildBoxImage>[0]));
   const commit = deps.commit ?? commitBuildResult;
   const fail = deps.fail ?? failBuild;
