@@ -14,7 +14,7 @@
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
     "@journeyman/secrets": "*",
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {

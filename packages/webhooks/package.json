@@ -16,7 +16,7 @@
     "@journeyman/core": "*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "jose": "^5.9.6"
+    "jose": "^6.2.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

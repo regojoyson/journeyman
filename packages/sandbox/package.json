@@ -15,13 +15,13 @@
     "@journeyman/identity": "*",
     "dockerode": "^4.0.2",
     "pg": "^8.13.0",
-    "tar": "^6.2.1"
+    "tar": "^7.5.16"
   },
   "devDependencies": {
     "@types/dockerode": "^3.3.31",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.11.10",
-    "@types/tar": "^6.1.13",
+    "@types/tar": "^7.0.87",
     "typescript": "^6.0.3",
     "vitest": "^2.1.9"
   },
