@@ -53,32 +53,42 @@ RUN case "$(uname -m)" in \
 RUN npm run build -w @journeyman/web
 ```
 
-with this:
+with this (note: `package-lock.json` is deliberately **not** copied — see Step 1a):
 
 ```dockerfile
 # ---------- build (web only — others run via tsx) ----------
-# Built on Debian/glibc (not Alpine/musl): native frontend build tools
-# (Rolldown, lightningcss, esbuild) ship first-class glibc prebuilts, so a plain
-# `npm ci` installs the correct per-platform binaries. This avoids the npm
-# optional-deps bug (npm/cli#4828) that silently skips musl natives on Alpine.
-# This stage is discarded — only packages/web/dist is copied into nginx below —
-# so its larger base image has no effect on the final web image size.
+# Built on Debian/glibc (not Alpine/musl) and WITHOUT the committed lockfile.
+# npm's optional-deps bug (npm/cli#4828, present in npm 10 AND 11) skips the
+# per-platform native packages (Rolldown/lightningcss/esbuild bindings) whenever
+# a lockfile generated on another OS is present, so we resolve fresh here to get
+# the correct Linux binaries for every native tool at once. This stage is
+# discarded (only packages/web/dist ships to nginx), and runtime stages still
+# install from the committed lockfile via `deps`, so backend determinism and the
+# final image size are unaffected.
 FROM node:22 AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY packages ./packages
 RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {} + 2>/dev/null || true
-RUN npm ci --include=dev
+RUN npm install --include=dev
 COPY . .
 RUN npm run build -w @journeyman/web
 ```
+
+**Step 1a — why no lockfile (verified):** copying the macOS-committed
+`package-lock.json` is the *trigger* for the bug. Diagnosed in a clean `node:22`
+container: with the lockfile present, `node_modules/@rolldown/` and
+`lightningcss-linux-*` install as **empty/absent** under both `npm ci` and
+`npm install`, on both npm 10.9.8 and npm 11.16.0. Without the lockfile,
+`npm install` installs `@rolldown/binding-linux-arm64-gnu` and
+`lightningcss-linux-arm64-gnu` correctly.
 
 Leave every other stage (`deps`, `runtime-api`, `runtime-worker`, `runtime-migrations`, `runtime-web`) exactly as-is.
 
 - [ ] **Step 2: Sanity-check the Dockerfile is well-formed**
 
-Run: `grep -n "FROM node:22 AS build" Dockerfile && ! grep -q "rolldown/binding" Dockerfile && echo "build stage updated, hack removed"`
-Expected: prints the `FROM node:22 AS build` line and `build stage updated, hack removed`.
+Run: `grep -n "FROM node:22 AS build" Dockerfile && ! grep -q "rolldown/binding" Dockerfile && ! grep -q "package-lock.json" <(sed -n '/AS build/,/npm run build/p' Dockerfile) && echo "build stage updated, hack + lockfile-copy removed"`
+Expected: prints the `FROM node:22 AS build` line and `build stage updated, hack + lockfile-copy removed`.
 
 - [ ] **Step 3: Build the web image**
 
@@ -120,19 +130,17 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Fallback (only if Step 3 still fails on glibc)
+## Verified outcome
 
-If `npm ci` on glibc still omits a platform native (npm #4828 recurring), change the build stage's install line from:
+Implemented and verified in real Docker (Apple Silicon → linux/arm64, glibc):
+- `docker build --target runtime-web` succeeds; build emits `dist/assets/*.js`
+  (~1.83 MB) and `*.css` (~146 KB).
+- The nginx image serves `index.html` + a non-empty `assets/` bundle.
+- `runtime-api` and `runtime-worker` still build (no regression).
 
-```dockerfile
-RUN npm ci --include=dev
-```
-to:
-```dockerfile
-RUN npm install --include=dev
-```
-
-`npm install` actively re-resolves and fetches the platform-correct optional binaries. It honors the committed lockfile and only adds the missing platform optionals; any in-image lockfile update is harmless because the stage is discarded after producing `dist/`. Re-run Step 3.
+The earlier "keep lockfile + `npm ci`/`npm install`" approaches were tried and
+**failed identically** (zero native bindings installed); only dropping the
+lockfile so npm resolves fresh works. There is no remaining fallback needed.
 
 ---
 

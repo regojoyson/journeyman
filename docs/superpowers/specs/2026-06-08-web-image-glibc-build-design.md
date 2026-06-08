@@ -54,23 +54,31 @@ from the `deps` stage — so changing the build stage cannot affect those images
    into `nginx:1.27-alpine`, this has **zero effect on the final web image
    size**.
 
-2. **Self-contained dependency install.** Remove
-   `COPY --from=deps /app/node_modules ./node_modules` (that is the Alpine/musl
-   tree — wrong for a glibc stage). Instead the build stage copies the manifests
-   and runs its **own `npm ci`** on glibc, mirroring the `deps` stage's
-   manifest-copy pattern for layer caching, then copies the source and runs the
-   build:
+2. **Self-contained dependency install, resolved fresh for the build platform.**
+   Remove `COPY --from=deps /app/node_modules ./node_modules` (that is the
+   Alpine/musl tree — wrong for a glibc stage). The build stage copies the
+   manifests **without `package-lock.json`** and runs its own `npm install`, then
+   copies the source and runs the build:
 
    ```dockerfile
    FROM node:22 AS build
    WORKDIR /app
-   COPY package.json package-lock.json ./
+   COPY package.json ./
    COPY packages ./packages
    RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {} + 2>/dev/null || true
-   RUN npm ci --include=dev
+   RUN npm install --include=dev
    COPY . .
    RUN npm run build -w @journeyman/web
    ```
+
+   **Why no lockfile (verified empirically):** the npm optional-dependencies bug
+   (#4828) is triggered by the *presence of a lockfile generated on another OS*.
+   With the macOS-committed `package-lock.json` present, npm installs **zero**
+   Linux native bindings — confirmed on both `npm ci` and `npm install`, and on
+   both npm 10.9.8 and npm 11.16.0, on glibc. Removing the lockfile so npm
+   resolves fresh on the build platform installs the correct Linux binaries for
+   **every** native tool at once (Rolldown, lightningcss, …). glibc base is
+   retained as the well-supported prebuilt target.
 
 3. **Delete the manual Rolldown binding hack** (the
    `case "$(uname -m)" … npm install --no-save @rolldown/binding-…` block).
@@ -85,14 +93,16 @@ frontend build tooling. `runtime-web` still copies `packages/web/dist` into
 nginx. The web app's runtime behavior is unchanged (output is the same static
 bundle).
 
-## Fallback (documented, one-line)
+## Determinism note
 
-If the npm optional-dependencies bug ever recurs even on glibc, change the build
-stage's `npm ci` to `npm install`. `npm install` actively re-resolves and fetches
-the platform-correct optional binaries, fully sidestepping #4828, at the cost of
-allowing the in-image lockfile to update (harmless for a throwaway build stage
-producing a static bundle). `npm ci` is the primary choice because it is
-deterministic and glibc is the reliable path.
+Dropping the lockfile means the build stage resolves transitive build-tool
+versions fresh (within each manifest's semver ranges) rather than from pinned
+lockfile entries. This is acceptable: the stage is discarded after producing the
+static bundle, and the **runtime** stages (`runtime-api`, `runtime-worker`,
+`runtime-migrations`) still install from the committed `package-lock.json` via
+`deps`, so backend dependency determinism is fully preserved. Keeping the
+committed lockfile in the build stage is not an option — it is the exact trigger
+for the npm bug (verified above).
 
 ## Verification
 
