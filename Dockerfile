@@ -3,20 +3,20 @@
 # ---------- deps ----------
 FROM node:22-alpine AS deps
 WORKDIR /app
+RUN npm install -g npm@11.16.0
 COPY package.json package-lock.json ./
 COPY packages ./packages
 RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {} + 2>/dev/null || true
 RUN npm ci --include=dev
 
 # ---------- build (web only — others run via tsx) ----------
-# Built on Debian/glibc (not Alpine/musl): native frontend build tools
-# (Rolldown, lightningcss, esbuild) ship first-class glibc prebuilts, so a plain
-# `npm ci` installs the correct per-platform binaries. This avoids the npm
-# optional-deps bug (npm/cli#4828) that silently skips musl natives on Alpine.
-# This stage is discarded — only packages/web/dist is copied into nginx below —
-# so its larger base image has no effect on the final web image size.
+# Built on Debian/glibc (not Alpine/musl) — the well-supported prebuilt target
+# for native frontend build tools (Rolldown, lightningcss, esbuild). This stage
+# is discarded (only packages/web/dist is copied into nginx below), so its larger
+# base image has no effect on the final web image size.
 FROM node:22 AS build
 WORKDIR /app
+RUN npm install -g npm@11.16.0
 COPY package.json ./
 COPY packages ./packages
 RUN find packages -mindepth 2 -maxdepth 2 ! -name 'package.json' -exec rm -rf {} + 2>/dev/null || true
