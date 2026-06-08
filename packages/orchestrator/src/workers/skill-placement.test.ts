@@ -16,3 +16,13 @@ describe("placeSkills (claude)", () => {
     expect(rewritten).toEqual([]);
   });
 });
+
+describe("placeSkills (opencode)", () => {
+  it("materializes package dirs into the opencode skill dir and rewrites localPath", async () => {
+    const materialize = vi.fn().mockResolvedValue(undefined);
+    const skills = [{ id: "p1", name: "pkg", localPath: "/home/.journeyman/skills/pkg-ab12", enabledSkills: ["alpha"], gitUrl: "", cliType: "opencode" }] as any;
+    const rewritten = await placeSkills("opencode", skills, { materialize });
+    expect(materialize).toHaveBeenCalledWith("/workspace/.opencode/skill", expect.anything());
+    expect(rewritten[0].localPath).toBe("/workspace/.opencode/skill/pkg-ab12");
+  });
+});
