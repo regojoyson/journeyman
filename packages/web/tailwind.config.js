@@ -1,4 +1,5 @@
 import themePreset from "@journeyman/theme/tailwind-preset";
+import typography from "@tailwindcss/typography";
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -11,5 +12,5 @@ export default {
     "../runs-list/src/**/*.{ts,tsx}",
   ],
   theme: { extend: {} },
-  plugins: [],
+  plugins: [typography],
 };
