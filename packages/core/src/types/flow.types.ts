@@ -122,8 +122,8 @@ export interface WorkflowNode {
   model?: string | null;
   /** Per-slot binding map. Key is the slot name from the step definition. */
   secretBindings?: Record<string, SecretBinding> | null;
-  /** Per-step compute-target override (workspace-independent steps only). Falls back to defaults.computeTargetId. */
-  computeTargetId?: string;
+  /** Per-step sandbox override (workspace-independent steps only). Falls back to defaults.sandboxId. */
+  sandboxId?: string;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
   /** Only meaningful on `end` nodes — surfaced as the workflow instance's outcome label. */
@@ -233,8 +233,8 @@ export interface WorkflowDefaults {
    * provider configured on the step node.
    */
   defaultModel?: string;
-  /** Compute target this workflow runs on. Unset → system default. */
-  computeTargetId?: string;
+  /** Sandbox this workflow runs on. Required before publish. */
+  sandboxId?: string;
 }
 
 export type McpTransport = "stdio" | "http" | "sse";

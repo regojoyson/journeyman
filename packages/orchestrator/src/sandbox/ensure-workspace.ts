@@ -12,7 +12,7 @@ function configurationError(msg: string): Error {
 }
 
 export interface EnsureWorkspaceDeps {
-  getSandbox(runId: string): Promise<{
+  getSandboxInstance(runId: string): Promise<{
     runId: string;
     type: string;
     status: string;
@@ -34,8 +34,8 @@ export interface EnsureWorkspaceDeps {
     runId: string,
     timeoutMs: number,
   ): Promise<{ handle: string; volume?: string | null; connection?: unknown }>;
-  resolveComputeTarget(
-    computeTargetId: string | undefined,
+  resolveSandbox(
+    sandboxId: string | undefined,
     ctx: { userId: string; orgId: string },
   ): Promise<{
     type: string;
@@ -45,7 +45,7 @@ export interface EnsureWorkspaceDeps {
     imageError?: string | null;
   }>;
   /** Re-enqueue a build when a ready image went missing (pruned). Optional. */
-  onImagePending?(computeTargetId: string): Promise<void>;
+  onImagePending?(sandboxId: string): Promise<void>;
   provisionDocker(
     runId: string,
     worker: { type: string; config: Record<string, unknown> },
@@ -69,7 +69,7 @@ export async function ensureWorkspace(
   deps: EnsureWorkspaceDeps,
   args: {
     runId: string;
-    computeTargetId: string | undefined;
+    sandboxId: string | undefined;
     userId: string | null;
     orgId: string | null;
     /** Optional progress sink (e.g. step.log). Additive — absent ⇒ no-op. */
@@ -80,7 +80,7 @@ export async function ensureWorkspace(
 ): Promise<EnsureWorkspaceResult> {
   const log = args.log ?? (() => {});
 
-  const existing = await deps.getSandbox(args.runId);
+  const existing = await deps.getSandboxInstance(args.runId);
   if (existing && existing.status === "active") {
     log("Using existing workspace");
     return connect(deps, existing);
@@ -102,7 +102,7 @@ export async function ensureWorkspace(
     throw err;
   }
 
-  const worker = await deps.resolveComputeTarget(args.computeTargetId, {
+  const worker = await deps.resolveSandbox(args.sandboxId, {
     userId: args.userId,
     orgId: args.orgId,
   });
@@ -120,17 +120,17 @@ export async function ensureWorkspace(
       const state = worker.imageState ?? "none";
       if (state === "failed") {
         throw configurationError(
-          `compute target image build failed: ${worker.imageError ?? "see build log"}`,
+          `sandbox image build failed: ${worker.imageError ?? "see build log"}`,
         );
       }
       if (state === "pending" || state === "building" || state === "none") {
         log("Preparing environment (building image)… this happens once.");
-        throw new ImageNotReadyError("compute target image is not ready yet");
+        throw new ImageNotReadyError("sandbox image is not ready yet");
       }
       if (state === "ready" && !worker.imageRef) {
         log("Environment image missing; rebuilding…");
-        if (args.computeTargetId && deps.onImagePending) await deps.onImagePending(args.computeTargetId);
-        throw new ImageNotReadyError("compute target image was pruned; rebuilding");
+        if (args.sandboxId && deps.onImagePending) await deps.onImagePending(args.sandboxId);
+        throw new ImageNotReadyError("sandbox image was pruned; rebuilding");
       }
       // ready + imageRef → fall through, passing imageRef to provisionDocker.
       (worker.config as Record<string, unknown>)["__imageRef"] = worker.imageRef;
@@ -139,7 +139,7 @@ export async function ensureWorkspace(
 
   const won = await deps.claim({ runId: args.runId, type: worker.type, owner: args.orgId });
   if (!won) {
-    // Another worker claimed it between our getSandbox() and claim() calls.
+    // Another worker claimed it between our getSandboxInstance() and claim() calls.
     log("Waiting for workspace…");
     const active = await deps.waitActive(args.runId, PROVISION_WAIT_MS);
     log("Workspace ready");

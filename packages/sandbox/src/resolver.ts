@@ -1,15 +1,15 @@
-import type { ResolvedComputeTarget, ComputeTarget } from "@journeyman/core";
+import type { ResolvedSandbox, Sandbox } from "@journeyman/core";
 import type { Queryable } from "./db.ts";
-import { fetchComputeTargetById } from "./db.ts";
+import { fetchSandboxById } from "./db.ts";
 
-export class ComputeTargetNotFoundError extends Error {}
+export class SandboxNotFoundError extends Error {}
 
-export interface ResolveComputeTargetCtx {
+export interface ResolveSandboxCtx {
   orgId: string;
   userId: string;
 }
 
-function toResolved(w: ComputeTarget): ResolvedComputeTarget {
+function toResolved(w: Sandbox): ResolvedSandbox {
   return {
     id: w.id,
     type: w.type,
@@ -26,15 +26,15 @@ function toResolved(w: ComputeTarget): ResolvedComputeTarget {
  * Resolve a workflow's worker at run start: an explicit `workerId` (node override
  * or flow default), or the org/user/system default when none is given.
  */
-export async function resolveComputeTarget(
+export async function resolveSandbox(
   db: Queryable,
-  ctx: ResolveComputeTargetCtx,
+  ctx: ResolveSandboxCtx,
   workerId: string | undefined,
-): Promise<ResolvedComputeTarget> {
+): Promise<ResolvedSandbox> {
   if (!workerId) {
-    throw new ComputeTargetNotFoundError("no compute target selected for this workflow");
+    throw new SandboxNotFoundError("no sandbox selected for this workflow");
   }
-  const w = await fetchComputeTargetById(db, ctx.orgId, ctx.userId, workerId);
-  if (!w) throw new ComputeTargetNotFoundError(`compute target '${workerId}' not found or not visible`);
+  const w = await fetchSandboxById(db, ctx.orgId, ctx.userId, workerId);
+  if (!w) throw new SandboxNotFoundError(`sandbox '${workerId}' not found or not visible`);
   return toResolved(w);
 }

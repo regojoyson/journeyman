@@ -1,7 +1,7 @@
 import type { Queryable } from "./db.ts";
 import type { DockerConnection } from "./backends/docker/docker-client.ts";
 
-export interface SandboxRecord {
+export interface SandboxInstanceRecord {
   runId: string;
   type: string;
   handle: string;
@@ -13,7 +13,7 @@ export interface SandboxRecord {
   status: "provisioning" | "active" | "destroyed";
 }
 
-export interface RecordSandboxArgs {
+export interface RecordSandboxInstanceArgs {
   runId: string;
   type: string;
   handle: string;
@@ -25,7 +25,7 @@ export interface RecordSandboxArgs {
 
 const COLS = "run_id, type, handle, volume, image_ref, owner, connection, status";
 
-function rowToSandbox(r: Record<string, any>): SandboxRecord {
+function rowToSandboxInstance(r: Record<string, any>): SandboxInstanceRecord {
   return {
     runId: r.run_id,
     type: r.type,
@@ -38,7 +38,7 @@ function rowToSandbox(r: Record<string, any>): SandboxRecord {
   };
 }
 
-export async function recordSandbox(db: Queryable, args: RecordSandboxArgs): Promise<void> {
+export async function recordSandboxInstance(db: Queryable, args: RecordSandboxInstanceArgs): Promise<void> {
   await db.query(
     `INSERT INTO jm_sandbox_instances (run_id, type, handle, volume, image_ref, owner, connection)
      VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
@@ -52,26 +52,26 @@ export async function recordSandbox(db: Queryable, args: RecordSandboxArgs): Pro
   );
 }
 
-export async function getSandbox(db: Queryable, runId: string): Promise<SandboxRecord | null> {
+export async function getSandboxInstance(db: Queryable, runId: string): Promise<SandboxInstanceRecord | null> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_sandbox_instances WHERE run_id = $1`,
     [runId],
   );
-  return rows[0] ? rowToSandbox(rows[0]) : null;
+  return rows[0] ? rowToSandboxInstance(rows[0]) : null;
 }
 
-export async function markSandboxDestroyed(db: Queryable, runId: string): Promise<void> {
+export async function markSandboxInstanceDestroyed(db: Queryable, runId: string): Promise<void> {
   await db.query(
     `UPDATE jm_sandbox_instances SET status = 'destroyed', destroyed_at = now() WHERE run_id = $1`,
     [runId],
   );
 }
 
-export async function listActiveSandboxes(db: Queryable): Promise<SandboxRecord[]> {
+export async function listActiveSandboxInstances(db: Queryable): Promise<SandboxInstanceRecord[]> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_sandbox_instances WHERE status = 'active'`,
   );
-  return rows.map(rowToSandbox);
+  return rows.map(rowToSandboxInstance);
 }
 
 /**
@@ -82,7 +82,7 @@ export async function listActiveSandboxes(db: Queryable): Promise<SandboxRecord[
  * run_id is the PRIMARY KEY so ON CONFLICT (run_id) relies on the PK constraint
  * — no separate UNIQUE index is needed.
  */
-export async function claimSandbox(
+export async function claimSandboxInstance(
   db: Queryable,
   row: { runId: string; type: string; owner: string },
 ): Promise<boolean> {
@@ -97,7 +97,7 @@ export async function claimSandbox(
 }
 
 /** Mark a previously claimed sandbox active with its real handle/volume/connection. */
-export async function markSandboxActive(
+export async function markSandboxInstanceActive(
   db: Queryable,
   runId: string,
   patch: { handle: string; volume?: string | null; imageRef?: string | null; connection?: unknown },

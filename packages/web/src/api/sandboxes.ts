@@ -1,11 +1,11 @@
-export type ComputeTargetType =
+export type SandboxType =
   | "local" | "docker" | "machine-linux" | "machine-windows" | "ecs" | "ec2" | "kubernetes" | "cloud";
 export type ExecutionMode = "per-instance" | "shared";
 export type Connectivity = "push" | "agent";
-export type ComputeTargetScope = "user" | "org" | "system";
+export type SandboxScope = "user" | "org" | "system";
 
-export interface ComputeTargetTypeDescriptor {
-  type: ComputeTargetType;
+export interface SandboxTypeDescriptor {
+  type: SandboxType;
   label: string;
   status: "available" | "planned";
   supportedModes: ExecutionMode[];
@@ -17,11 +17,11 @@ export interface ConnectionTestResult { ok: boolean; error?: string }
 
 export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
 
-export interface ComputeTarget {
+export interface Sandbox {
   id: string;
-  scope: ComputeTargetScope;
+  scope: SandboxScope;
   name: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
@@ -34,9 +34,9 @@ export interface ComputeTarget {
   imageError?: string | null;
 }
 
-export interface ComputeTargetUpsertBody {
+export interface SandboxUpsertBody {
   name: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
@@ -44,8 +44,8 @@ export interface ComputeTargetUpsertBody {
   enabled?: boolean;
 }
 
-const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/compute-targets`;
-const orgBase = (orgId: string) => `/api/orgs/${orgId}/compute-targets`;
+const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/sandboxes`;
+const orgBase = (orgId: string) => `/api/orgs/${orgId}/sandboxes`;
 
 async function jsonOrThrow<T>(r: Response): Promise<T> {
   if (r.ok) return r.json() as Promise<T>;
@@ -69,19 +69,19 @@ const patchJson = (url: string, body: unknown) =>
     body: JSON.stringify(body),
   });
 
-export const computeTargetsApi = {
+export const sandboxesApi = {
   listVisible: (orgId: string) =>
-    fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
+    fetch(`${orgBase(orgId)}/visible`, { credentials: "include" }).then(jsonOrThrow<Sandbox[]>),
   listTypes: (orgId: string) =>
-    fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<ComputeTargetTypeDescriptor[]>),
-  testConnection: (orgId: string, body: { type: ComputeTargetType; config: Record<string, unknown> }) =>
+    fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<SandboxTypeDescriptor[]>),
+  testConnection: (orgId: string, body: { type: SandboxType; config: Record<string, unknown> }) =>
     postJson(`${orgBase(orgId)}/test-connection`, body).then(jsonOrThrow<ConnectionTestResult>),
 
   listMy: (orgId: string) =>
-    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
-  createMy: (orgId: string, body: ComputeTargetUpsertBody) =>
-    postJson(userBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
-  updateMy: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
+    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<Sandbox[]>),
+  createMy: (orgId: string, body: SandboxUpsertBody) =>
+    postJson(userBase(orgId), body).then(jsonOrThrow<Sandbox>),
+  updateMy: (orgId: string, id: string, body: Partial<SandboxUpsertBody>) =>
     patchJson(`${userBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
   rebuildMy: (orgId: string, id: string) =>
     postJson(`${userBase(orgId)}/${id}/rebuild`, {}).then(jsonOrThrow<{ ok: true }>),
@@ -89,10 +89,10 @@ export const computeTargetsApi = {
     fetch(`${userBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),
 
   listOrg: (orgId: string) =>
-    fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<ComputeTarget[]>),
-  createOrg: (orgId: string, body: ComputeTargetUpsertBody) =>
-    postJson(orgBase(orgId), body).then(jsonOrThrow<ComputeTarget>),
-  updateOrg: (orgId: string, id: string, body: Partial<ComputeTargetUpsertBody>) =>
+    fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<Sandbox[]>),
+  createOrg: (orgId: string, body: SandboxUpsertBody) =>
+    postJson(orgBase(orgId), body).then(jsonOrThrow<Sandbox>),
+  updateOrg: (orgId: string, id: string, body: Partial<SandboxUpsertBody>) =>
     patchJson(`${orgBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
   rebuildOrg: (orgId: string, id: string) =>
     postJson(`${orgBase(orgId)}/${id}/rebuild`, {}).then(jsonOrThrow<{ ok: true }>),

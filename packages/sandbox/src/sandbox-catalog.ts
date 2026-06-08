@@ -1,7 +1,7 @@
-import type { ComputeTargetType, ExecutionMode, Connectivity } from "@journeyman/core";
+import type { SandboxType, ExecutionMode, Connectivity } from "@journeyman/core";
 
-export interface ComputeTargetTypeDescriptor {
-  type: ComputeTargetType;
+export interface SandboxTypeDescriptor {
+  type: SandboxType;
   label: string;
   status: "available" | "planned";
   supportedModes: ExecutionMode[];
@@ -13,9 +13,9 @@ export interface ComputeTargetTypeDescriptor {
  * Authoritative metadata for every worker type. `status: "available"` means a
  * backend exists in code (see default-registry). The drift test keeps this in
  * sync with the registered backends. Modes/connectivity for planned types come
- * from the managed-compute-targets design (§4 matrix).
+ * from the managed-sandboxes design (§4 matrix).
  */
-export const COMPUTE_TARGET_CATALOG: ComputeTargetTypeDescriptor[] = [
+export const SANDBOX_CATALOG: SandboxTypeDescriptor[] = [
   { type: "local", label: "Local (no isolation)", status: "available",
     supportedModes: ["shared"], supportedConnectivity: [],
     summary: "Runs in-process on the host with a shared workspace. No isolation." },

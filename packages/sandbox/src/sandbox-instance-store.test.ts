@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Queryable } from "./db.ts";
-import { recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes } from "./sandbox-store.ts";
+import { recordSandboxInstance, getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances } from "./sandbox-instance-store.ts";
 
 function fakeDb(rows: any[] = []): Queryable & { calls: Array<{ text: string; params?: unknown[] }> } {
   const calls: Array<{ text: string; params?: unknown[] }> = [];
@@ -14,9 +14,9 @@ function fakeDb(rows: any[] = []): Queryable & { calls: Array<{ text: string; pa
 }
 
 describe("sandbox-store", () => {
-  it("recordSandbox upserts the active row (connection serialized)", async () => {
+  it("recordSandboxInstance upserts the active row (connection serialized)", async () => {
     const db = fakeDb();
-    await recordSandbox(db, {
+    await recordSandboxInstance(db, {
       runId: "r1", type: "docker", handle: "c1", volume: "v1", imageRef: "x:1", owner: "o1",
       connection: { kind: "remote", host: "tcp://h:2376" },
     });
@@ -26,30 +26,30 @@ describe("sandbox-store", () => {
     ]);
   });
 
-  it("recordSandbox stores null connection when omitted", async () => {
+  it("recordSandboxInstance stores null connection when omitted", async () => {
     const db = fakeDb();
-    await recordSandbox(db, { runId: "r1", type: "docker", handle: "c1" });
+    await recordSandboxInstance(db, { runId: "r1", type: "docker", handle: "c1" });
     expect(db.calls[0].params?.[6]).toBeNull();
   });
 
-  it("getSandbox returns the row by runId or null", async () => {
+  it("getSandboxInstance returns the row by runId or null", async () => {
     const found = fakeDb([{ run_id: "r1", type: "docker", handle: "c1", volume: "v1", status: "active" }]);
-    expect((await getSandbox(found, "r1"))?.handle).toBe("c1");
+    expect((await getSandboxInstance(found, "r1"))?.handle).toBe("c1");
     const none = fakeDb([]);
-    expect(await getSandbox(none, "r1")).toBeNull();
+    expect(await getSandboxInstance(none, "r1")).toBeNull();
   });
 
-  it("markSandboxDestroyed sets status + destroyed_at", async () => {
+  it("markSandboxInstanceDestroyed sets status + destroyed_at", async () => {
     const db = fakeDb();
-    await markSandboxDestroyed(db, "r1");
+    await markSandboxInstanceDestroyed(db, "r1");
     expect(db.calls[0].text).toMatch(/update jm_sandbox_instances/i);
     expect(db.calls[0].text).toMatch(/status = 'destroyed'/i);
     expect(db.calls[0].params).toEqual(["r1"]);
   });
 
-  it("listActiveSandboxes filters status = active", async () => {
+  it("listActiveSandboxInstances filters status = active", async () => {
     const db = fakeDb([]);
-    await listActiveSandboxes(db);
+    await listActiveSandboxInstances(db);
     expect(db.calls[0].text).toMatch(/where status = 'active'/i);
   });
 });

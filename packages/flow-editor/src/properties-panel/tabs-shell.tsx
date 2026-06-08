@@ -39,7 +39,7 @@ const ALL_TABS: Array<{ id: TabId; label: string }> = [
   { id: "skills",          label: "Skills"           },
   { id: "requiredSecrets", label: "Required secrets" },
   { id: "retry",           label: "Retry"            },
-  // Per-node "Compute Target" override is hidden for now (future feature). Steps
+  // Per-node "Sandbox" override is hidden for now (future feature). Steps
   // inherit the workflow-level target; TabId/visibility plumbing stays so it's a
   // one-line add-back later.
   { id: "io",              label: "I/O"              },

@@ -1,4 +1,4 @@
-import type { ComputeTarget } from "@journeyman/core";
+import type { Sandbox } from "@journeyman/core";
 import type { Queryable } from "../db.ts";
 import { claimPendingBuild, commitBuildResult, failBuild } from "../db.ts";
 import { buildBoxImage, type BuildBoxImageResult } from "../backends/docker/build-image.ts";
@@ -14,7 +14,7 @@ export interface BuildTickDeps {
   owner: string;
   log?: (line: string) => void;
   // Seams (overridable in tests):
-  claim?: (db: Queryable, owner: string, leaseMs: number) => Promise<ComputeTarget | null>;
+  claim?: (db: Queryable, owner: string, leaseMs: number) => Promise<Sandbox | null>;
   makeClient?: (conn: unknown) => ReturnType<typeof makeDockerClient>;
   ensureKit?: (client: any, imageName: string, tarPath: string, log?: (l: string) => void) => Promise<void>;
   build?: (args: { image: unknown; client: any; bundleRef: string }) => Promise<BuildBoxImageResult>;
@@ -39,7 +39,7 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   const cfg = (target.config ?? {}) as Record<string, unknown>;
   let fingerprint = target.imageFingerprint ?? "";
   try {
-    log(`building image for compute target ${target.name} (${target.id})`);
+    log(`building image for sandbox ${target.name} (${target.id})`);
     const client = makeClient(cfg["connection"] ?? { kind: "local" });
     // The box recipe grafts the kit via `COPY --from=<bundleRef>`; make sure that
     // kit image exists on this daemon first (loaded from the tar, never pulled).

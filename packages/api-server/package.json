@@ -19,7 +19,7 @@
     "@journeyman/core": "*",
     "@journeyman/identity": "*",
     "@journeyman/mcp": "*",
-    "@journeyman/compute": "*",
+    "@journeyman/sandbox": "*",
     "@journeyman/skills": "*",
     "@journeyman/coding-models": "*",
     "@journeyman/custom-steps": "*",

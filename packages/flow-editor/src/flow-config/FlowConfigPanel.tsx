@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { DefaultsRetrySection } from "./DefaultsRetrySection.tsx";
 import { DefaultsExecutorSection } from "./DefaultsExecutorSection.tsx";
 import { DefaultsModelSection } from "./DefaultsModelSection.tsx";
-import { DefaultsComputeTargetSection } from "./DefaultsComputeTargetSection.tsx";
+import { DefaultsSandboxSection } from "./DefaultsSandboxSection.tsx";
 
 export interface FlowConfigPanelProps {
   flow: WorkflowGraph;
@@ -32,7 +32,7 @@ export function FlowConfigPanel({ flow, onChange, onClose, readOnly }: FlowConfi
 
       <DefaultsExecutorSection defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsModelSection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
-      <DefaultsComputeTargetSection   defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
+      <DefaultsSandboxSection   defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
       <DefaultsRetrySection    defaults={defaults} onChange={updateDefaults} readOnly={readOnly} />
     </aside>
   );

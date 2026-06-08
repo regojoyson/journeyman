@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { WorkflowNode } from "@journeyman/core";
 
-interface VisibleComputeTarget {
+interface VisibleSandbox {
   id: string;
   name: string;
   type: string;
@@ -9,41 +9,41 @@ interface VisibleComputeTarget {
   enabled: boolean;
 }
 
-export interface ComputeTargetTabProps {
+export interface SandboxTabProps {
   orgId: string;
   node: WorkflowNode;
   onChange: (next: WorkflowNode) => void;
   readOnly?: boolean;
 }
 
-export function ComputeTargetTab({ orgId, node, onChange, readOnly }: ComputeTargetTabProps) {
-  const [workers, setComputeTargets] = useState<VisibleComputeTarget[]>([]);
+export function SandboxTab({ orgId, node, onChange, readOnly }: SandboxTabProps) {
+  const [workers, setSandboxes] = useState<VisibleSandbox[]>([]);
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/orgs/${orgId}/compute-targets/visible`, { credentials: "include" })
+    fetch(`/api/orgs/${orgId}/sandboxes/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows: VisibleComputeTarget[]) => { if (alive) setComputeTargets(rows.filter((w) => w.enabled)); })
-      .catch(() => { if (alive) setComputeTargets([]); });
+      .then((rows: VisibleSandbox[]) => { if (alive) setSandboxes(rows.filter((w) => w.enabled)); })
+      .catch(() => { if (alive) setSandboxes([]); });
     return () => { alive = false; };
   }, [orgId]);
 
-  const overridden = Boolean(node.computeTargetId);
-  const selected = workers.find((w) => w.id === node.computeTargetId);
+  const overridden = Boolean(node.sandboxId);
+  const selected = workers.find((w) => w.id === node.sandboxId);
   const isPerInstance = selected?.executionMode === "per-instance";
 
-  const setComputeTargetId = (workerId: string | undefined) => onChange({ ...node, computeTargetId: workerId });
+  const setSandboxId = (workerId: string | undefined) => onChange({ ...node, sandboxId: workerId });
 
   return (
     <div style={{ padding: 8 }}>
-      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on compute target (override)</div>
+      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Run on sandbox (override)</div>
       <div className="je-props__field">
         <select
-          value={node.computeTargetId ?? ""}
+          value={node.sandboxId ?? ""}
           disabled={readOnly}
-          onChange={(e) => setComputeTargetId(e.target.value || undefined)}
+          onChange={(e) => setSandboxId(e.target.value || undefined)}
         >
-          <option value="">Use workflow compute target</option>
+          <option value="">Use workflow sandbox</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>{w.name} ({w.type} · {w.executionMode})</option>
           ))}

@@ -28,7 +28,7 @@ function folderName(url: string): string {
  * env.exec op "clone"). Only cloneRepos is sandbox-routed; other IGitProvider
  * methods (PRs, etc.) are remote REST and never reach this provider.
  */
-export class SandboxGitProvider implements Pick<IGitProvider, "cloneRepos"> {
+export class SandboxInstanceGitProvider implements Pick<IGitProvider, "cloneRepos"> {
   constructor(private exec: ExecFn) {}
 
   async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {

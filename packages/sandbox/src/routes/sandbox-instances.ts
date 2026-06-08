@@ -1,42 +1,42 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
-import { listActiveSandboxes, getSandbox, markSandboxDestroyed, type SandboxRecord } from "../sandbox-store.ts";
+import { listActiveSandboxInstances, getSandboxInstance, markSandboxInstanceDestroyed, type SandboxInstanceRecord } from "../sandbox-instance-store.ts";
 
-export interface SandboxRoutesDeps {
+export interface SandboxInstanceRoutesDeps {
   /** Destroy a sandbox's container + volume (backend-specific). */
-  destroy: (sb: SandboxRecord) => Promise<void>;
+  destroy: (sb: SandboxInstanceRecord) => Promise<void>;
   /** True while a run is still active (to detect orphans). */
   isRunActive: (runId: string) => Promise<boolean>;
 }
 
-export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool, deps: SandboxRoutesDeps): Promise<void> {
+export async function registerSandboxInstanceRoutes(app: FastifyInstance, pool: Pool, deps: SandboxInstanceRoutesDeps): Promise<void> {
   const requireAuth = makeRequireAuth({ pool });
 
   // List active sandboxes (admin).
-  app.get("/api/sandboxes", { preHandler: requireAuth({ role: "admin" }) }, async () => {
-    return listActiveSandboxes(pool);
+  app.get("/api/sandbox-instances", { preHandler: requireAuth({ role: "admin" }) }, async () => {
+    return listActiveSandboxInstances(pool);
   });
 
   // Force-destroy one sandbox by runId (admin).
-  app.delete("/api/sandboxes/:runId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.delete("/api/sandbox-instances/:runId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
     const { runId } = req.params as { runId: string };
-    const sb = await getSandbox(pool, runId);
+    const sb = await getSandboxInstance(pool, runId);
     if (!sb || sb.status !== "active") return reply.code(404).send({ error: "Not found" });
     await deps.destroy(sb);
-    await markSandboxDestroyed(pool, runId);
+    await markSandboxInstanceDestroyed(pool, runId);
     return { ok: true };
   });
 
   // Prune all orphaned sandboxes (run no longer active) (admin).
-  app.post("/api/sandboxes/prune", { preHandler: requireAuth({ role: "admin" }) }, async () => {
-    const active = await listActiveSandboxes(pool);
+  app.post("/api/sandbox-instances/prune", { preHandler: requireAuth({ role: "admin" }) }, async () => {
+    const active = await listActiveSandboxInstances(pool);
     const pruned: string[] = [];
     for (const sb of active) {
       if (await deps.isRunActive(sb.runId)) continue;
       try {
         await deps.destroy(sb);
-        await markSandboxDestroyed(pool, sb.runId);
+        await markSandboxInstanceDestroyed(pool, sb.runId);
         pruned.push(sb.runId);
       } catch { /* skip; next sweep retries */ }
     }

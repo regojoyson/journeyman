@@ -12,10 +12,10 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 import {
-  getSandbox, markSandboxDestroyed, listActiveSandboxes,
+  getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
   DockerExecutionEnvironment, makeDockerClient,
-  SandboxReaper, type SandboxRecord, type SandboxRoutesDeps,
-} from "@journeyman/compute";
+  SandboxInstanceReaper, type SandboxInstanceRecord, type SandboxInstanceRoutesDeps,
+} from "@journeyman/sandbox";
 import { isTerminalStatus } from "@journeyman/core";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
@@ -86,7 +86,7 @@ export interface Composition {
   /** The pg Pool (null when using the memory backend). */
   pool: Pool | null;
   /** Deps for the manual sandbox-cleanup routes (null when no pool). */
-  sandboxRoutesDeps?: SandboxRoutesDeps;
+  sandboxInstanceRoutesDeps?: SandboxInstanceRoutesDeps;
   /** Closed when the server shuts down. */
   shutdown: () => Promise<void>;
 }
@@ -158,7 +158,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const LOCAL_WORKSPACE_BASE = process.env.JOURNEYMAN_WORKSPACE_BASE_DIR
     ?? join(process.cwd(), ".journeyman", "workspaces");
 
-  const dockerDestroy = async (sb: SandboxRecord): Promise<void> => {
+  const dockerDestroy = async (sb: SandboxInstanceRecord): Promise<void> => {
     const client = makeDockerClient(sb.connection ?? { kind: "local" });
     const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
     await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
@@ -166,14 +166,14 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   /**
    * Type-dispatched sandbox destroyer used by both the per-run reaper and the
-   * periodic SandboxReaper.
+   * periodic SandboxInstanceReaper.
    *
    * - docker: delegate to dockerDestroy (container + volume teardown).
    * - local: rm -rf the run dir under LOCAL_WORKSPACE_BASE, unless retainWorkspace
    *   is set on the record (best-effort; the worker-host sweep in the worker handles
    *   local orphans authoritatively — this path only runs on the owning host).
    */
-  const destroyByType = async (sb: SandboxRecord): Promise<void> => {
+  const destroyByType = async (sb: SandboxInstanceRecord): Promise<void> => {
     if (sb.type === "docker") return dockerDestroy(sb);
     if (sb.type === "local") {
       // retainWorkspace is a worker-config flag; it is not stored on the sandbox
@@ -192,10 +192,10 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     events.append({ workflowInstanceId, eventType: "step.log", payload: { line } }).catch(() => undefined);
 
   // Task 16: eager pre-warm removed — the worker provisions on its first step
-  // (provision-if-missing / claimSandbox path in ensureWorkspace). Keeping the
+  // (provision-if-missing / claimSandboxInstance path in ensureWorkspace). Keeping the
   // function shape as a no-op so the orchestrator wiring is unchanged.
   const sandboxProvisioner = pool
-    ? async (_a: { workflowInstanceId: string; computeTargetId?: string; userId: string | null; orgId: string | null }) => {
+    ? async (_a: { workflowInstanceId: string; sandboxId?: string; userId: string | null; orgId: string | null }) => {
         // No-op: workspace provisioning is now owned by the worker (lazy, status-gated).
         // The ProvisioningReaper (below) detects stuck provisioning via
         // jm_sandbox_instances.status = 'provisioning' + age.
@@ -204,22 +204,22 @@ export function buildComposition(cfg: CompositionConfig): Composition {
 
   const sandboxReaper = pool
     ? async (workflowInstanceId: string) => {
-        const sb = await getSandbox(pool!, workflowInstanceId);
+        const sb = await getSandboxInstance(pool!, workflowInstanceId);
         if (!sb || sb.status !== "active") return;
         await destroyByType(sb);
-        await markSandboxDestroyed(pool!, workflowInstanceId);
+        await markSandboxInstanceDestroyed(pool!, workflowInstanceId);
         await logRun(workflowInstanceId, "Sandbox destroyed");
       }
     : undefined;
 
-  const sandboxRoutesDeps: SandboxRoutesDeps | undefined = pool ? { destroy: dockerDestroy, isRunActive } : undefined;
+  const sandboxInstanceRoutesDeps: SandboxInstanceRoutesDeps | undefined = pool ? { destroy: dockerDestroy, isRunActive } : undefined;
   let reaperStop: (() => void) | undefined;
   if (pool) {
-    const reaper = new SandboxReaper({
-      listActive: () => listActiveSandboxes(pool!),
+    const reaper = new SandboxInstanceReaper({
+      listActive: () => listActiveSandboxInstances(pool!),
       isRunActive,
       destroy: destroyByType,
-      markDestroyed: (id) => markSandboxDestroyed(pool!, id),
+      markDestroyed: (id) => markSandboxInstanceDestroyed(pool!, id),
     });
     reaperStop = reaper.start(Number(process.env.SANDBOX_REAP_INTERVAL_MS ?? 60_000));
   }
@@ -263,7 +263,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, auth, conditions,
     pool,
-    ...(sandboxRoutesDeps ? { sandboxRoutesDeps } : {}),
+    ...(sandboxInstanceRoutesDeps ? { sandboxInstanceRoutesDeps } : {}),
     // webhookWaitSweeper assigned below — needs the composition reference for its fire-handler.
     webhookWaitSweeper: null as unknown as WebhookWaitSweeper,
     shutdown: async () => { reaperStop?.(); provisioningReaperStop?.(); if (pool) await pool.end(); },

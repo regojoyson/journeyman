@@ -1,5 +1,5 @@
 import type {
-  ExecOp, ExecResult, ExecutionEnvironmentSpec, FileBundle, IExecutionEnvironment, ProvisionedEnv, ComputeTargetType,
+  ExecOp, ExecResult, ExecutionEnvironmentSpec, FileBundle, IExecutionEnvironment, ProvisionedEnv, SandboxType,
 } from "@journeyman/core";
 import type { IDockerClient } from "./docker-client.ts";
 
@@ -15,7 +15,7 @@ const DEFAULT_RUNNER_CMD = ["journeyman-runner"];
 const WORKSPACE = "/workspace";
 
 export class DockerExecutionEnvironment implements IExecutionEnvironment {
-  readonly type: ComputeTargetType = "docker";
+  readonly type: SandboxType = "docker";
 
   constructor(private deps: DockerExecutionEnvironmentDeps) {}
 
@@ -71,7 +71,7 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
     return rows
       .filter((r) => r.runId)
       .map((r) => ({
-        runId: r.runId, type: "docker" as ComputeTargetType, handle: r.id,
+        runId: r.runId, type: "docker" as SandboxType, handle: r.id,
         volume: `jm-run-${r.runId}`, workspaceDir: WORKSPACE,
       }));
   }

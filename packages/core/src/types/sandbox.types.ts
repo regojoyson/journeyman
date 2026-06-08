@@ -1,19 +1,19 @@
-import type { ComputeTargetType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
+import type { SandboxType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
 
-export type ComputeTargetScope = "user" | "org" | "system";
+export type SandboxScope = "user" | "org" | "system";
 
 export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
 
-/** A Compute Target row as stored in jm_compute_targets. */
-export interface ComputeTarget {
+/** A Sandbox row as stored in jm_sandboxes. */
+export interface Sandbox {
   id: string;
-  scope: ComputeTargetScope;
+  scope: SandboxScope;
   /** Set for org/user scope; null for system. */
   orgId: string | null;
   /** Set for user scope; null for org/system. */
   userId: string | null;
   name: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   executionMode: ExecutionMode;
   connectivity: Connectivity | null;
   config: Record<string, unknown>;
@@ -22,7 +22,7 @@ export interface ComputeTarget {
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
-  /** Managed-image build lifecycle (docker targets). 'none' = use the default box. */
+  /** Managed-image build lifecycle (docker sandboxes). 'none' = use the default box. */
   imageState: ImageState;
   imageFingerprint: string | null;
   imageRef: string | null;
@@ -30,12 +30,12 @@ export interface ComputeTarget {
   imageBuiltAt: Date | null;
 }
 
-export interface CreateComputeTargetArgs {
-  scope: ComputeTargetScope;
+export interface CreateSandboxArgs {
+  scope: SandboxScope;
   orgId: string | null;
   userId: string | null;
   name: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity | null;
   config?: Record<string, unknown>;
@@ -44,7 +44,7 @@ export interface CreateComputeTargetArgs {
   createdBy: string | null;
 }
 
-export interface UpdateComputeTargetArgs {
+export interface UpdateSandboxArgs {
   id: string;
   orgId: string | null;
   userId: string | null;

@@ -13,20 +13,15 @@ function flowWith(defaults: Record<string, unknown>): WorkflowGraph {
   } as unknown as WorkflowGraph;
 }
 
-describe("validateForPublish — compute target", () => {
-  it("errors when no compute target is set", () => {
+describe("validateForPublish — sandbox", () => {
+  it("errors when no sandbox is set", () => {
     const r = validateForPublish(flowWith({}), { hasTrigger: true });
     expect(r.ok).toBe(false);
-    expect(r.errors.some((e) => e.code === "missing_compute_target")).toBe(true);
+    expect(r.errors.some((e) => e.code === "missing_sandbox")).toBe(true);
   });
 
-  it("passes the compute-target check when defaults.computeTargetId is set", () => {
-    const r = validateForPublish(flowWith({ computeTargetId: "ct1" }), { hasTrigger: true });
-    expect(r.errors.some((e) => e.code === "missing_compute_target")).toBe(false);
-  });
-
-  it("accepts the legacy defaults.workerId field", () => {
-    const r = validateForPublish(flowWith({ workerId: "ct1" }), { hasTrigger: true });
-    expect(r.errors.some((e) => e.code === "missing_compute_target")).toBe(false);
+  it("passes the sandbox check when defaults.sandboxId is set", () => {
+    const r = validateForPublish(flowWith({ sandboxId: "sb1" }), { hasTrigger: true });
+    expect(r.errors.some((e) => e.code === "missing_sandbox")).toBe(false);
   });
 });

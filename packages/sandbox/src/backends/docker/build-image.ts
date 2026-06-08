@@ -17,7 +17,7 @@ export interface BuildBoxImageResult {
 }
 
 /**
- * Build (or reuse) a compute target's box image: the user's ref/dockerfile,
+ * Build (or reuse) a sandbox's box image: the user's ref/dockerfile,
  * auto-wrapped with the runner kit. Throws if the image is empty (the caller
  * should fall back to the default box instead of building).
  */

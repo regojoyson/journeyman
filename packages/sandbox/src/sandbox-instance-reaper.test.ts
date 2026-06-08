@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { SandboxReaper } from "./sandbox-reaper.ts";
-import type { SandboxRecord } from "./sandbox-store.ts";
+import { SandboxInstanceReaper } from "./sandbox-instance-reaper.ts";
+import type { SandboxInstanceRecord } from "./sandbox-instance-store.ts";
 
-function sb(runId: string): SandboxRecord {
+function sb(runId: string): SandboxInstanceRecord {
   return { runId, type: "docker", handle: `c-${runId}`, volume: `v-${runId}`, imageRef: null, owner: null, connection: null, status: "active" };
 }
 
-describe("SandboxReaper.reapOnce", () => {
+describe("SandboxInstanceReaper.reapOnce", () => {
   it("destroys + marks sandboxes whose run is no longer active", async () => {
     const destroyed: string[] = [];
     const marked: string[] = [];
-    const reaper = new SandboxReaper({
+    const reaper = new SandboxInstanceReaper({
       listActive: async () => [sb("a"), sb("b")],
       isRunActive: async (id) => id === "a",
       destroy: async (s) => { destroyed.push(s.runId); },
@@ -24,7 +24,7 @@ describe("SandboxReaper.reapOnce", () => {
 
   it("keeps sandboxes whose run is still active", async () => {
     const destroyed: string[] = [];
-    const reaper = new SandboxReaper({
+    const reaper = new SandboxInstanceReaper({
       listActive: async () => [sb("a")],
       isRunActive: async () => true,
       destroy: async (s) => { destroyed.push(s.runId); },
@@ -36,7 +36,7 @@ describe("SandboxReaper.reapOnce", () => {
 
   it("continues past a destroy error and still marks others", async () => {
     const marked: string[] = [];
-    const reaper = new SandboxReaper({
+    const reaper = new SandboxInstanceReaper({
       listActive: async () => [sb("a"), sb("b")],
       isRunActive: async () => false,
       destroy: async (s) => { if (s.runId === "a") throw new Error("docker down"); },

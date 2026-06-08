@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { Plug, Terminal, Globe, Box, FileText, Network } from "lucide-react";
 import { inputCls, selectCls } from "../../../routes/admin-styles.ts";
 import { Field, Code } from "./form-controls.tsx";
-import type { ComputeTargetTypeForm } from "./LocalConfigForm.tsx";
+import type { SandboxTypeForm } from "./LocalConfigForm.tsx";
 
 type ConnKind = "local" | "remote";
 type ImageKind = "ref" | "dockerfile";
@@ -81,7 +81,7 @@ const DockerConfigForm: FC<{ state: Record<string, unknown>; onChange: (s: Recor
     );
   };
 
-export const dockerTypeForm: ComputeTargetTypeForm = {
+export const dockerTypeForm: SandboxTypeForm = {
   icon: Box,
   testConnection: true,
   readConfig: (raw) => {

@@ -21,7 +21,7 @@ function payload(opts: Record<string, unknown>): Record<string, unknown> {
  * (container) via env.exec, instead of running it in-process. Handler logic is
  * unchanged; only the execution location differs.
  */
-export class SandboxCodingProvider implements ICodingCLI {
+export class SandboxInstanceCodingProvider implements ICodingCLI {
   constructor(private exec: ExecFn, private provider?: string) {}
 
   async runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {

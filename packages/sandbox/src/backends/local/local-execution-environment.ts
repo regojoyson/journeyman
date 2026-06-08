@@ -10,7 +10,7 @@ import type {
   IExecutionEnvironment,
   OperationRunner,
   ProvisionedEnv,
-  ComputeTargetType,
+  SandboxType,
 } from "@journeyman/core";
 
 export interface LocalExecutionEnvironmentDeps {
@@ -24,7 +24,7 @@ export interface LocalExecutionEnvironmentDeps {
  * Each run gets a dynamic instance folder `${baseDir}/${runId}`, shared across the run's steps.
  */
 export class LocalExecutionEnvironment implements IExecutionEnvironment {
-  readonly type: ComputeTargetType = "local";
+  readonly type: SandboxType = "local";
 
   constructor(private deps: LocalExecutionEnvironmentDeps) {}
 

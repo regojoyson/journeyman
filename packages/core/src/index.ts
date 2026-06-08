@@ -91,7 +91,7 @@ export type {
   IWorkspace, IWorkspaceProvider,
 } from "./interfaces/workspace-provider.interface.ts";
 export type {
-  ComputeTargetType,
+  SandboxType,
   ExecutionMode,
   Connectivity,
   ExecutionEnvironmentSpec,
@@ -100,17 +100,17 @@ export type {
   ExecResult,
   OperationRunner,
   IExecutionEnvironment,
-  ResolvedComputeTarget,
+  ResolvedSandbox,
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
   FileBundle,
 } from "./types/execution-environment.types.ts";
 export type {
-  ComputeTargetScope,
-  ComputeTarget,
-  CreateComputeTargetArgs,
-  UpdateComputeTargetArgs,
-} from "./types/compute-target.types.ts";
+  SandboxScope,
+  Sandbox,
+  CreateSandboxArgs,
+  UpdateSandboxArgs,
+} from "./types/sandbox.types.ts";
 export type { IConditionEvaluator } from "./interfaces/condition-evaluator.interface.ts";
 export type { IAuthProvider, IUserContext } from "./interfaces/auth-provider.interface.ts";
 export type { IWorkflowJsonConverter } from "./interfaces/flow-json-converter.interface.ts";

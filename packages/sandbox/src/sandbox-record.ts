@@ -1,50 +1,50 @@
-import type { Connectivity, ExecutionMode, ComputeTargetType } from "@journeyman/core";
-import type { ComputeTarget, ComputeTargetScope } from "@journeyman/core";
+import type { Connectivity, ExecutionMode, SandboxType } from "@journeyman/core";
+import type { Sandbox, SandboxScope } from "@journeyman/core";
 
-export class InvalidComputeTargetInputError extends Error {}
+export class InvalidSandboxInputError extends Error {}
 
-const WORKER_TYPES: ComputeTargetType[] = [
+const WORKER_TYPES: SandboxType[] = [
   "local", "docker", "machine-linux", "machine-windows", "ecs", "ec2", "kubernetes", "cloud",
 ];
 const MODES: ExecutionMode[] = ["per-instance", "shared"];
 const CONNECTIVITY: Connectivity[] = ["push", "agent"];
 
-export interface ComputeTargetInputShape {
+export interface SandboxInputShape {
   name?: unknown;
   type?: unknown;
   executionMode?: unknown;
   connectivity?: unknown;
 }
 
-/** Validate the shape of a create/update worker request body. Throws InvalidComputeTargetInputError. */
-export function validateComputeTargetInput(input: ComputeTargetInputShape): void {
+/** Validate the shape of a create/update worker request body. Throws InvalidSandboxInputError. */
+export function validateSandboxInput(input: SandboxInputShape): void {
   if (typeof input.name !== "string" || input.name.trim().length === 0) {
-    throw new InvalidComputeTargetInputError("worker name is required");
+    throw new InvalidSandboxInputError("worker name is required");
   }
-  if (!WORKER_TYPES.includes(input.type as ComputeTargetType)) {
-    throw new InvalidComputeTargetInputError(`unknown worker type '${String(input.type)}'`);
+  if (!WORKER_TYPES.includes(input.type as SandboxType)) {
+    throw new InvalidSandboxInputError(`unknown worker type '${String(input.type)}'`);
   }
   if (!MODES.includes(input.executionMode as ExecutionMode)) {
-    throw new InvalidComputeTargetInputError(`unknown executionMode '${String(input.executionMode)}'`);
+    throw new InvalidSandboxInputError(`unknown executionMode '${String(input.executionMode)}'`);
   }
   if (
     input.connectivity !== undefined &&
     input.connectivity !== null &&
     !CONNECTIVITY.includes(input.connectivity as Connectivity)
   ) {
-    throw new InvalidComputeTargetInputError(`unknown connectivity '${String(input.connectivity)}'`);
+    throw new InvalidSandboxInputError(`unknown connectivity '${String(input.connectivity)}'`);
   }
 }
 
-/** Map a jm_compute_targets DB row (snake_case) to a ComputeTarget (camelCase). */
-export function rowToComputeTarget(r: Record<string, any>): ComputeTarget {
+/** Map a jm_sandboxes DB row (snake_case) to a Sandbox (camelCase). */
+export function rowToSandbox(r: Record<string, any>): Sandbox {
   return {
     id: r.id,
-    scope: r.scope as ComputeTargetScope,
+    scope: r.scope as SandboxScope,
     orgId: r.org_id ?? null,
     userId: r.user_id ?? null,
     name: r.name,
-    type: r.type as ComputeTargetType,
+    type: r.type as SandboxType,
     executionMode: r.execution_mode as ExecutionMode,
     connectivity: (r.connectivity ?? null) as Connectivity | null,
     config: (r.config ?? {}) as Record<string, unknown>,
@@ -53,7 +53,7 @@ export function rowToComputeTarget(r: Record<string, any>): ComputeTarget {
     createdBy: r.created_by ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    imageState: (r.image_state ?? "none") as ComputeTarget["imageState"],
+    imageState: (r.image_state ?? "none") as Sandbox["imageState"],
     imageFingerprint: r.image_fingerprint ?? null,
     imageRef: r.image_ref ?? null,
     imageError: r.image_error ?? null,

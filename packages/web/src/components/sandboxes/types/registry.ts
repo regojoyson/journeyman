@@ -1,10 +1,10 @@
-import type { ComputeTargetType } from "../../../api/computeTargets.ts";
-import type { ComputeTargetTypeForm } from "./LocalConfigForm.tsx";
+import type { SandboxType } from "../../../api/sandboxes.ts";
+import type { SandboxTypeForm } from "./LocalConfigForm.tsx";
 import { localTypeForm } from "./LocalConfigForm.tsx";
 import { dockerTypeForm } from "./DockerConfigForm.tsx";
 
 /** Drop-in point: add a new type's form descriptor here when its backend ships. */
-export const computeTargetTypeForms: Partial<Record<ComputeTargetType, ComputeTargetTypeForm>> = {
+export const sandboxTypeForms: Partial<Record<SandboxType, SandboxTypeForm>> = {
   local: localTypeForm,
   docker: dockerTypeForm,
 };

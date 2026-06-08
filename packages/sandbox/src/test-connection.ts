@@ -1,4 +1,4 @@
-import type { ComputeTargetType } from "@journeyman/core";
+import type { SandboxType } from "@journeyman/core";
 import type { IDockerClient, DockerConnection } from "./backends/docker/docker-client.ts";
 
 export interface ConnectionTestResult { ok: boolean; error?: string }
@@ -9,7 +9,7 @@ export interface RunWorkerConnectionTestDeps {
 
 /** Validate that a worker's connection config can reach its target. Docker only for now. */
 export async function runWorkerConnectionTest(
-  input: { type: ComputeTargetType; config: Record<string, unknown> },
+  input: { type: SandboxType; config: Record<string, unknown> },
   deps: RunWorkerConnectionTestDeps,
 ): Promise<ConnectionTestResult> {
   if (input.type !== "docker") {

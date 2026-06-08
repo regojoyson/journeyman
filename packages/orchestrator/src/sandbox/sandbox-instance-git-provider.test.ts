@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { ExecOp, ExecResult } from "@journeyman/core";
-import { SandboxGitProvider } from "./sandbox-git-provider.ts";
+import { SandboxInstanceGitProvider } from "./sandbox-instance-git-provider.ts";
 
-describe("SandboxGitProvider", () => {
+describe("SandboxInstanceGitProvider", () => {
   it("cloneRepos forwards each repo to op 'clone' and aggregates results", async () => {
     const ops: ExecOp[] = [];
     const exec = async (op: ExecOp): Promise<ExecResult> => { ops.push(op); return { ok: true, structured: { dir: "x" } }; };
-    const p = new SandboxGitProvider(exec);
+    const p = new SandboxInstanceGitProvider(exec);
     const res = await p.cloneRepos({ repos: "https://git/x.git", workspaceDir: "/workspace", branch: "main" });
     expect(res.error).toBeUndefined();
     expect(res.repos[0].repoDir).toBe("/workspace/x");
@@ -19,13 +19,13 @@ describe("SandboxGitProvider", () => {
     const ops: ExecOp[] = [];
     const exec = async (op: ExecOp): Promise<ExecResult> => { ops.push(op); return { ok: true }; };
     const onLog = () => {};
-    await new SandboxGitProvider(exec).cloneRepos({ repos: "https://git/x.git", onLog });
+    await new SandboxInstanceGitProvider(exec).cloneRepos({ repos: "https://git/x.git", onLog });
     expect(ops[0].onLog).toBe(onLog);
   });
 
   it("cloneRepos returns an error when a clone fails", async () => {
     const exec = async (): Promise<ExecResult> => ({ ok: false, error: "auth failed" });
-    const p = new SandboxGitProvider(exec);
+    const p = new SandboxInstanceGitProvider(exec);
     const res = await p.cloneRepos({ repos: ["https://git/x.git"], workspaceDir: "/workspace" });
     expect(res.error).toMatch(/auth failed/);
     expect(res.repos[0].error).toMatch(/auth failed/);

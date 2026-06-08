@@ -48,7 +48,7 @@ export interface WorkerHarnessDeps {
    */
   ensureWorkspace: (args: {
     runId: string;
-    computeTargetId: string | undefined;
+    sandboxId: string | undefined;
     userId: string | null;
     orgId: string | null;
     log?: (line: string) => void;
@@ -304,7 +304,7 @@ export class WorkerHarness {
     let materializeFn: import("@journeyman/core").StepContext["materialize"];
 
     if (needsWorkspace) {
-      const computeTargetId = (stepInput as { computeTargetId?: string }).computeTargetId;
+      const sandboxId = (stepInput as { sandboxId?: string }).sandboxId;
       const provisionLogLevel =
         typeof (stepInput as { agentLogLevel?: string }).agentLogLevel === "string"
           ? (stepInput as { agentLogLevel: string }).agentLogLevel
@@ -312,7 +312,7 @@ export class WorkerHarness {
       const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
       const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
         runId: workflowInstanceId,
-        computeTargetId,
+        sandboxId,
         userId,
         orgId,
         log: (line: string) =>
@@ -377,7 +377,7 @@ export class WorkerHarness {
       }
     } catch (err: any) {
       const durationMs = Date.now() - startedAt;
-      if (err?.name === "ConfigurationError" || err?.name === "ComputeTargetNotFoundError") {
+      if (err?.name === "ConfigurationError" || err?.name === "SandboxNotFoundError") {
         rlog.error({ message: err.message, durationMs }, "step failed: configuration error");
         await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "configuration_error",

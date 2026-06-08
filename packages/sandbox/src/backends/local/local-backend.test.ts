@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { tmpdir } from "node:os";
-import type { OperationRunner, ResolvedComputeTarget } from "@journeyman/core";
+import type { OperationRunner, ResolvedSandbox } from "@journeyman/core";
 import { LocalBackend } from "./local-backend.ts";
 
 const noopRunner: OperationRunner = async () => ({ ok: true });
 const deps = { runOperation: noopRunner, defaultBaseDir: tmpdir() };
 
-function worker(config: unknown): ResolvedComputeTarget {
+function worker(config: unknown): ResolvedSandbox {
   return { id: "w1", type: "local", executionMode: "shared", config };
 }
 

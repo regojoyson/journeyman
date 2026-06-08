@@ -2,7 +2,7 @@ import { createLogger, parseRepoList } from "@journeyman/core";
 import type {
   IGitProvider, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
-import { SandboxGitProvider } from "../../sandbox/sandbox-git-provider.ts";
+import { SandboxInstanceGitProvider } from "../../sandbox/sandbox-instance-git-provider.ts";
 
 const log = createLogger("worker:clone-repos");
 
@@ -46,7 +46,7 @@ export class CloneReposStepHandler implements IStepHandler {
     }
 
     const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
-      ? new SandboxGitProvider(ctx.exec)
+      ? new SandboxInstanceGitProvider(ctx.exec)
       : this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
 
     const agentLogLevel = typeof input.agentLogLevel === "string" ? input.agentLogLevel : "light";

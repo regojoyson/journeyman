@@ -1,11 +1,11 @@
 import type {
   ExecutionEnvironmentBackend,
   IExecutionEnvironmentRegistry,
-  ComputeTargetType,
+  SandboxType,
 } from "@journeyman/core";
 
 export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironmentRegistry {
-  private byType = new Map<ComputeTargetType, ExecutionEnvironmentBackend>();
+  private byType = new Map<SandboxType, ExecutionEnvironmentBackend>();
 
   register(backend: ExecutionEnvironmentBackend): void {
     if (this.byType.has(backend.type)) {
@@ -14,7 +14,7 @@ export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironme
     this.byType.set(backend.type, backend);
   }
 
-  get(type: ComputeTargetType): ExecutionEnvironmentBackend {
+  get(type: SandboxType): ExecutionEnvironmentBackend {
     const backend = this.byType.get(type);
     if (!backend) {
       throw new Error(`No execution backend registered for type '${type}'`);
@@ -22,7 +22,7 @@ export class InMemoryExecutionEnvironmentRegistry implements IExecutionEnvironme
     return backend;
   }
 
-  available(): ComputeTargetType[] {
+  available(): SandboxType[] {
     return [...this.byType.keys()];
   }
 }

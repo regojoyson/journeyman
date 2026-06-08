@@ -11,7 +11,7 @@ function fakeEnv(handle: string) {
 describe("ensureWorkspace", () => {
   it("connects when an active sandbox already exists", async () => {
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue({
+      getSandboxInstance: vi.fn().mockResolvedValue({
         runId: "r",
         type: "docker",
         status: "active",
@@ -24,11 +24,11 @@ describe("ensureWorkspace", () => {
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
       waitActive: vi.fn(),
-      resolveComputeTarget: vi.fn(),
+      resolveSandbox: vi.fn(),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      computeTargetId: undefined,
+      sandboxId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -38,39 +38,39 @@ describe("ensureWorkspace", () => {
 
   it("waits when another worker is provisioning (existing row has provisioning status)", async () => {
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "provisioning" }),
+      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "provisioning" }),
       claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c2", volume: null, connection: null }),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c2")),
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      computeTargetId: undefined,
+      sandboxId: undefined,
       userId: "u",
       orgId: "o",
     });
     expect(deps.waitActive).toHaveBeenCalled();
     expect(r.provisioned.handle).toBe("c2");
-    // claim must NOT have been called — we noticed provisioning from getSandbox
+    // claim must NOT have been called — we noticed provisioning from getSandboxInstance
     expect(deps.claim).not.toHaveBeenCalled();
   });
 
   it("waits when claim race is lost (no existing row but claim returns false)", async () => {
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c3", volume: null, connection: null }),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c3")),
       provisionLocal: vi.fn(),
       markActive: vi.fn(),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      computeTargetId: undefined,
+      sandboxId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -80,17 +80,17 @@ describe("ensureWorkspace", () => {
 
   it("provisions docker when claim is won", async () => {
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       waitActive: vi.fn(),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c4"), imageRef: "img:1", connection: { kind: "local" } }),
       provisionLocal: vi.fn(),
       markActive: vi.fn().mockResolvedValue(undefined),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      computeTargetId: undefined,
+      sandboxId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -103,17 +103,17 @@ describe("ensureWorkspace", () => {
   it("provisions local when claim is won and worker type is local", async () => {
     const localProvisioned = { runId: "r", type: "local" as const, handle: "local:r", workspaceDir: "/tmp/ws/r" };
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       waitActive: vi.fn(),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "local", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "local", config: {} }),
       provisionLocal: vi.fn().mockResolvedValue({ env: {}, provisioned: localProvisioned }),
       provisionDocker: vi.fn(),
       markActive: vi.fn().mockResolvedValue(undefined),
     };
     const r = await ensureWorkspace(deps as any, {
       runId: "r",
-      computeTargetId: undefined,
+      sandboxId: undefined,
       userId: "u",
       orgId: "o",
     });
@@ -124,25 +124,25 @@ describe("ensureWorkspace", () => {
   });
 
   it("fails loud when user/org missing", async () => {
-    const deps = { getSandbox: vi.fn().mockResolvedValue(null) } as any;
+    const deps = { getSandboxInstance: vi.fn().mockResolvedValue(null) } as any;
     await expect(
-      ensureWorkspace(deps, { runId: "r", computeTargetId: undefined, userId: null, orgId: null }),
+      ensureWorkspace(deps, { runId: "r", sandboxId: undefined, userId: null, orgId: null }),
     ).rejects.toThrow(/user\/org/i);
   });
 
   it("emits lifecycle logs on the docker provision (won) path", async () => {
     const lines: string[] = [];
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       markActive: vi.fn().mockResolvedValue(undefined),
       waitActive: vi.fn(),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c1"), imageRef: "img:dev" }),
       provisionLocal: vi.fn(),
     };
     await ensureWorkspace(deps as any, {
-      runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+      runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
     });
     expect(lines.some((l) => /provisioning docker workspace/i.test(l))).toBe(true);
     expect(lines.some((l) => /workspace ready/i.test(l))).toBe(true);
@@ -151,12 +151,12 @@ describe("ensureWorkspace", () => {
   it("emits 'using existing workspace' on the connect path", async () => {
     const lines: string[] = [];
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { kind: "local" } }),
+      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { kind: "local" } }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c1")),
-      claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveComputeTarget: vi.fn(),
+      claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveSandbox: vi.fn(),
     };
     await ensureWorkspace(deps as any, {
-      runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+      runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
     });
     expect(lines.some((l) => /using existing workspace/i.test(l))).toBe(true);
   });
@@ -164,15 +164,15 @@ describe("ensureWorkspace", () => {
   it("logs a failure line when provisioning throws", async () => {
     const lines: string[] = [];
     const deps = {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
-      resolveComputeTarget: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
+      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
       provisionDocker: vi.fn().mockRejectedValue(new Error("daemon down")),
       provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(),
     };
     await expect(
       ensureWorkspace(deps as any, {
-        runId: "r", computeTargetId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
+        runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
       }),
     ).rejects.toThrow(/daemon down/);
     expect(lines.some((l) => /provisioning failed/i.test(l))).toBe(true);
@@ -182,11 +182,11 @@ describe("ensureWorkspace", () => {
 describe("ensureWorkspace run-gating (Spec B managed images)", () => {
   function baseDeps(target: any, over: Partial<any> = {}) {
     return {
-      getSandbox: vi.fn().mockResolvedValue(null),
+      getSandboxInstance: vi.fn().mockResolvedValue(null),
       claim: vi.fn().mockResolvedValue(true),
       markActive: vi.fn().mockResolvedValue(undefined),
       waitActive: vi.fn(),
-      resolveComputeTarget: vi.fn().mockResolvedValue(target),
+      resolveSandbox: vi.fn().mockResolvedValue(target),
       provisionLocal: vi.fn(),
       provisionDocker: vi.fn().mockResolvedValue({
         env: {}, provisioned: { handle: "h", workspaceDir: "/workspace", type: "docker" },
@@ -196,7 +196,7 @@ describe("ensureWorkspace run-gating (Spec B managed images)", () => {
       ...over,
     };
   }
-  const args = { runId: "r1", computeTargetId: "t1", userId: "u", orgId: "o" };
+  const args = { runId: "r1", sandboxId: "t1", userId: "u", orgId: "o" };
 
   it("provisions a ready docker image with its imageRef", async () => {
     const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },

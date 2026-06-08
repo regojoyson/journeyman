@@ -381,7 +381,7 @@ class ConvertCtx {
           retry: resolvedNode.retry ?? {},
           secretBindings: bindings,
           ...(resolvedNode.model ? { model: resolvedNode.model } : {}),
-          ...(resolvedNode.computeTargetId ? { computeTargetId: resolvedNode.computeTargetId } : {}),
+          ...(resolvedNode.sandboxId ? { sandboxId: resolvedNode.sandboxId } : {}),
           _flowDefaultSources: defaultSources,
           _kindProviders: kindProviders,
           workflowInstanceId: "${workflow.input.workflowInstanceId}",

@@ -1,34 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { validateComputeTargetInput, rowToComputeTarget, InvalidComputeTargetInputError } from "./compute-target-record.ts";
+import { validateSandboxInput, rowToSandbox, InvalidSandboxInputError } from "./sandbox-record.ts";
 
-describe("validateComputeTargetInput", () => {
+describe("validateSandboxInput", () => {
   const ok = { name: "Java builder", type: "docker", executionMode: "per-instance" };
 
   it("accepts a valid worker", () => {
-    expect(() => validateComputeTargetInput(ok)).not.toThrow();
+    expect(() => validateSandboxInput(ok)).not.toThrow();
   });
 
   it("rejects empty name", () => {
-    expect(() => validateComputeTargetInput({ ...ok, name: "  " })).toThrow(InvalidComputeTargetInputError);
+    expect(() => validateSandboxInput({ ...ok, name: "  " })).toThrow(InvalidSandboxInputError);
   });
 
   it("rejects an unknown type", () => {
-    expect(() => validateComputeTargetInput({ ...ok, type: "mainframe" })).toThrow(/type/);
+    expect(() => validateSandboxInput({ ...ok, type: "mainframe" })).toThrow(/type/);
   });
 
   it("rejects an unknown execution mode", () => {
-    expect(() => validateComputeTargetInput({ ...ok, executionMode: "whenever" })).toThrow(/executionMode/);
+    expect(() => validateSandboxInput({ ...ok, executionMode: "whenever" })).toThrow(/executionMode/);
   });
 
   it("rejects an unknown connectivity", () => {
-    expect(() => validateComputeTargetInput({ ...ok, connectivity: "carrier-pigeon" })).toThrow(/connectivity/);
+    expect(() => validateSandboxInput({ ...ok, connectivity: "carrier-pigeon" })).toThrow(/connectivity/);
   });
 });
 
-describe("rowToComputeTarget", () => {
-  it("maps a snake_case DB row to a ComputeTarget and parses config/tags", () => {
+describe("rowToSandbox", () => {
+  it("maps a snake_case DB row to a Sandbox and parses config/tags", () => {
     const created = new Date("2026-05-30T00:00:00Z");
-    const rec = rowToComputeTarget({
+    const rec = rowToSandbox({
       id: "w1",
       scope: "org",
       org_id: "o1",
@@ -69,7 +69,7 @@ describe("rowToComputeTarget", () => {
   });
 
   it("maps image_* columns when present", () => {
-    const ct = rowToComputeTarget({
+    const ct = rowToSandbox({
       id: "t1", scope: "org", org_id: "o1", user_id: null, name: "Python",
       type: "docker", execution_mode: "per-instance", connectivity: "push",
       config: {}, is_default: false, tags: [], enabled: true, created_by: null,
@@ -83,7 +83,7 @@ describe("rowToComputeTarget", () => {
   });
 
   it("defaults image_state to 'none' when the column is absent", () => {
-    const ct = rowToComputeTarget({
+    const ct = rowToSandbox({
       id: "t2", scope: "system", org_id: null, user_id: null, name: "Local",
       type: "local", execution_mode: "shared", connectivity: null,
       config: {}, is_default: true, tags: [], enabled: true, created_by: null,

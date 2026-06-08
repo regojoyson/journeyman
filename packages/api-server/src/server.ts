@@ -17,7 +17,7 @@ import { registerWorkflowTriggersRoute } from "./routes/workflow-triggers.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
-import { registerComputeTargetRoutes, registerSandboxRoutes } from "@journeyman/compute";
+import { registerSandboxRoutes, registerSandboxInstanceRoutes } from "@journeyman/sandbox";
 import { registerSkillRoutes } from "@journeyman/skills";
 import { registerCustomStepRoutes } from "@journeyman/custom-steps";
 import { registerCodingModelRoutes } from "@journeyman/coding-models";
@@ -40,8 +40,8 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   if (c.pool) {
     await registerSecretsRoutes(app, c.pool);
     await registerMcpRoutes(app, c.pool);
-    await registerComputeTargetRoutes(app, c.pool);
-    if (c.sandboxRoutesDeps) await registerSandboxRoutes(app, c.pool, c.sandboxRoutesDeps);
+    await registerSandboxRoutes(app, c.pool);
+    if (c.sandboxInstanceRoutesDeps) await registerSandboxInstanceRoutes(app, c.pool, c.sandboxInstanceRoutesDeps);
     await registerSkillRoutes(app, c.pool);
     await registerCustomStepRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);

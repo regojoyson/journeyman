@@ -1,12 +1,12 @@
-import type { SandboxRecord } from "./sandbox-store.ts";
+import type { SandboxInstanceRecord } from "./sandbox-instance-store.ts";
 
-export interface SandboxReaperDeps {
+export interface SandboxInstanceReaperDeps {
   /** Active tracked sandboxes. */
-  listActive: () => Promise<SandboxRecord[]>;
+  listActive: () => Promise<SandboxInstanceRecord[]>;
   /** True while the run is still running/non-terminal. */
   isRunActive: (runId: string) => Promise<boolean>;
   /** Destroy the sandbox's container + volume. */
-  destroy: (sb: SandboxRecord) => Promise<void>;
+  destroy: (sb: SandboxInstanceRecord) => Promise<void>;
   /** Mark the tracking row destroyed. */
   markDestroyed: (runId: string) => Promise<void>;
   /** Optional logger. */
@@ -14,10 +14,10 @@ export interface SandboxReaperDeps {
 }
 
 /** Reaps sandboxes whose run is terminal/gone but whose container was left behind. */
-export class SandboxReaper {
+export class SandboxInstanceReaper {
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private deps: SandboxReaperDeps) {}
+  constructor(private deps: SandboxInstanceReaperDeps) {}
 
   /** One sweep. Returns the number of sandboxes fully reaped. */
   async reapOnce(): Promise<number> {

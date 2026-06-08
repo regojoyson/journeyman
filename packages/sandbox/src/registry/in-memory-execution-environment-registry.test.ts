@@ -2,20 +2,20 @@ import { describe, it, expect } from "vitest";
 import type {
   ExecutionEnvironmentBackend,
   IExecutionEnvironment,
-  ResolvedComputeTarget,
-  ComputeTargetType,
+  ResolvedSandbox,
+  SandboxType,
 } from "@journeyman/core";
 import { InMemoryExecutionEnvironmentRegistry } from "./in-memory-execution-environment-registry.ts";
 
 const fakeEnv = {} as IExecutionEnvironment;
 
-function fakeBackend(type: ComputeTargetType): ExecutionEnvironmentBackend {
+function fakeBackend(type: SandboxType): ExecutionEnvironmentBackend {
   return {
     type,
     supportedModes: ["shared"],
     supportedConnectivity: [],
     validateConfig: () => {},
-    create: (_w: ResolvedComputeTarget) => fakeEnv,
+    create: (_w: ResolvedSandbox) => fakeEnv,
   };
 }
 

@@ -15,7 +15,7 @@ import {
 import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
 import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
-import { SandboxCodingProvider } from "../../sandbox/sandbox-coding-provider.ts";
+import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
 
 const log = createLogger("worker:custom-ai");
@@ -169,7 +169,7 @@ export class CustomAiStepHandler implements IStepHandler {
     );
 
     const coding = ctx.exec
-      ? new SandboxCodingProvider(ctx.exec, provider)
+      ? new SandboxInstanceCodingProvider(ctx.exec, provider)
       : this.deps.coding(provider, ctx.env);
 
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;

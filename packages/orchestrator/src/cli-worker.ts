@@ -17,9 +17,9 @@ import type {
 } from "@journeyman/core";
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
-  makeDockerClient, getSandbox, claimSandbox, markSandboxActive, resolveComputeTarget,
+  makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
   markImagePending, startBuildLoop, ensureKitImage,
-} from "@journeyman/compute";
+} from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
 import { ConsoleProvider } from "@journeyman/notification-provider";
@@ -94,7 +94,7 @@ async function waitActive(
 ): Promise<{ handle: string; volume?: string | null; connection?: unknown }> {
   const start = Date.now();
   for (;;) {
-    const sb = await getSandbox(db, runId);
+    const sb = await getSandboxInstance(db, runId);
     if (sb?.status === "active") {
       return { handle: sb.handle, volume: sb.volume, connection: sb.connection };
     }
@@ -111,7 +111,7 @@ async function waitActive(
  */
 const ensureWs = (a: {
   runId: string;
-  computeTargetId: string | undefined;
+  sandboxId: string | undefined;
   userId: string | null;
   orgId: string | null;
   log?: (line: string) => void;
@@ -119,14 +119,14 @@ const ensureWs = (a: {
 }) =>
   ensureWorkspace(
     {
-      getSandbox: (id) => (pool ? getSandbox(pool, id) : Promise.resolve(null)),
-      claim: (row) => (pool ? claimSandbox(pool, row) : Promise.resolve(true)),
-      markActive: (id, patch) => (pool ? markSandboxActive(pool, id, patch) : Promise.resolve()),
+      getSandboxInstance: (id) => (pool ? getSandboxInstance(pool, id) : Promise.resolve(null)),
+      claim: (row) => (pool ? claimSandboxInstance(pool, row) : Promise.resolve(true)),
+      markActive: (id, patch) => (pool ? markSandboxInstanceActive(pool, id, patch) : Promise.resolve()),
       waitActive: (id, ms) =>
         pool ? waitActive(pool, id, ms) : Promise.reject(new Error("no pool")),
-      resolveComputeTarget: async (computeTargetId, ctx) => {
+      resolveSandbox: async (sandboxId, ctx) => {
         if (pool) {
-          const w = await resolveComputeTarget(pool, ctx, computeTargetId);
+          const w = await resolveSandbox(pool, ctx, sandboxId);
           return {
             type: w.type,
             config: (w.config ?? {}) as Record<string, unknown>,
@@ -362,7 +362,7 @@ const harness = new WorkerHarness({
   ensureWorkspace: ensureWs,
 });
 
-// Spec B: build managed compute-target images ahead of time (this process holds
+// Spec B: build managed sandbox images ahead of time (this process holds
 // the Docker connection). Claims pending targets, builds, marks ready/failed.
 const stopBuildLoop = pool
   ? startBuildLoop({

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { Queryable } from "./db.ts";
 import {
-  insertComputeTarget,
-  listComputeTargets,
-  getComputeTarget,
-  deleteComputeTarget,
-  listVisibleComputeTargets,
-  fetchComputeTargetById,
+  insertSandbox,
+  listSandboxes,
+  getSandbox,
+  deleteSandbox,
+  listVisibleSandboxes,
+  fetchSandboxById,
 } from "./db.ts";
 
 /** Records the last query and returns canned rows. */
@@ -29,53 +29,53 @@ const row = {
 };
 
 describe("workers db store", () => {
-  it("insertComputeTarget INSERTs and returns the mapped record", async () => {
+  it("insertSandbox INSERTs and returns the mapped record", async () => {
     const db = fakeDb([row]);
-    const rec = await insertComputeTarget(db, {
+    const rec = await insertSandbox(db, {
       scope: "org", orgId: "o1", userId: null, name: "Java builder",
       type: "docker", executionMode: "per-instance", connectivity: "push",
       config: {}, createdBy: "u1",
     });
-    expect(db.calls[0].text).toMatch(/insert into jm_compute_targets/i);
+    expect(db.calls[0].text).toMatch(/insert into jm_sandboxes/i);
     expect(rec.id).toBe("w1");
     expect(rec.type).toBe("docker");
   });
 
-  it("listComputeTargets scopes org rows with user_id IS NULL", async () => {
+  it("listSandboxes scopes org rows with user_id IS NULL", async () => {
     const db = fakeDb([row]);
-    await listComputeTargets(db, { orgId: "o1", userId: null });
+    await listSandboxes(db, { orgId: "o1", userId: null });
     expect(db.calls[0].text).toMatch(/user_id is null/i);
     expect(db.calls[0].params).toEqual(["o1"]);
   });
 
-  it("listComputeTargets scopes user rows with user_id = $2", async () => {
+  it("listSandboxes scopes user rows with user_id = $2", async () => {
     const db = fakeDb([row]);
-    await listComputeTargets(db, { orgId: "o1", userId: "u1" });
+    await listSandboxes(db, { orgId: "o1", userId: "u1" });
     expect(db.calls[0].text).toMatch(/user_id = \$2/i);
     expect(db.calls[0].params).toEqual(["o1", "u1"]);
   });
 
-  it("getComputeTarget returns null when no row", async () => {
+  it("getSandbox returns null when no row", async () => {
     const db = fakeDb([]);
-    const rec = await getComputeTarget(db, "missing", "o1", null);
+    const rec = await getSandbox(db, "missing", "o1", null);
     expect(rec).toBeNull();
   });
 
-  it("deleteComputeTarget returns false when nothing deleted", async () => {
+  it("deleteSandbox returns false when nothing deleted", async () => {
     const db = { async query() { return { rows: [] }; } } as Queryable;
-    expect(await deleteComputeTarget(db, "x", "o1", null)).toBe(false);
+    expect(await deleteSandbox(db, "x", "o1", null)).toBe(false);
   });
 
-  it("listVisibleComputeTargets includes system + org + user scope", async () => {
+  it("listVisibleSandboxes includes system + org + user scope", async () => {
     const db = fakeDb([row]);
-    await listVisibleComputeTargets(db, "o1", "u1");
+    await listVisibleSandboxes(db, "o1", "u1");
     expect(db.calls[0].text).toMatch(/scope = 'system'/i);
     expect(db.calls[0].params).toEqual(["o1", "u1"]);
   });
 
-  it("fetchComputeTargetById matches system OR org OR user scope", async () => {
+  it("fetchSandboxById matches system OR org OR user scope", async () => {
     const db = fakeDb([row]);
-    const rec = await fetchComputeTargetById(db, "o1", "u1", "w1");
+    const rec = await fetchSandboxById(db, "o1", "u1", "w1");
     expect(db.calls[0].text).toMatch(/where id = \$1/i);
     expect(db.calls[0].params).toEqual(["w1", "o1", "u1"]);
     expect(rec?.id).toBe("w1");

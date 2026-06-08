@@ -7,7 +7,7 @@ export type ImageConfig =
   | undefined;
 
 /**
- * The effective Dockerfile we will build for a compute target's image, with the
+ * The effective Dockerfile we will build for a sandbox's image, with the
  * runner kit always grafted on. Returns null when no build is needed (empty
  * image → the default runner box already contains the kit).
  */

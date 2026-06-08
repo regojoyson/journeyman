@@ -5,17 +5,17 @@ export { LocalBackend } from "./backends/local/local-backend.ts";
 export type { LocalWorkerConfig, LocalBackendDeps } from "./backends/local/local-backend.ts";
 export { createDefaultRegistry } from "./default-registry.ts";
 export type { DefaultRegistryOptions } from "./default-registry.ts";
-export { COMPUTE_TARGET_CATALOG } from "./compute-target-catalog.ts";
-export type { ComputeTargetTypeDescriptor } from "./compute-target-catalog.ts";
+export { SANDBOX_CATALOG } from "./sandbox-catalog.ts";
+export type { SandboxTypeDescriptor } from "./sandbox-catalog.ts";
 export type { Queryable } from "./db.ts";
 export {
-  insertComputeTarget, listComputeTargets, getComputeTarget, updateComputeTarget, deleteComputeTarget,
-  listVisibleComputeTargets, fetchComputeTargetById,
+  insertSandbox, listSandboxes, getSandbox, updateSandbox, deleteSandbox,
+  listVisibleSandboxes, fetchSandboxById,
 } from "./db.ts";
-export { rowToComputeTarget, validateComputeTargetInput, InvalidComputeTargetInputError } from "./compute-target-record.ts";
-export { resolveComputeTarget, ComputeTargetNotFoundError } from "./resolver.ts";
-export type { ResolveComputeTargetCtx } from "./resolver.ts";
-export { registerComputeTargetRoutes } from "./routes/index.ts";
+export { rowToSandbox, validateSandboxInput, InvalidSandboxInputError } from "./sandbox-record.ts";
+export { resolveSandbox, SandboxNotFoundError } from "./resolver.ts";
+export type { ResolveSandboxCtx } from "./resolver.ts";
+export { registerSandboxRoutes } from "./routes/index.ts";
 export { makeDockerClient, parseDockerHost } from "./backends/docker/docker-client.ts";
 export type { IDockerClient, DockerConnection } from "./backends/docker/docker-client.ts";
 export { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";
@@ -35,11 +35,11 @@ export {
   renewBuildLease, commitBuildResult, failBuild, applyImageStateOnSave,
 } from "./db.ts";
 export {
-  recordSandbox, getSandbox, markSandboxDestroyed, listActiveSandboxes,
-  claimSandbox, markSandboxActive,
-} from "./sandbox-store.ts";
-export type { SandboxRecord, RecordSandboxArgs } from "./sandbox-store.ts";
-export { SandboxReaper } from "./sandbox-reaper.ts";
-export type { SandboxReaperDeps } from "./sandbox-reaper.ts";
-export { registerSandboxRoutes } from "./routes/sandboxes.ts";
-export type { SandboxRoutesDeps } from "./routes/sandboxes.ts";
+  recordSandboxInstance, getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
+  claimSandboxInstance, markSandboxInstanceActive,
+} from "./sandbox-instance-store.ts";
+export type { SandboxInstanceRecord, RecordSandboxInstanceArgs } from "./sandbox-instance-store.ts";
+export { SandboxInstanceReaper } from "./sandbox-instance-reaper.ts";
+export type { SandboxInstanceReaperDeps } from "./sandbox-instance-reaper.ts";
+export { registerSandboxInstanceRoutes } from "./routes/sandbox-instances.ts";
+export type { SandboxInstanceRoutesDeps } from "./routes/sandbox-instances.ts";

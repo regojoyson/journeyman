@@ -1,7 +1,6 @@
 /**
- * Pluggable execution-environment abstraction. A Worker is a configured instance
- * of a worker *type*; each type is a backend implementing IExecutionEnvironment.
- * See docs/superpowers/specs/2026-05-30-workers-managed-compute-targets-design.md.
+ * Pluggable execution-environment abstraction. A Sandbox is a configured instance
+ * of a sandbox *type*; each type is a backend implementing IExecutionEnvironment.
  */
 
 import type { Readable } from "node:stream";
@@ -12,7 +11,7 @@ export interface FileBundle {
   tar: Readable | Buffer;
 }
 
-export type ComputeTargetType =
+export type SandboxType =
   | "local"
   | "docker"
   | "machine-linux"
@@ -37,7 +36,7 @@ export interface ExecutionEnvironmentSpec {
 /** Handle to a provisioned environment for a single run. */
 export interface ProvisionedEnv {
   runId: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   /** Opaque backend handle (e.g. container id, or "local:<runId>"). */
   handle: string;
   /** Optional named volume (Docker). */
@@ -78,7 +77,7 @@ export type OperationRunner = (
 
 /** Uniform contract every worker type implements. */
 export interface IExecutionEnvironment {
-  readonly type: ComputeTargetType;
+  readonly type: SandboxType;
   /** No-op for shared/local; provisions a fresh unit + workspace for per-instance. */
   provision(runId: string, spec: ExecutionEnvironmentSpec): Promise<ProvisionedEnv>;
   exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult>;
@@ -93,9 +92,9 @@ export interface IExecutionEnvironment {
 }
 
 /** A Worker record resolved to the fields a backend needs at run start. */
-export interface ResolvedComputeTarget {
+export interface ResolvedSandbox {
   id: string;
-  type: ComputeTargetType;
+  type: SandboxType;
   executionMode: ExecutionMode;
   connectivity?: Connectivity;
   /** Type-specific config, validated by the backend. */
@@ -108,18 +107,18 @@ export interface ResolvedComputeTarget {
 
 /** A pluggable worker *type*. Registered by name; callers never change. */
 export interface ExecutionEnvironmentBackend {
-  readonly type: ComputeTargetType;
+  readonly type: SandboxType;
   readonly supportedModes: ExecutionMode[];
   readonly supportedConnectivity: Connectivity[];
   /** Throws if the worker's config is invalid for this type. */
   validateConfig(config: unknown): void;
-  create(worker: ResolvedComputeTarget): IExecutionEnvironment;
+  create(worker: ResolvedSandbox): IExecutionEnvironment;
 }
 
 export interface IExecutionEnvironmentRegistry {
   register(backend: ExecutionEnvironmentBackend): void;
   /** Throws if no backend registered for the type. */
-  get(type: ComputeTargetType): ExecutionEnvironmentBackend;
+  get(type: SandboxType): ExecutionEnvironmentBackend;
   /** Worker types this deployment has configured. */
-  available(): ComputeTargetType[];
+  available(): SandboxType[];
 }

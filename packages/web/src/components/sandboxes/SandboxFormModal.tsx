@@ -2,46 +2,46 @@ import { useEffect, useMemo, useState } from "react";
 import { Info, Tag, Server } from "lucide-react";
 import { btnGhost, btnPrimary, card, inputCls, selectCls } from "../../routes/admin-styles.ts";
 import {
-  computeTargetsApi, type ComputeTarget, type ComputeTargetType, type ComputeTargetUpsertBody, type ComputeTargetTypeDescriptor,
-} from "../../api/computeTargets.ts";
+  sandboxesApi, type Sandbox, type SandboxType, type SandboxUpsertBody, type SandboxTypeDescriptor,
+} from "../../api/sandboxes.ts";
 import { Field } from "./types/form-controls.tsx";
-import { computeTargetTypeForms } from "./types/registry.ts";
+import { sandboxTypeForms } from "./types/registry.ts";
 
-export interface ComputeTargetFormModalProps {
+export interface SandboxFormModalProps {
   orgId: string;
   scope: "user" | "org";
   /** Present ⇒ edit; absent ⇒ create. */
-  worker?: ComputeTarget;
+  worker?: Sandbox;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
+export function SandboxFormModal(props: SandboxFormModalProps) {
   const editing = Boolean(props.worker);
   const [name, setName] = useState(props.worker?.name ?? "");
-  const [type, setType] = useState<ComputeTargetType>(props.worker?.type ?? "local");
-  const [types, setTypes] = useState<ComputeTargetTypeDescriptor[]>([]);
+  const [type, setType] = useState<SandboxType>(props.worker?.type ?? "local");
+  const [types, setTypes] = useState<SandboxTypeDescriptor[]>([]);
   const [config, setConfig] = useState<Record<string, unknown>>(() =>
-    (computeTargetTypeForms[props.worker?.type ?? "local"]?.readConfig(props.worker?.config ?? {}) ?? {}) as Record<string, unknown>,
+    (sandboxTypeForms[props.worker?.type ?? "local"]?.readConfig(props.worker?.config ?? {}) ?? {}) as Record<string, unknown>,
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const form = computeTargetTypeForms[type];
+  const form = sandboxTypeForms[type];
 
   useEffect(() => {
     let alive = true;
-    computeTargetsApi.listTypes(props.orgId).then((rows) => { if (alive) setTypes(rows); }).catch(() => { if (alive) setTypes([]); });
+    sandboxesApi.listTypes(props.orgId).then((rows) => { if (alive) setTypes(rows); }).catch(() => { if (alive) setTypes([]); });
     return () => { alive = false; };
   }, [props.orgId]);
 
   // When the user switches type (create mode), reset config to that type's defaults.
-  function onSelectType(next: ComputeTargetType) {
+  function onSelectType(next: SandboxType) {
     setType(next);
     setTestResult(null);
-    const f = computeTargetTypeForms[next];
+    const f = sandboxTypeForms[next];
     setConfig((f?.readConfig(props.worker?.type === next ? (props.worker?.config ?? {}) : {}) ?? {}) as Record<string, unknown>);
   }
 
@@ -54,7 +54,7 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
     if (!form) return;
     setTesting(true); setTestResult(null);
     try {
-      setTestResult(await computeTargetsApi.testConnection(props.orgId, { type, config: form.buildConfig(config) }));
+      setTestResult(await sandboxesApi.testConnection(props.orgId, { type, config: form.buildConfig(config) }));
     } catch (e) {
       setTestResult({ ok: false, error: (e as Error)?.message ?? "Test failed" });
     } finally {
@@ -70,7 +70,7 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
     }
     setBusy(true); setError(null);
     const builtConfig = form ? form.buildConfig(config) : {};
-    const body: ComputeTargetUpsertBody = {
+    const body: SandboxUpsertBody = {
       name, type,
       executionMode: type === "docker" ? "per-instance" : "shared",
       connectivity: type === "docker" ? "push" : null,
@@ -78,16 +78,16 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
     };
     try {
       if (editing) {
-        const patch: Partial<ComputeTargetUpsertBody> = {
+        const patch: Partial<SandboxUpsertBody> = {
           name: body.name, executionMode: body.executionMode, connectivity: body.connectivity,
           config: body.config,
         };
-        if (props.scope === "user") await computeTargetsApi.updateMy(props.orgId, props.worker!.id, patch);
-        else await computeTargetsApi.updateOrg(props.orgId, props.worker!.id, patch);
+        if (props.scope === "user") await sandboxesApi.updateMy(props.orgId, props.worker!.id, patch);
+        else await sandboxesApi.updateOrg(props.orgId, props.worker!.id, patch);
       } else if (props.scope === "user") {
-        await computeTargetsApi.createMy(props.orgId, body);
+        await sandboxesApi.createMy(props.orgId, body);
       } else {
-        await computeTargetsApi.createOrg(props.orgId, body);
+        await sandboxesApi.createOrg(props.orgId, body);
       }
       props.onSaved();
       props.onClose();
@@ -103,20 +103,20 @@ export function ComputeTargetFormModal(props: ComputeTargetFormModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
       <div className={`${card} w-full max-w-xl max-h-[90vh] overflow-y-auto p-6`}>
-        <h2 className="text-lg font-semibold text-slate-100 mb-1">{editing ? "Edit compute target" : "New compute target"}</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-1">{editing ? "Edit sandbox" : "New sandbox"}</h2>
         <div className="flex gap-2 rounded-lg border border-indigo-900/40 bg-indigo-950/30 p-3 mb-4 text-xs leading-relaxed text-slate-300">
           <Info size={16} className="mt-0.5 shrink-0 text-indigo-400" aria-hidden />
-          <span>A <b>compute target</b> is where a workflow's steps run. Pick a type, then fill its connection/runtime details below.</span>
+          <span>A <b>sandbox</b> is where a workflow's steps run. Pick a type, then fill its connection/runtime details below.</span>
         </div>
         <form onSubmit={submit} className="space-y-4">
-          <Field icon={Tag} label="Name" hint={<>A label you'll recognize in the compute-target picker.</>}>
+          <Field icon={Tag} label="Name" hint={<>A label you'll recognize in the sandbox picker.</>}>
             <input className={inputCls} placeholder="Local Docker" value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
 
           <Field icon={Server} label="Type"
             hint={types.find((t) => t.type === type)?.summary ?? `Mode: ${supportedMode}`}>
             <select className={`${selectCls} block mt-1 w-full`} value={type}
-              disabled={editing} onChange={(e) => onSelectType(e.target.value as ComputeTargetType)}>
+              disabled={editing} onChange={(e) => onSelectType(e.target.value as SandboxType)}>
               {types.map((t) => (
                 <option key={t.type} value={t.type} disabled={t.status !== "available"}>
                   {t.label}{t.status !== "available" ? " · coming soon" : ""}

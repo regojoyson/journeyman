@@ -244,7 +244,7 @@ The worker writes everything under one root, **`JOURNEYMAN_BASE_DIR`** (default 
 | `skills/<name>-<hash>/` | skill packages cache |
 | `kit/` | runner kit tars (`runner-bundle.tar`, `runner-base.tar`) |
 
-Docker compute targets run inside a **kit** (`runner-bundle` + `runner-base`). The kit is **never pulled
+Docker sandboxes run inside a **kit** (`runner-bundle` + `runner-base`). The kit is **never pulled
 from a registry** — it ships as tar files that the worker `docker load`s onto the target daemon the first
 time it's needed. Build the tars once (CI or locally) into `JOURNEYMAN_BASE_DIR/kit`:
 
@@ -253,7 +253,7 @@ npm run build:kit        # docker build + docker save → <base>/kit/*.tar
 ```
 
 The worker (and api-server) container needs **no Docker engine inside it** — it connects to a Docker
-daemon (the compute target's address: a local socket, or `tcp://` for ECS/remote) and loads the kit
+daemon (the sandbox's address: a local socket, or `tcp://` for ECS/remote) and loads the kit
 there. No registry, no source shipped at run time.
 
 ### Path 1: Docker Compose

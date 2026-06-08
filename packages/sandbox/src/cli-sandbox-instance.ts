@@ -6,7 +6,7 @@
  *   journeyman-sandbox prune --run <runId>  # destroy one
  */
 import { Pool } from "pg";
-import { listActiveSandboxes, getSandbox, markSandboxDestroyed, type SandboxRecord } from "./sandbox-store.ts";
+import { listActiveSandboxInstances, getSandboxInstance, markSandboxInstanceDestroyed, type SandboxInstanceRecord } from "./sandbox-instance-store.ts";
 import { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";
 import { makeDockerClient } from "./backends/docker/docker-client.ts";
 
@@ -15,17 +15,17 @@ if (!url) { process.stderr.write("DATABASE_URL not set\n"); process.exit(1); }
 const pool = new Pool({ connectionString: url });
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 
-async function destroy(sb: SandboxRecord): Promise<void> {
+async function destroy(sb: SandboxInstanceRecord): Promise<void> {
   const client = makeDockerClient(sb.connection ?? { kind: "local" });
   const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
   await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
-  await markSandboxDestroyed(pool, sb.runId);
+  await markSandboxInstanceDestroyed(pool, sb.runId);
 }
 
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   if (cmd === "list") {
-    const rows = await listActiveSandboxes(pool);
+    const rows = await listActiveSandboxInstances(pool);
     for (const r of rows) process.stdout.write(`${r.runId}\t${r.type}\t${r.handle}\t${r.volume ?? "-"}\n`);
     process.stdout.write(`${rows.length} active sandbox(es)\n`);
     return;
@@ -34,13 +34,13 @@ async function main(): Promise<void> {
     const runFlagIdx = rest.indexOf("--run");
     if (runFlagIdx >= 0) {
       const runId = rest[runFlagIdx + 1];
-      const sb = await getSandbox(pool, runId);
+      const sb = await getSandboxInstance(pool, runId);
       if (!sb || sb.status !== "active") { process.stderr.write(`no active sandbox for ${runId}\n`); process.exit(1); }
       await destroy(sb);
       process.stdout.write(`pruned ${runId}\n`);
       return;
     }
-    const rows = await listActiveSandboxes(pool);
+    const rows = await listActiveSandboxInstances(pool);
     for (const r of rows) { await destroy(r); process.stdout.write(`pruned ${r.runId}\n`); }
     process.stdout.write(`pruned ${rows.length} sandbox(es)\n`);
     return;
