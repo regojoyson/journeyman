@@ -24,7 +24,11 @@ describe("buildServerConfig", () => {
       modelConfig: { baseUrl: "http://host.docker.internal:1234/v1" },
     });
     expect(c.provider).toEqual({
-      lmstudio: { npm: "@ai-sdk/openai-compatible", options: { baseURL: "http://host.docker.internal:1234/v1" } },
+      lmstudio: {
+        npm: "@ai-sdk/openai-compatible",
+        options: { baseURL: "http://host.docker.internal:1234/v1" },
+        models: { "llama-3.1": {} },
+      },
     });
   });
   it("omits the provider block for a cloud model that has only an apiKeySlot (no baseUrl)", () => {

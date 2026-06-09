@@ -55,6 +55,9 @@ function buildProviderBlock(
     [parsed.providerID]: {
       npm: modelConfig.npm ?? "@ai-sdk/openai-compatible",
       options,
+      // A custom provider must declare its models or OpenCode can't resolve the
+      // model and throws a generic "UnknownError". Declare the one we target.
+      models: { [parsed.modelID]: {} },
     },
   };
 }
