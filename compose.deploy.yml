@@ -51,7 +51,13 @@ services:
   # Do NOT publish this port. Local/trusted deployments only.
   dockerproxy:
     image: alpine/socat
-    command: ["tcp-listen:2375,fork,reuseaddr", "unix-connect:/var/run/docker.sock"]
+    # -t86400: after one direction of the relay reaches EOF, wait this long (vs socat's
+    # 0.5s default) before closing the other. The worker's Docker `exec` is a HIJACKED
+    # bidirectional stream: dockerode writes the runner's stdin then half-closes it, but
+    # the runner needs seconds (boot opencode, run the model) before it writes its JSON
+    # response on stdout. With the 0.5s default, socat tore down the stdout direction
+    # before that response arrived → "runner produced no JSON (exit -1)". Keep it large.
+    command: ["-t86400", "tcp-listen:2375,fork,reuseaddr", "unix-connect:/var/run/docker.sock"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
