@@ -240,7 +240,6 @@ The same env contract drives both deployments. Required at runtime:
 |---|---|
 | `DATABASE_URL` | Postgres connection string |
 | `CONDUCTOR_BASE_URL` | Conductor REST endpoint |
-| `STORE_BACKEND` | `postgres` (or `memory` for dev) |
 | `IDENTITY_ENFORCE` | `true` to enforce JWT auth |
 | `JWT_SECRET` | JWT signing key (≥32 chars; `openssl rand -hex 32`) |
 | `JM_SECRET_ENCRYPTION_KEY` | AES key for the secrets vault (`openssl rand -hex 32`) |

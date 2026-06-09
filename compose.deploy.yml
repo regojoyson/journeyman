@@ -91,7 +91,6 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
-      STORE_BACKEND: postgres
       IDENTITY_ENFORCE: "true"
       # Browser reaches the app over HTTPS (Cloudflare Tunnel); production mode
       # makes auth cookies set the Secure flag (see identity/src/middleware.ts).
@@ -117,7 +116,6 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
-      STORE_BACKEND: postgres
       # Inside the container the data root is always /data/journeyman (the mount target
       # below). The host folder behind it is set via JOURNEYMAN_BASE_DIR in .env.
       JOURNEYMAN_BASE_DIR: /data/journeyman

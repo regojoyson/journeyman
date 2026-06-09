@@ -3,8 +3,8 @@
 // This is the only file in the codebase allowed to import concrete adapter
 // classes. Every other file depends on the interfaces in @journeyman/core.
 //
-// Replacing an adapter — e.g. swapping PostgresWorkflowStore for MemoryWorkflowStore
-// for tests, or ConductorOrchestrator for a future TemporalOrchestrator —
+// Replacing an adapter — e.g. swapping ConductorOrchestrator for a future
+// TemporalOrchestrator, or PostgresWorkflowStore for another backend —
 // MUST require changing only this file. If a swap forces edits anywhere else,
 // the boundaries are wrong (see spec §12 "Architectural exit criterion").
 
@@ -37,18 +37,7 @@ import {
   PostgresWebhookEventStore,
   PostgresWebhookStore,
   PostgresHumanTaskResolutionStore,
-  MemoryWorkflowGrantsStore,
-  MemoryWorkflowInstanceGrantsStore,
-  MemoryWorkflowStore,
-  MemoryWorkflowVersionStore,
-  MemoryWorkflowInstanceStore,
-  MemoryNodeExecutionStore,
-  MemoryEventBus,
-  MemoryWebhookEventStore,
-  MemoryWebhookStore,
-  MemoryWorkflowTriggerStore,
   PostgresWorkflowTriggerStore,
-  MemoryHumanTaskResolutionStore,
   InMemoryStepRegistry,
   JsonLogicEvaluator,
   createPool,
@@ -94,55 +83,25 @@ export interface Composition {
 export interface CompositionConfig {
   databaseUrl: string;
   conductorBaseUrl: string;
-  /** "postgres" (production) or "memory" (tests, demos). Default postgres. */
-  storeBackend?: "postgres" | "memory";
 }
 
 export function buildComposition(cfg: CompositionConfig): Composition {
-  const useMemory = cfg.storeBackend === "memory";
-
-  let workflowGrants: IWorkflowGrantsStore;
-  let workflowInstanceGrants: IWorkflowInstanceGrantsStore;
-  let workflows: IWorkflowStore;
-  let workflowVersions: IWorkflowVersionStore;
-  let workflowInstances: IWorkflowInstanceStore;
-  let nodeExecutions: INodeExecutionStore;
-  let events: IEventBus;
-  let webhookEvents: IWebhookEventStore;
-  let webhooks: IWebhookStore;
-  let workflowTriggers: IWorkflowTriggerStore;
-  let humanTaskResolutions: IHumanTaskResolutionStore;
-  let pool: Pool | null = null;
-
-  if (useMemory) {
-    const v = new MemoryWorkflowVersionStore();
-    workflowVersions = v;
-    workflowGrants = new MemoryWorkflowGrantsStore();
-    workflowInstanceGrants = new MemoryWorkflowInstanceGrantsStore();
-    workflows = new MemoryWorkflowStore(v, workflowGrants);
-    const memoryInstances = new MemoryWorkflowInstanceStore();
-    workflowInstances = memoryInstances;
-    nodeExecutions = new MemoryNodeExecutionStore(memoryInstances);
-    events = new MemoryEventBus();
-    webhookEvents = new MemoryWebhookEventStore();
-    webhooks = new MemoryWebhookStore();
-    workflowTriggers = new MemoryWorkflowTriggerStore();
-    humanTaskResolutions = new MemoryHumanTaskResolutionStore();
-  } else {
-    pool = createPool({ connectionString: cfg.databaseUrl });
-    const v = new PostgresWorkflowVersionStore(pool);
-    workflowVersions = v;
-    workflowGrants = new PostgresWorkflowGrantsStore(pool);
-    workflowInstanceGrants = new PostgresWorkflowInstanceGrantsStore(pool);
-    workflows = new PostgresWorkflowStore(pool, v, workflowGrants);
-    workflowInstances = new PostgresWorkflowInstanceStore(pool);
-    nodeExecutions = new PostgresNodeExecutionStore(pool);
-    events = new PostgresEventBus(pool);
-    webhookEvents = new PostgresWebhookEventStore(pool);
-    webhooks = new PostgresWebhookStore(pool);
-    workflowTriggers = new PostgresWorkflowTriggerStore(pool);
-    humanTaskResolutions = new PostgresHumanTaskResolutionStore(pool);
-  }
+  // Postgres is the only persistence backend. `pool` is typed `Pool | null`
+  // so the downstream sandbox-reaper guards (`pool ? … : undefined`) compile
+  // unchanged; it is always non-null in practice.
+  const pool: Pool | null = createPool({ connectionString: cfg.databaseUrl });
+  const v = new PostgresWorkflowVersionStore(pool);
+  const workflowVersions: IWorkflowVersionStore = v;
+  const workflowGrants: IWorkflowGrantsStore = new PostgresWorkflowGrantsStore(pool);
+  const workflowInstanceGrants: IWorkflowInstanceGrantsStore = new PostgresWorkflowInstanceGrantsStore(pool);
+  const workflows: IWorkflowStore = new PostgresWorkflowStore(pool, v, workflowGrants);
+  const workflowInstances: IWorkflowInstanceStore = new PostgresWorkflowInstanceStore(pool);
+  const nodeExecutions: INodeExecutionStore = new PostgresNodeExecutionStore(pool);
+  const events: IEventBus = new PostgresEventBus(pool);
+  const webhookEvents: IWebhookEventStore = new PostgresWebhookEventStore(pool);
+  const webhooks: IWebhookStore = new PostgresWebhookStore(pool);
+  const workflowTriggers: IWorkflowTriggerStore = new PostgresWorkflowTriggerStore(pool);
+  const humanTaskResolutions: IHumanTaskResolutionStore = new PostgresHumanTaskResolutionStore(pool);
 
   const humanTaskTimeouts: HumanTaskTimeoutService = new InMemoryHumanTaskTimeoutService();
 

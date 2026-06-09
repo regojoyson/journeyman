@@ -40,7 +40,6 @@ if (envFile) {
 const cfg = {
   databaseUrl: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/journeyman",
   conductorBaseUrl: process.env.CONDUCTOR_BASE_URL ?? "http://localhost:8080/api",
-  storeBackend: (process.env.STORE_BACKEND as "memory" | "postgres" | undefined) ?? "postgres",
 };
 
 const composition = buildComposition(cfg);

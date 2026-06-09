@@ -54,24 +54,6 @@ export class PostgresHumanTaskResolutionStore implements IHumanTaskResolutionSto
   }
 }
 
-export class MemoryHumanTaskResolutionStore implements IHumanTaskResolutionStore {
-  private rows: HumanTaskResolutionRow[] = [];
-  private nextId = 1;
-  async create(input: Omit<HumanTaskResolutionRow, "id" | "resolvedAt">): Promise<HumanTaskResolutionRow> {
-    const row: HumanTaskResolutionRow = { id: String(this.nextId++), resolvedAt: new Date(), ...input };
-    this.rows.push(row);
-    return row;
-  }
-  async listForRun(runId: string): Promise<HumanTaskResolutionRow[]> {
-    return this.rows.filter(r => r.runId === runId).slice().sort((a, b) => +a.resolvedAt - +b.resolvedAt);
-  }
-  async latestForNode(runId: string, nodeId: string): Promise<HumanTaskResolutionRow | null> {
-    const list = this.rows.filter(r => r.runId === runId && r.nodeId === nodeId)
-      .sort((a, b) => +b.resolvedAt - +a.resolvedAt);
-    return list[0] ?? null;
-  }
-}
-
 function rowToObj(r: {
   id: string;
   run_id: string;

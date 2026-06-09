@@ -13,7 +13,7 @@ import { GitHubProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
-  ProviderFactory, SecretBinding, ProvisionedEnv,
+  ProviderFactory, SecretBinding, ProvisionedEnv, IEventBus,
 } from "@journeyman/core";
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
@@ -31,7 +31,6 @@ import { findDefaultCodingModel, findCodingModel } from "@journeyman/coding-mode
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
 import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
-import { MemoryEventBus } from "./stores/memory/memory-event-bus.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
 import { resolvePollIntervalMs } from "./workers/poll-interval.ts";
@@ -391,10 +390,15 @@ const cliBindingResolver = async (input: {
 };
 
 // Use the same Postgres event bus as the api-server so step events are visible
-// in the run viewer. Fall back to in-memory only when DATABASE_URL isn't set.
-const events = pool ? new PostgresEventBus(pool) : new MemoryEventBus();
+// in the run viewer. With no DATABASE_URL (env-only mode) events are dropped.
+const noopEventBus: IEventBus = {
+  append: async () => undefined as never,
+  list: async () => [],
+  subscribe: async function* () { /* yields nothing */ },
+};
+const events: IEventBus = pool ? new PostgresEventBus(pool) : noopEventBus;
 if (!pool) {
-  log.warn("DATABASE_URL not set — step events will be in-memory only and invisible to the workflow instance viewer");
+  log.warn("DATABASE_URL not set — step events are dropped and invisible to the workflow instance viewer");
 }
 
 const harness = new WorkerHarness({

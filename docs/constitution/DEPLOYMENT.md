@@ -47,7 +47,7 @@ A committed `.env.example` documents required variables. The `.env` file itself 
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Postgres connection string (defaults to local `:5433/journeyman`). |
-| `PORT`, `LOG_LEVEL`, `STORE_BACKEND` | API server config. |
+| `PORT`, `LOG_LEVEL` | API server config. |
 | `JWT_SECRET`, `IDENTITY_ENFORCE`, `ACCESS_TOKEN_TTL_SECONDS`, `REFRESH_TOKEN_TTL_SECONDS` | Identity / auth. |
 | `JM_SECRET_ENCRYPTION_KEY` | AES key for the user/org secret vault. |
 | `JM_GLOBAL_*` | Global secret overrides (prefix pattern). |

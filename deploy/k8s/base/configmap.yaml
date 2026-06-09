@@ -5,7 +5,6 @@ metadata:
 data:
   DATABASE_URL: "postgres://postgres:postgres@postgres:5432/journeyman"
   CONDUCTOR_BASE_URL: "http://conductor:8080/api"
-  STORE_BACKEND: "postgres"
   IDENTITY_ENFORCE: "true"
   LOG_LEVEL: "info"
   PORT: "4000"
