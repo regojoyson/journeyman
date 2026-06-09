@@ -18,8 +18,8 @@ import type {
 import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
-  markImagePending, startBuildLoop, reconcileKitImage, resolveBuildInputs, pruneBuiltImages,
-  listReadyImageRefs,
+  markImagePending, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
+  listReadyImageRefs, resolveKitRefs, registryAuthFromEnv,
 } from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
@@ -27,7 +27,7 @@ import { ConsoleProvider } from "@journeyman/notification-provider";
 import { resolveBindings } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
 import { resolveSkillPackagesByIds } from "@journeyman/skills";
-import { findDefaultCodingModel } from "@journeyman/coding-models";
+import { findDefaultCodingModel, findCodingModel } from "@journeyman/coding-models";
 import { Pool } from "pg";
 import { ConductorClient } from "./engines/conductor/conductor-client.ts";
 import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
@@ -82,8 +82,13 @@ log.info(
 
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 const RUNNER_BUNDLE = process.env.JOURNEYMAN_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
-const RUNNER_BUNDLE_TAR = join(kitDir, "runner-bundle.tar");
-const RUNNER_BASE_TAR = join(kitDir, "runner-base.tar");
+const REGISTRY_AUTH = registryAuthFromEnv(process.env);
+
+/** Resolve the current kit refs (DB-first, env defaults as fallback). */
+async function kitRefs(): Promise<{ base: string; bundle: string }> {
+  if (!pool) return { base: RUNNER_IMAGE, bundle: RUNNER_BUNDLE };
+  return resolveKitRefs(pool, { base: RUNNER_IMAGE, bundle: RUNNER_BUNDLE });
+}
 
 /**
  * Poll until the sandbox row for `runId` becomes active, or timeout.
@@ -144,13 +149,14 @@ const ensureWs = (a: {
       verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
         const connection = (config as Record<string, unknown>)["connection"] ?? { kind: "local" };
         const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
-        // Refresh the kit (bundle) first so its image id is current before we
-        // recompute the expected fingerprint.
-        await reconcileKitImage(client, RUNNER_BUNDLE, RUNNER_BUNDLE_TAR);
+        const { bundle } = await kitRefs();
+        // Ensure the kit bundle is present (pulled by digest) before recomputing
+        // the expected fingerprint.
+        await ensureKitImage(client, bundle, REGISTRY_AUTH);
         const inputs = await resolveBuildInputs({
           image: (config as Record<string, unknown>)["image"] as never,
           client,
-          bundleRef: RUNNER_BUNDLE,
+          bundleRef: bundle,
         });
         const present = await client.imageExists(storedImageRef);
         const fresh = present && inputs.fingerprint === storedFingerprint;
@@ -192,10 +198,11 @@ const ensureWs = (a: {
         // unset → use the default runner box).
         const cfg = worker.config as Record<string, unknown>;
         const preBuilt = cfg["__imageRef"] as string | undefined;
-        const imageRef = preBuilt ?? RUNNER_IMAGE;
+        const { base: baseRef } = await kitRefs();
+        const imageRef = preBuilt ?? baseRef;
         // Empty-image targets run the default box directly (no build loop), so the
-        // kit base must be present on this daemon — load it from the tar if missing.
-        if (!preBuilt) await reconcileKitImage(dockerClient, RUNNER_IMAGE, RUNNER_BASE_TAR);
+        // kit base must be present on this daemon — pull it by digest if missing.
+        if (!preBuilt) await ensureKitImage(dockerClient, baseRef, REGISTRY_AUTH);
         const spec = {
           imageRef,
           network: cfg["network"] === "none" ? ("none" as const) : ("full" as const),
@@ -410,6 +417,11 @@ const harness = new WorkerHarness({
     const m = await findDefaultCodingModel(pool, provider);
     return m?.modelId;
   },
+  modelConfigResolver: async ({ provider, modelId }) => {
+    if (!pool) return undefined;
+    const m = await findCodingModel(pool, provider, modelId);
+    return m?.config;
+  },
   ensureWorkspace: ensureWs,
 });
 
@@ -418,8 +430,8 @@ const harness = new WorkerHarness({
 const stopBuildLoop = pool
   ? startBuildLoop({
       db: pool,
-      bundleRef: RUNNER_BUNDLE,
-      bundleTarPath: RUNNER_BUNDLE_TAR,
+      bundleRef: (await kitRefs()).bundle,
+      kitAuth: REGISTRY_AUTH,
       leaseMs: 120_000,
       intervalMs: 3000,
       log: (line) => log.info({ line }, "build-loop"),

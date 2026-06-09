@@ -7,7 +7,7 @@ describe("DockerodeClient.pullImage", () => {
     const pull = vi.fn().mockResolvedValue("stream");
     const client = new DockerodeClient({ pull, modem: { followProgress } } as any);
     await client.pullImage("node:20");
-    expect(pull).toHaveBeenCalledWith("node:20");
+    expect(pull).toHaveBeenCalledWith("node:20", {});
     expect(followProgress).toHaveBeenCalled();
   });
 

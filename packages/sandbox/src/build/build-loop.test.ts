@@ -15,6 +15,7 @@ function deps(over: Partial<any> = {}) {
     owner: "owner-1",
     claim: vi.fn().mockResolvedValue(target),
     makeClient: vi.fn().mockReturnValue({} as any),
+    ensureKit: vi.fn().mockResolvedValue(undefined),
     build: vi.fn().mockResolvedValue({ imageRef: "journeyman/jm-built:fp", fingerprint: "fp" }),
     commit: vi.fn().mockResolvedValue(undefined),
     fail: vi.fn().mockResolvedValue(undefined),
@@ -46,18 +47,19 @@ describe("runBuildTick", () => {
     expect(d.build).not.toHaveBeenCalled();
   });
 
-  it("ensures the kit (loads the bundle) before building when a tar path is given", async () => {
+  it("ensures the kit (pulls the bundle by digest) before building", async () => {
     const ensureKit = vi.fn().mockResolvedValue(undefined);
-    const d = deps({ bundleTarPath: "/data/kit/runner-bundle.tar", ensureKit });
+    const d = deps({ ensureKit });
     await runBuildTick(d as any);
-    expect(ensureKit).toHaveBeenCalledWith(expect.anything(), "journeyman/runner-bundle:dev", "/data/kit/runner-bundle.tar", expect.any(Function));
+    expect(ensureKit).toHaveBeenCalledWith(expect.anything(), "journeyman/runner-bundle:dev", undefined, expect.any(Function));
     expect(d.build).toHaveBeenCalledOnce();
   });
 
-  it("does not ensure the kit when no tar path is configured", async () => {
-    const ensureKit = vi.fn();
-    const d = deps({ ensureKit });
+  it("passes registry auth through to ensureKit when configured", async () => {
+    const ensureKit = vi.fn().mockResolvedValue(undefined);
+    const kitAuth = { username: "u", password: "p", serveraddress: "reg" };
+    const d = deps({ ensureKit, kitAuth });
     await runBuildTick(d as any);
-    expect(ensureKit).not.toHaveBeenCalled();
+    expect(ensureKit).toHaveBeenCalledWith(expect.anything(), "journeyman/runner-bundle:dev", kitAuth, expect.any(Function));
   });
 });

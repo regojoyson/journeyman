@@ -27,7 +27,11 @@ export { buildDockerfileImage, buildBoxImage } from "./backends/docker/build-ima
 export type { BuildBoxImageDeps, BuildBoxImageResult } from "./backends/docker/build-image.ts";
 export { buildEffectiveRecipe, computeFingerprint } from "./backends/docker/recipe.ts";
 export type { ImageConfig } from "./backends/docker/recipe.ts";
-export { reconcileKitImage } from "./backends/docker/ensure-kit.ts";
+export { ensureKitImage } from "./backends/docker/ensure-kit.ts";
+export { registryAuthFromEnv, registryHost } from "./backends/docker/registry-auth.ts";
+export type { RegistryAuth } from "./backends/docker/registry-auth.ts";
+export { upsertKitImage, getKitImage, resolveKitRefs } from "./kit/kit-images-store.ts";
+export type { KitRole } from "./kit/kit-images-store.ts";
 export { resolveBuildInputs } from "./backends/docker/resolve-build-inputs.ts";
 export type { BuildInputs, ResolveBuildInputsArgs } from "./backends/docker/resolve-build-inputs.ts";
 export { pruneBuiltImages } from "./backends/docker/prune-built-images.ts";

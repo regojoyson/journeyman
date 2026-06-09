@@ -23,10 +23,8 @@ require_secret() {
 require_secret JWT_SECRET
 require_secret JM_SECRET_ENCRYPTION_KEY
 
-# Ensure the runner kit exists (docker-workspace sandboxes load these tars into dind).
 # Build into the SAME host folder that's bind-mounted into the worker at /data/journeyman
-# (JOURNEYMAN_BASE_DIR from .env), so the kit lands at /data/journeyman/kit inside the
-# worker. Rebuilt on every `compose:up` so the kit always reflects current source.
+# (JOURNEYMAN_BASE_DIR from .env), so kit.json lands at /data/journeyman/kit.
 data_dir="$(grep -E '^JOURNEYMAN_BASE_DIR=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 data_dir="${data_dir:-./.journeyman-data}"
 
@@ -34,9 +32,25 @@ data_dir="${data_dir:-./.journeyman-data}"
 # `down -v`/compose:reset). Ensure the folders exist so the bind-mounts resolve.
 mkdir -p "${data_dir}/postgres" "${data_dir}/redis"
 
-echo ">>> building runner kit into ${data_dir}/kit (for docker-workspace sandboxes)"
+# Require the registry target (replaces the old tar kit).
+registry="$(grep -E '^JOURNEYMAN_REGISTRY=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+if [ -z "$registry" ]; then
+  echo "ERROR: JOURNEYMAN_REGISTRY is not set in .env (e.g. localhost:5000)" >&2
+  exit 1
+fi
+
+echo ">>> building + pushing runner kit to ${registry}"
 JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
 
 ./scripts/build-images.sh
+
+echo ">>> bringing up postgres + running migrations"
+docker compose -f compose.deploy.yml up -d postgres
+docker compose -f compose.deploy.yml run --rm migrations
+
+echo ">>> registering kit images in the DB"
+DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:6032/journeyman}" \
+  JOURNEYMAN_BASE_DIR="${data_dir}" npm run register-kit
+
 docker compose -f compose.deploy.yml up -d
 docker compose -f compose.deploy.yml ps

@@ -1,7 +1,8 @@
 import Docker from "dockerode";
-import { createReadStream, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Writable } from "node:stream";
+import type { RegistryAuth } from "./registry-auth.ts";
 
 /** How to reach a Docker daemon. Persisted on the sandbox row so any process can rebuild the client. */
 export interface DockerConnection {
@@ -34,10 +35,10 @@ export interface IDockerClient {
   /** Content ID (digest) of an image tag, or null if it isn't present locally. */
   imageId(tag: string): Promise<string | null>;
   buildImage(o: { contextDir: string; dockerfileName: string; tag: string; pull?: boolean }): Promise<void>;
-  /** Load an image into the daemon from a `docker save` tar at `tarPath` (streams from this process). */
-  loadImage(tarPath: string): Promise<void>;
   /** Pull `ref` from its registry. Best-effort: callers decide how to handle failure. */
-  pullImage(ref: string): Promise<void>;
+  pullImage(ref: string, auth?: RegistryAuth): Promise<void>;
+  /** Push `ref` to its registry; resolves to the pushed manifest ref `<repo>@sha256:…`. */
+  pushImage(ref: string, auth?: RegistryAuth): Promise<string>;
   /** All repo:tag strings present on the daemon (skips `<none>` dangling tags). */
   listImageTags(): Promise<string[]>;
   /** Remove an image by tag; rejects if the daemon refuses (e.g. in use). */
@@ -195,25 +196,8 @@ export class DockerodeClient implements IDockerClient {
     });
   }
 
-  async loadImage(tarPath: string): Promise<void> {
-    const stream = await this.docker.loadImage(createReadStream(tarPath));
-    await new Promise<void>((resolve, reject) => {
-      this.docker.modem.followProgress(
-        stream,
-        (err: Error | null, output?: Array<Record<string, any>>) => {
-          if (err) return reject(err);
-          const failed = (output ?? []).find((e) => e && (e.error || e.errorDetail));
-          if (failed) {
-            return reject(new Error(String(failed.error ?? failed.errorDetail?.message ?? "docker load failed")));
-          }
-          resolve();
-        },
-      );
-    });
-  }
-
-  async pullImage(ref: string): Promise<void> {
-    const stream = await this.docker.pull(ref);
+  async pullImage(ref: string, auth?: RegistryAuth): Promise<void> {
+    const stream = await this.docker.pull(ref, auth ? { authconfig: auth } : {});
     await new Promise<void>((resolve, reject) => {
       this.docker.modem.followProgress(
         stream,
@@ -224,6 +208,29 @@ export class DockerodeClient implements IDockerClient {
             return reject(new Error(String(failed.error ?? failed.errorDetail?.message ?? "docker pull failed")));
           }
           resolve();
+        },
+      );
+    });
+  }
+
+  async pushImage(ref: string, auth?: RegistryAuth): Promise<string> {
+    const image = this.docker.getImage(ref);
+    const stream = await image.push(auth ? { authconfig: auth } : {});
+    return await new Promise<string>((resolve, reject) => {
+      let digest: string | undefined;
+      this.docker.modem.followProgress(
+        stream,
+        (err: Error | null, output?: Array<Record<string, any>>) => {
+          if (err) return reject(err);
+          const failed = (output ?? []).find((e) => e && (e.error || e.errorDetail));
+          if (failed) {
+            return reject(new Error(String(failed.error ?? failed.errorDetail?.message ?? "docker push failed")));
+          }
+          if (!digest) return reject(new Error(`push of '${ref}' returned no digest`));
+          resolve(`${ref.split("@")[0].split(":")[0]}@${digest}`);
+        },
+        (event: Record<string, any>) => {
+          if (event?.aux?.Digest) digest = String(event.aux.Digest);
         },
       );
     });

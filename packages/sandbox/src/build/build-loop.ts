@@ -3,20 +3,21 @@ import type { Queryable } from "../db.ts";
 import { claimPendingBuild, commitBuildResult, failBuild } from "../db.ts";
 import { buildBoxImage, type BuildBoxImageResult } from "../backends/docker/build-image.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
-import { reconcileKitImage } from "../backends/docker/ensure-kit.ts";
+import { ensureKitImage } from "../backends/docker/ensure-kit.ts";
+import type { RegistryAuth } from "../backends/docker/registry-auth.ts";
 
 export interface BuildTickDeps {
   db: Queryable;
   bundleRef: string;
-  /** Path to the runner-bundle tar (docker save) loaded onto the daemon if the kit image is missing. */
-  bundleTarPath?: string;
+  /** Optional registry auth for pulling the kit bundle. */
+  kitAuth?: RegistryAuth;
   leaseMs: number;
   owner: string;
   log?: (line: string) => void;
   // Seams (overridable in tests):
   claim?: (db: Queryable, owner: string, leaseMs: number) => Promise<Sandbox | null>;
   makeClient?: (conn: unknown) => ReturnType<typeof makeDockerClient>;
-  ensureKit?: (client: any, imageName: string, tarPath: string, log?: (l: string) => void) => Promise<void>;
+  ensureKit?: (client: any, ref: string, auth?: RegistryAuth, log?: (l: string) => void) => Promise<void>;
   build?: (args: { image: unknown; client: any; bundleRef: string }) => Promise<BuildBoxImageResult>;
   commit?: (db: Queryable, id: string, fp: string, ref: string) => Promise<void>;
   fail?: (db: Queryable, id: string, fp: string, err: string) => Promise<void>;
@@ -27,7 +28,7 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   const claim = deps.claim ?? claimPendingBuild;
   const makeClient: (conn: unknown) => ReturnType<typeof makeDockerClient> =
     deps.makeClient ?? ((conn) => makeDockerClient(conn as Parameters<typeof makeDockerClient>[0]));
-  const ensureKit = deps.ensureKit ?? reconcileKitImage;
+  const ensureKit = deps.ensureKit ?? ensureKitImage;
   const build = deps.build ?? ((a) => buildBoxImage(a as Parameters<typeof buildBoxImage>[0]));
   const commit = deps.commit ?? commitBuildResult;
   const fail = deps.fail ?? failBuild;
@@ -41,9 +42,9 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   try {
     log(`building image for sandbox ${target.name} (${target.id})`);
     const client = makeClient(cfg["connection"] ?? { kind: "local" });
-    // The box recipe grafts the kit via `COPY --from=<bundleRef>`; make sure that
-    // kit image exists on this daemon first (loaded from the tar, never pulled).
-    if (deps.bundleTarPath) await ensureKit(client, deps.bundleRef, deps.bundleTarPath, log);
+    // The box recipe grafts the kit via `COPY --from=<bundleRef>`; ensure that
+    // kit image exists on this daemon first (pulled from the registry by digest).
+    await ensureKit(client, deps.bundleRef, deps.kitAuth, log);
     const result = await build({ image: cfg["image"], client, bundleRef: deps.bundleRef });
     fingerprint = result.fingerprint;
     await commit(deps.db, target.id, result.fingerprint, result.imageRef);

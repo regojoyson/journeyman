@@ -73,28 +73,30 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" 
 `compose-up.sh` will **stop with a clear error** if `JWT_SECRET` or
 `JM_SECRET_ENCRYPTION_KEY` is missing — it will not boot with blank secrets.
 
-## 2. (Automatic) The runner kit
+## 2. The runner kit (registry)
 
-The worker loads prebuilt runner images into dind from `*.tar` files — it never builds them
-at run time. **`compose:up` builds the kit for you on the first run** if it's missing,
-writing it into the bind-mounted data dir (`${JOURNEYMAN_BASE_DIR:-./.journeyman-data}/kit`)
-so the worker sees it at `/data/journeyman/kit`. You normally don't run anything here.
+Runner images are **pushed to a container registry** and pulled by workers — no
+more tar files. Set the target registry in `.env`:
 
-- `runner-base.tar` → the **default box** (docker sandboxes with no custom image).
-- `runner-bundle.tar` → grafted into **custom** sandbox images.
+- `JOURNEYMAN_REGISTRY` — e.g. `localhost:5000`, `ghcr.io/acme`,
+  `registry.gitlab.com/acme/journeyman`.
+- `JOURNEYMAN_REGISTRY_USERNAME` / `JOURNEYMAN_REGISTRY_TOKEN` — optional, for
+  private registries.
 
-Once built, `compose:up` detects the tars and skips the build. To **force a rebuild** (e.g.
-after `@journeyman/agent-runtime` changes — the tars embed the runner), delete the kit dir
-or run it manually:
+`compose:up` runs the full publish flow for you: it builds + pushes the kit, runs
+migrations, then records the pushed image **digests** in the `kit_images` table via
+`register-kit`. Workers read that table and pull the exact digest.
 
-```bash
-rm -rf .journeyman-data/kit
-# or, build explicitly into the data dir:
-JOURNEYMAN_BASE_DIR="$(pwd)/.journeyman-data" npm run build:kit
-```
+- `runner-base` → the **default box** (docker sandboxes with no custom image).
+- `runner-bundle` → grafted into **custom** sandbox images.
 
-(Local-only sandboxes never use the kit — the one-time build still runs on first `compose:up`;
-delete the kit dir afterward if you want to skip it.)
+To roll a new kit: `npm run build:kit && npm run register-kit` (workers pick up the
+new digest automatically — no redeploy).
+
+For a quick local registry: `docker run -d -p 5000:5000 registry:2` and set
+`JOURNEYMAN_REGISTRY=localhost:5000`.
+
+(Local-only sandboxes never use the kit.)
 
 ## 3. Bring the stack up
 
