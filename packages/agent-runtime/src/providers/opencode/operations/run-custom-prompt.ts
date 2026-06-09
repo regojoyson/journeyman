@@ -1,5 +1,5 @@
 import { createLogger } from "@journeyman/core";
-import { logOpenCodeEvent, logSessionEvent, type OpenCodeEvent } from "../utils/sdk-logger.ts";
+import { logOpenCodeTranscript, logSessionEvent } from "../utils/sdk-logger.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
 import { resolveOpenCodeModel } from "../model.ts";
@@ -69,55 +69,27 @@ export async function runCustomPrompt(
   if (!session.data) {
     return { sessionId, error: `opencode session.create failed: ${describeSdkError((session as { error?: unknown }).error)}` };
   }
-  const openSessionId = session.data.id;
 
-  // Live event streaming → onLog, filtered to THIS session, torn down in finally.
-  type EventStream = AsyncIterable<unknown> & { return?: (v?: unknown) => Promise<unknown> };
-  const eventApi = (client as { event?: { subscribe?: (params: unknown, options?: unknown) => Promise<{ stream?: EventStream }> } }).event;
-  const wantStream = !!opts.onLog && (opts.agentLogLevel ?? "all") !== "none" && !!eventApi?.subscribe;
-  const ac = new AbortController();
-  let sub: { stream?: EventStream } | undefined;
-  let pump: Promise<void> | undefined;
-  if (wantStream && eventApi?.subscribe) {
-    sub = await eventApi.subscribe({}, { signal: ac.signal }).catch(() => undefined);
-    const stream = sub?.stream;
-    if (stream) {
-      pump = (async () => {
-        try {
-          for await (const raw of stream) {
-            const ev = raw as OpenCodeEvent;
-            if (ev?.properties?.sessionID && ev.properties.sessionID !== openSessionId) continue;
-            logOpenCodeEvent(ev, opts.onLog, opts.agentLogLevel ?? "all");
-          }
-        } catch { /* aborted on teardown */ }
-      })();
-    }
-  }
-
-  let res: Awaited<ReturnType<typeof client.session.prompt>>;
-  try {
-    res = await client.session.prompt({
-      sessionID: openSessionId,
-      parts: [{ type: "text", text: opts.prompt }],
-      model,
-      tools,
-      ...(opts.cwd ? { directory: opts.cwd } : {}),
-      ...(system ? { system } : {}),
-      ...(opts.outputMode === "structured" && opts.outputSchema
-        ? { format: { type: "json_schema", schema: opts.outputSchema, retryCount: STRUCTURED_RETRY_COUNT } }
-        : {}),
-    });
-  } finally {
-    ac.abort();
-    try { await sub?.stream?.return?.(undefined); } catch { /* noop */ }
-    if (pump) await pump.catch(() => {});
-  }
+  const res = await client.session.prompt({
+    sessionID: session.data.id,
+    parts: [{ type: "text", text: opts.prompt }],
+    model,
+    tools,
+    ...(opts.cwd ? { directory: opts.cwd } : {}),
+    ...(system ? { system } : {}),
+    ...(opts.outputMode === "structured" && opts.outputSchema
+      ? { format: { type: "json_schema", schema: opts.outputSchema, retryCount: STRUCTURED_RETRY_COUNT } }
+      : {}),
+  });
 
   if (!res.data) {
     const error = `opencode session.prompt failed: ${describeSdkError((res as { error?: unknown }).error)}`;
     log.error({ sessionId, error }, "runCustomPrompt failed (no data)");
     return { sessionId, error };
   }
+
+  // Dump the model transcript (text + tool calls) to the UI log, gated by level.
+  logOpenCodeTranscript((res.data as { parts?: unknown }).parts as never, opts.onLog, opts.agentLogLevel ?? "all");
 
   const info = res.data.info as { error?: unknown; structured?: unknown };
   logSessionEvent(log, sessionId, info as never, opts.onLog);

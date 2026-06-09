@@ -4,11 +4,15 @@ import { createLogger, type AgentLogLevel, type CodingCliLogFn, type Logger } fr
 const log = createLogger("opencode:sdk");
 const MAX_LINE_LEN = 200;
 
-/** Minimal shape of an OpenCode v2 SSE event we care about. */
-export interface OpenCodeEvent {
-  id: string;
+/** Minimal shape of an OpenCode message Part (text / tool / other), as returned
+ * on `res.data.parts`. We dump these AFTER the prompt completes — robust and
+ * version-agnostic, unlike subscribing to the SSE event stream. */
+export interface OpenCodePart {
   type: string;
-  properties: { timestamp: number; sessionID: string; [k: string]: unknown };
+  text?: string;
+  tool?: string;
+  state?: { status?: string; input?: Record<string, unknown>; error?: string };
+  [k: string]: unknown;
 }
 
 function singleLine(s: string, max = 120): string {
@@ -19,7 +23,6 @@ function singleLine(s: string, max = 120): string {
 function allowsAssistantText(l: AgentLogLevel): boolean { return l === "all"; }
 function allowsToolUse(l: AgentLogLevel): boolean { return l === "medium" || l === "all"; }
 function allowsToolResult(l: AgentLogLevel): boolean { return l === "all"; }
-function allowsLight(l: AgentLogLevel): boolean { return l === "light" || l === "medium" || l === "all"; }
 
 function summarizeInput(input: unknown): string {
   const inp = (input ?? {}) as Record<string, unknown>;
@@ -31,51 +34,39 @@ function summarizeInput(input: unknown): string {
   return keys.length ? keys.join(",") : "";
 }
 
-/** Shape one OpenCode SSE event into a UI log line via `onLog`, gated by `level`.
- * Always debug-logs to stderr regardless of level (the runner forwards stderr). */
-export function logOpenCodeEvent(
-  ev: OpenCodeEvent,
+/**
+ * Emit the model's transcript (text + tool calls) to the UI log via `onLog`,
+ * gated by `level`. Called once after the prompt resolves with `res.data.parts`.
+ * Always debug-logs to stderr regardless of level (the runner forwards stderr).
+ */
+export function logOpenCodeTranscript(
+  parts: readonly OpenCodePart[] | undefined,
   onLog?: CodingCliLogFn,
   level: AgentLogLevel = "all",
 ): void {
-  const p = ev.properties;
   const ui = onLog && level !== "none" ? onLog : undefined;
-  switch (ev.type) {
-    case "session.next.text.ended": {
-      const text = typeof p.text === "string" ? p.text : "";
-      log.debug({ text }, "assistant text");
-      if (ui && allowsAssistantText(level) && text) {
-        ui(singleLine(`🤖 assistant: ${text}`, MAX_LINE_LEN), { event: ev });
+  for (const part of parts ?? []) {
+    if (part.type === "text" && typeof part.text === "string" && part.text) {
+      log.debug({ text: part.text }, "assistant text");
+      if (ui && allowsAssistantText(level)) {
+        ui(singleLine(`🤖 assistant: ${part.text}`, MAX_LINE_LEN), { part });
       }
-      break;
-    }
-    case "session.next.tool.called": {
-      const tool = typeof p.tool === "string" ? p.tool : "tool";
-      log.debug({ tool, input: p.input }, "tool call");
+    } else if (part.type === "tool") {
+      const tool = typeof part.tool === "string" ? part.tool : "tool";
+      const st = part.state ?? {};
+      log.debug({ tool, status: st.status }, "tool part");
       if (ui && allowsToolUse(level)) {
-        const arg = summarizeInput(p.input);
-        ui(singleLine(arg ? `🔧 tool: ${tool}(${arg})` : `🔧 tool: ${tool}`, MAX_LINE_LEN), { event: ev });
+        const arg = summarizeInput(st.input);
+        ui(singleLine(arg ? `🔧 tool: ${tool}(${arg})` : `🔧 tool: ${tool}`, MAX_LINE_LEN), { part });
       }
-      break;
+      if (ui && allowsToolResult(level)) {
+        if (st.status === "error") {
+          ui(singleLine(`📥 ${tool}: error: ${st.error ?? ""}`, MAX_LINE_LEN), { part });
+        } else if (st.status === "completed") {
+          ui(`📥 ${tool}: ok`, { part });
+        }
+      }
     }
-    case "session.next.tool.success": {
-      if (ui && allowsToolResult(level)) ui(`📥 tool_result: ok`, { event: ev });
-      break;
-    }
-    case "session.next.tool.failed":
-    case "session.next.step.failed": {
-      const err = p.error;
-      const msg = typeof err === "string" ? err : JSON.stringify(err ?? {});
-      log.warn({ err }, "opencode error event");
-      if (ui) ui(singleLine(`❌ ${ev.type === "session.next.tool.failed" ? "tool_result: error" : "step failed"}: ${msg}`, MAX_LINE_LEN), { event: ev });
-      break;
-    }
-    case "session.next.retried": {
-      if (ui && allowsLight(level)) ui(`🔁 retry (structured output)`, { event: ev });
-      break;
-    }
-    default:
-      break;
   }
 }
 

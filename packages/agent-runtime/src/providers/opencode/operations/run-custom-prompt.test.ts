@@ -68,16 +68,13 @@ describe("opencode runCustomPrompt", () => {
   });
 });
 
-// Streaming-capable fake client: `promptResult` is what session.prompt resolves to;
-// `events` are emitted from a fake event.subscribe stream.
-function streamingClient(promptResult: unknown, events: unknown[] = []): OpenCodeClient {
-  async function* gen() { for (const e of events) yield e; }
+// Fake client whose session.prompt resolves to `promptResult`.
+function streamingClient(promptResult: unknown): OpenCodeClient {
   return {
     session: {
       create: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
       prompt: vi.fn().mockResolvedValue(promptResult),
     },
-    event: { subscribe: vi.fn().mockResolvedValue({ stream: gen() }) },
   } as unknown as OpenCodeClient;
 }
 
@@ -127,13 +124,21 @@ describe("runCustomPrompt structured reliability", () => {
     expect(typeof captured.format.retryCount).toBe("number");
   });
 
-  it("streams events to onLog gated by level", async () => {
-    const events = [
-      { id: "1", type: "session.next.text.ended", properties: { timestamp: 0, sessionID: "sess-1", text: "hi there" } },
-    ];
-    const client = streamingClient({ data: { info: { structured: { success: true } }, parts: [] } }, events);
+  it("dumps the transcript (text parts) to onLog at level all", async () => {
+    const client = streamingClient({
+      data: { info: { structured: { success: true } }, parts: [{ type: "text", text: "hi there" }] },
+    });
     const onLog = vi.fn();
     await runCustomPrompt(client, cfg, { ...structuredOpts, onLog, agentLogLevel: "all" });
     expect(onLog.mock.calls.some((c: any[]) => String(c[0]).includes("hi there"))).toBe(true);
+  });
+
+  it("does not dump the transcript at level none", async () => {
+    const client = streamingClient({
+      data: { info: { structured: { success: true } }, parts: [{ type: "text", text: "secret" }] },
+    });
+    const onLog = vi.fn();
+    await runCustomPrompt(client, cfg, { ...structuredOpts, onLog, agentLogLevel: "none" });
+    expect(onLog.mock.calls.some((c: any[]) => String(c[0]).includes("secret"))).toBe(false);
   });
 });
