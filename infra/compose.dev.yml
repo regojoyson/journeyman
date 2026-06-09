@@ -41,5 +41,17 @@ services:
       postgres:
         condition: service_healthy
 
+  # Local registry for the runner kit during host-based dev (npm run start:worker).
+  # The host Docker daemon both pushes (build:kit) and pulls (sandbox provisioning),
+  # so a plain published registry works — no dind namespace tricks needed.
+  # Published on 5500 because macOS AirPlay Receiver squats on 5000 (see conductor).
+  # Set JOURNEYMAN_REGISTRY=localhost:5500 in your .env for local dev.
+  registry:
+    image: registry:2
+    ports: ["5500:5000"]
+    volumes:
+      - registry-data:/var/lib/registry
+
 volumes:
   pgdata:
+  registry-data:
