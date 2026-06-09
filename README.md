@@ -271,12 +271,12 @@ npm run build:kit        # docker build + push → <registry>/runner-* ; writes 
 `build:kit` pins each image by **digest**, writes them to `kit.json`, and (when it can reach the DB)
 upserts them into the `kit_images` table — the source of truth workers read. When the DB isn't up yet
 (e.g. the compose deploy flow builds the kit first), run `npm run register-kit` afterwards to record
-them. The worker (and api-server) container needs **no Docker engine inside it** — it connects to a
-Docker daemon (a local socket, or `tcp://` for dind/ECS/remote) and pulls the digest-pinned kit there.
+them. `build:kit` builds and pushes via your machine's **Docker CLI** (your active `docker context`),
+so there's nothing to configure.
 
-> **Rancher Desktop / colima / rootless:** `build:kit` and the worker use `dockerode`, which ignores
-> the Docker CLI *context*. `build:kit` auto-adopts the active context's endpoint, but for the worker
-> set `DOCKER_HOST` in `.env` (e.g. `unix:///Users/you/.rd/docker.sock`).
+> **Docker sandboxes use an explicit daemon host.** In the bundled compose stack, set the sandbox's
+> host to `tcp://docker:2375`. Local-dev Docker sandboxes need a reachable TCP daemon — otherwise use
+> a Local-type sandbox (no Docker needed).
 
 ### Path 1: Docker Compose
 

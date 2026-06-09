@@ -4,7 +4,7 @@ import type { IDockerClient, DockerConnection } from "./backends/docker/docker-c
 export interface ConnectionTestResult { ok: boolean; error?: string }
 
 export interface RunWorkerConnectionTestDeps {
-  makeDockerClient: (connection?: DockerConnection) => IDockerClient;
+  makeDockerClient: (connection: DockerConnection) => IDockerClient;
 }
 
 /** Validate that a worker's connection config can reach its target. Docker only for now. */
@@ -15,9 +15,9 @@ export async function runWorkerConnectionTest(
   if (input.type !== "docker") {
     return { ok: false, error: `No connection test for type '${input.type}'` };
   }
-  const connection = (input.config.connection as DockerConnection | undefined) ?? { kind: "local" };
+  const connection = input.config.connection as DockerConnection | undefined;
   try {
-    await deps.makeDockerClient(connection).ping();
+    await deps.makeDockerClient(connection as DockerConnection).ping();
     return { ok: true };
   } catch (err) {
     return { ok: false, error: (err as Error)?.message ?? "Connection failed" };

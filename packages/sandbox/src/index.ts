@@ -40,7 +40,7 @@ export type { BuildTickDeps, StartBuildLoopDeps } from "./build/build-loop.ts";
 export {
   markImagePending, clearImageState, claimPendingBuild,
   renewBuildLease, commitBuildResult, failBuild, applyImageStateOnSave,
-  listReadyImageRefs,
+  listReadyImageRefs, listDockerSandboxConnections,
 } from "./db.ts";
 export {
   recordSandboxInstance, getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,

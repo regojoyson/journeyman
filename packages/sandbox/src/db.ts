@@ -1,5 +1,6 @@
 import type { CreateSandboxArgs, UpdateSandboxArgs, Sandbox } from "@journeyman/core";
 import { rowToSandbox } from "./sandbox-record.ts";
+import type { DockerConnection } from "./backends/docker/docker-client.ts";
 
 /** Minimal structural seam over a pg Pool/Client so the store is unit-testable. */
 export interface Queryable {
@@ -236,6 +237,18 @@ export async function listReadyImageRefs(db: Queryable): Promise<string[]> {
       WHERE type = 'docker' AND image_state = 'ready' AND image_ref IS NOT NULL`,
   );
   return rows.map((r) => r.image_ref as string);
+}
+
+/** Distinct daemons where docker-sandbox images are built (for the prune sweep). */
+export async function listDockerSandboxConnections(db: Queryable): Promise<DockerConnection[]> {
+  const { rows } = await db.query(
+    `SELECT DISTINCT config->'connection' AS connection
+       FROM jm_sandboxes
+      WHERE type = 'docker' AND config->'connection' IS NOT NULL`,
+  );
+  return rows
+    .map((r) => r.connection as DockerConnection | null)
+    .filter((c): c is DockerConnection => !!c?.host);
 }
 
 /** After create/update of a target, sync its image lifecycle state from config. */

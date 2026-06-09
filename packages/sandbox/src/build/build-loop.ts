@@ -41,7 +41,7 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   let fingerprint = target.imageFingerprint ?? "";
   try {
     log(`building image for sandbox ${target.name} (${target.id})`);
-    const client = makeClient(cfg["connection"] ?? { kind: "local" });
+    const client = makeClient(cfg["connection"]);
     // The box recipe grafts the kit via `COPY --from=<bundleRef>`; ensure that
     // kit image exists on this daemon first (pulled from the registry by digest).
     await ensureKit(client, deps.bundleRef, deps.kitAuth, log);

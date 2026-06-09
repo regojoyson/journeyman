@@ -121,8 +121,6 @@ services:
       # Inside the container the data root is always /data/journeyman (the mount target
       # below). The host folder behind it is set via JOURNEYMAN_BASE_DIR in .env.
       JOURNEYMAN_BASE_DIR: /data/journeyman
-      # Default Docker engine for docker-workspace sandboxes (the built-in dind).
-      DOCKER_HOST: tcp://docker:2375
       # Local-sandbox AI runs in-process as root here; the Claude engine refuses
       # bypassPermissions as root unless IS_SANDBOX=1.
       IS_SANDBOX: "1"

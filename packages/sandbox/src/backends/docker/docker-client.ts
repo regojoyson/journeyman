@@ -1,17 +1,14 @@
 import Docker from "dockerode";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 import type { RegistryAuth } from "./registry-auth.ts";
 
 /** How to reach a Docker daemon. Persisted on the sandbox row so any process can rebuild the client. */
 export interface DockerConnection {
-  kind: "local" | "remote";
-  /** Local only: override the daemon socket (blank ⇒ DOCKER_HOST, then the dockerode default). */
-  socketPath?: string;
-  /** e.g. "tcp://build-host:2376" or "build-host:2376" (remote only). */
-  host?: string;
-  /** Optional TLS cert dir containing ca.pem/cert.pem/key.pem (remote only). */
+  /** Docker daemon TCP endpoint, e.g. "tcp://docker:2375" or "build-host:2376". Required. */
+  host: string;
+  /** Optional TLS cert dir containing ca.pem/cert.pem/key.pem. */
   certDir?: string;
 }
 
@@ -51,15 +48,6 @@ export function parseDockerHost(host: string): { host: string; port: number } {
   const stripped = host.replace(/^[a-z]+:\/\//i, "");
   const [h, p] = stripped.split(":");
   return { host: h, port: p ? Number(p) : 2375 };
-}
-
-/**
- * Normalize a configured Unix socket path. dockerode's `socketPath` wants a bare
- * filesystem path, but users naturally paste the `unix://…` form shown by
- * `docker context ls` / DOCKER_HOST. Strip the scheme so either form works.
- */
-export function normalizeSocketPath(socketPath: string): string {
-  return socketPath.replace(/^unix:\/\//i, "");
 }
 
 function toEnvList(env?: Record<string, string>): string[] | undefined {
@@ -261,37 +249,13 @@ export class DockerodeClient implements IDockerClient {
   }
 }
 
-/**
- * Connect to a local Unix socket — but fail loudly with an actionable message if
- * the socket file isn't there, instead of letting dockerode emit a cryptic
- * `connect ENOENT <path>` only when the first operation runs.
- */
-function localSocketClient(rawPath: string): IDockerClient {
-  const socketPath = normalizeSocketPath(rawPath);
-  if (!existsSync(socketPath)) {
+/** Build an IDockerClient for a remote Docker daemon. Throws if no host is configured. */
+export function makeDockerClient(connection: DockerConnection): IDockerClient {
+  if (!connection?.host) {
     throw new Error(
-      `Docker socket not found at '${socketPath}'. Point the daemon at a real socket — ` +
-        `set the sandbox's socket path, or DOCKER_HOST (e.g. unix:///Users/you/.rd/docker.sock ` +
-        `for Rancher Desktop). Find yours with: docker context inspect --format '{{.Endpoints.docker.Host}}'`,
+      "Docker sandbox needs an explicit daemon host (e.g. tcp://docker:2375) — " +
+        "no local socket / DOCKER_HOST fallback.",
     );
-  }
-  return new DockerodeClient(new Docker({ socketPath }));
-}
-
-/** Build an IDockerClient for the given connection (default: local socket, honoring DOCKER_HOST). */
-export function makeDockerClient(connection?: DockerConnection): IDockerClient {
-  if (!connection || connection.kind === "local" || !connection.host) {
-    // Precedence: explicit socketPath → DOCKER_HOST → conventional default socket.
-    // Each resolved Unix socket is verified to exist (localSocketClient throws a
-    // clear error if not) — no silent fallback to an absent daemon.
-    if (connection?.socketPath) return localSocketClient(connection.socketPath);
-    const dh = process.env.DOCKER_HOST;
-    if (dh) {
-      if (dh.startsWith("unix://")) return localSocketClient(dh);
-      const { host, port } = parseDockerHost(dh); // tcp:// — validated on first use
-      return new DockerodeClient(new Docker({ host, port }));
-    }
-    return localSocketClient("/var/run/docker.sock");
   }
   const { host, port } = parseDockerHost(connection.host);
   const opts: Docker.DockerOptions = { host, port };

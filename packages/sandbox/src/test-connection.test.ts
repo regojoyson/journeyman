@@ -9,7 +9,7 @@ function fakeClient(pingImpl: () => Promise<void>): IDockerClient {
 describe("runWorkerConnectionTest", () => {
   it("returns ok when the docker daemon pings", async () => {
     const res = await runWorkerConnectionTest(
-      { type: "docker", config: { connection: { kind: "local" } } },
+      { type: "docker", config: { connection: { host: "tcp://docker:2375" } } },
       { makeDockerClient: () => fakeClient(async () => {}) },
     );
     expect(res).toEqual({ ok: true });
@@ -17,7 +17,7 @@ describe("runWorkerConnectionTest", () => {
 
   it("returns the error when the docker daemon is unreachable", async () => {
     const res = await runWorkerConnectionTest(
-      { type: "docker", config: { connection: { kind: "local", socketPath: "/nope.sock" } } },
+      { type: "docker", config: { connection: { host: "tcp://nope:2375" } } },
       { makeDockerClient: () => fakeClient(async () => { throw new Error("connect ENOENT /nope.sock"); }) },
     );
     expect(res.ok).toBe(false);

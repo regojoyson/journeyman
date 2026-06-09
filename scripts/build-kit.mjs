@@ -5,17 +5,17 @@
 // Required env:
 //   JOURNEYMAN_REGISTRY            e.g. localhost:5000 | ghcr.io/acme | registry.gitlab.com/acme/jm
 // Optional env:
-//   JOURNEYMAN_REGISTRY_USERNAME / JOURNEYMAN_REGISTRY_TOKEN   creds for private registries
 //   JOURNEYMAN_BASE_DIR           data root (kit.json goes under <root>/kit)
 //   KIT_OUT_DIR                   explicit output dir (wins over base/kit)
-//   DOCKER_HOST                   which daemon to build/push on
+// Build + push use the Docker CLI (your active `docker context`). For a private
+// registry, run `docker login <registry>` first.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { config as loadDotenv } from "dotenv";
 import { Pool } from "pg";
-import { makeDockerClient, registryAuthFromEnv, upsertKitImage } from "@journeyman/sandbox";
+import { upsertKitImage } from "@journeyman/sandbox";
 
 // ENV_FILE selects the dotenv file (default .env for dev; compose-up.sh sets
 // .env.production for the deploy path).
@@ -42,38 +42,28 @@ function run(cmd, args) {
   execFileSync(cmd, args, { stdio: "inherit", cwd: repoRoot });
 }
 
-// dockerode (used for push) ignores the Docker CLI *context*, so on Rancher
-// Desktop / colima / rootless the default /var/run/docker.sock doesn't exist.
-// If DOCKER_HOST isn't already set, adopt the active CLI context's endpoint so
-// the push targets the same daemon `docker build` just used.
-if (!process.env.DOCKER_HOST) {
-  try {
-    const host = execFileSync(
-      "docker",
-      ["context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
-      { encoding: "utf8" },
-    ).trim();
-    if (host) {
-      process.env.DOCKER_HOST = host;
-      console.log(`(using docker endpoint from CLI context: ${host})`);
-    }
-  } catch {
-    /* fall back to dockerode's default socket */
-  }
-}
-
 mkdirSync(outDir, { recursive: true });
-const client = makeDockerClient();
-const auth = registryAuthFromEnv(process.env);
 const kit = {};
 
+// Build + push via the Docker CLI, which resolves the daemon from the active
+// `docker context` (no DOCKER_HOST/socket guessing). The pushed manifest digest
+// is read back from RepoDigests so kit refs are pinned by digest.
 for (const t of targets) {
   console.log(`\n=== build ${t.tag} (${t.dockerfile}) ===`);
   run("docker", ["build", "-f", t.dockerfile, "-t", t.tag, "."]);
   console.log(`\n=== push ${t.tag} ===`);
-  const pinned = await client.pushImage(t.tag, auth);
-  console.log(`pushed ${t.role}: ${pinned}`);
-  kit[t.role] = pinned;
+  run("docker", ["push", t.tag]);
+  const repoDigest = execFileSync(
+    "docker",
+    ["inspect", "--format", "{{index .RepoDigests 0}}", t.tag],
+    { encoding: "utf8" },
+  ).trim();
+  if (!repoDigest) {
+    console.error(`ERROR: no RepoDigest for ${t.tag} after push`);
+    process.exit(1);
+  }
+  console.log(`pushed ${t.role}: ${repoDigest}`);
+  kit[t.role] = repoDigest;
 }
 
 const kitJsonPath = join(outDir, "kit.json");

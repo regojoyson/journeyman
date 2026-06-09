@@ -1,14 +1,13 @@
 import type { FC } from "react";
-import { Plug, Terminal, Globe, Box, FileText, Network } from "lucide-react";
+import { Globe, Box, FileText, Network } from "lucide-react";
 import { inputCls, selectCls } from "../../../routes/admin-styles.ts";
 import { Field, Code } from "./form-controls.tsx";
 import type { SandboxTypeForm } from "./LocalConfigForm.tsx";
 
-type ConnKind = "local" | "remote";
 type ImageKind = "ref" | "dockerfile";
 
 interface DockerState {
-  connKind: ConnKind; host: string; socketPath: string;
+  host: string;
   imageKind: ImageKind; imageRef: string; dockerfile: string;
   network: "full" | "none";
 }
@@ -19,31 +18,12 @@ const DockerConfigForm: FC<{ state: Record<string, unknown>; onChange: (s: Recor
     const set = (patch: Partial<DockerState>) => onChange({ ...s, ...patch } as unknown as Record<string, unknown>);
     return (
       <>
-        <Field icon={Plug} label="Connection"
-          hint={s.connKind === "local"
-            ? <>Talk to the Docker daemon on this machine via its Unix socket.</>
-            : <>Connect to a remote Docker daemon over TCP (optionally TLS).</>}>
-          <select className={`${selectCls} block mt-1 w-full`} value={s.connKind}
-            onChange={(e) => set({ connKind: e.target.value as ConnKind })}>
-            <option value="local">Local socket</option>
-            <option value="remote">Remote daemon</option>
-          </select>
+        <Field icon={Globe} label="Daemon host"
+          hint={<>Docker daemon over TCP. In the bundled compose stack use <Code>tcp://docker:2375</Code>;
+            for a remote daemon, e.g. <Code>tcp://build-host:2376</Code>.</>}>
+          <input className={inputCls} placeholder="tcp://docker:2375" value={s.host}
+            onChange={(e) => set({ host: e.target.value })} />
         </Field>
-        {s.connKind === "local" && (
-          <Field icon={Terminal} label="Socket path"
-            hint={<>Blank = host default / <Code>DOCKER_HOST</Code>. Rancher Desktop: <Code>~/.rd/docker.sock</Code> ·
-              Colima: <Code>~/.colima/default/docker.sock</Code>. The <Code>unix://</Code> prefix is optional.</>}>
-            <input className={inputCls} placeholder="/Users/you/.rd/docker.sock" value={s.socketPath}
-              onChange={(e) => set({ socketPath: e.target.value })} />
-          </Field>
-        )}
-        {s.connKind === "remote" && (
-          <Field icon={Globe} label="Daemon host"
-            hint={<>Address of the remote daemon, e.g. <Code>tcp://build-host:2376</Code>.</>}>
-            <input className={inputCls} placeholder="tcp://build-host:2376" value={s.host}
-              onChange={(e) => set({ host: e.target.value })} />
-          </Field>
-        )}
         <Field icon={Box} label="Image source"
           hint={s.imageKind === "ref"
             ? <>Pull a ready-made runner image from a registry.</>
@@ -85,12 +65,10 @@ export const dockerTypeForm: SandboxTypeForm = {
   icon: Box,
   testConnection: true,
   readConfig: (raw) => {
-    const connection = (raw.connection ?? { kind: "local" }) as { kind?: ConnKind; host?: string; socketPath?: string };
+    const connection = (raw.connection ?? {}) as { host?: string };
     const image = (raw.image ?? { kind: "ref", imageRef: "" }) as { kind?: ImageKind; imageRef?: string; content?: string };
     return {
-      connKind: (connection.kind ?? "local"),
       host: connection.host ?? "",
-      socketPath: connection.socketPath ?? "",
       imageKind: (image.kind ?? "ref"),
       imageRef: image.imageRef ?? "",
       dockerfile: image.content ?? "",
@@ -100,9 +78,7 @@ export const dockerTypeForm: SandboxTypeForm = {
   buildConfig: (state) => {
     const s = state as unknown as DockerState;
     return {
-      connection: s.connKind === "remote"
-        ? { kind: "remote", host: s.host }
-        : { kind: "local", ...(s.socketPath ? { socketPath: s.socketPath } : {}) },
+      connection: { host: s.host },
       image: s.imageKind === "ref" ? { kind: "ref", imageRef: s.imageRef } : { kind: "dockerfile", content: s.dockerfile },
       network: s.network,
     };

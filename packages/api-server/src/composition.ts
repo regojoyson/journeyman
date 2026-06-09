@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { Pool } from "pg";
 import {
   getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
-  DockerExecutionEnvironment, makeDockerClient,
+  DockerExecutionEnvironment, makeDockerClient, type DockerConnection,
   SandboxInstanceReaper, type SandboxInstanceRecord, type SandboxInstanceRoutesDeps,
 } from "@journeyman/sandbox";
 import { isTerminalStatus } from "@journeyman/core";
@@ -159,7 +159,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     ?? join(process.cwd(), ".journeyman", "workspaces");
 
   const dockerDestroy = async (sb: SandboxInstanceRecord): Promise<void> => {
-    const client = makeDockerClient(sb.connection ?? { kind: "local" });
+    const client = makeDockerClient(sb.connection as DockerConnection);
     const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
     await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
   };

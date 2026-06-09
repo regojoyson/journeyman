@@ -16,7 +16,7 @@ describe("ensureWorkspace", () => {
         type: "docker",
         status: "active",
         handle: "c1",
-        connection: { kind: "local" },
+        connection: { host: "tcp://docker:2375" },
         volume: "v",
       }),
       claim: vi.fn(),
@@ -84,7 +84,7 @@ describe("ensureWorkspace", () => {
       claim: vi.fn().mockResolvedValue(true),
       waitActive: vi.fn(),
       resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c4"), imageRef: "img:1", connection: { kind: "local" } }),
+      provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c4"), imageRef: "img:1", connection: { host: "tcp://docker:2375" } }),
       provisionLocal: vi.fn(),
       markActive: vi.fn().mockResolvedValue(undefined),
     };
@@ -151,7 +151,7 @@ describe("ensureWorkspace", () => {
   it("emits 'using existing workspace' on the connect path", async () => {
     const lines: string[] = [];
     const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { kind: "local" } }),
+      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { host: "tcp://docker:2375" } }),
       provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c1")),
       claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveSandbox: vi.fn(),
     };

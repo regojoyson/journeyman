@@ -19,7 +19,7 @@ import {
   DockerExecutionEnvironment, LocalExecutionEnvironment,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
   markImagePending, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
-  listReadyImageRefs, resolveKitRefs, registryAuthFromEnv,
+  listReadyImageRefs, listDockerSandboxConnections, resolveKitRefs, registryAuthFromEnv,
 } from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
@@ -147,7 +147,7 @@ const ensureWs = (a: {
       },
       onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
       verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
-        const connection = (config as Record<string, unknown>)["connection"] ?? { kind: "local" };
+        const connection = (config as Record<string, unknown>)["connection"];
         const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
         const { bundle } = await kitRefs();
         // Ensure the kit bundle is present (pulled by digest) before recomputing
@@ -178,7 +178,7 @@ const ensureWs = (a: {
         return { env, provisioned };
       },
       provisionDocker: async (runId, worker) => {
-        const connection = (worker.config as Record<string, unknown>)["connection"] ?? { kind: "local" };
+        const connection = (worker.config as Record<string, unknown>)["connection"];
         const dockerClient = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
         const env = new DockerExecutionEnvironment({ client: dockerClient, defaultImage: RUNNER_IMAGE });
         // If we are reconnecting to an existing container (connect() path), skip provisioning.
@@ -438,16 +438,26 @@ const stopBuildLoop = pool
     })
   : () => {};
 // Periodically prune orphaned jm-built images (keep set = ready boxes' refs) so
-// disk doesn't grow as fingerprints churn. Targets the local daemon only.
+// disk doesn't grow as fingerprints churn. Targets each docker sandbox's daemon (from the DB).
 const stopPrune = pool
   ? (() => {
       const timer = setInterval(() => {
         void (async () => {
           try {
-            const refs = await listReadyImageRefs(pool);
-            const client = makeDockerClient({ kind: "local" });
-            const removed = await pruneBuiltImages(client, new Set(refs), (line) => log.info({ line }, "prune"));
-            if (removed.length) log.info({ removed }, "pruned orphaned built images");
+            const keep = new Set(await listReadyImageRefs(pool));
+            const connections = await listDockerSandboxConnections(pool);
+            for (const conn of connections) {
+              try {
+                const removed = await pruneBuiltImages(
+                  makeDockerClient(conn),
+                  keep,
+                  (line) => log.info({ line }, "prune"),
+                );
+                if (removed.length) log.info({ removed, host: conn.host }, "pruned orphaned built images");
+              } catch (err) {
+                log.warn({ err: String(err), host: conn.host }, "prune failed for daemon");
+              }
+            }
           } catch (err) {
             log.warn({ err: String(err) }, "image prune sweep failed");
           }

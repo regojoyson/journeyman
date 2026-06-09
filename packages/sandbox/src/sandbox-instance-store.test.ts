@@ -18,11 +18,11 @@ describe("sandbox-store", () => {
     const db = fakeDb();
     await recordSandboxInstance(db, {
       runId: "r1", type: "docker", handle: "c1", volume: "v1", imageRef: "x:1", owner: "o1",
-      connection: { kind: "remote", host: "tcp://h:2376" },
+      connection: { host: "tcp://h:2376" },
     });
     expect(db.calls[0].text).toMatch(/insert into jm_sandbox_instances/i);
     expect(db.calls[0].params).toEqual([
-      "r1", "docker", "c1", "v1", "x:1", "o1", JSON.stringify({ kind: "remote", host: "tcp://h:2376" }),
+      "r1", "docker", "c1", "v1", "x:1", "o1", JSON.stringify({ host: "tcp://h:2376" }),
     ]);
   });
 

@@ -136,17 +136,18 @@ Log in, then go to **Sidebar → Sandboxes → New sandbox**.
 
 **Docker workspace, built-in engine:**
 1. Type = **Docker**
-2. Connection = **Local socket**, leave **Socket path blank** (resolves to the built-in dind).
+2. Daemon host = `tcp://docker:2375` (the built-in dind).
 3. Image source = a prebuilt ref (e.g. `node:22-bookworm`) or a Dockerfile.
 4. Network = **Full (internet)**.
 5. Save → **Test connection** → ✅.
 
 **Docker workspace, your own engine (any IP):**
-1. Type = **Docker** → Connection = **Remote daemon**.
+1. Type = **Docker**
 2. Daemon host = `tcp://<your-host>:2376`.
 3. Save → **Test connection** → ✅.
 
-The worker connects straight to that host, ignoring the built-in engine.
+The worker connects straight to whatever host you set. A Docker sandbox always needs an explicit
+daemon host — there is no local-socket option or fallback.
 
 ---
 

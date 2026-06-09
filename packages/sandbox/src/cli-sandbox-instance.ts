@@ -8,7 +8,7 @@
 import { Pool } from "pg";
 import { listActiveSandboxInstances, getSandboxInstance, markSandboxInstanceDestroyed, type SandboxInstanceRecord } from "./sandbox-instance-store.ts";
 import { DockerExecutionEnvironment } from "./backends/docker/docker-execution-environment.ts";
-import { makeDockerClient } from "./backends/docker/docker-client.ts";
+import { makeDockerClient, type DockerConnection } from "./backends/docker/docker-client.ts";
 
 const url = process.env.DATABASE_URL;
 if (!url) { process.stderr.write("DATABASE_URL not set\n"); process.exit(1); }
@@ -16,7 +16,7 @@ const pool = new Pool({ connectionString: url });
 const RUNNER_IMAGE = process.env.JOURNEYMAN_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 
 async function destroy(sb: SandboxInstanceRecord): Promise<void> {
-  const client = makeDockerClient(sb.connection ?? { kind: "local" });
+  const client = makeDockerClient(sb.connection as DockerConnection);
   const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
   await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
   await markSandboxInstanceDestroyed(pool, sb.runId);

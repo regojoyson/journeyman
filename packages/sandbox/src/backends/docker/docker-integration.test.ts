@@ -7,7 +7,7 @@ const IMAGE = process.env.JM_RUNNER_IMAGE ?? "journeyman/runner-base:dev";
 
 describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker via dockerode)", () => {
   it("provisions, execs the runner (unknown op), and destroys", async () => {
-    const env = new DockerExecutionEnvironment({ client: makeDockerClient(), defaultImage: IMAGE });
+    const env = new DockerExecutionEnvironment({ client: makeDockerClient({ host: process.env.JM_DOCKER_HOST ?? "tcp://localhost:2375" }), defaultImage: IMAGE });
     const runId = `it-${Date.now()}`;
     const p = await env.provision(runId, { imageRef: IMAGE });
     try {
@@ -22,7 +22,7 @@ describe.skipIf(!RUN_IT)("DockerExecutionEnvironment (real docker via dockerode)
 
   it("builds an image from a Dockerfile and runs the runner in it", async () => {
     const bundle = process.env.JM_RUNNER_BUNDLE ?? "journeyman/runner-bundle:dev";
-    const client = makeDockerClient();
+    const client = makeDockerClient({ host: process.env.JM_DOCKER_HOST ?? "tcp://localhost:2375" });
     const { buildDockerfileImage } = await import("./build-image.ts");
     const builtRef = await buildDockerfileImage({ content: "FROM debian:stable-slim", client, bundleRef: bundle });
     const env = new DockerExecutionEnvironment({ client, defaultImage: builtRef });
