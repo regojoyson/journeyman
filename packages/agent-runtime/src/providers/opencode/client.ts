@@ -4,6 +4,21 @@ import { applyEnv, freePort } from "./server-config.ts";
 
 export type OpenCodeClient = OpencodeClient;
 
+/**
+ * Default managed-server startup timeout (ms). The SDK does
+ * `setTimeout(reject, options.timeout)`, and an undefined timeout is coerced to 0
+ * — i.e. it rejects immediately with "Timeout waiting for server to start after
+ * undefinedms". So we always pass an explicit, generous default (first runs may
+ * fetch provider packages). Override via OPENCODE_SERVER_TIMEOUT_MS.
+ */
+const DEFAULT_SERVER_TIMEOUT_MS = 60_000;
+
+function resolveServerTimeout(configTimeout: number | undefined): number {
+  if (typeof configTimeout === "number" && configTimeout > 0) return configTimeout;
+  const env = Number(process.env.OPENCODE_SERVER_TIMEOUT_MS);
+  return Number.isFinite(env) && env > 0 ? env : DEFAULT_SERVER_TIMEOUT_MS;
+}
+
 export interface OpenCodeServerHandle {
   client: OpenCodeClient;
   /** Stop the managed server (no-op in external mode) and restore injected env. */
@@ -33,7 +48,7 @@ export async function startServer(
     const { client, server } = await createOpencode({
       hostname: config.hostname ?? "127.0.0.1",
       port,
-      timeout: config.timeout,
+      timeout: resolveServerTimeout(config.timeout),
       config: serverConfig as never,
     });
     return {
