@@ -64,11 +64,20 @@ Examples:
 
 Before: five dropdowns. After: exactly the one the selected model declares (or none).
 
+## Effective model resolution (used everywhere)
+
+A step's model can be blank and fall back to the workflow default. All three consumers
+(editor, publish validation, worker) must derive the slot from the **effective model**:
+`node.model ?? definition.defaults.defaultModel`. The worker-harness already resolves this
+before resolving `modelConfig`; the editor and `flows.ts` must apply the same rule so the
+displayed slot, the published constraint, and the runtime resolution agree.
+
 ## Components / changes
 
 ### 1. Shared helper (single source of truth) — `@journeyman/core`
 
-A pure function so editor, worker, and flow validation can't drift:
+Used by **three** consumers — the editor (display), `flows.ts` (publish validation), and the
+worker (runtime resolution) — so none can drift. A pure function:
 ```ts
 import type { SecretSlotDef } from "./types/secret-slot.types.ts";
 import type { CodingModelConfig } from "./types/coding-models.types.ts";
@@ -100,11 +109,28 @@ removes the five dropdowns.)
 
 `packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx`: for an OpenCode step,
 stop sourcing provider slots from the catalog. Instead:
-- The selected coding model is fetched for the node's provider (the `/api/coding-models`
-  response already includes `config`). Find the model whose `modelId === node.model`.
-- Compute its key slot via `openCodeModelSlots(model.config)` and render that (required), or
-  nothing. For custom-AI steps, still union the step's own DB-defined slots as today.
+- Read the node's **effective model** (`node.model ?? flow defaults`). `node.model` already
+  exists (`WorkflowNode.model`); the panel does not read it today — this is new wiring.
+- Fetch the coding models for the provider (the `/api/coding-models` response already includes
+  `config`) and find the model whose `modelId` equals the effective model. This is a **new
+  async data dependency** in this component (reuses the existing models API).
+- Compute its key slot via `openCodeModelSlots(model.config)` and **inject** that (required)
+  into the custom-AI slot union (emptying the catalog alone yields no key row). If the model
+  declares no key, render nothing. Handle loading / model-not-found gracefully (show no
+  derived row; the worker still resolves correctly at run time).
 - Switching the model re-derives the row.
+
+### 3b. Publish validation — `flows.ts` (api-server)
+
+`packages/api-server/src/routes/flows.ts`: custom-AI publish validation builds
+`declaredSlotNames` from DB custom-step slots + PROVIDER_CATALOG slots only. With the OpenCode
+catalog emptied and the key model-derived, a user's mapped key (e.g. `ANTHROPIC_API_KEY`) is
+**not** in that set → it is wrongly flagged as an **orphan binding**, and the required key is
+never enforced. Fix: resolve the node's effective model, look up its coding-model `config`
+from the DB (the route already has the pool and already fetches custom-step slots), and add
+`openCodeModelSlots(config)` to **both** `declaredSlotNames` and the required-slot
+accessibility check. This restores orphan-free publishing and GitHub-Issues-style required
+enforcement.
 
 ### 4. Coding-model form — Authentication subsection
 
@@ -157,7 +183,12 @@ The value is never written into the prompt and never persisted by this feature.
 - **Unit (core):** `openCodeModelSlots` returns one required slot when `apiKeySlot` is set,
   `[]` when not. `suggestedKeySlotName` maps providerIDs (`anthropic`→`ANTHROPIC_API_KEY`,
   `google`→`GEMINI_API_KEY`, `mistral`→`MISTRAL_API_KEY`, no-slash → "").
-- **Unit (provider-catalog):** opencode entry has no static slots.
+- **Unit (provider-catalog):** opencode entry has no static slots. **Update existing tests:**
+  the current `provider-catalog.test.ts` asserts the `OPENCODE_API_KEY` slot, and the
+  recently-added test asserts the five cloud slots — both must change to expect empty slots.
+- **Publish validation (`flows.ts`):** a custom-AI node on an OpenCode model with a declared
+  key + a mapped secret publishes cleanly (no orphan); the same node with the key unmapped is
+  flagged required/inaccessible.
 - **Unit (server-config):** `buildProviderBlock` omits the block for a cloud model with only
   `apiKeySlot`; still emits it (with apiKey) for a `baseUrl` model.
 - **Editor:** selecting a model with a declared key shows exactly one required slot; switching
@@ -167,19 +198,34 @@ The value is never written into the prompt and never persisted by this feature.
 
 ## Out of scope
 
-- Per-step model selection / key display for built-in OpenCode steps (scanRepos/checkout) in
-  the editor — at run time the worker derives the slot from the resolved default model via the
-  same helper; editor support stays deferred.
+- Per-step model selection / key display for built-in OpenCode steps (cloneRepos /
+  list-workspace-files / start-feature-branch) in the editor. They expose no per-step model
+  picker, so their Secrets panel shows no key row — unchanged from today, where OpenCode auth
+  for these steps was already not wired. At run time the worker derives the slot from the
+  resolved default model via the same helper; editor support stays deferred.
 - Validating that a cloud model's declared key name matches OpenCode's expected env var (the
   prefill guides it; the admin may override).
+
+## Implementation note
+
+This modifies in-progress code from `2026-06-09-opencode-custom-model-config-design.md` (not
+greenfield): the admin form's API-key field moves from "Custom endpoint" to a new
+"Authentication" subsection, and `buildProviderBlock`'s gate changes from
+`baseUrl || npm || apiKeySlot` to `baseUrl` only. Existing `server-config` tests set `baseUrl`
+and continue to pass under the tighter gate.
 
 ## Affected files (indicative)
 
 - `packages/core/src/registries/provider-catalog.ts` — empty opencode slots.
 - `packages/core/src/registries/opencode-slots.ts` (new) — `openCodeModelSlots`,
-  `suggestedKeySlotName` (+ test).
-- `packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx` — model-derived slot.
+  `suggestedKeySlotName` (+ test); export from the core barrel.
+- `packages/core/src/registries/provider-catalog.test.ts` — update opencode-slots assertions.
+- `packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx` — read effective model,
+  fetch model config, inject model-derived slot.
+- `packages/api-server/src/routes/flows.ts` — derive + include the model slot in publish
+  validation (declared set + required check).
 - `packages/web/src/routes/AdminCodingModelsPage.tsx` — Authentication subsection + prefill.
-- `packages/orchestrator/src/workers/steps/custom-ai-step-handler.ts` — use the helper.
+- `packages/orchestrator/src/workers/steps/custom-ai-step-handler.ts` — use the helper
+  (required slot).
 - `packages/agent-runtime/src/providers/opencode/server-config.ts` — gate provider block on
   `baseUrl`.
