@@ -51,9 +51,10 @@ A flow step runs inside a **sandbox** the user picks in the app. There are two k
 ## 1. Configure `.env.production`
 
 Deploy uses its own env file (`.env.production`), separate from the dev `.env`, so
-settings can't clash — most importantly the runner-kit registry port (deploy uses
-`localhost:5000`, host dev uses `localhost:5500`). Copy the template and fill in the
-**required** values:
+settings (DB URLs, secrets, registry target) stay per-environment. The bundled
+registry runs on `localhost:5500` (same port as dev — 5500 avoids the macOS AirPlay
+clash on 5000; don't run the dev and deploy stacks at the same time). Copy the
+template and fill in the **required** values:
 
 ```bash
 cp .env.production.example .env.production
@@ -81,7 +82,7 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" 
 Runner images are **pushed to a container registry** and pulled by workers — no
 more tar files. Set the target registry in `.env.production`:
 
-- `JOURNEYMAN_REGISTRY` — e.g. `localhost:5000`, `ghcr.io/acme`,
+- `JOURNEYMAN_REGISTRY` — e.g. `localhost:5500` (bundled), `ghcr.io/acme`,
   `registry.gitlab.com/acme/journeyman`.
 - `JOURNEYMAN_REGISTRY_USERNAME` / `JOURNEYMAN_REGISTRY_TOKEN` — optional, for
   private registries.
@@ -97,9 +98,9 @@ To roll a new kit: `npm run build:kit && npm run register-kit` (workers pick up 
 new digest automatically — no redeploy).
 
 **Local default (zero-config):** compose ships a bundled `registry:2` service. With
-the default `JOURNEYMAN_REGISTRY=localhost:5000`, `compose:up` starts it, waits for
+the default `JOURNEYMAN_REGISTRY=localhost:5500`, `compose:up` starts it, waits for
 it, then pushes — nothing to set up. The registry shares the dind network namespace
-so `localhost:5000` resolves to the same registry from the host (push) and from dind
+so `localhost:5500` resolves to the same registry from the host (push) and from dind
 (pull). Its storage lives in the `registry-storage` volume.
 
 **External registry:** point `JOURNEYMAN_REGISTRY` at GHCR/GitLab/ECR/Docker Hub and

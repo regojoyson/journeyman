@@ -54,7 +54,7 @@ A committed `.env.example` documents required variables. The `.env` file itself 
 | `ANTHROPIC_API_KEY` | Optional; falls back to logged-in `claude login`. |
 | `GITHUB_ACCESS_TOKEN` | Legacy fallback for GitHub access. |
 | `JOURNEYMAN_BASE_DIR` | Single data root: `<base>/{workspaces,skills,kit}` (default `~/.journeyman`). |
-| `JOURNEYMAN_REGISTRY` | Registry the runner kit is pushed to / pulled from (e.g. `localhost:5000`, `ghcr.io/acme`). Publish with `npm run build:kit && npm run register-kit`. |
+| `JOURNEYMAN_REGISTRY` | Registry the runner kit is pushed to / pulled from (e.g. `localhost:5500` bundled, `ghcr.io/acme`). Publish with `npm run build:kit && npm run register-kit`. |
 | `JOURNEYMAN_REGISTRY_USERNAME`, `JOURNEYMAN_REGISTRY_TOKEN` | Optional registry credentials (blank for open/local registries). |
 | `JOURNEYMAN_RUNNER_BUNDLE`, `JOURNEYMAN_RUNNER_IMAGE` | Optional fallback kit refs used only when the `kit_images` table has no row yet. |
 | `WORKER_ID`, `RUN_SYNC_INTERVAL_MS`, `CYCLE_VISIT_LIMIT`, `WORKER_POLL_INTERVAL_MS`, `CONDUCTOR_BASE_URL` | Worker / orchestrator. |

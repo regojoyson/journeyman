@@ -293,7 +293,7 @@ Full guide: [docs/deploy-docker-compose.md](docs/deploy-docker-compose.md).
 | File | Used by | Registry default |
 |---|---|---|
 | `.env` (← `cp .env.example .env`) | host dev (`infra:up` + `npm run start:*`, `build:kit`) | `localhost:5500` |
-| `.env.production` (← `cp .env.production.example .env.production`) | `npm run compose:*` (deploy) | `localhost:5000` |
+| `.env.production` (← `cp .env.production.example .env.production`) | `npm run compose:*` (deploy) | `localhost:5500` |
 
 Both are git-ignored. Tooling loads `.env` by default; the deploy path explicitly uses `.env.production` (via `ENV_FILE` / `docker compose --env-file`).
 
@@ -307,7 +307,7 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' \
 # set ANTHROPIC_API_KEY=sk-ant-... in .env.production for AI steps
 
 # 2. Bring up the full stack
-#    Builds + pushes the runner kit to the bundled registry (localhost:5000), runs
+#    Builds + pushes the runner kit to the bundled registry (localhost:5500), runs
 #    migrations, registers the kit digests, builds the four app images, then
 #    `docker compose -f compose.deploy.yml up -d`.
 npm run compose:up

@@ -53,22 +53,26 @@ services:
       DOCKER_TLS_CERTDIR: ""
     command: ["--host=tcp://0.0.0.0:2375"]
     # Publish the bundled registry (which shares this container's network namespace)
-    # on host 5000. The port MUST stay 5000:5000 (not the 6000 series): the kit image
-    # refs embed `localhost:5000`, and that literal must resolve to the same registry
-    # both from the host (build:kit push) and from inside dind (pull). Docker treats
-    # localhost registries as insecure by default, so no TLS is needed.
-    ports: ["5000:5000"]
+    # on host 5500. Port MUST match on both sides (5500:5500): the kit image refs embed
+    # `localhost:5500`, and that literal must resolve to the same registry from the host
+    # (build:kit push) and from inside dind (pull). 5500 (not 5000) avoids the macOS
+    # AirPlay Receiver clash. Docker treats localhost registries as insecure — no TLS.
+    ports: ["5500:5500"]
     volumes:
       - dind-storage:/var/lib/docker
 
   # Bundled local registry for the runner kit (zero-config default for
-  # JOURNEYMAN_REGISTRY=localhost:5000). External registries (GHCR/GitLab/ECR) are
+  # JOURNEYMAN_REGISTRY=localhost:5500). External registries (GHCR/GitLab/ECR) are
   # used by simply pointing JOURNEYMAN_REGISTRY elsewhere and ignoring this service.
-  # Shares dind's network namespace so `localhost:5000` means the same thing to the
+  # Shares dind's network namespace so `localhost:5500` means the same thing to the
   # host (via the published port above) and to dind (when it pulls kit images).
   registry:
     image: registry:2
     network_mode: "service:docker"
+    # Listen on 5500 inside dind's shared netns (matches the published 5500:5500 above
+    # and the localhost:5500 the kit refs embed).
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5500
     volumes:
       - registry-storage:/var/lib/registry
     depends_on:
