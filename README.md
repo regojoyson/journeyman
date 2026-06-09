@@ -186,9 +186,16 @@ npm run check:boundaries
 npm test
 
 # Infrastructure lifecycle
-npm run infra:up      # start Postgres, Redis, Conductor
+npm run infra:up      # start Postgres, Redis, Conductor, local registry (:5500)
 npm run infra:down    # stop containers
 npm run infra:reset   # wipe volumes and restart
+```
+
+For docker-workspace sandboxes during host dev, set `JOURNEYMAN_REGISTRY=localhost:5500`
+in `.env`, then publish the kit to the dev registry:
+
+```bash
+npm run build:kit && npm run register-kit
 ```
 
 ## Deployment
@@ -242,19 +249,25 @@ The worker writes everything under one root, **`JOURNEYMAN_BASE_DIR`** (default 
 |---|---|
 | `workspaces/<runId>/` | local run workspaces |
 | `skills/<name>-<hash>/` | skill packages cache |
-| `kit/` | runner kit tars (`runner-bundle.tar`, `runner-base.tar`) |
+| `kit/` | `kit.json` — the pushed runner-kit image digests |
 
-Docker sandboxes run inside a **kit** (`runner-bundle` + `runner-base`). The kit is **never pulled
-from a registry** — it ships as tar files that the worker `docker load`s onto the target daemon the first
-time it's needed. Build the tars once (CI or locally) into `JOURNEYMAN_BASE_DIR/kit`:
+Docker sandboxes run inside a **kit** (`runner-bundle` + `runner-base`). The kit is **pushed to a
+container registry** and pulled by workers — point `JOURNEYMAN_REGISTRY` at any registry (a bundled
+local one, GHCR, GitLab, ECR, Docker Hub). Build + publish once (CI or locally):
 
 ```bash
-npm run build:kit        # docker build + docker save → <base>/kit/*.tar
+npm run build:kit        # docker build + push → <registry>/runner-* ; writes <base>/kit/kit.json
+npm run register-kit     # record the pushed digests in the kit_images DB table
 ```
 
-The worker (and api-server) container needs **no Docker engine inside it** — it connects to a Docker
-daemon (the sandbox's address: a local socket, or `tcp://` for ECS/remote) and loads the kit
-there. No registry, no source shipped at run time.
+`build:kit` pins each image by **digest** and writes them to `kit.json`; `register-kit` upserts those
+digests into the `kit_images` table, which is the source of truth workers read. The worker (and
+api-server) container needs **no Docker engine inside it** — it connects to a Docker daemon (a local
+socket, or `tcp://` for dind/ECS/remote) and pulls the digest-pinned kit there.
+
+> **Rancher Desktop / colima / rootless:** `build:kit` and the worker use `dockerode`, which ignores
+> the Docker CLI *context*. `build:kit` auto-adopts the active context's endpoint, but for the worker
+> set `DOCKER_HOST` in `.env` (e.g. `unix:///Users/you/.rd/docker.sock`).
 
 ### Path 1: Docker Compose
 
@@ -277,8 +290,9 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' \
 # set ANTHROPIC_API_KEY=sk-ant-... in .env for AI steps
 
 # 2. Bring up the full stack
-#    First run also builds the runner kit (for docker-workspace sandboxes) into
-#    .journeyman-data/kit and the four app images, then `docker compose -f compose.deploy.yml up -d`.
+#    Builds + pushes the runner kit to the bundled registry (localhost:5000), runs
+#    migrations, registers the kit digests, builds the four app images, then
+#    `docker compose -f compose.deploy.yml up -d`.
 npm run compose:up
 
 # 3. Open the web UI
