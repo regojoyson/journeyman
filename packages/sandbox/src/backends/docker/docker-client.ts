@@ -1,5 +1,5 @@
 import Docker from "dockerode";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 import type { RegistryAuth } from "./registry-auth.ts";
@@ -261,16 +261,37 @@ export class DockerodeClient implements IDockerClient {
   }
 }
 
+/**
+ * Connect to a local Unix socket — but fail loudly with an actionable message if
+ * the socket file isn't there, instead of letting dockerode emit a cryptic
+ * `connect ENOENT <path>` only when the first operation runs.
+ */
+function localSocketClient(rawPath: string): IDockerClient {
+  const socketPath = normalizeSocketPath(rawPath);
+  if (!existsSync(socketPath)) {
+    throw new Error(
+      `Docker socket not found at '${socketPath}'. Point the daemon at a real socket — ` +
+        `set the sandbox's socket path, or DOCKER_HOST (e.g. unix:///Users/you/.rd/docker.sock ` +
+        `for Rancher Desktop). Find yours with: docker context inspect --format '{{.Endpoints.docker.Host}}'`,
+    );
+  }
+  return new DockerodeClient(new Docker({ socketPath }));
+}
+
 /** Build an IDockerClient for the given connection (default: local socket, honoring DOCKER_HOST). */
 export function makeDockerClient(connection?: DockerConnection): IDockerClient {
   if (!connection || connection.kind === "local" || !connection.host) {
-    // Precedence: explicit socketPath → DOCKER_HOST → dockerode default.
-    if (connection?.socketPath) return new DockerodeClient(new Docker({ socketPath: normalizeSocketPath(connection.socketPath) }));
-    // Honor DOCKER_HOST (Rancher Desktop / colima / rootless use non-default sockets).
+    // Precedence: explicit socketPath → DOCKER_HOST → conventional default socket.
+    // Each resolved Unix socket is verified to exist (localSocketClient throws a
+    // clear error if not) — no silent fallback to an absent daemon.
+    if (connection?.socketPath) return localSocketClient(connection.socketPath);
     const dh = process.env.DOCKER_HOST;
-    if (dh?.startsWith("unix://")) return new DockerodeClient(new Docker({ socketPath: dh.slice("unix://".length) }));
-    if (dh) { const { host, port } = parseDockerHost(dh); return new DockerodeClient(new Docker({ host, port })); }
-    return new DockerodeClient(new Docker());
+    if (dh) {
+      if (dh.startsWith("unix://")) return localSocketClient(dh);
+      const { host, port } = parseDockerHost(dh); // tcp:// — validated on first use
+      return new DockerodeClient(new Docker({ host, port }));
+    }
+    return localSocketClient("/var/run/docker.sock");
   }
   const { host, port } = parseDockerHost(connection.host);
   const opts: Docker.DockerOptions = { host, port };

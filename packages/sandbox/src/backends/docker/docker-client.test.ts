@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { parseDockerHost, DockerodeClient } from "./docker-client.ts";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { parseDockerHost, DockerodeClient, makeDockerClient } from "./docker-client.ts";
 
 describe("DockerodeClient.pullImage", () => {
   it("pulls the ref and waits for completion via followProgress", async () => {
@@ -73,5 +73,33 @@ describe("parseDockerHost", () => {
   });
   it("strips an https scheme", () => {
     expect(parseDockerHost("https://h:2376")).toEqual({ host: "h", port: 2376 });
+  });
+});
+
+describe("makeDockerClient socket resolution", () => {
+  const savedDockerHost = process.env.DOCKER_HOST;
+  afterEach(() => {
+    if (savedDockerHost === undefined) delete process.env.DOCKER_HOST;
+    else process.env.DOCKER_HOST = savedDockerHost;
+  });
+
+  it("throws a clear error when an explicit local socket path does not exist", () => {
+    expect(() => makeDockerClient({ kind: "local", socketPath: "/no/such/docker.sock" }))
+      .toThrow(/Docker socket not found at '\/no\/such\/docker\.sock'/);
+  });
+
+  it("throws when DOCKER_HOST points at a missing unix socket", () => {
+    process.env.DOCKER_HOST = "unix:///no/such/from-env.sock";
+    expect(() => makeDockerClient({ kind: "local" }))
+      .toThrow(/Docker socket not found at '\/no\/such\/from-env\.sock'/);
+  });
+
+  it("does NOT do an existence check for a tcp:// DOCKER_HOST (connects lazily)", () => {
+    process.env.DOCKER_HOST = "tcp://build-host:2376";
+    expect(() => makeDockerClient({ kind: "local" })).not.toThrow();
+  });
+
+  it("does NOT do an existence check for a remote daemon connection", () => {
+    expect(() => makeDockerClient({ kind: "remote", host: "tcp://remote:2376" })).not.toThrow();
   });
 });
