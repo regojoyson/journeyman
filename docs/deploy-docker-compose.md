@@ -93,8 +93,15 @@ migrations, then records the pushed image **digests** in the `kit_images` table 
 To roll a new kit: `npm run build:kit && npm run register-kit` (workers pick up the
 new digest automatically — no redeploy).
 
-For a quick local registry: `docker run -d -p 5000:5000 registry:2` and set
-`JOURNEYMAN_REGISTRY=localhost:5000`.
+**Local default (zero-config):** compose ships a bundled `registry:2` service. With
+the default `JOURNEYMAN_REGISTRY=localhost:5000`, `compose:up` starts it, waits for
+it, then pushes — nothing to set up. The registry shares the dind network namespace
+so `localhost:5000` resolves to the same registry from the host (push) and from dind
+(pull). Its storage lives in the `registry-storage` volume.
+
+**External registry:** point `JOURNEYMAN_REGISTRY` at GHCR/GitLab/ECR/Docker Hub and
+set `JOURNEYMAN_REGISTRY_USERNAME` / `JOURNEYMAN_REGISTRY_TOKEN`. The bundled registry
+service is simply ignored.
 
 (Local-only sandboxes never use the kit.)
 

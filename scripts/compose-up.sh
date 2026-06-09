@@ -39,6 +39,23 @@ if [ -z "$registry" ]; then
   exit 1
 fi
 
+# When using the bundled local registry (localhost:*), bring up dind + registry
+# first and wait for it — build:kit pushes here. External registries (GHCR/GitLab/…)
+# are already running, so this block is skipped for them.
+case "$registry" in
+  localhost:*|127.0.0.1:*)
+    echo ">>> starting bundled registry (${registry})"
+    docker compose -f compose.deploy.yml up -d docker registry
+    reg_port="${registry##*:}"
+    printf ">>> waiting for registry on localhost:%s " "${reg_port}"
+    for i in $(seq 1 30); do
+      if curl -sf "http://localhost:${reg_port}/v2/" >/dev/null 2>&1; then echo "ok"; break; fi
+      printf "."; sleep 1
+      if [ "$i" -eq 30 ]; then echo; echo "ERROR: registry on localhost:${reg_port} did not become ready" >&2; exit 1; fi
+    done
+    ;;
+esac
+
 echo ">>> building + pushing runner kit to ${registry}"
 JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
 
