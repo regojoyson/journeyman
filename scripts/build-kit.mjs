@@ -39,6 +39,26 @@ function run(cmd, args) {
   execFileSync(cmd, args, { stdio: "inherit", cwd: repoRoot });
 }
 
+// dockerode (used for push) ignores the Docker CLI *context*, so on Rancher
+// Desktop / colima / rootless the default /var/run/docker.sock doesn't exist.
+// If DOCKER_HOST isn't already set, adopt the active CLI context's endpoint so
+// the push targets the same daemon `docker build` just used.
+if (!process.env.DOCKER_HOST) {
+  try {
+    const host = execFileSync(
+      "docker",
+      ["context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+      { encoding: "utf8" },
+    ).trim();
+    if (host) {
+      process.env.DOCKER_HOST = host;
+      console.log(`(using docker endpoint from CLI context: ${host})`);
+    }
+  } catch {
+    /* fall back to dockerode's default socket */
+  }
+}
+
 mkdirSync(outDir, { recursive: true });
 const client = makeDockerClient();
 const auth = registryAuthFromEnv(process.env);
