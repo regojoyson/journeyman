@@ -1,12 +1,16 @@
 import { createLogger } from "@journeyman/core";
-import { logSessionEvent } from "../utils/sdk-logger.ts";
-import { openCodeToolsEnableMap } from "../tool-mapping.ts";
+import { logOpenCodeEvent, logSessionEvent, type OpenCodeEvent } from "../utils/sdk-logger.ts";
+import { openCodeToolsConfig } from "../tool-mapping.ts";
+import { validateStructured, salvageStructured } from "../structured.ts";
 import { resolveOpenCodeModel } from "../model.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
 import type { RunCustomPromptOptions, RunCustomPromptResult } from "@journeyman/core";
 
 const log = createLogger("opencode:custom-prompt");
+
+/** How many times opencode itself re-asks the model to satisfy the json_schema. */
+const STRUCTURED_RETRY_COUNT = Number(process.env.OPENCODE_STRUCTURED_RETRIES) || 2;
 
 /** Render an OpenCode SDK error envelope into a diagnosable string. */
 function describeSdkError(error: unknown): string {
@@ -58,25 +62,57 @@ export async function runCustomPrompt(
     "runCustomPrompt start",
   );
 
-  const tools = openCodeToolsEnableMap(opts.tools ?? []);
+  const tools = openCodeToolsConfig(opts.tools ?? []);
   const system = buildSystem(opts);
 
   const session = await client.session.create({ title: "customPrompt" });
   if (!session.data) {
     return { sessionId, error: `opencode session.create failed: ${describeSdkError((session as { error?: unknown }).error)}` };
   }
+  const openSessionId = session.data.id;
 
-  const res = await client.session.prompt({
-    sessionID: session.data.id,
-    parts: [{ type: "text", text: opts.prompt }],
-    model,
-    ...(Object.keys(tools).length ? { tools } : {}),
-    ...(opts.cwd ? { directory: opts.cwd } : {}),
-    ...(system ? { system } : {}),
-    ...(opts.outputMode === "structured" && opts.outputSchema
-      ? { format: { type: "json_schema", schema: opts.outputSchema } }
-      : {}),
-  });
+  // Live event streaming → onLog, filtered to THIS session, torn down in finally.
+  type EventStream = AsyncIterable<unknown> & { return?: (v?: unknown) => Promise<unknown> };
+  const eventApi = (client as { event?: { subscribe?: (params: unknown, options?: unknown) => Promise<{ stream?: EventStream }> } }).event;
+  const wantStream = !!opts.onLog && (opts.agentLogLevel ?? "all") !== "none" && !!eventApi?.subscribe;
+  const ac = new AbortController();
+  let sub: { stream?: EventStream } | undefined;
+  let pump: Promise<void> | undefined;
+  if (wantStream && eventApi?.subscribe) {
+    sub = await eventApi.subscribe({}, { signal: ac.signal }).catch(() => undefined);
+    const stream = sub?.stream;
+    if (stream) {
+      pump = (async () => {
+        try {
+          for await (const raw of stream) {
+            const ev = raw as OpenCodeEvent;
+            if (ev?.properties?.sessionID && ev.properties.sessionID !== openSessionId) continue;
+            logOpenCodeEvent(ev, opts.onLog, opts.agentLogLevel ?? "all");
+          }
+        } catch { /* aborted on teardown */ }
+      })();
+    }
+  }
+
+  let res: Awaited<ReturnType<typeof client.session.prompt>>;
+  try {
+    res = await client.session.prompt({
+      sessionID: openSessionId,
+      parts: [{ type: "text", text: opts.prompt }],
+      model,
+      tools,
+      ...(opts.cwd ? { directory: opts.cwd } : {}),
+      ...(system ? { system } : {}),
+      ...(opts.outputMode === "structured" && opts.outputSchema
+        ? { format: { type: "json_schema", schema: opts.outputSchema, retryCount: STRUCTURED_RETRY_COUNT } }
+        : {}),
+    });
+  } finally {
+    ac.abort();
+    try { await sub?.stream?.return?.(undefined); } catch { /* noop */ }
+    if (pump) await pump.catch(() => {});
+  }
+
   if (!res.data) {
     const error = `opencode session.prompt failed: ${describeSdkError((res as { error?: unknown }).error)}`;
     log.error({ sessionId, error }, "runCustomPrompt failed (no data)");
@@ -84,7 +120,7 @@ export async function runCustomPrompt(
   }
 
   const info = res.data.info as { error?: unknown; structured?: unknown };
-  logSessionEvent(log, sessionId, info as never);
+  logSessionEvent(log, sessionId, info as never, opts.onLog);
 
   if (info.error) {
     const error = typeof info.error === "string" ? info.error : JSON.stringify(info.error);
@@ -94,5 +130,20 @@ export async function runCustomPrompt(
 
   if (opts.outputMode === "none") return { sessionId };
   if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never) };
-  return { sessionId, structured: info.structured };
+
+  // structured: validate → salvage from text → fail clearly.
+  const schema = opts.outputSchema as Record<string, unknown>;
+  const valid = validateStructured(info.structured, schema);
+  if (valid.ok) return { sessionId, structured: valid.value };
+
+  const text = extractText(res.data as never);
+  const salvaged = salvageStructured(text, schema);
+  if (salvaged) {
+    log.warn({ sessionId, reason: valid.reason }, "structured salvaged from text");
+    return { sessionId, structured: salvaged };
+  }
+
+  const error = `model did not return valid structured output (${valid.reason}). Model said: ${text.slice(0, 500) || "(no text)"}`;
+  log.error({ sessionId, error }, "runCustomPrompt structured invalid");
+  return { sessionId, error };
 }

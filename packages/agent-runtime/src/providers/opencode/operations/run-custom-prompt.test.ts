@@ -23,9 +23,14 @@ describe("opencode runCustomPrompt", () => {
       model: "openai/gpt-4o", tools: ["bash", "search"], cwd: "/workspace",
     });
     expect(captured.model).toEqual({ providerID: "openai", modelID: "gpt-4o" });
-    expect(captured.tools).toEqual({ bash: true, grep: true, glob: true });
+    // Explicit enable/disable map: selected tools true, the rest of the builtins false.
+    expect(captured.tools).toEqual({
+      bash: true, grep: true, glob: true, read: false, write: false, edit: false, webfetch: false,
+    });
     expect(captured.directory).toBe("/workspace");
-    expect(captured.format).toEqual({ type: "json_schema", schema: { type: "object" } });
+    expect(captured.format.type).toBe("json_schema");
+    expect(captured.format.schema).toEqual({ type: "object" });
+    expect(typeof captured.format.retryCount).toBe("number");
     expect(r.structured).toEqual({ ok: true });
     expect(r.error).toBeUndefined();
   });
@@ -60,5 +65,75 @@ describe("opencode runCustomPrompt", () => {
     const client = fakeClient(() => ({ data: { info: {}, parts: [] } }));
     const r = await runCustomPrompt(client, { mode: "managed" } as OpenCodeProviderConfig, { prompt: "x", outputMode: "text" });
     expect(r.error).toMatch(/no model/i);
+  });
+});
+
+// Streaming-capable fake client: `promptResult` is what session.prompt resolves to;
+// `events` are emitted from a fake event.subscribe stream.
+function streamingClient(promptResult: unknown, events: unknown[] = []): OpenCodeClient {
+  async function* gen() { for (const e of events) yield e; }
+  return {
+    session: {
+      create: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+      prompt: vi.fn().mockResolvedValue(promptResult),
+    },
+    event: { subscribe: vi.fn().mockResolvedValue({ stream: gen() }) },
+  } as unknown as OpenCodeClient;
+}
+
+const structuredOpts = {
+  prompt: "is it open?",
+  outputMode: "structured" as const,
+  outputSchema: { type: "object", properties: { success: { type: "boolean" } }, required: ["success"] },
+  model: "qwen/q3",
+};
+
+describe("runCustomPrompt structured reliability", () => {
+  it("passes through a valid structured result", async () => {
+    const client = streamingClient({ data: { info: { structured: { success: true } }, parts: [] } });
+    const r = await runCustomPrompt(client, cfg, structuredOpts);
+    expect(r.structured).toEqual({ success: true });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("salvages a boolean from text when structured is absent", async () => {
+    const client = streamingClient({ data: { info: {}, parts: [{ type: "text", text: "Yes, the answer is true." }] } });
+    const r = await runCustomPrompt(client, cfg, structuredOpts);
+    expect(r.structured).toEqual({ success: true });
+  });
+
+  it("fails clearly with the model reply when unsalvageable", async () => {
+    const client = streamingClient({ data: { info: {}, parts: [{ type: "text", text: "I cannot determine that." }] } });
+    const r = await runCustomPrompt(client, cfg, structuredOpts);
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toContain("cannot determine");
+  });
+
+  it("sends an explicit tools map (all builtins false for a tool-less step)", async () => {
+    let captured: any;
+    const client = streamingClient({ data: { info: { structured: { success: true } }, parts: [] } });
+    (client.session.prompt as any).mockImplementation(async (p: any) => { captured = p; return { data: { info: { structured: { success: true } }, parts: [] } }; });
+    await runCustomPrompt(client, cfg, structuredOpts);
+    expect(captured.tools.bash).toBe(false);
+    expect(captured.tools.read).toBe(false);
+  });
+
+  it("sets retryCount on the json_schema format", async () => {
+    let captured: any;
+    const client = streamingClient({ data: { info: { structured: { success: true } }, parts: [] } });
+    (client.session.prompt as any).mockImplementation(async (p: any) => { captured = p; return { data: { info: { structured: { success: true } }, parts: [] } }; });
+    await runCustomPrompt(client, cfg, structuredOpts);
+    expect(captured.format.type).toBe("json_schema");
+    expect(typeof captured.format.retryCount).toBe("number");
+  });
+
+  it("streams events to onLog gated by level", async () => {
+    const events = [
+      { id: "1", type: "session.next.text.ended", properties: { timestamp: 0, sessionID: "sess-1", text: "hi there" } },
+    ];
+    const client = streamingClient({ data: { info: { structured: { success: true } }, parts: [] } }, events);
+    const onLog = vi.fn();
+    await runCustomPrompt(client, cfg, { ...structuredOpts, onLog, agentLogLevel: "all" });
+    expect(onLog.mock.calls.some((c: any[]) => String(c[0]).includes("hi there"))).toBe(true);
   });
 });
