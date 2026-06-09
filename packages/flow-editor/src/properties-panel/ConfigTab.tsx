@@ -5,6 +5,7 @@ import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
 import { CodingModelSelect } from "../components/CodingModelSelect.tsx";
+import { useCodingModels } from "../catalogs/use-coding-models.ts";
 import { SchemaForm } from "./SchemaForm.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import { sanitizeRef } from "./sanitize-ref.ts";
@@ -31,6 +32,9 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const definition = registry.get(node.stepType);
   const config = (node.config ?? {}) as Record<string, unknown>;
   const executorConfig = node.executorConfig ?? {};
+  const codingProvider =
+    executorConfig?.provider ?? flowDefaults?.executorConfig?.["coding-cli"]?.provider;
+  const codingModels = useCodingModels(codingProvider);
 
   const catalog = useStepCatalog();
   const customStepDefs = useCustomStepDefs(collectCustomStepIds(flow));
@@ -277,7 +281,22 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
             <CodingModelSelect
               provider={provider}
               value={node.model ?? undefined}
-              onChange={(modelId) => onChange({ ...node, model: modelId ?? null })}
+              onChange={(modelId) => {
+                const next: WorkflowNode = { ...node, model: modelId ?? null };
+                // Auto-clean: drop the previous model's key binding when it is no
+                // longer the new model's declared key (OpenCode model-owned key only).
+                if (codingProvider === "opencode" && node.secretBindings) {
+                  const oldKey = codingModels.find(m => m.modelId === node.model)?.config?.apiKeySlot;
+                  const newKey = modelId
+                    ? codingModels.find(m => m.modelId === modelId)?.config?.apiKeySlot
+                    : undefined;
+                  if (oldKey && oldKey !== newKey && node.secretBindings[oldKey]) {
+                    const { [oldKey]: _drop, ...rest } = node.secretBindings;
+                    next.secretBindings = rest;
+                  }
+                }
+                onChange(next);
+              }}
               emptyLabel={emptyLabel}
               disabled={readOnly}
             />

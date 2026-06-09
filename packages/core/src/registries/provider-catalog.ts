@@ -26,13 +26,9 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true, slots: [
     { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
   ]},
-  { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [
-    { name: "OPENCODE_API_KEY",   description: "OpenCode API key.", optional: true },
-    { name: "ANTHROPIC_API_KEY",  description: "Anthropic key (for anthropic/* models).", optional: true },
-    { name: "OPENAI_API_KEY",     description: "OpenAI key (for openai/* models).", optional: true },
-    { name: "GEMINI_API_KEY",     description: "Google Gemini key (for google/* models).", optional: true },
-    { name: "OPENROUTER_API_KEY", description: "OpenRouter key (for openrouter/* models).", optional: true },
-  ]},
+  // OpenCode has no framework-level key slot — each coding model declares its own
+  // required secret (config.apiKeySlot), surfaced via openCodeModelSlots().
+  { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [] },
   { kind: "coding-cli", value: "gemini", label: "Gemini", implemented: false },
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 

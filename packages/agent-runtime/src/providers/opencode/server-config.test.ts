@@ -27,6 +27,14 @@ describe("buildServerConfig", () => {
       lmstudio: { npm: "@ai-sdk/openai-compatible", options: { baseURL: "http://host.docker.internal:1234/v1" } },
     });
   });
+  it("omits the provider block for a cloud model that has only an apiKeySlot (no baseUrl)", () => {
+    const c = buildServerConfig(cfg, {
+      model: "anthropic/claude-sonnet-4-6",
+      modelConfig: { apiKeySlot: "ANTHROPIC_API_KEY" },
+      env: { ANTHROPIC_API_KEY: "sk-x" },
+    });
+    expect(c.provider).toBeUndefined();
+  });
   it("injects apiKey from env when apiKeySlot is set", () => {
     const c = buildServerConfig(cfg, {
       model: "myvllm/mistral",

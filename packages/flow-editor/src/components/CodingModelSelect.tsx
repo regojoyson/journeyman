@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import type { CodingModel } from "@journeyman/core";
+import { useCodingModels } from "../catalogs/use-coding-models.ts";
 
 export interface CodingModelSelectProps {
   provider: string | undefined;
@@ -23,20 +23,8 @@ export function CodingModelSelect({
   emptyLabel,
   disabled,
 }: CodingModelSelectProps) {
-  const [models, setModels] = useState<CodingModel[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!provider) { setModels([]); return; }
-    let alive = true;
-    setLoading(true);
-    fetch(`/api/coding-models?provider=${encodeURIComponent(provider)}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: CodingModel[]) => { if (alive) setModels(rows); })
-      .catch(() => { if (alive) setModels([]); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [provider]);
+  const models = useCodingModels(provider);
+  const loading = false;
 
   return (
     <select

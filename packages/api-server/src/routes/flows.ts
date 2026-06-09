@@ -19,9 +19,9 @@ import { makeRequireAuth } from "@journeyman/identity";
 import { getCustomAiStep } from "@journeyman/custom-steps";
 import { customStepToShape, type CustomStepShape } from "@journeyman/custom-steps/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
-import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
+import { listEnabledCodingModelsByProvider, findCodingModel } from "@journeyman/coding-models";
 import type { WorkflowSaveWarning, SecretBinding, SecretScope, SecretSlotDef } from "@journeyman/core";
-import { PROVIDER_CATALOG, defaultProviderForKind } from "@journeyman/core";
+import { PROVIDER_CATALOG, defaultProviderForKind, openCodeModelSlots } from "@journeyman/core";
 import { assertWorkflowReady } from "../services/assert-flow-ready.ts";
 
 /**
@@ -79,12 +79,25 @@ async function computeSaveWarnings(
       const providerSlots = providerValue
         ? PROVIDER_CATALOG.find(p => p.kind === "coding-cli" && p.value === providerValue)?.slots ?? []
         : [];
+      // OpenCode models carry their required key on the model config (not the
+      // catalog). Resolve the effective model and include its slot so the mapped
+      // key isn't flagged as an orphan and the required key is enforced.
+      let modelSlots: SecretSlotDef[] = [];
+      if (providerValue === "opencode") {
+        const effModel =
+          (node.model as string | null | undefined) ?? definition.defaults?.defaultModel ?? undefined;
+        if (effModel) {
+          const cm = await findCodingModel(c.pool, "opencode", effModel);
+          modelSlots = openCodeModelSlots(cm?.config);
+        }
+      }
       declaredSlotNames = new Set([
         ...dbSlots.map(s => s.name),
         ...providerSlots.map(s => s.name),
+        ...modelSlots.map(s => s.name),
       ]);
       // Required-slot accessibility check for declared slots with NO binding entry yet.
-      for (const slot of [...dbSlots, ...providerSlots]) {
+      for (const slot of [...dbSlots, ...providerSlots, ...modelSlots]) {
         if (slot.optional) continue;
         if (bindings[slot.name] === undefined && !visibleNames.has(slot.name)) {
           inaccessible.add(slot.name);

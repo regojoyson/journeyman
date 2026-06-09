@@ -14,7 +14,7 @@ import {
   type CodingModelConfig,
 } from "@journeyman/core";
 import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
-import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
+import { defaultProviderForKind, PROVIDER_CATALOG, openCodeModelSlots } from "@journeyman/core";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
@@ -136,8 +136,9 @@ export class CustomAiStepHandler implements IStepHandler {
     for (const s of providerSlots) slotsByName.set(s.name, s);
     for (const s of dbSlots)       slotsByName.set(s.name, s);
     const modelConfig = (input.modelConfig as CodingModelConfig | undefined) ?? undefined;
-    if (modelConfig?.apiKeySlot) {
-      slotsByName.set(modelConfig.apiKeySlot, { name: modelConfig.apiKeySlot, optional: true });
+    // OpenCode models declare their own required key slot; non-opencode → [].
+    for (const s of openCodeModelSlots(modelConfig)) {
+      slotsByName.set(s.name, { name: s.name, optional: s.optional });
     }
     const effectiveSlots = Array.from(slotsByName.values());
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
-import { providersForKind } from "@journeyman/core";
+import { providersForKind, suggestedKeySlotName } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
 
 const CODING_PROVIDERS = providersForKind("coding-cli");
@@ -157,6 +157,15 @@ function ModelForm(props: {
     setV((prev) => ({ ...prev, [k]: val }));
   const setConfig = (k: "baseUrl" | "npm" | "apiKeySlot", val: string) =>
     setV((prev) => ({ ...prev, config: { ...(prev.config ?? {}), [k]: val || undefined } }));
+  const requiresKey = Boolean(v.config?.apiKeySlot);
+  const setRequiresKey = (b: boolean) =>
+    setV((prev) => ({
+      ...prev,
+      config: {
+        ...(prev.config ?? {}),
+        apiKeySlot: b ? (prev.config?.apiKeySlot || suggestedKeySlotName(prev.modelId) || "API_KEY") : undefined,
+      },
+    }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
@@ -253,6 +262,28 @@ function ModelForm(props: {
 
         {v.provider === "opencode" && (
           <section className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-200">Authentication</h3>
+            <Toggle
+              label="Requires an API key"
+              hint="Workflows using this model will require a secret mapped to this key."
+              checked={requiresKey}
+              onChange={setRequiresKey}
+            />
+            {requiresKey && (
+              <Field label="Secret key name">
+                <input
+                  className={`${inputCls} font-mono text-sm`}
+                  value={v.config?.apiKeySlot ?? ""}
+                  onChange={(e) => setConfig("apiKeySlot", e.target.value)}
+                  placeholder="ANTHROPIC_API_KEY"
+                />
+              </Field>
+            )}
+          </section>
+        )}
+
+        {v.provider === "opencode" && (
+          <section className="space-y-3">
             <h3 className="text-sm font-medium text-slate-200">Custom endpoint (optional)</h3>
             <p className="text-xs text-slate-400">
               Leave blank for cloud models (Claude, OpenAI, Gemini) — they use built-in defaults.
@@ -267,24 +298,14 @@ function ModelForm(props: {
                 placeholder="http://host.docker.internal:1234/v1"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="npm package">
-                <input
-                  className={`${inputCls} font-mono text-sm`}
-                  value={v.config?.npm ?? ""}
-                  onChange={(e) => setConfig("npm", e.target.value)}
-                  placeholder="@ai-sdk/openai-compatible"
-                />
-              </Field>
-              <Field label="API key slot">
-                <input
-                  className={`${inputCls} font-mono text-sm`}
-                  value={v.config?.apiKeySlot ?? ""}
-                  onChange={(e) => setConfig("apiKeySlot", e.target.value)}
-                  placeholder="MY_LLM_KEY (blank = no key)"
-                />
-              </Field>
-            </div>
+            <Field label="npm package">
+              <input
+                className={`${inputCls} font-mono text-sm`}
+                value={v.config?.npm ?? ""}
+                onChange={(e) => setConfig("npm", e.target.value)}
+                placeholder="@ai-sdk/openai-compatible"
+              />
+            </Field>
           </section>
         )}
 

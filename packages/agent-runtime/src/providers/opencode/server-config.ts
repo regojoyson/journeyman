@@ -42,9 +42,7 @@ function buildProviderBlock(
   modelConfig: CodingModelConfig | undefined,
   env: Record<string, string> | undefined,
 ): Record<string, unknown> | undefined {
-  if (!modelConfig) return undefined;
-  const hasCustom = modelConfig.baseUrl || modelConfig.npm || modelConfig.apiKeySlot;
-  if (!hasCustom) return undefined;
+  if (!modelConfig?.baseUrl) return undefined; // a custom endpoint is defined by its URL
   const parsed = model ? parseOpenCodeModel(model) : undefined;
   if (!parsed) return undefined;
 
