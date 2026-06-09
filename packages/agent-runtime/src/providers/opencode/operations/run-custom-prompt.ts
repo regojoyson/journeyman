@@ -8,6 +8,17 @@ import type { RunCustomPromptOptions, RunCustomPromptResult } from "@journeyman/
 
 const log = createLogger("opencode:custom-prompt");
 
+/** Render an OpenCode SDK error envelope into a diagnosable string. */
+function describeSdkError(error: unknown): string {
+  if (error == null) return "no data and no error returned (server unreachable?)";
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 /** Concatenate the text of all text parts in a prompt response. */
 function extractText(data: { parts?: Array<{ type?: string; text?: string }> }): string {
   return (data.parts ?? [])
@@ -51,7 +62,9 @@ export async function runCustomPrompt(
   const system = buildSystem(opts);
 
   const session = await client.session.create({ title: "customPrompt" });
-  if (!session.data) return { sessionId, error: "opencode session.create returned no data" };
+  if (!session.data) {
+    return { sessionId, error: `opencode session.create failed: ${describeSdkError((session as { error?: unknown }).error)}` };
+  }
 
   const res = await client.session.prompt({
     sessionID: session.data.id,
@@ -64,7 +77,11 @@ export async function runCustomPrompt(
       ? { format: { type: "json_schema", schema: opts.outputSchema } }
       : {}),
   });
-  if (!res.data) return { sessionId, error: "opencode session.prompt returned no data" };
+  if (!res.data) {
+    const error = `opencode session.prompt failed: ${describeSdkError((res as { error?: unknown }).error)}`;
+    log.error({ sessionId, error }, "runCustomPrompt failed (no data)");
+    return { sessionId, error };
+  }
 
   const info = res.data.info as { error?: unknown; structured?: unknown };
   logSessionEvent(log, sessionId, info as never);
