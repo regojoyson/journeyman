@@ -119,6 +119,11 @@ stop sourcing provider slots from the catalog. Instead:
   declares no key, render nothing. Handle loading / model-not-found gracefully (show no
   derived row; the worker still resolves correctly at run time).
 - Switching the model re-derives the row.
+- **Auto-clean stale key bindings on model change.** When the selected model changes, drop
+  any existing `secretBindings` entry whose name is no longer a declared slot for the new
+  model (the previous model's key). This prevents a leftover binding from being flagged as an
+  orphan at publish. Only the OpenCode model-derived key is auto-pruned; DB custom-step slot
+  bindings are untouched.
 
 ### 3b. Publish validation — `flows.ts` (api-server)
 
@@ -195,6 +200,9 @@ The value is never written into the prompt and never persisted by this feature.
   models swaps it; a keyless model shows none.
 - **Worker:** `effectiveSlots` for an OpenCode custom-AI step equals the model's declared
   slot (required), not the old five.
+- **Editor model-change:** switching from a model declaring `ANTHROPIC_API_KEY` to one
+  declaring `OPENAI_API_KEY` drops the stale `ANTHROPIC_API_KEY` binding; a custom-step DB slot
+  binding survives the switch.
 
 ## Out of scope
 
@@ -205,6 +213,11 @@ The value is never written into the prompt and never persisted by this feature.
   resolved default model via the same helper; editor support stays deferred.
 - Validating that a cloud model's declared key name matches OpenCode's expected env var (the
   prefill guides it; the admin may override).
+- **Pinned-but-disabled model in the editor.** The editor lists enabled models only, so a step
+  pinned to a later-disabled model shows no key row (its key can't be mapped in the UI until a
+  valid model is re-selected). This overlaps the existing deprecated/unknown-model warning;
+  deferred. The run still resolves the key at runtime via `findCodingModel` (which ignores the
+  enabled flag).
 
 ## Implementation note
 
