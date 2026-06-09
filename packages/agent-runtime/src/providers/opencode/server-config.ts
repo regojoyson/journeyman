@@ -1,27 +1,63 @@
 import { createServer } from "node:net";
-import type { ResolvedMcpInstance } from "@journeyman/core";
+import type { CodingModelConfig, ResolvedMcpInstance } from "@journeyman/core";
 import type { OpenCodeProviderConfig } from "./types.ts";
 import { toOpenCodeMcpConfigs } from "./mcp-adapter.ts";
+import { parseOpenCodeModel } from "./model.ts";
 
 const BYPASS_PERMISSION = {
   bash: "allow", edit: "allow", webfetch: "allow", websearch: "allow", skill: "allow",
 } as const;
 
+export interface ServerConfigRuntime {
+  mcps?: ResolvedMcpInstance[];
+  model?: string;
+  modelConfig?: CodingModelConfig;
+  env?: Record<string, string>;
+}
+
 /**
- * Assemble the OpenCode `Config` passed at managed-server spawn. Permissions are
- * bypass-style (parity with Claude's bypassPermissions). MCP is merged from
- * static config + the per-call resolved instances. Tools/model/format are NOT here
- * — those are per-prompt params.
+ * Assemble the OpenCode `Config` passed at managed-server spawn: bypass-style
+ * permissions, merged MCP, and — when the chosen model carries custom endpoint
+ * config — a `provider` block keyed by the model string's providerID. No
+ * modelConfig ⇒ no provider block ⇒ OpenCode uses its built-in catalog.
+ * Tools/model/format are NOT here — those are per-prompt params.
  */
 export function buildServerConfig(
   config: OpenCodeProviderConfig,
-  mcps: ResolvedMcpInstance[] | undefined,
+  runtime: ServerConfigRuntime,
 ): Record<string, unknown> {
   const permission = { ...BYPASS_PERMISSION, ...config.permission };
-  const mcp = { ...(config.mcp ?? {}), ...(mcps?.length ? toOpenCodeMcpConfigs(mcps) : {}) };
+  const mcp = { ...(config.mcp ?? {}), ...(runtime.mcps?.length ? toOpenCodeMcpConfigs(runtime.mcps) : {}) };
+  const provider = buildProviderBlock(runtime.model, runtime.modelConfig, runtime.env);
   return {
     permission,
     ...(Object.keys(mcp).length ? { mcp } : {}),
+    ...(provider ? { provider } : {}),
+  };
+}
+
+/** Build OpenCode's `provider` entry for a custom endpoint, or undefined if none. */
+function buildProviderBlock(
+  model: string | undefined,
+  modelConfig: CodingModelConfig | undefined,
+  env: Record<string, string> | undefined,
+): Record<string, unknown> | undefined {
+  if (!modelConfig) return undefined;
+  const hasCustom = modelConfig.baseUrl || modelConfig.npm || modelConfig.apiKeySlot;
+  if (!hasCustom) return undefined;
+  const parsed = model ? parseOpenCodeModel(model) : undefined;
+  if (!parsed) return undefined;
+
+  const apiKey = modelConfig.apiKeySlot ? env?.[modelConfig.apiKeySlot] : undefined;
+  const options: Record<string, unknown> = {
+    ...(modelConfig.baseUrl ? { baseURL: modelConfig.baseUrl } : {}),
+    ...(apiKey ? { apiKey } : {}),
+  };
+  return {
+    [parsed.providerID]: {
+      npm: modelConfig.npm ?? "@ai-sdk/openai-compatible",
+      options,
+    },
   };
 }
 

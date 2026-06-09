@@ -1,6 +1,7 @@
 import type { ResolvedMcpInstance } from "./mcp.types.ts";
 import type { ResolvedSkillPackage } from "./skills.types.ts";
 import type { CanonicalTool } from "./coding-tools.types.ts";
+import type { CodingModelConfig } from "./coding-models.types.ts";
 
 /**
  * Optional callback invoked for each AI provider SDK message during a coding-CLI
@@ -62,6 +63,8 @@ export interface RunCustomPromptOptions {
   sessionId?: string;
   signal?: AbortSignal;
   model?: string;
+  /** Provider-specific endpoint config for the chosen model (OpenCode custom endpoints). */
+  modelConfig?: CodingModelConfig;
   /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
   onLog?: CodingCliLogFn;
   /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */

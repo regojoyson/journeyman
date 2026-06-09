@@ -23,6 +23,7 @@ const EMPTY: CodingModelCreateInput = {
   deprecated: false,
   isDefault: false,
   supportsThinking: false,
+  config: {},
 };
 
 export function AdminCodingModelsPage() {
@@ -154,6 +155,8 @@ function ModelForm(props: {
   const [v, setV] = useState<CodingModelCreateInput>({ ...(props.initial as CodingModelCreateInput) });
   const set = <K extends keyof CodingModelCreateInput>(k: K, val: CodingModelCreateInput[K]) =>
     setV((prev) => ({ ...prev, [k]: val }));
+  const setConfig = (k: "baseUrl" | "npm" | "apiKeySlot", val: string) =>
+    setV((prev) => ({ ...prev, config: { ...(prev.config ?? {}), [k]: val || undefined } }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
@@ -186,8 +189,40 @@ function ModelForm(props: {
                 ))}
               </select>
             </Field>
-            <Field label="Model ID">
-              <input className={`${inputCls} font-mono text-sm`} value={v.modelId} onChange={(e) => set("modelId", e.target.value)} placeholder="claude-opus-4-7" />
+            <Field
+              label="Model ID"
+              info={v.provider === "opencode" ? (
+                <>
+                  <p className="font-medium text-slate-200">
+                    Format: <code>providerID/modelID</code>
+                  </p>
+                  <div>
+                    <p className="text-slate-400">Cloud providers (built-in, key only):</p>
+                    <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-slate-300">
+                      <li>anthropic/claude-sonnet-4-6</li>
+                      <li>openai/gpt-4o</li>
+                      <li>google/gemini-2.0-flash</li>
+                      <li>openrouter/meta-llama/llama-3.1-70b</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">
+                      Custom endpoint (set Base URL below; the providerID is a name you choose):
+                    </p>
+                    <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-slate-300">
+                      <li>lmstudio/llama-3.1</li>
+                      <li>ollama/llama3.1</li>
+                    </ul>
+                  </div>
+                </>
+              ) : undefined}
+            >
+              <input
+                className={`${inputCls} font-mono text-sm`}
+                value={v.modelId}
+                onChange={(e) => set("modelId", e.target.value)}
+                placeholder={v.provider === "opencode" ? "anthropic/claude-sonnet-4-6" : "claude-opus-4-7"}
+              />
             </Field>
           </div>
           <Field label="Label">
@@ -216,6 +251,43 @@ function ModelForm(props: {
           </div>
         </section>
 
+        {v.provider === "opencode" && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-200">Custom endpoint (optional)</h3>
+            <p className="text-xs text-slate-400">
+              Leave blank for cloud models (Claude, OpenAI, Gemini) — they use built-in defaults.
+              Fill in for local/self-hosted endpoints. Inside Docker, <code>localhost</code> is the
+              container — use <code>host.docker.internal</code> or a reachable service address.
+            </p>
+            <Field label="Base URL">
+              <input
+                className={`${inputCls} font-mono text-sm`}
+                value={v.config?.baseUrl ?? ""}
+                onChange={(e) => setConfig("baseUrl", e.target.value)}
+                placeholder="http://host.docker.internal:1234/v1"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="npm package">
+                <input
+                  className={`${inputCls} font-mono text-sm`}
+                  value={v.config?.npm ?? ""}
+                  onChange={(e) => setConfig("npm", e.target.value)}
+                  placeholder="@ai-sdk/openai-compatible"
+                />
+              </Field>
+              <Field label="API key slot">
+                <input
+                  className={`${inputCls} font-mono text-sm`}
+                  value={v.config?.apiKeySlot ?? ""}
+                  onChange={(e) => setConfig("apiKeySlot", e.target.value)}
+                  placeholder="MY_LLM_KEY (blank = no key)"
+                />
+              </Field>
+            </div>
+          </section>
+        )}
+
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-slate-200">Flags</h3>
           <Toggle label="Enabled" hint="Available in flow editor dropdowns" checked={v.enabled ?? true} onChange={(b) => set("enabled", b)} />
@@ -243,12 +315,39 @@ function ModelForm(props: {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, info, children }: { label: string; info?: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block text-xs text-slate-400">
-      <span className="block mb-1">{label}</span>
+      <span className="mb-1 flex items-center gap-1">
+        {label}
+        {info ? <InfoButton>{info}</InfoButton> : null}
+      </span>
       {children}
     </label>
+  );
+}
+
+function InfoButton({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="More info"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-500 text-[10px] font-semibold leading-none text-slate-300 hover:bg-slate-700"
+      >
+        i
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={(e) => { e.preventDefault(); setOpen(false); }} />
+          <div className="absolute left-0 top-6 z-20 w-80 space-y-2 rounded-md border border-slate-700 bg-slate-900 p-3 text-xs font-normal leading-relaxed text-slate-300 shadow-xl">
+            {children}
+          </div>
+        </>
+      )}
+    </span>
   );
 }
 

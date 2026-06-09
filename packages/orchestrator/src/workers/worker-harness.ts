@@ -42,6 +42,9 @@ export interface WorkerHarnessDeps {
 
   modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
 
+  modelConfigResolver?: (input: { provider: string; modelId: string }) =>
+    Promise<import("@journeyman/core").CodingModelConfig | undefined>;
+
   /**
    * Provision (or reconnect to) the per-run workspace on demand.
    * Returns the execution environment + provisioned handle for this run.
@@ -272,6 +275,23 @@ export class WorkerHarness {
         } catch (err: any) {
           rlog.warn({ err: err?.message }, "model resolver failed; deferring to provider default");
         }
+      }
+    }
+
+    // Resolve provider-specific model config (e.g. OpenCode custom endpoints) so the
+    // operation can emit a provider block / bind the endpoint's key slot.
+    const resolvedModel = (stepInput as { model?: unknown }).model;
+    const cfgProvider = (stepInput as { provider?: string }).provider;
+    if (
+      this.deps.modelConfigResolver &&
+      typeof resolvedModel === "string" && resolvedModel &&
+      typeof cfgProvider === "string" && cfgProvider
+    ) {
+      try {
+        const mc = await this.deps.modelConfigResolver({ provider: cfgProvider, modelId: resolvedModel });
+        if (mc) (stepInput as { modelConfig?: unknown }).modelConfig = mc;
+      } catch (err: any) {
+        rlog.warn({ err: err?.message }, "model config resolver failed; continuing without custom config");
       }
     }
 

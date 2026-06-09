@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import type { CodingModelConfig } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import {
   DuplicateCodingModelError,
@@ -10,6 +11,7 @@ import {
   updateCodingModel,
 } from "../db.ts";
 import { isValidCodingProvider, LIST_CODING_PROVIDERS } from "../validate-provider.ts";
+import { validateCodingModelConfig } from "../validate-config.ts";
 
 function requirePlatformAdmin(req: FastifyRequest, reply: FastifyReply): boolean {
   if (!req.runContext?.isPlatformAdmin) {
@@ -45,6 +47,8 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
           error: `Unknown coding-cli provider: ${b.provider}. Allowed: ${LIST_CODING_PROVIDERS.join(", ")}`,
         });
       }
+      const cfgErr = validateCodingModelConfig(String(b.provider), b.config);
+      if (cfgErr) return reply.code(400).send({ error: cfgErr });
       try {
         const rec = await insertCodingModel(pool, {
           provider: String(b.provider),
@@ -57,6 +61,7 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
           isDefault: b.isDefault,
           supportsThinking: b.supportsThinking,
           contextWindow: b.contextWindow,
+          config: b.config,
         });
         reply.code(201);
         return rec;
@@ -84,6 +89,15 @@ export async function registerAdminCodingModelRoutes(app: FastifyInstance, pool:
             error: `Unknown coding-cli provider: ${String(patch.provider)}. Allowed: ${LIST_CODING_PROVIDERS.join(", ")}`,
           });
         }
+      }
+      if (patch && Object.prototype.hasOwnProperty.call(patch, "config")) {
+        const effectiveProvider =
+          typeof patch.provider === "string" ? patch.provider : existing.provider;
+        const cfgErr = validateCodingModelConfig(
+          effectiveProvider,
+          patch.config as CodingModelConfig | undefined,
+        );
+        if (cfgErr) return reply.code(400).send({ error: cfgErr });
       }
       try {
         const updated = await updateCodingModel(pool, id, req.body as any);

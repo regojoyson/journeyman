@@ -4,7 +4,7 @@ import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
   RunCustomPromptOptions, RunCustomPromptResult,
-  ResolvedMcpInstance,
+  ResolvedMcpInstance, CodingModelConfig,
 } from "@journeyman/core";
 import { startServer } from "./client.ts";
 import type { OpenCodeProviderConfig } from "./types.ts";
@@ -32,12 +32,16 @@ export class OpenCodeProvider implements ICodingCLI {
 
   /** Start a managed server with op-specific config, run `fn`, always close. */
   async #withServer<T>(
-    mcps: ResolvedMcpInstance[] | undefined,
-    env: Record<string, string> | undefined,
+    runtime: {
+      mcps?: ResolvedMcpInstance[];
+      model?: string;
+      modelConfig?: CodingModelConfig;
+      env?: Record<string, string>;
+    },
     fn: (client: Awaited<ReturnType<typeof startServer>>["client"]) => Promise<T>,
   ): Promise<T> {
-    const serverConfig = buildServerConfig(this.#config, mcps);
-    const handle = await startServer(this.#config, serverConfig, env);
+    const serverConfig = buildServerConfig(this.#config, runtime);
+    const handle = await startServer(this.#config, serverConfig, runtime.env);
     try {
       return await fn(handle.client);
     } finally {
@@ -46,14 +50,23 @@ export class OpenCodeProvider implements ICodingCLI {
   }
 
   async scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {
-    return this.#withServer(undefined, undefined, (client) => scanRepos(client, this.#config, opts));
+    return this.#withServer(
+      { model: opts.model, modelConfig: opts.modelConfig },
+      (client) => scanRepos(client, this.#config, opts),
+    );
   }
 
   async checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutRepoResult> {
-    return this.#withServer(undefined, undefined, (client) => checkoutRepo(client, this.#config, opts));
+    return this.#withServer(
+      { model: opts.model, modelConfig: opts.modelConfig },
+      (client) => checkoutRepo(client, this.#config, opts),
+    );
   }
 
   async runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
-    return this.#withServer(opts.mcps, opts.env, (client) => runCustomPrompt(client, this.#config, opts));
+    return this.#withServer(
+      { mcps: opts.mcps, model: opts.model, modelConfig: opts.modelConfig, env: opts.env },
+      (client) => runCustomPrompt(client, this.#config, opts),
+    );
   }
 }

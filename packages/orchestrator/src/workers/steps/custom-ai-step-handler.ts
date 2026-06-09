@@ -11,6 +11,7 @@ import {
   type ResolvedMcpInstance,
   type ResolvedSkillPackage,
   type SecretBinding,
+  type CodingModelConfig,
 } from "@journeyman/core";
 import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
 import { defaultProviderForKind, PROVIDER_CATALOG } from "@journeyman/core";
@@ -134,6 +135,10 @@ export class CustomAiStepHandler implements IStepHandler {
     const slotsByName = new Map<string, { name: string; optional?: boolean }>();
     for (const s of providerSlots) slotsByName.set(s.name, s);
     for (const s of dbSlots)       slotsByName.set(s.name, s);
+    const modelConfig = (input.modelConfig as CodingModelConfig | undefined) ?? undefined;
+    if (modelConfig?.apiKeySlot) {
+      slotsByName.set(modelConfig.apiKeySlot, { name: modelConfig.apiKeySlot, optional: true });
+    }
     const effectiveSlots = Array.from(slotsByName.values());
 
     let env: Record<string, string>;
@@ -203,6 +208,7 @@ export class CustomAiStepHandler implements IStepHandler {
       signal: ctx.signal,
       ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
       ...(model ? { model } : {}),
+      ...(modelConfig ? { modelConfig } : {}),
     });
 
     if (result.error) {

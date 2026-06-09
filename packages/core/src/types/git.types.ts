@@ -1,5 +1,6 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
 import type { AgentLogLevel, CodingCliLogFn } from "./coding.types.ts";
+import type { CodingModelConfig } from "./coding-models.types.ts";
 
 // ---------------------------------------------------------------------------
 // Git CLI operation types (used by coding-cli providers)
@@ -38,6 +39,7 @@ export type ScanReposOptions = SessionOptions & {
   parentDir: string;
   signal?: AbortSignal;
   model?: string;
+  modelConfig?: CodingModelConfig;
 };
 
 export type RepoInfo = {
@@ -59,6 +61,7 @@ export type CheckoutRepoOptions = SessionOptions & {
   issue?: { id: string; title: string };
   signal?: AbortSignal;
   model?: string;
+  modelConfig?: CodingModelConfig;
   /** Optional per-message log callback. Receives a one-line summary plus the raw SDK message in `meta.sdkMessage`. */
   onLog?: CodingCliLogFn;
   /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */

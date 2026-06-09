@@ -5,7 +5,9 @@ export {
   listAllCodingModels,
   listEnabledCodingModelsByProvider,
   findDefaultCodingModel,
+  findCodingModel,
   updateCodingModel,
   deleteCodingModel,
   DuplicateCodingModelError,
 } from "./db.ts";
+export { validateCodingModelConfig } from "./validate-config.ts";
