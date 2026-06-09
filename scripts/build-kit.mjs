@@ -14,7 +14,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { config as loadDotenv } from "dotenv";
-import { makeDockerClient, registryAuthFromEnv } from "@journeyman/sandbox";
+import { Pool } from "pg";
+import { makeDockerClient, registryAuthFromEnv, upsertKitImage } from "@journeyman/sandbox";
 
 // ENV_FILE selects the dotenv file (default .env for dev; compose-up.sh sets
 // .env.production for the deploy path).
@@ -80,4 +81,22 @@ writeFileSync(kitJsonPath, JSON.stringify(kit, null, 2) + "\n");
 console.log(`\n✓ Kit pushed. Digests written to ${kitJsonPath}`);
 console.log(`  base:   ${kit.base}`);
 console.log(`  bundle: ${kit.bundle}`);
-console.log(`\nNext: run 'npm run register-kit' (after the DB is up) to record these in kit_images.`);
+
+// Record the digests in kit_images so workers pick them up. Best-effort: this
+// works when the DB is reachable (e.g. local dev with infra:up). Under compose:up
+// the DB isn't up yet when this runs, so compose-up.sh calls register-kit later.
+if (process.env.DATABASE_URL) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    await upsertKitImage(pool, "base", kit.base);
+    await upsertKitImage(pool, "bundle", kit.bundle);
+    console.log(`✓ registered digests in kit_images`);
+  } catch (err) {
+    console.warn(`! could not register in kit_images (${err.message})`);
+    console.warn(`  run 'npm run register-kit' once the DB is up.`);
+  } finally {
+    await pool.end();
+  }
+} else {
+  console.log(`\nNo DATABASE_URL set — run 'npm run register-kit' to record these in kit_images.`);
+}

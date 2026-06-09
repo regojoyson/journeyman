@@ -83,13 +83,17 @@ npm install
 # 2. Start infrastructure (Postgres, Redis, Conductor)
 npm run infra:up
 
-# 3. Run database migrations
-npm run migrate
-
-# 4. Copy and fill environment variables
+# 3. Copy and fill environment variables (dev defaults: registry localhost:5500)
 cp .env.example .env
 
-# 5. Start API server, worker, and web UI
+# 4. Run database migrations
+npm run migrate
+
+# 5. Publish the runner kit (build + push to the local registry, then register
+#    its digests in the DB). Needed for docker-workspace sandboxes.
+npm run build:kit
+
+# 6. Start API server, worker, and web UI
 npm run start:api-server
 npm run start:worker
 npm run dev:web
@@ -195,8 +199,12 @@ For docker-workspace sandboxes during host dev, set `JOURNEYMAN_REGISTRY=localho
 in `.env`, then publish the kit to the dev registry:
 
 ```bash
-npm run build:kit && npm run register-kit
+npm run build:kit     # build + push, and (when DATABASE_URL is reachable) register in kit_images
 ```
+
+`build:kit` registers the pushed digests automatically when it can reach the DB.
+`npm run register-kit` stays available to (re)record them separately — it's what the
+compose deploy flow uses, since there the DB comes up after the kit is built.
 
 ## Deployment
 
@@ -256,14 +264,15 @@ container registry** and pulled by workers — point `JOURNEYMAN_REGISTRY` at an
 local one, GHCR, GitLab, ECR, Docker Hub). Build + publish once (CI or locally):
 
 ```bash
-npm run build:kit        # docker build + push → <registry>/runner-* ; writes <base>/kit/kit.json
-npm run register-kit     # record the pushed digests in the kit_images DB table
+npm run build:kit        # docker build + push → <registry>/runner-* ; writes <base>/kit/kit.json ;
+                         # and registers the digests in kit_images when DATABASE_URL is reachable
 ```
 
-`build:kit` pins each image by **digest** and writes them to `kit.json`; `register-kit` upserts those
-digests into the `kit_images` table, which is the source of truth workers read. The worker (and
-api-server) container needs **no Docker engine inside it** — it connects to a Docker daemon (a local
-socket, or `tcp://` for dind/ECS/remote) and pulls the digest-pinned kit there.
+`build:kit` pins each image by **digest**, writes them to `kit.json`, and (when it can reach the DB)
+upserts them into the `kit_images` table — the source of truth workers read. When the DB isn't up yet
+(e.g. the compose deploy flow builds the kit first), run `npm run register-kit` afterwards to record
+them. The worker (and api-server) container needs **no Docker engine inside it** — it connects to a
+Docker daemon (a local socket, or `tcp://` for dind/ECS/remote) and pulls the digest-pinned kit there.
 
 > **Rancher Desktop / colima / rootless:** `build:kit` and the worker use `dockerode`, which ignores
 > the Docker CLI *context*. `build:kit` auto-adopts the active context's endpoint, but for the worker
