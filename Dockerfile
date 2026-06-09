@@ -38,6 +38,9 @@ RUN npm run build -w @journeyman/web
 FROM node:22-alpine AS runtime-api
 WORKDIR /app
 ENV NODE_ENV=production
+# Skill packages are installed in-process here via `git clone` (skills/installer.ts),
+# so git + ssh must be present — same as runtime-worker.
+RUN apk add --no-cache git openssh-client ca-certificates
 COPY --from=deps /app/node_modules ./node_modules
 # Also ship per-workspace node_modules: npm nests un-hoistable deps (e.g. the
 # @octokit/* plugins under packages/github-api) here, and runtime needs them.

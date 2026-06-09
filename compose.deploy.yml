@@ -88,7 +88,15 @@ services:
       # makes auth cookies set the Secure flag (see identity/src/middleware.ts).
       NODE_ENV: production
       PORT: "4000"
+      # Skill installs (git clone) run in-process here; clones must land in the
+      # SAME shared data root the worker reads from, so it resolves skills at the
+      # persisted local_path. Mounted to /data/journeyman below (matches worker).
+      JOURNEYMAN_BASE_DIR: /data/journeyman
     ports: ["6000:4000"]
+    volumes:
+      # Shared with the worker so skill clones written here are visible at the
+      # same local_path when the worker runs the AI (see worker volume below).
+      - ${JOURNEYMAN_BASE_DIR:-./.journeyman-data}:/data/journeyman
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
