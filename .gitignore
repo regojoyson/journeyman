@@ -6,6 +6,7 @@ dist/
 .worktrees/
 .claude/worktrees/
 .env
+.env.production
 workspaces/
 .journeyman-data/
 .superpowers/

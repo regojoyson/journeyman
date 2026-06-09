@@ -2,20 +2,28 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ ! -f .env ]; then
-  echo "ERROR: no .env found." >&2
-  echo "  cp .env.example .env" >&2
+# Deploy uses a dedicated env file so it can't clash with the dev .env
+# (e.g. the registry port: dev = localhost:5500, deploy = localhost:5000).
+ENV_FILE=".env.production"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: no ${ENV_FILE} found." >&2
+  echo "  cp .env.production.example ${ENV_FILE}" >&2
   echo "  then set JWT_SECRET and JM_SECRET_ENCRYPTION_KEY (openssl rand -hex 32)" >&2
   exit 1
 fi
+
+# All compose invocations read interpolation vars (e.g. JOURNEYMAN_BASE_DIR) and
+# service env from the deploy env file.
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f compose.deploy.yml)
 
 # Abort if a required secret is missing or empty (no silent blank boot).
 require_secret() {
   local key="$1" val
   # `|| true` so a no-match grep doesn't trip `set -e` before our own check runs.
-  val="$(grep -E "^${key}=" .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+  val="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
   if [ -z "$val" ]; then
-    echo "ERROR: required secret '${key}' is missing or empty in .env" >&2
+    echo "ERROR: required secret '${key}' is missing or empty in ${ENV_FILE}" >&2
     echo "Generate with: openssl rand -hex 32" >&2
     exit 1
   fi
@@ -24,8 +32,8 @@ require_secret JWT_SECRET
 require_secret JM_SECRET_ENCRYPTION_KEY
 
 # Build into the SAME host folder that's bind-mounted into the worker at /data/journeyman
-# (JOURNEYMAN_BASE_DIR from .env), so kit.json lands at /data/journeyman/kit.
-data_dir="$(grep -E '^JOURNEYMAN_BASE_DIR=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+# (JOURNEYMAN_BASE_DIR from the env file), so kit.json lands at /data/journeyman/kit.
+data_dir="$(grep -E '^JOURNEYMAN_BASE_DIR=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 data_dir="${data_dir:-./.journeyman-data}"
 
 # Postgres + redis data live in host bind-mounts under the data dir (durable across
@@ -33,9 +41,9 @@ data_dir="${data_dir:-./.journeyman-data}"
 mkdir -p "${data_dir}/postgres" "${data_dir}/redis"
 
 # Require the registry target (replaces the old tar kit).
-registry="$(grep -E '^JOURNEYMAN_REGISTRY=' .env 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+registry="$(grep -E '^JOURNEYMAN_REGISTRY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
 if [ -z "$registry" ]; then
-  echo "ERROR: JOURNEYMAN_REGISTRY is not set in .env (e.g. localhost:5000)" >&2
+  echo "ERROR: JOURNEYMAN_REGISTRY is not set in ${ENV_FILE} (e.g. localhost:5000)" >&2
   exit 1
 fi
 
@@ -45,7 +53,7 @@ fi
 case "$registry" in
   localhost:*|127.0.0.1:*)
     echo ">>> starting bundled registry (${registry})"
-    docker compose -f compose.deploy.yml up -d docker registry
+    "${COMPOSE[@]}" up -d docker registry
     reg_port="${registry##*:}"
     printf ">>> waiting for registry on localhost:%s " "${reg_port}"
     for i in $(seq 1 30); do
@@ -57,17 +65,18 @@ case "$registry" in
 esac
 
 echo ">>> building + pushing runner kit to ${registry}"
-JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
+ENV_FILE="$ENV_FILE" JOURNEYMAN_BASE_DIR="${data_dir}" npm run build:kit
 
 ./scripts/build-images.sh
 
 echo ">>> bringing up postgres + running migrations"
-docker compose -f compose.deploy.yml up -d postgres
-docker compose -f compose.deploy.yml run --rm migrations
+"${COMPOSE[@]}" up -d postgres
+"${COMPOSE[@]}" run --rm migrations
 
 echo ">>> registering kit images in the DB"
-DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:6032/journeyman}" \
+ENV_FILE="$ENV_FILE" \
+  DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:6032/journeyman}" \
   JOURNEYMAN_BASE_DIR="${data_dir}" npm run register-kit
 
-docker compose -f compose.deploy.yml up -d
-docker compose -f compose.deploy.yml ps
+"${COMPOSE[@]}" up -d
+"${COMPOSE[@]}" ps

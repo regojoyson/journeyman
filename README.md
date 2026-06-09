@@ -280,14 +280,23 @@ There are **two** compose files, by purpose:
 
 Full guide: [docs/deploy-docker-compose.md](docs/deploy-docker-compose.md).
 
+**Two env files, by mode** (so settings like the registry port can't clash):
+
+| File | Used by | Registry default |
+|---|---|---|
+| `.env` (← `cp .env.example .env`) | host dev (`infra:up` + `npm run start:*`, `build:kit`) | `localhost:5500` |
+| `.env.production` (← `cp .env.production.example .env.production`) | `npm run compose:*` (deploy) | `localhost:5000` |
+
+Both are git-ignored. Tooling loads `.env` by default; the deploy path explicitly uses `.env.production` (via `ENV_FILE` / `docker compose --env-file`).
+
 **Prerequisites:** Docker 24+ with Compose v2.
 
 ```bash
-# 1. Seed env + required secrets
-cp .env.example .env
+# 1. Seed the DEPLOY env + required secrets (separate from the dev .env).
+cp .env.production.example .env.production
 printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' \
-  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env
-# set ANTHROPIC_API_KEY=sk-ant-... in .env for AI steps
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env.production
+# set ANTHROPIC_API_KEY=sk-ant-... in .env.production for AI steps
 
 # 2. Bring up the full stack
 #    Builds + pushes the runner kit to the bundled registry (localhost:5000), runs

@@ -77,7 +77,7 @@ services:
 
   migrations:
     image: journeyman/migrations:dev
-    env_file: .env
+    env_file: .env.production
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
     depends_on:
@@ -87,7 +87,7 @@ services:
 
   api-server:
     image: journeyman/api-server:dev
-    env_file: .env
+    env_file: .env.production
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
@@ -113,7 +113,7 @@ services:
 
   worker:
     image: journeyman/worker:dev
-    env_file: .env
+    env_file: .env.production
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api

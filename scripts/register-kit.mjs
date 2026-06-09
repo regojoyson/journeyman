@@ -8,7 +8,9 @@ import { config as loadDotenv } from "dotenv";
 import { Pool } from "pg";
 import { upsertKitImage } from "@journeyman/sandbox";
 
-loadDotenv();
+// ENV_FILE selects the dotenv file (default .env for dev; compose-up.sh sets
+// .env.production for the deploy path).
+loadDotenv({ path: process.env.ENV_FILE ?? ".env" });
 
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) { console.error("ERROR: DATABASE_URL is required"); process.exit(1); }

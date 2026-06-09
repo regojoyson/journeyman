@@ -16,7 +16,9 @@ import { homedir } from "node:os";
 import { config as loadDotenv } from "dotenv";
 import { makeDockerClient, registryAuthFromEnv } from "@journeyman/sandbox";
 
-loadDotenv();
+// ENV_FILE selects the dotenv file (default .env for dev; compose-up.sh sets
+// .env.production for the deploy path).
+loadDotenv({ path: process.env.ENV_FILE ?? ".env" });
 
 const registry = process.env.JOURNEYMAN_REGISTRY;
 if (!registry) {

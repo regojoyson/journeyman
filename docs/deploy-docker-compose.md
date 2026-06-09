@@ -39,7 +39,7 @@ A flow step runs inside a **sandbox** the user picks in the app. There are two k
   writing to `/data/journeyman/workspaces/<runId>` (a host bind-mount, so it survives restarts).
 - **Docker sandbox** — the worker asks the built-in `docker` (dind) engine over
   `tcp://docker:2375` to spin up a fresh, isolated container per job, then destroy it.
-  The runner image (the "kit") is loaded into dind from `/data/journeyman/kit` on first use.
+  The runner image (the "kit") is pulled into dind by digest from the registry on first use.
 
 ---
 
@@ -48,12 +48,15 @@ A flow step runs inside a **sandbox** the user picks in the app. There are two k
 - Docker + the `docker compose` plugin.
 - This repo checked out.
 
-## 1. Configure `.env`
+## 1. Configure `.env.production`
 
-Copy the template and fill in the **required** values:
+Deploy uses its own env file (`.env.production`), separate from the dev `.env`, so
+settings can't clash — most importantly the runner-kit registry port (deploy uses
+`localhost:5000`, host dev uses `localhost:5500`). Copy the template and fill in the
+**required** values:
 
 ```bash
-cp .env.example .env
+cp .env.production.example .env.production
 ```
 
 | Variable | Required | Notes |
@@ -67,7 +70,7 @@ cp .env.example .env
 Generate both secrets quickly:
 
 ```bash
-printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env
+printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> .env.production
 ```
 
 `compose-up.sh` will **stop with a clear error** if `JWT_SECRET` or
@@ -76,7 +79,7 @@ printf 'JWT_SECRET=%s\nJM_SECRET_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" 
 ## 2. The runner kit (registry)
 
 Runner images are **pushed to a container registry** and pulled by workers — no
-more tar files. Set the target registry in `.env`:
+more tar files. Set the target registry in `.env.production`:
 
 - `JOURNEYMAN_REGISTRY` — e.g. `localhost:5000`, `ghcr.io/acme`,
   `registry.gitlab.com/acme/journeyman`.
@@ -108,12 +111,12 @@ service is simply ignored.
 ## 3. Bring the stack up
 
 ```bash
-npm run compose:up      # builds kit (if missing) + app images, then `docker compose -f compose.deploy.yml up -d`
+npm run compose:up      # build+push kit → migrate → register kit → build app images → up
 ```
 
-This builds the runner kit (first run only), builds the four app images, then starts every
-service. `migrations` runs first and exits; `api-server`/`web` wait until it has completed
-and the DB is healthy.
+This starts the bundled registry, builds + pushes the runner kit, runs migrations, records the
+kit digests in `kit_images`, builds the four app images, then starts every service. `migrations`
+runs first and exits; `api-server`/`web` wait until it has completed and the DB is healthy.
 
 Check status and logs:
 
@@ -178,9 +181,9 @@ initializes normally.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `compose-up` aborts naming `JWT_SECRET` | secrets not set | add them to `.env` (step 1) |
+| `compose-up` aborts naming `JWT_SECRET` | secrets not set | add them to `.env.production` (step 1) |
 | Docker-sandbox "Test connection" fails | dind not up, or kit missing | check `docker compose -f compose.deploy.yml ps` shows `docker`; if the kit is stale, `rm -rf .journeyman-data/kit && npm run compose:up` rebuilds it |
-| AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env`, `docker compose -f compose.deploy.yml up -d worker` |
+| AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env.production`, `docker compose -f compose.deploy.yml up -d worker` |
 | `web` loads but `/api` calls fail | api-server not healthy yet | `docker compose -f compose.deploy.yml logs api-server` |
 | Local-sandbox clone fails with `git: not found` | worker image missing git | rebuild images (`npm run images:build`) |
 
