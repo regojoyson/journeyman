@@ -52,6 +52,19 @@ services:
     volumes:
       - registry-data:/var/lib/registry
 
+  # Bridges the host Docker socket to TCP so a host-run worker (npm run start:worker) can
+  # drive the host Docker daemon for docker-backend sandboxes. Set the sandbox's daemon
+  # host to tcp://localhost:2375. Bound to loopback only.
+  # SECURITY: unauthenticated Docker API (root-equivalent on the host) — never expose
+  # beyond 127.0.0.1.
+  dockerproxy:
+    image: alpine/socat
+    command: ["tcp-listen:2375,fork,reuseaddr", "unix-connect:/var/run/docker.sock"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["127.0.0.1:2375:2375"]
+    restart: unless-stopped
+
 volumes:
   pgdata:
   registry-data:

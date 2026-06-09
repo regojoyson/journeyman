@@ -53,7 +53,7 @@ fi
 case "$registry" in
   localhost:*|127.0.0.1:*)
     echo ">>> starting bundled registry (${registry})"
-    "${COMPOSE[@]}" up -d docker registry
+    "${COMPOSE[@]}" up -d registry
     reg_port="${registry##*:}"
     printf ">>> waiting for registry on localhost:%s " "${reg_port}"
     for i in $(seq 1 30); do

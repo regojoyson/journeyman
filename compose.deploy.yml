@@ -44,40 +44,28 @@ services:
       postgres:
         condition: service_healthy
 
-  # Built-in Docker engine for docker-workspace sandboxes (Docker-in-Docker).
-  # Reachable only on the private compose network at tcp://docker:2375.
-  docker:
-    image: docker:27-dind
-    privileged: true
-    environment:
-      DOCKER_TLS_CERTDIR: ""
-    command: ["--host=tcp://0.0.0.0:2375"]
-    # Publish the bundled registry (which shares this container's network namespace)
-    # on host 5500. Port MUST match on both sides (5500:5500): the kit image refs embed
-    # `localhost:5500`, and that literal must resolve to the same registry from the host
-    # (build:kit push) and from inside dind (pull). 5500 (not 5000) avoids the macOS
-    # AirPlay Receiver clash. Docker treats localhost registries as insecure — no TLS.
-    ports: ["5500:5500"]
+  # Bridges the host Docker socket to TCP so the worker (a TCP-only Docker client) drives
+  # the host's OWN Docker daemon — sandboxes run as siblings, not nested (no DinD, no
+  # privileged). Reachable ONLY on the private compose network at tcp://dockerproxy:2375.
+  # SECURITY: exposes the full, unauthenticated Docker API (root-equivalent on the host).
+  # Do NOT publish this port. Local/trusted deployments only.
+  dockerproxy:
+    image: alpine/socat
+    command: ["tcp-listen:2375,fork,reuseaddr", "unix-connect:/var/run/docker.sock"]
     volumes:
-      - dind-storage:/var/lib/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
 
   # Bundled local registry for the runner kit (zero-config default for
-  # JOURNEYMAN_REGISTRY=localhost:5500). External registries (GHCR/GitLab/ECR) are
-  # used by simply pointing JOURNEYMAN_REGISTRY elsewhere and ignoring this service.
-  # Shares dind's network namespace so `localhost:5500` means the same thing to the
-  # host (via the published port above) and to dind (when it pulls kit images).
+  # JOURNEYMAN_REGISTRY=localhost:5500). Standalone + published: `localhost:5500` resolves
+  # to it from the host (build:kit push) and from the host Docker daemon (pull, when
+  # provisioning sandboxes). External registries (GHCR/GitLab/ECR): point JOURNEYMAN_REGISTRY
+  # elsewhere and ignore this service. 5500 (not 5000) avoids the macOS AirPlay clash.
   registry:
     image: registry:2
-    network_mode: "service:docker"
-    # Listen on 5500 inside dind's shared netns (matches the published 5500:5500 above
-    # and the localhost:5500 the kit refs embed).
-    environment:
-      REGISTRY_HTTP_ADDR: 0.0.0.0:5500
+    ports: ["5500:5000"]
     volumes:
       - registry-storage:/var/lib/registry
-    depends_on:
-      docker:
-        condition: service_started
 
   migrations:
     image: journeyman/migrations:dev
@@ -137,7 +125,7 @@ services:
         condition: service_healthy
       conductor:
         condition: service_started
-      docker:
+      dockerproxy:
         condition: service_started
       registry:
         condition: service_started
@@ -151,8 +139,6 @@ services:
 
 volumes:
   # postgres + redis data are host bind-mounts under JOURNEYMAN_BASE_DIR (see the
-  # postgres/redis services) — durable across `down -v`/compose:reset. Only dind-storage
-  # is a project-managed named volume here (safe to wipe/rebuild).
-  dind-storage:
+  # postgres/redis services) — durable across `down -v`/compose:reset.
   # Bundled local registry storage (runner kit images). Safe to wipe/rebuild.
   registry-storage:

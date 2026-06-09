@@ -24,7 +24,7 @@ container ports stay standard, so all in-network URLs (`postgres:5432`, `api-ser
 | `web` | nginx + built SPA | serves the UI, proxies `/api` → api-server | **6080** | 8080 |
 | `api-server` | `journeyman/api-server` | Fastify REST + SSE gateway | **6000** | 4000 |
 | `worker` | `journeyman/worker` | executes flow steps and AI coding jobs | — | — |
-| `docker` | `docker:27-dind` | built-in Docker engine for docker-workspace jobs | — (internal `2375`) | 2375 |
+| `dockerproxy` | `alpine/socat` | bridges the host Docker socket to TCP for the worker | — (internal `2375`) | 2375 |
 | `conductor` | orkes-conductor | durable workflow engine | **6008**, **6005** (UI) | 8080, 5000 |
 | `postgres` | `postgres:16` | persistence | **6032** | 5432 |
 | `redis` | `redis:7` | Conductor queue | **6079** | 6379 |
@@ -37,9 +37,11 @@ A flow step runs inside a **sandbox** the user picks in the app. There are two k
 
 - **Local sandbox** — the worker clones the repo and runs the AI *in its own container*,
   writing to `/data/journeyman/workspaces/<runId>` (a host bind-mount, so it survives restarts).
-- **Docker sandbox** — the worker asks the built-in `docker` (dind) engine over
-  `tcp://docker:2375` to spin up a fresh, isolated container per job, then destroy it.
-  The runner image (the "kit") is pulled into dind by digest from the registry on first use.
+- **Docker sandbox** — the worker asks the host's Docker daemon (reached via the
+  `dockerproxy` socat sidecar at `tcp://dockerproxy:2375`) to spin up a fresh, isolated
+  container per job, then destroy it. The container is a **sibling** on the host daemon, so
+  `host.docker.internal` reaches host-local services (e.g. a local LM Studio/Ollama server)
+  from inside it. The runner image (the "kit") is pulled by digest from the registry on first use.
 
 ---
 
@@ -99,9 +101,9 @@ new digest automatically — no redeploy).
 
 **Local default (zero-config):** compose ships a bundled `registry:2` service. With
 the default `JOURNEYMAN_REGISTRY=localhost:5500`, `compose:up` starts it, waits for
-it, then pushes — nothing to set up. The registry shares the dind network namespace
-so `localhost:5500` resolves to the same registry from the host (push) and from dind
-(pull). Its storage lives in the `registry-storage` volume.
+it, then pushes — nothing to set up. The registry is a standalone published service, so
+`localhost:5500` resolves to it from the host (push) and from the host Docker daemon
+(pull, when provisioning sandboxes). Its storage lives in the `registry-storage` volume.
 
 **External registry:** point `JOURNEYMAN_REGISTRY` at GHCR/GitLab/ECR/Docker Hub and
 set `JOURNEYMAN_REGISTRY_USERNAME` / `JOURNEYMAN_REGISTRY_TOKEN`. The bundled registry
@@ -137,7 +139,7 @@ Log in, then go to **Sidebar → Sandboxes → New sandbox**.
 
 **Docker workspace, built-in engine:**
 1. Type = **Docker**
-2. Daemon host = `tcp://docker:2375` (the built-in dind).
+2. Daemon host = `tcp://dockerproxy:2375` (the socat proxy to the host Docker daemon).
 3. Image source = a prebuilt ref (e.g. `node:22-bookworm`) or a Dockerfile.
 4. Network = **Full (internet)**.
 5. Save → **Test connection** → ✅.
@@ -150,13 +152,19 @@ Log in, then go to **Sidebar → Sandboxes → New sandbox**.
 The worker connects straight to whatever host you set. A Docker sandbox always needs an explicit
 daemon host — there is no local-socket option or fallback.
 
+**Local development (host-run worker).** When you run the worker on your host with
+`npm run start:worker` (deps from `infra/compose.dev.yml`), the dev stack publishes a
+`dockerproxy` on `127.0.0.1:2375`. Set the sandbox's Daemon host to `tcp://localhost:2375`.
+Sandboxes still run as siblings on your host Docker daemon, so `host.docker.internal`
+reaches host-local model servers (use Base URL `http://host.docker.internal:1234/v1`).
+
 ---
 
 ## Operations
 
 ```bash
 npm run compose:down     # stop the stack (keep everything)
-npm run compose:reset    # stop + remove dind-storage; DB data is PRESERVED
+npm run compose:reset    # stop + remove named volumes (registry); DB data is PRESERVED
 npm run compose:wipe-db  # DESTRUCTIVE: stop + delete the host postgres/redis folders
 docker compose -f compose.deploy.yml logs -f api-server
 ```
@@ -184,15 +192,18 @@ initializes normally.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `compose-up` aborts naming `JWT_SECRET` | secrets not set | add them to `.env.production` (step 1) |
-| Docker-sandbox "Test connection" fails | dind not up, or kit missing | check `docker compose -f compose.deploy.yml ps` shows `docker`; if the kit is stale, `rm -rf .journeyman-data/kit && npm run compose:up` rebuilds it |
+| Docker-sandbox "Test connection" fails | dockerproxy not up, or kit missing | check `docker compose -f compose.deploy.yml ps` shows `dockerproxy`; if the kit is stale, `rm -rf .journeyman-data/kit && npm run compose:up` rebuilds it |
+| Sandbox can't reach a host-local model | wrong address from a sibling container | use `http://host.docker.internal:1234/v1` (not `localhost`); confirm with `docker run --rm curlimages/curl -s http://host.docker.internal:1234/v1/models` |
 | AI step errors with auth | `ANTHROPIC_API_KEY` missing | set it in `.env.production`, `docker compose -f compose.deploy.yml up -d worker` |
 | `web` loads but `/api` calls fail | api-server not healthy yet | `docker compose -f compose.deploy.yml logs api-server` |
 | Local-sandbox clone fails with `git: not found` | worker image missing git | rebuild images (`npm run images:build`) |
 
 ## Security notes
 
-- The `docker` (dind) service runs **privileged** — it needs kernel access to create
-  containers. It is reachable only on the private compose network. Acceptable for a
-  self-hosted single-host deployment; review before exposing the host beyond localhost.
-- The built-in engine listens on **plain TCP (no TLS)** inside the compose network only.
-  For remote engines over the internet, use TLS certs on the sandbox's connection config.
+- The `dockerproxy` (socat) service exposes the host's **full, unauthenticated Docker API**
+  over plain TCP — **root-equivalent on the host** for anything that can reach it. It is
+  bound to the **private compose network only and never published**. Acceptable for a
+  self-hosted single-host deployment; do not expose that port beyond the host.
+- Sandboxes run as **siblings** on the host Docker daemon (not nested), so they share the
+  host's images/volumes. For stronger isolation in untrusted/multi-tenant setups, point the
+  sandbox's daemon host at a dedicated/remote daemon (TLS certs via the connection config).
