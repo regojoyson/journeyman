@@ -1,7 +1,8 @@
 import type { WorkflowGraph, WorkflowNode, WorkflowSaveWarning, WorkflowInputValue, WorkflowInputDef, WorkflowAttributeDef } from "../types/flow.types.ts";
 import { workflowInputDefShape, workflowAttributeDefShape } from "../types/flow.types.ts";
 import type { Shape, OutputSchema } from "../types/shape.types.ts";
-import { shapeAtPath, shapesCompatible } from "../types/shapes.ts";
+import { shapesCompatible } from "../types/shapes.ts";
+import { shapeAtPathSegs, parsePathSegments } from "../types/path-segments.ts";
 import { getStartWorkflowInputs } from "./start-node.ts";
 import { extractTemplateRefs } from "./template-refs.ts";
 
@@ -324,9 +325,21 @@ export function validateWorkflowInputs(
           continue;
         }
 
+        const _segs = parsePathSegments(parsed.fieldPath.join("."));
+        if (!_segs || _segs.length === 0 || _segs[0].kind !== "key") {
+          warnings.push({
+            code: "dangling-ref-path",
+            message: `${node.id}.${key}: ref '${ref}' has an invalid path`,
+            nodeId: node.id, inputKey: key, ref, missingPath: parsed.fieldPath.join("."),
+          });
+          continue;
+        }
+        const _head = _segs[0].key;
+        const _tail = _segs.slice(1);
+
         let actual: Shape | undefined;
         if (parsed.scope === "workflow.input") {
-          const def = workflowInputByName.get(parsed.fieldPath[0]);
+          const def = workflowInputByName.get(_head);
           if (!def) {
             warnings.push({
               code: "dangling-ref-path",
@@ -339,9 +352,9 @@ export function validateWorkflowInputs(
             continue;
           }
           const root = workflowInputShape(def);
-          actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
+          actual = root ? (_tail.length > 0 ? shapeAtPathSegs(root, _tail) ?? undefined : root) : undefined;
         } else if (parsed.scope === "workflow.attribute") {
-          const def = workflowAttributeByName.get(parsed.fieldPath[0]);
+          const def = workflowAttributeByName.get(_head);
           if (!def) {
             warnings.push({
               code: "dangling-ref-path",
@@ -354,7 +367,7 @@ export function validateWorkflowInputs(
             continue;
           }
           const root = workflowAttributeShape(def);
-          actual = root ? (parsed.fieldPath.length > 1 ? shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined : root) : undefined;
+          actual = root ? (_tail.length > 0 ? shapeAtPathSegs(root, _tail) ?? undefined : root) : undefined;
         } else {
           const sourceNode = nodesById.get(parsed.source);
           if (!sourceNode) {
@@ -374,7 +387,7 @@ export function validateWorkflowInputs(
           const sourceCpDef = cpDefFor(sourceNode);
           const outputSchema = sourceCpDef?.outputSchema ?? sourceEntry?.outputSchema;
           if (!outputSchema) continue;
-          const root = outputSchema[parsed.fieldPath[0]];
+          const root = outputSchema[_head];
           if (!root) {
             warnings.push({
               code: "dangling-ref-path",
@@ -386,7 +399,7 @@ export function validateWorkflowInputs(
             });
             continue;
           }
-          actual = shapeAtPath(root, parsed.fieldPath.slice(1)) ?? undefined;
+          actual = shapeAtPathSegs(root, _tail) ?? undefined;
           if (!actual) {
             warnings.push({
               code: "dangling-ref-path",

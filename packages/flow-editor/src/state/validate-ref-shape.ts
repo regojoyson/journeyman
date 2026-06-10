@@ -1,5 +1,5 @@
 import type { WorkflowGraph, Shape } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
+import { resolveShape, shapeAtPathSegs, parsePathSegments, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape } from "@journeyman/core";
 import type { StepCatalogEntry } from "../catalogs/use-step-catalog.ts";
 
 export function validateRefShape(
@@ -13,7 +13,10 @@ export function validateRefShape(
     || /^(workflow)\.(input)\.(.+)$/.exec(ref);
   if (!m) return { ok: false, error: `Unparseable ref '${ref}'` };
   const [, source, scope, fieldPath] = m;
-  const path = fieldPath.split(".");
+  const segs = parsePathSegments(fieldPath);
+  if (!segs || segs.length === 0 || segs[0].kind !== "key") return { ok: false, error: `Invalid path '${ref}'` };
+  const head = segs[0].key;
+  const tail = segs.slice(1);
 
   let root: Shape | undefined;
   if (source === "workflow") {
@@ -22,10 +25,10 @@ export function validateRefShape(
       : getStartWorkflowInputs(
           flow.nodes.find(n => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human")?.config,
         );
-    const decl = decls.find(r => r.name === path[0]);
-    if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
+    const decl = decls.find(r => r.name === head);
+    if (!decl) return { ok: false, error: `workflow.input.${head} not declared` };
     root = workflowInputDefShape(decl);
-    const leaf = shapeAtPath(root, path.slice(1));
+    const leaf = shapeAtPathSegs(root, tail);
     if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
     try {
       return shapesCompatible(leaf, expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };
@@ -37,10 +40,10 @@ export function validateRefShape(
   const node = flow.nodes.find(n => n.id === source);
   if (!node || node.type !== "step" || !node.stepType) return { ok: false, error: `Bad node '${source}'` };
   const entry = catalog[node.stepType];
-  root = scope === "output" ? entry?.outputSchema?.[path[0]] : entry?.inputFields?.[path[0]]?.shape;
-  if (!root) return { ok: false, error: `Field '${scope}.${path[0]}' not on '${source}'` };
+  root = scope === "output" ? entry?.outputSchema?.[head] : entry?.inputFields?.[head]?.shape;
+  if (!root) return { ok: false, error: `Field '${scope}.${head}' not on '${source}'` };
 
-  const leaf = shapeAtPath(root, path.slice(1));
+  const leaf = shapeAtPathSegs(root, tail);
   if (!leaf) return { ok: false, error: `Path '${ref}' not found` };
   try {
     return shapesCompatible(resolveShape(leaf), expected) ? { ok: true } : { ok: false, error: `Shape mismatch on '${ref}'` };

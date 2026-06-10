@@ -1,5 +1,6 @@
 import type { WorkflowGraph, WorkflowNode, Shape, OutputSchema, InputFields } from "@journeyman/core";
-import { resolveShape, shapeAtPath, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape, pauseNodeOutputSchema, joinNodeOutputSchema } from "@journeyman/core";
+import { resolveShape, shapeAtPathSegs, parsePathSegments, shapesCompatible, getStartWorkflowInputs, workflowInputDefShape, workflowAttributeDefShape, pauseNodeOutputSchema, joinNodeOutputSchema } from "@journeyman/core";
+import type { PathSeg } from "@journeyman/core";
 import { parseRef } from "./resolve-inputs.ts";
 
 /**
@@ -24,6 +25,13 @@ interface RefShapeResult {
   error?: string;
 }
 
+/** Split a parsed ref field into its head field name and the tail segments to walk. */
+function splitField(field: string): { head: string; tail: PathSeg[] } | null {
+  const segs = parsePathSegments(field);
+  if (!segs || segs.length === 0 || segs[0].kind !== "key") return null;
+  return { head: segs[0].key, tail: segs.slice(1) };
+}
+
 export function resolveRefShape(
   flow: WorkflowGraph,
   ref: string,
@@ -33,7 +41,8 @@ export function resolveRefShape(
   const parsed = parseRef(ref);
   if (!parsed) return { ok: false, error: `Unparseable ref '${ref}'` };
 
-  const path = parsed.field.split(".");
+  const split = splitField(parsed.field);
+  if (!split) return { ok: false, error: `Invalid path in ref '${ref}'` };
 
   if (parsed.scope === "workflow.input") {
     const workflowInputs = (flow.inputDefs && flow.inputDefs.length > 0)
@@ -41,18 +50,18 @@ export function resolveRefShape(
       : getStartWorkflowInputs(
           flow.nodes.find(n => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human")?.config,
         );
-    const decl = workflowInputs.find(r => r.name === path[0]);
-    if (!decl) return { ok: false, error: `workflow.input.${path[0]} not declared` };
+    const decl = workflowInputs.find(r => r.name === split.head);
+    if (!decl) return { ok: false, error: `workflow.input.${split.head} not declared` };
     const root: Shape = workflowInputDefShape(decl);
-    const leaf = shapeAtPath(root, path.slice(1));
+    const leaf = shapeAtPathSegs(root, split.tail);
     return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
   }
 
   if (parsed.scope === "workflow.attribute") {
-    const decl = (flow.attributeDefs ?? []).find(a => a.name === path[0]);
-    if (!decl) return { ok: false, error: `workflow.attribute.${path[0]} not declared` };
+    const decl = (flow.attributeDefs ?? []).find(a => a.name === split.head);
+    if (!decl) return { ok: false, error: `workflow.attribute.${split.head} not declared` };
     const root: Shape = workflowAttributeDefShape(decl);
-    const leaf = shapeAtPath(root, path.slice(1));
+    const leaf = shapeAtPathSegs(root, split.tail);
     return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
   }
 
@@ -67,11 +76,11 @@ export function resolveRefShape(
     if (parsed.scope !== "output") {
       return { ok: false, error: `Node ${labelNode(node, parsed.source)} only exposes outputs (use output.<field>)` };
     }
-    const pauseRoot = pauseSchema[path[0]];
+    const pauseRoot = pauseSchema[split.head];
     if (!pauseRoot) {
-      return { ok: false, error: `Field 'output.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
+      return { ok: false, error: `Field 'output.${split.head}' not declared on ${labelNode(node, parsed.source)}` };
     }
-    const pauseLeaf = shapeAtPath(pauseRoot, path.slice(1));
+    const pauseLeaf = shapeAtPathSegs(pauseRoot, split.tail);
     return pauseLeaf ? { ok: true, shape: pauseLeaf } : { ok: false, error: `Path not found: ${ref}` };
   }
 
@@ -82,11 +91,11 @@ export function resolveRefShape(
     if (parsed.scope !== "output") {
       return { ok: false, error: `Node ${labelNode(node, parsed.source)} only exposes outputs (use output.<field>)` };
     }
-    const joinRoot = joinSchema[path[0]];
+    const joinRoot = joinSchema[split.head];
     if (!joinRoot) {
-      return { ok: false, error: `Field 'output.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
+      return { ok: false, error: `Field 'output.${split.head}' not declared on ${labelNode(node, parsed.source)}` };
     }
-    const joinLeaf = shapeAtPath(joinRoot, path.slice(1));
+    const joinLeaf = shapeAtPathSegs(joinRoot, split.tail);
     return joinLeaf ? { ok: true, shape: joinLeaf } : { ok: false, error: `Path not found: ${ref}` };
   }
 
@@ -115,11 +124,11 @@ export function resolveRefShape(
 
   const root: Shape | undefined =
     parsed.scope === "output"
-      ? outputSchema?.[path[0]]
-      : inputFields?.[path[0]]?.shape;
-  if (!root) return { ok: false, error: `Field '${parsed.scope}.${path[0]}' not declared on ${labelNode(node, parsed.source)}` };
+      ? outputSchema?.[split.head]
+      : inputFields?.[split.head]?.shape;
+  if (!root) return { ok: false, error: `Field '${parsed.scope}.${split.head}' not declared on ${labelNode(node, parsed.source)}` };
 
-  const leaf = shapeAtPath(root, path.slice(1));
+  const leaf = shapeAtPathSegs(root, split.tail);
   return leaf ? { ok: true, shape: leaf } : { ok: false, error: `Path not found: ${ref}` };
 }
 

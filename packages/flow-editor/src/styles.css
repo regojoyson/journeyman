@@ -2141,6 +2141,43 @@ button.je-condition-row__pick:hover {
 .je-input-value__json-area { font-family: monospace; min-height: 72px; resize: vertical; }
 .je-input-value__json-error { color: #ff7675; font-size: 11px; }
 
+/* Mode row: the Value | @ Reference pill plus the help icon. */
+.je-input-value__mode-row { display: flex; align-items: center; gap: 6px; }
+
+/* Path tail input (drilling into json/array references). */
+.je-input-value__path { display: flex; align-items: center; gap: 6px; }
+.je-input-value__path-prefix {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #7a7f8c;
+}
+.je-input-value__path-input {
+  flex: 1; box-sizing: border-box;
+  background: #0f0f1a; color: #e2e8f0;
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 6px 8px; font-size: 12px; font-family: monospace;
+}
+.je-input-value__path-input--error { border-color: #ff7675; }
+.je-input-value__path-error { color: #ff7675; font-size: 11px; }
+
+.je-input-value__hint { font-size: 11px; color: #7a7f8c; }
+
+/* Info-icon help popover. */
+.je-input-help { position: relative; display: inline-flex; }
+.je-input-help__icon {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid #2a2a3a; background: transparent; color: #94a3b8;
+  font-style: italic; font-size: 11px; line-height: 1; cursor: pointer;
+}
+.je-input-help__icon:hover { color: #e2e8f0; border-color: #3a3a5e; }
+.je-input-help__popover {
+  position: absolute; top: 24px; right: 0; z-index: 30;
+  width: 320px; padding: 12px 14px;
+  background: #11111c; color: #e2e8f0;
+  border: 1px solid #3a3a5e; border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.je-input-help__title { margin: 0 0 8px; font-size: 13px; }
+.je-input-help__line { margin: 6px 0; font-size: 12px; line-height: 1.5; }
+
 /* ===== Create-flow wizard ===== */
 .je-wizard__overlay {
   position: fixed; inset: 0; z-index: 50;

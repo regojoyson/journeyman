@@ -91,4 +91,23 @@ test("mention-fields (assertions)", () => {
     assert.equal(payloadLeaf!.type, "json object");
     assert.equal(f.some(x => x.ref.startsWith("workflow.input.payload.")), false);
   }
+
+  // json/array leaves are drillable; scalars and typed objects are not
+  {
+    const src: UpstreamSource = {
+      kind: "node", id: "n1", label: "Lister",
+      groups: [{
+        title: "Outputs", scope: "output",
+        fields: [
+          { name: "prs", scope: "output", shape: { type: "array", items: { type: "object", fields: { title: { type: "string" } } } } },
+          { name: "blob", scope: "output", shape: { type: "json", container: "object" } },
+          { name: "name", scope: "output", shape: { type: "string" } },
+        ],
+      }],
+    };
+    const f = toMentionFields([src]);
+    assert.equal(f.find(x => x.ref === "n1.output.prs")!.drillable, true);
+    assert.equal(f.find(x => x.ref === "n1.output.blob")!.drillable, true);
+    assert.equal(f.find(x => x.ref === "n1.output.name")!.drillable, false);
+  }
 });

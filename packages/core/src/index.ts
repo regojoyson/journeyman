@@ -191,6 +191,8 @@ export {
   IssueShape, RepoShape, PullRequestShape, WorkspaceShape,
   NAMED_SHAPES, resolveShape, shapesEqual, shapeAtPath, shapesCompatible,
 } from "./types/shapes.ts";
+export { parsePathSegments, shapeAtPathSegs } from "./types/path-segments.ts";
+export type { PathSeg } from "./types/path-segments.ts";
 export * from "./types/secrets.types.ts";
 export * from "./types/mcp.types.ts";
 export { extractTemplateRefs, replaceTemplateRefs } from "./utils/template-refs.ts";

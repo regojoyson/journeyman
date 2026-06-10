@@ -1,4 +1,5 @@
 import type { Shape } from "./shape.types.ts";
+import { parsePathSegments, shapeAtPathSegs } from "./path-segments.ts";
 
 export const IssueShape: Shape = {
   type: "object",
@@ -113,24 +114,14 @@ export function shapesEqual(a: Shape, b: Shape): boolean {
 }
 
 /**
- * Walk a dotted path against a shape, resolving "ref" along the way.
- * Returns null if any segment doesn't resolve. Empty path returns the input.
+ * Walk a dotted/bracketed path against a shape. Each array element may itself
+ * contain bracket selectors (e.g. "items[0]"). Delegates to the path-segments
+ * walker; see {@link shapeAtPathSegs}. Empty path returns the input.
  */
 export function shapeAtPath(root: Shape, path: string[]): Shape | null {
-  let cur: Shape = resolveShape(root);
-  for (const seg of path) {
-    if (cur.type === "object") {
-      const next = cur.fields[seg];
-      if (!next) return null;
-      cur = resolveShape(next);
-    } else if (cur.type === "array") {
-      // Convention: array path uses "[item]" or numeric index; both resolve to items.
-      cur = resolveShape(cur.items);
-    } else {
-      return null;
-    }
-  }
-  return cur;
+  const segs = parsePathSegments(path.join("."));
+  if (!segs) return null;
+  return shapeAtPathSegs(root, segs);
 }
 
 function objectish(s: Shape): boolean {

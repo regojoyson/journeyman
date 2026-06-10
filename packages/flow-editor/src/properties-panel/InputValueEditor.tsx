@@ -10,6 +10,8 @@ import {
   numberLiteralValue, booleanLiteralValue,
   type InputMode,
 } from "./input-value-serialize.ts";
+import { splitRefPath, joinRefPath, validatePathTail } from "./ref-path.ts";
+import { InputHelp } from "./InputHelp.tsx";
 
 interface Props {
   value: WorkflowInputValue | undefined;
@@ -28,6 +30,23 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
 
   const [jsonText, setJsonText] = useState<string>(() => jsonLiteralToText(value));
   const [jsonError, setJsonError] = useState<string | null>(null);
+
+  // Reference-mode drilling: split the stored ref into the picked base + path tail.
+  const refSplit =
+    value?.kind === "ref" ? splitRefPath(value.ref, fields) : { baseRef: "", tail: "" };
+  const baseField = fields.find(f => f.ref === refSplit.baseRef);
+  const canDrill = mode === "reference" && !!baseField?.drillable;
+
+  const [pathTail, setPathTail] = useState<string>(refSplit.tail);
+  const [pathError, setPathError] = useState<string | null>(null);
+
+  // Re-sync the tail buffer when the committed ref changes externally.
+  useEffect(() => {
+    if (value?.kind !== "ref") { setPathTail(""); setPathError(null); return; }
+    const s = splitRefPath(value.ref, fields);
+    setPathTail(prev => (prev === s.tail ? prev : s.tail));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   // Re-sync the JSON buffer when the committed value changes externally
   // (e.g. selecting a different node). No-op while the buffer already encodes
@@ -52,40 +71,76 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
   return (
     <div className="je-input-value">
       {!readOnly && (
-        <div className="je-input-value__modes" role="tablist">
-          <button
-            type="button" role="tab" aria-selected={mode === "value"}
-            className={`je-input-value__mode${mode === "value" ? " je-input-value__mode--active" : ""}`}
-            onClick={() => switchMode("value")}
-          >Value</button>
-          <button
-            type="button" role="tab" aria-selected={mode === "reference"}
-            className={`je-input-value__mode${mode === "reference" ? " je-input-value__mode--active" : ""}`}
-            onClick={() => switchMode("reference")}
-          >@ Reference</button>
+        <div className="je-input-value__mode-row">
+          <div className="je-input-value__modes" role="tablist">
+            <button
+              type="button" role="tab" aria-selected={mode === "value"}
+              className={`je-input-value__mode${mode === "value" ? " je-input-value__mode--active" : ""}`}
+              onClick={() => switchMode("value")}
+            >Value</button>
+            <button
+              type="button" role="tab" aria-selected={mode === "reference"}
+              className={`je-input-value__mode${mode === "reference" ? " je-input-value__mode--active" : ""}`}
+              onClick={() => switchMode("reference")}
+            >@ Reference</button>
+          </div>
+          <InputHelp />
         </div>
       )}
 
       {mode === "reference" && (
-        <MentionInput
-          value={inputToRefSegments(value)}
-          fields={fields}
-          readOnly={readOnly}
-          expected={expected}
-          placeholder={placeholder ?? (required ? "Required — @ to bind from upstream" : "@ to bind from upstream")}
-          onChange={segs => onChange(refSegmentsToInput(segs))}
-        />
+        <>
+          <MentionInput
+            value={inputToRefSegments(refSplit.baseRef ? { kind: "ref", ref: refSplit.baseRef } : value)}
+            fields={fields}
+            readOnly={readOnly}
+            expected={expected}
+            placeholder={placeholder ?? (required ? "Required — @ to bind from upstream" : "@ to bind from upstream")}
+            onChange={segs => {
+              // Picking a new base ref resets any existing tail.
+              setPathTail("");
+              setPathError(null);
+              onChange(refSegmentsToInput(segs));
+            }}
+          />
+          {canDrill && !readOnly && (
+            <div className="je-input-value__path">
+              <span className="je-input-value__path-prefix">path</span>
+              <input
+                className={`je-input-value__path-input${pathError ? " je-input-value__path-input--error" : ""}`}
+                value={pathTail}
+                placeholder="[0].field or .field…"
+                onChange={e => {
+                  const t = e.target.value;
+                  setPathTail(t);
+                  const v = validatePathTail(t);
+                  if (!v.ok) { setPathError(v.error ?? "Invalid path"); return; }
+                  setPathError(null);
+                  onChange({ kind: "ref", ref: joinRefPath(refSplit.baseRef, t) });
+                }}
+              />
+              {pathError && <div className="je-input-value__path-error">{pathError}</div>}
+            </div>
+          )}
+        </>
       )}
 
       {mode === "value" && widget === "string" && (
-        <MentionInput
-          value={inputToValueSegments(value)}
-          fields={fields}
-          readOnly={readOnly}
-          expected={expected}
-          placeholder={placeholder ?? "Type a value, or @ to insert a reference"}
-          onChange={segs => onChange(valueSegmentsToInput(segs))}
-        />
+        <>
+          <MentionInput
+            value={inputToValueSegments(value)}
+            fields={fields}
+            readOnly={readOnly}
+            expected={expected}
+            placeholder={placeholder ?? "Type text and @mention to combine — e.g. @fullName/@ticketNumber"}
+            onChange={segs => onChange(valueSegmentsToInput(segs))}
+          />
+          {!readOnly && (
+            <div className="je-input-value__hint">
+              Mix text and multiple @mentions to combine values into one string.
+            </div>
+          )}
+        </>
       )}
 
       {mode === "value" && widget === "number" && (

@@ -9,6 +9,8 @@ export interface MentionField {
   showId: boolean;
   fieldPath: string;
   type?: string;
+  /** True when the leaf is an array or opaque json — a path tail can be appended. */
+  drillable: boolean;
   /** Resolved leaf shape — used for type-compatibility checks against a target field. */
   shape: Shape;
 }
@@ -56,6 +58,7 @@ export function toMentionFields(sources: UpstreamSource[]): MentionField[] {
     for (const group of source.groups) {
       for (const field of group.fields) {
         for (const leaf of flatten(field.shape, [field.name])) {
+          const lt = leaf.shape.type;
           out.push({
             ref: refFor(group.scope, source.id, leaf.path),
             sourceId: source.id,
@@ -63,6 +66,7 @@ export function toMentionFields(sources: UpstreamSource[]): MentionField[] {
             showId,
             fieldPath: fieldPathFor(group.scope, leaf.path),
             type: leaf.type,
+            drillable: lt === "array" || lt === "json",
             shape: leaf.shape,
           });
         }
