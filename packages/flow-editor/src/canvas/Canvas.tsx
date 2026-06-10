@@ -10,7 +10,7 @@ import "@xyflow/react/dist/style.css";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
 import { edgesForForkJoinPair } from "./edge-highlighting.ts";
-import { newStepNode, newEdge } from "../state/flow-graph.ts";
+import { applyDefaultsToNewNode, newStepNode, newEdge } from "../state/flow-graph.ts";
 import { autoPopulateCustomAiDefaults } from "./auto-populate-defaults.ts";
 import type { StepRunState } from "../step-definition.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
@@ -381,18 +381,19 @@ function CanvasInner(p: CanvasProps) {
         position,
       });
       newNode = def
-        ? {
-            ...base,
-            config: { ...(def.defaultConfig as Record<string, unknown>) },
-            executorConfig: (() => {
-              const provider = defaultProviderFor(def.executor.kind);
-              return provider ? { provider } : undefined;
-            })(),
-            secretBindings: (def.slots ?? []).reduce<Record<string, { mode: "auto" }>>(
-              (acc, slot) => { acc[slot.name] = { mode: "auto" }; return acc; },
-              {},
-            ),
-          }
+        ? applyDefaultsToNewNode(
+            {
+              ...base,
+              config: { ...(def.defaultConfig as Record<string, unknown>) },
+              secretBindings: (def.slots ?? []).reduce<Record<string, { mode: "auto" }>>(
+                (acc, slot) => { acc[slot.name] = { mode: "auto" }; return acc; },
+                {},
+              ),
+            },
+            flowRef.current.defaults,
+            def.executor.kind,
+            defaultProviderFor(def.executor.kind),
+          )
         : base;
     } else if (controlType) {
       const controlDef = defaultControlCatalog.find(c => c.nodeType === controlType);
