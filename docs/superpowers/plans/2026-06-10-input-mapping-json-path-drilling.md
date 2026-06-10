@@ -74,12 +74,18 @@ describe("parsePathSegments", () => {
   it("empty string is an empty path", () => {
     expect(parsePathSegments("")).toEqual([]);
   });
-  it("rejects malformed brackets", () => {
+  it("rejects malformed brackets and empty keys", () => {
     expect(parsePathSegments("items[abc]")).toBeNull();
     expect(parsePathSegments("items[")).toBeNull();
     expect(parsePathSegments("items[].x")).toBeNull();
-    expect(parsePathSegments(".leadingDot")).toBeNull();
     expect(parsePathSegments("a..b")).toBeNull();
+  });
+  it("tolerates a leading separator so path TAILS parse", () => {
+    // The editor parses tails like ".user.name" — a leading '.' is a separator,
+    // not an error. (Validators always pass a full field starting with a key.)
+    expect(parsePathSegments(".user.name")).toEqual([
+      { kind: "key", key: "user" }, { kind: "key", key: "name" },
+    ]);
   });
 });
 
@@ -143,8 +149,9 @@ const IDENT = /[\w$]/;
  *   "items[0].title"     -> [key items, index 0, key title]
  *   "items[*].title"     -> [key items, wildcard, key title]
  *   "[0].title"          -> [index 0, key title]   (tail-only)
+ *   ".user.name"         -> [key user, key name]   (leading separator tolerated, for tails)
  *   ""                   -> []
- * Returns null on malformed input (bad/empty brackets, leading dot, empty key).
+ * Returns null on malformed input (bad/empty brackets, empty key, double dot).
  */
 export function parsePathSegments(field: string): PathSeg[] | null {
   const segs: PathSeg[] = [];
@@ -1246,6 +1253,29 @@ git commit -m "docs: record runtime [*] verification outcome"
 - **Behavioral change in `shapeAtPath`:** the old code descended into `array.items` for *any* segment (the `[item]`/numeric-dot convention) and returned `null` past `json`. The new walker requires `[N]`/`[*]` for arrays, allows descent past `json` (staying `json`), and rejects a bare key on an array. No stored refs use the old conventions (the mention picker only ever emitted arrays/json as terminal leaves), so this is safe; Task 2 Step 6 runs the full core suite to confirm.
 - **Drilled refs inside a merge template:** supported at the data, validation, and runtime layers (a template ref segment is validated by the same `shapeAtPathSegs` path, and `resolveInputs` rewrites each ref). Authoring a *drilled* mention from inside the Value-mode template UI is **not** built in v1 — the picker inserts the base ref; a user can hand-type the tail only on standalone references. Follow-up if requested.
 - **Opaque-json results are untyped:** drilling past a `json` shape always yields `json`, which `shapesCompatible` treats permissively against any object/array target. No type-checking is possible without a declared schema (out of scope).
+
+## Errors & Warnings Coverage
+
+Every failure mode has a defined surface:
+
+| Failure | Where caught | Surfaced as | Task |
+|---|---|---|---|
+| Malformed tail typed in editor (`[abc]`, `.a[`, missing leading `.`/`[`) | `validatePathTail` | inline `pathError`; value **not committed** | 8, 9 |
+| Drilled path can't resolve on a real shape (publish/convert) | orchestrator `resolveRefShape` | hard error `Path not found` / `Invalid path in ref` | 3 |
+| Drilled path can't resolve (live editor validation) | flow-editor `validateRefShape` | error `Path '…' not found` / `Invalid path` | 4 |
+| Typed-array drill resolves to wrong type vs target | flow-editor `validateRefShape` + core `validate-workflow` | `Shape mismatch` error / `shape-mismatch` warning (fed by corrected `actual`) | 4, 5 |
+| Malformed/unresolvable drilled path at save | core `validate-workflow` | `dangling-ref-path` warning | 5 |
+| Malformed drilled ref **inside a merge template** | core `validate-workflow` (existence only) | `dangling-ref-path` warning | 5 |
+
+**By design (not an error):** drilling past an opaque `json` shape always yields `json`, which binds permissively to any object/array target — so no shape-mismatch is raised on opaque results (no schema exists to check against).
+
+## Dry-Run Verification (pre-implementation)
+
+Ran throwaway scripts against the real code and a JS port of the proposed algorithm:
+
+- **`sanitizeRef` bracket survival** — verified against the *actual* function: `[0]`, `[*]`, `[0][1]`, and dotted tails all pass through unchanged, while real markdown autolinks (`[id](url)`) are still stripped. Runtime story holds with **zero** production change in `resolve-inputs.ts`.
+- **Tokenizer + walker** — JS port confirmed: dotted paths, `[N]` index unwrap, `[*]`→`array<field>` projection, json object/array passthrough, head/tail split for validators, and rejection of `[abc]`/`[`/`[]`/`a..b`.
+- **Bug found & fixed before coding:** the tokenizer must *tolerate* a leading `.` (path tails like `.user.name`), but Task 1's draft test asserted it should return `null` — which would have contradicted `validatePathTail` in Task 8. Fixed in this revision (Task 1 test + docstring). No other blockers found.
 
 ## Self-Review (completed against the spec)
 
