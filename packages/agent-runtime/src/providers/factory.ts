@@ -1,6 +1,7 @@
 import type { ICodingCLI } from "@journeyman/core";
 import { ClaudeProvider } from "./claude/index.ts";
 import { OpenCodeProvider } from "./opencode/index.ts";
+import { AiSdkProvider } from "./aisdk/index.ts";
 
 export interface CreateCodingProviderOpts {
   env: Record<string, string>;
@@ -25,6 +26,11 @@ export function createCodingProvider(
       // managed server spawns the bundled `opencode` binary. Per-call secret env
       // reaches the spawn via process.env (Docker) or applyEnv (local).
       return new OpenCodeProvider({ mode: "managed" });
+    case "aisdk":
+      // Model + per-vendor credential arrive per-operation via opts.model /
+      // opts.modelConfig / opts.env; the provider loads the @ai-sdk package
+      // selected by config.npm at run time.
+      return new AiSdkProvider();
     default: {
       const err = new Error(`Unknown coding provider: ${key}`) as Error & { name: string };
       err.name = "ConfigurationError";

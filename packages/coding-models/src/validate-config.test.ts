@@ -22,3 +22,18 @@ describe("validateCodingModelConfig", () => {
     expect(validateCodingModelConfig("opencode", { apiKeySlot: "" })).toMatch(/apiKeySlot/);
   });
 });
+
+describe("validateCodingModelConfig (aisdk)", () => {
+  it("rejects an unsupported npm package", () => {
+    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/cohere" })).toMatch(/npm/);
+  });
+  it("requires baseUrl for openai-compatible", () => {
+    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/openai-compatible" })).toMatch(/baseUrl/);
+  });
+  it("accepts a valid anthropic config", () => {
+    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/anthropic", apiKeySlot: "ANTHROPIC_API_KEY" })).toBeNull();
+  });
+  it("accepts openai-compatible with a baseUrl", () => {
+    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/openai-compatible", baseUrl: "http://x/v1" })).toBeNull();
+  });
+});

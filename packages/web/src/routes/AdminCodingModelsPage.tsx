@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
-import { providersForKind, suggestedKeySlotName } from "@journeyman/core";
+import { providersForKind, suggestedKeySlotName, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
 
 const CODING_PROVIDERS = providersForKind("coding-cli");
@@ -224,13 +224,38 @@ function ModelForm(props: {
                     </ul>
                   </div>
                 </>
+              ) : v.provider === "aisdk" ? (
+                <>
+                  <p className="font-medium text-slate-200">
+                    Just the vendor's model id — <em>not</em> <code>providerID/modelID</code>.
+                  </p>
+                  <p className="text-slate-400">
+                    The vendor is chosen by the <strong>npm package</strong> field below; the Model ID is
+                    whatever that vendor (or your endpoint) calls the model.
+                  </p>
+                  <div>
+                    <p className="text-slate-400">Examples by package:</p>
+                    <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-slate-300">
+                      <li>@ai-sdk/anthropic → claude-sonnet-4-6</li>
+                      <li>@ai-sdk/openai → gpt-5.3</li>
+                      <li>@ai-sdk/google → gemini-2.5-pro</li>
+                      <li>@ai-sdk/openai-compatible → llama-3.3-70b (set Base URL)</li>
+                    </ul>
+                  </div>
+                </>
               ) : undefined}
             >
               <input
                 className={`${inputCls} font-mono text-sm`}
                 value={v.modelId}
                 onChange={(e) => set("modelId", e.target.value)}
-                placeholder={v.provider === "opencode" ? "anthropic/claude-sonnet-4-6" : "claude-opus-4-7"}
+                placeholder={
+                  v.provider === "opencode"
+                    ? "anthropic/claude-sonnet-4-6"
+                    : v.provider === "aisdk"
+                    ? "claude-sonnet-4-6"
+                    : "claude-opus-4-7"
+                }
               />
             </Field>
           </div>
@@ -260,7 +285,7 @@ function ModelForm(props: {
           </div>
         </section>
 
-        {v.provider === "opencode" && (
+        {(v.provider === "opencode" || v.provider === "aisdk") && (
           <section className="space-y-3">
             <h3 className="text-sm font-medium text-slate-200">Authentication</h3>
             <Toggle
@@ -282,13 +307,17 @@ function ModelForm(props: {
           </section>
         )}
 
-        {v.provider === "opencode" && (
+        {(v.provider === "opencode" || v.provider === "aisdk") && (
           <section className="space-y-3">
             <h3 className="text-sm font-medium text-slate-200">Custom endpoint (optional)</h3>
             <p className="text-xs text-slate-400">
               Leave blank for cloud models (Claude, OpenAI, Gemini) — they use built-in defaults.
               Fill in for local/self-hosted endpoints. Inside Docker, <code>localhost</code> is the
               container — use <code>host.docker.internal</code> or a reachable service address.
+              {v.provider === "aisdk" && (
+                <> Base URL is <strong>required</strong> when the npm package is{" "}
+                <code>@ai-sdk/openai-compatible</code>.</>
+              )}
             </p>
             <Field label="Base URL">
               <input
@@ -299,12 +328,25 @@ function ModelForm(props: {
               />
             </Field>
             <Field label="npm package">
-              <input
-                className={`${inputCls} font-mono text-sm`}
-                value={v.config?.npm ?? ""}
-                onChange={(e) => setConfig("npm", e.target.value)}
-                placeholder="@ai-sdk/openai-compatible"
-              />
+              {v.provider === "aisdk" ? (
+                <select
+                  className={inputCls}
+                  value={v.config?.npm ?? ""}
+                  onChange={(e) => setConfig("npm", e.target.value)}
+                >
+                  <option value="" disabled>Select a provider package…</option>
+                  {AISDK_PROVIDER_PACKAGES.map((p) => (
+                    <option key={p.npm} value={p.npm}>{p.label} — {p.npm}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className={`${inputCls} font-mono text-sm`}
+                  value={v.config?.npm ?? ""}
+                  onChange={(e) => setConfig("npm", e.target.value)}
+                  placeholder="@ai-sdk/openai-compatible"
+                />
+              )}
             </Field>
           </section>
         )}

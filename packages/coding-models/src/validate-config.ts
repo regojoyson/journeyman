@@ -1,13 +1,35 @@
 import type { CodingModelConfig } from "@journeyman/core";
+import { isAiSdkPackage } from "@journeyman/core";
 
 /**
- * Validate provider-specific coding-model config. Only enforced for "opencode";
- * other providers ignore config. Returns an error message, or null if valid.
+ * Validate provider-specific coding-model config. Enforced for "opencode" and
+ * "aisdk"; other providers ignore config. Returns an error message, or null.
  */
 export function validateCodingModelConfig(
   provider: string,
   config: CodingModelConfig | undefined,
 ): string | null {
+  if (provider === "aisdk") {
+    if (!config) return null;
+    if (config.npm !== undefined && !isAiSdkPackage(config.npm)) {
+      return `config.npm must be a bundled AI-SDK package; got ${config.npm}`;
+    }
+    if ((config.npm ?? "@ai-sdk/openai-compatible") === "@ai-sdk/openai-compatible" && !config.baseUrl?.trim()) {
+      return "config.baseUrl is required for @ai-sdk/openai-compatible";
+    }
+    if (config.baseUrl !== undefined) {
+      try {
+        new URL(config.baseUrl);
+      } catch {
+        return `config.baseUrl is not a valid URL: ${config.baseUrl}`;
+      }
+    }
+    if (config.apiKeySlot !== undefined && !config.apiKeySlot.trim()) {
+      return "config.apiKeySlot must be a non-empty string";
+    }
+    return null;
+  }
+
   if (provider !== "opencode" || !config) return null;
 
   if (config.baseUrl !== undefined) {

@@ -29,6 +29,9 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   // OpenCode has no framework-level key slot — each coding model declares its own
   // required secret (config.apiKeySlot), surfaced via openCodeModelSlots().
   { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [] },
+  // AI SDK: model + per-vendor key live on the coding-model config (like OpenCode);
+  // no framework-level slot. Required slot surfaced via codingModelSlots().
+  { kind: "coding-cli", value: "aisdk", label: "AI SDK (multi-model)", implemented: true, slots: [] },
   { kind: "coding-cli", value: "gemini", label: "Gemini", implemented: false },
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 

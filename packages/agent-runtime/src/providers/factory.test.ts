@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createCodingProvider } from "./factory.ts";
 import { ClaudeProvider } from "./claude/index.ts";
 import { OpenCodeProvider } from "./opencode/index.ts";
+import { AiSdkProvider } from "./aisdk/index.ts";
 
 describe("createCodingProvider", () => {
   it("returns a ClaudeProvider for 'claude'", () => {
@@ -19,5 +20,9 @@ describe("createCodingProvider", () => {
   it("throws a ConfigurationError for an unknown provider", () => {
     expect(() => createCodingProvider("nope", { env: {} }))
       .toThrowError(/Unknown coding provider: nope/);
+  });
+
+  it("constructs an AiSdkProvider for key 'aisdk'", () => {
+    expect(createCodingProvider("aisdk", { env: {} })).toBeInstanceOf(AiSdkProvider);
   });
 });

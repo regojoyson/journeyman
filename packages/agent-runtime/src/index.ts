@@ -3,6 +3,7 @@ export { GeminiProvider } from "./providers/gemini/index.ts";
 export { CodexProvider } from "./providers/codex/index.ts";
 export { OpenCodeProvider } from "./providers/opencode/index.ts";
 export type { OpenCodeProviderConfig } from "./providers/opencode/index.ts";
+export { AiSdkProvider } from "./providers/aisdk/index.ts";
 export type { ICodingCLI } from "./interface.ts";
 export { PROVIDER_TOOL_MAPS, unsupportedTools, type ProviderId } from "./providers/tool-maps.ts";
 export { dispatchOperation } from "./runner/dispatch.ts";

@@ -77,12 +77,13 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     (kind ? defaultProviderFor(kind) : undefined);
   const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
 
-  // OpenCode models declare their key on the model config (catalog slots are empty).
-  // Resolve the effective model (node model or flow default) and derive its one slot.
-  const codingModels = useCodingModels(effectiveProvider === "opencode" ? effectiveProvider : undefined);
+  // OpenCode and aisdk models declare their key on the model config (catalog slots
+  // are empty). Resolve the effective model (node model or flow default) and derive its slot.
+  const modelKeyedProvider = effectiveProvider === "opencode" || effectiveProvider === "aisdk";
+  const codingModels = useCodingModels(modelKeyedProvider ? effectiveProvider : undefined);
   const effectiveModelId = node.model ?? flow.defaults?.defaultModel ?? undefined;
   const openCodeSlots: SecretSlotDef[] =
-    effectiveProvider === "opencode"
+    modelKeyedProvider
       ? openCodeModelSlots(codingModels.find(m => m.modelId === effectiveModelId)?.config)
       : [];
 

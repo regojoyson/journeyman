@@ -128,6 +128,7 @@ export type { ProviderEntry } from "./registries/provider-catalog.ts";
 // Aliased to avoid colliding with flow-editor's own ExecutorKind (which includes "control").
 export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-catalog.ts";
 export * from "./registries/opencode-slots.ts";
+export { AISDK_PROVIDER_PACKAGES, isAiSdkPackage, type AiSdkPackage } from "./registries/aisdk-packages.ts";
 
 // === Phase 1 data types ===
 export type {

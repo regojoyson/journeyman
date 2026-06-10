@@ -14,6 +14,12 @@ export function openCodeModelSlots(config: CodingModelConfig | undefined): Secre
 }
 
 /**
+ * Generic alias of openCodeModelSlots: any coding model that declares a key on
+ * its config (OpenCode or aisdk) surfaces exactly that slot. Keyless → [].
+ */
+export const codingModelSlots = openCodeModelSlots;
+
+/**
  * Smart default secret key name for the admin form, derived from an OpenCode
  * model id "providerID/modelID": `${PROVIDERID}_API_KEY`, with google→GEMINI.
  * Returns "" when there is no provider prefix.

@@ -83,11 +83,11 @@ async function computeSaveWarnings(
       // catalog). Resolve the effective model and include its slot so the mapped
       // key isn't flagged as an orphan and the required key is enforced.
       let modelSlots: SecretSlotDef[] = [];
-      if (providerValue === "opencode") {
+      if (providerValue === "opencode" || providerValue === "aisdk") {
         const effModel =
           (node.model as string | null | undefined) ?? definition.defaults?.defaultModel ?? undefined;
         if (effModel) {
-          const cm = await findCodingModel(c.pool, "opencode", effModel);
+          const cm = await findCodingModel(c.pool, providerValue, effModel);
           modelSlots = openCodeModelSlots(cm?.config);
         }
       }
