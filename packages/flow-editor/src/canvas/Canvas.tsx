@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background, Controls, ReactFlow, ReactFlowProvider,
-  ConnectionMode,
   useNodesState, useEdgesState, useReactFlow,
   type Connection, type Edge, type Node,
   type NodeChange, type EdgeChange,
@@ -9,6 +8,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { WorkflowEdge, WorkflowEdgeType, WorkflowGraph, WorkflowNode, WorkflowNodeType } from "@journeyman/core";
 import { nodeTypes, edgeTypes } from "./node-registry.ts";
+import { CANVAS_CONNECTION_MODE } from "./connection-mode.ts";
 import { edgesForForkJoinPair } from "./edge-highlighting.ts";
 import { applyDefaultsToNewNode, newStepNode, newEdge } from "../state/flow-graph.ts";
 import { autoPopulateCustomAiDefaults } from "./auto-populate-defaults.ts";
@@ -511,7 +511,7 @@ function CanvasInner(p: CanvasProps) {
         fitView
         fitViewOptions={{ padding: 0.25 }}
         connectionRadius={40}
-        connectionMode={ConnectionMode.Loose}
+        connectionMode={CANVAS_CONNECTION_MODE}
         selectNodesOnDrag={false}
         panOnScroll
         panOnScrollSpeed={0.6}
