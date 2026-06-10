@@ -38,6 +38,9 @@ supported by the `template` kind but is not discoverable in the UI.
   in Value mode.
 - Keep the existing `WorkflowInputValue` data model unchanged — paths live inside the
   `ref` string; merges remain `template`.
+- **Apply to every step input** — built-in deterministic steps and custom-AI steps alike.
+- Add an **inline help affordance** (info icon + popover) explaining path drilling and
+  merging.
 
 ## Non-Goals
 
@@ -57,6 +60,17 @@ supported by the `template` kind but is not discoverable in the UI.
 | Scope | **json + typed arrays** |
 | Merge UX | **Make Value mode obvious** — no new mode |
 | Path affordance | Continuous reference: source chip + flush editable tail, no connector label |
+
+## Applies to all step inputs
+
+Path drilling and merge live in the **shared input editor**
+(`InputValueEditor` + the mention/`mention-fields` system in
+`packages/flow-editor/src/properties-panel/`), which every step input renders through —
+both built-in deterministic steps and custom-AI steps. This is distinct from the
+**tools picker**, which is gated behind `customStepId` (per `CLAUDE.md`). Drilling depends
+only on the upstream source shapes surfaced for any step, so it is available everywhere
+with **no per-step gating**. The implementation must not introduce any `customStepId` gate
+on the path-tail input or the merge hints.
 
 ## Feature 1 — JSON Path Drilling
 
@@ -154,6 +168,29 @@ Example: `branchName = @fullName/@ticketNumber` → `${…fullName}/${…ticketN
 `@fullName/@items[0].title/@ticketNumber`. Feature 1 and Feature 2 share the `ref` string
 and the `template` mechanism, so they compose with no extra work.
 
+## Feature 3 — Inline help (info icon)
+
+A small info icon (`ⓘ`) on each input row (next to the mode tabs) opens a popover/tooltip
+explaining how to map the input. Shown on every step input (built-in + custom).
+
+**Popover content:**
+
+> **Mapping this input**
+> - **Value** — type a fixed value.
+> - **@ Reference** — pull a value from an earlier step or the workflow input.
+> - **Path** — after picking a JSON or list reference, type a path to reach inside:
+>   - `.fieldName` — a field in an object
+>   - `[0]` — an item by position (first item is `0`)
+>   - `[*]` — that field from *every* item (produces a list)
+>   - e.g. `payload.user.name`, `pullRequests[0].title`, `pullRequests[*].title`
+> - **Combine** — in Value mode, mix text and multiple `@`-mentions to join values.
+>   e.g. `@fullName/@ticketNumber` → `sam-repo/jrmen/6`
+
+Implementation: a reusable help component in `packages/flow-editor/src/properties-panel/`
+(themed via `@journeyman/theme`), rendered by `InputValueEditor`. Plain-language copy as
+above. Also keep the path-box placeholder (`[0].field or .field…`) and the Value-mode
+merge hint from Feature 2 as inline guidance.
+
 ## The complete input menu
 
 | Intent | How | Stored as |
@@ -191,7 +228,8 @@ and the `template` mechanism, so they compose with no extra work.
 
 - `packages/core/src/types/shapes.ts` — path tokenizer + `shapeAtPath` extension.
 - `packages/orchestrator/src/flow-json/validate-ref-shape.ts` — use tokenizer.
-- `packages/flow-editor/src/properties-panel/InputValueEditor.tsx` — path-tail input.
+- `packages/flow-editor/src/properties-panel/InputValueEditor.tsx` — path-tail input + info-icon help, on every step input (no `customStepId` gate).
+- `packages/flow-editor/src/properties-panel/` — reusable info-popover help component (themed via `@journeyman/theme`).
 - `packages/flow-editor/src/properties-panel/input-value-serialize.ts` — build ref with tail; Value-mode hints.
 - `packages/flow-editor/src/properties-panel/mention-fields.ts` — confirm json/array leaves remain selectable + drillable flag.
 - `packages/orchestrator/src/flow-json/resolve-inputs.ts` — no logic change; add tests.
