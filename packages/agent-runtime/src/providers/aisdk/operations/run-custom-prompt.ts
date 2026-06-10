@@ -12,6 +12,30 @@ import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
 const log = createLogger("aisdk:custom-prompt");
 const STEP_CAP = 40;
 
+function truncate(s: string, max = 2000): string {
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+/**
+ * Build a diagnosable error string. AI SDK's APICallError reports a bare
+ * `message` like "Bad Request"; the actionable detail (the model server's
+ * rejection reason) lives on `statusCode` / `url` / `responseBody` / `data`,
+ * which we must surface or failures are undebuggable.
+ */
+export function describeError(err: unknown): string {
+  const e = err as Record<string, unknown> | undefined;
+  const parts: string[] = [String((e?.message as string) ?? err)];
+  if (e?.statusCode != null) parts.push(`status=${e.statusCode}`);
+  if (e?.url) parts.push(`url=${String(e.url)}`);
+  if (e?.responseBody) parts.push(`body=${truncate(String(e.responseBody))}`);
+  else if (e?.data) {
+    try { parts.push(`data=${truncate(JSON.stringify(e.data))}`); } catch { /* non-serializable */ }
+  }
+  const cause = e?.cause as { message?: string } | undefined;
+  if (cause && cause !== e) parts.push(`cause=${String(cause.message ?? cause)}`);
+  return parts.join(" | ");
+}
+
 export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
   const level = opts.agentLogLevel ?? "all";
@@ -57,7 +81,7 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "" };
     return { sessionId, structured: result.experimental_output ?? result.output };
   } catch (err) {
-    const error = String((err as Error)?.message ?? err);
+    const error = describeError(err);
     logFinal(false, error, opts.onLog, level);
     log.error({ sessionId, error }, "runCustomPrompt threw");
     return { sessionId, error };

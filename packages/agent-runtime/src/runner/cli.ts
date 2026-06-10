@@ -8,6 +8,7 @@
 import { delimiter, dirname } from "node:path";
 import { createCodingProvider } from "../index.ts";
 import { runRunnerCli } from "./run-cli.ts";
+import { guardRunnerStdout } from "./stdout-guard.ts";
 
 /**
  * Guarantee the current Node binary is resolvable by bare name on PATH.
@@ -46,6 +47,7 @@ async function readStdin(): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  guardRunnerStdout();
   ensureNodeOnPath();
   markSandbox();
   if (process.argv.includes("--selftest")) {
