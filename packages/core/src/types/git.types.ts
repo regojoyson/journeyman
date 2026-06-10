@@ -37,6 +37,8 @@ export type CloneReposResult = {
 
 export type ScanReposOptions = SessionOptions & {
   parentDir: string;
+  /** Workspace root for confinement; injected by the operation runner. */
+  cwd?: string;
   signal?: AbortSignal;
   model?: string;
   modelConfig?: CodingModelConfig;
@@ -59,6 +61,8 @@ export type CheckoutRepoOptions = SessionOptions & {
   repos: string | string[] | CheckoutEntry | CheckoutEntry[];
   branch?: string;
   issue?: { id: string; title: string };
+  /** Workspace root for confinement; injected by the operation runner. */
+  cwd?: string;
   signal?: AbortSignal;
   model?: string;
   modelConfig?: CodingModelConfig;

@@ -8,6 +8,7 @@ import { buildMcpTools } from "../mcp.ts";
 import { buildSkillMenu, skillTool } from "../skills.ts";
 import { buildOutput } from "../structured.ts";
 import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 
 const log = createLogger("aisdk:custom-prompt");
 const STEP_CAP = 40;
@@ -61,7 +62,8 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     const tools = { ...builtin, ...mcp.tools, ...skillTools };
     const hasTools = Object.keys(tools).length > 0;
 
-    const prompt = [opts.prompt, buildSkillMenu(skills)].filter(Boolean).join("\n\n");
+    const confinement = opts.cwd ? confinementSystemPrompt(opts.cwd) : "";
+    const prompt = [confinement, opts.prompt, buildSkillMenu(skills)].filter(Boolean).join("\n\n");
 
     const result: any = await generateText({
       model,

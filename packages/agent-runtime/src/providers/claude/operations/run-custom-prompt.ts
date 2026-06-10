@@ -8,6 +8,8 @@ import { toSdkPluginConfigs, buildSkillSystemPrompt } from "@journeyman/skills/s
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
 import { claudeNativeTools } from "../tool-mapping.ts";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
+import { buildWorkspaceHook } from "../utils/workspace-hook.ts";
 import type {
   RunCustomPromptOptions,
   RunCustomPromptResult,
@@ -80,7 +82,8 @@ export async function runCustomPrompt(
   const baseTools = claudeNativeTools(canonicalTools);
   const tools = [...baseTools, ...mcpToolNames, ...skillToolNames];
 
-  const fullPrompt = [opts.prompt, mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n");
+  const confinement = opts.cwd ? confinementSystemPrompt(opts.cwd) : "";
+  const fullPrompt = [confinement, opts.prompt, mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n");
 
   // Capture the engine's stderr. The SDK surfaces a bare "Claude Code process
   // exited with code N" on a non-zero exit and discards the child's stderr — the
@@ -107,7 +110,7 @@ export async function runCustomPrompt(
     settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
     ...(mcpServers ? { mcpServers } : {}),
     ...(plugins?.length ? { plugins } : {}),
-    ...(opts.cwd ? { cwd: opts.cwd } : {}),
+    ...(opts.cwd ? { cwd: opts.cwd, additionalDirectories: [], hooks: buildWorkspaceHook(opts.cwd) } : {}),
     ...(opts.model ? { model: opts.model } : {}),
     // Merge over process.env (never replace) so PATH and IS_SANDBOX — set by the
     // runner entrypoint — always reach the engine alongside per-call secrets.

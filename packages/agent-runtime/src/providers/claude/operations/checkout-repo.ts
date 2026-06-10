@@ -2,6 +2,8 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
+import { buildWorkspaceHook } from "../utils/workspace-hook.ts";
 import type { CheckoutEntry, CheckoutRepoOptions, CheckoutRepoResult } from "@journeyman/core";
 
 const log = createLogger("claude:checkout-repo");
@@ -133,10 +135,12 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
         return ac;
       })()
     : undefined;
+  const root = opts.cwd ?? entries[0]?.repoDir ?? process.cwd();
+  const prompt = [confinementSystemPrompt(root), buildPrompt(entries, opts.issue)].join("\n\n");
   let output: CheckoutRepoResult = { repos: [], newBranch: "", sessionId };
 
   for await (const msg of query({
-    prompt: buildPrompt(entries, opts.issue),
+    prompt,
     options: {
       tools: ["Bash"],
       allowedTools: ["Bash"],
@@ -146,6 +150,8 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      additionalDirectories: [],
+      hooks: buildWorkspaceHook(root),
       ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,

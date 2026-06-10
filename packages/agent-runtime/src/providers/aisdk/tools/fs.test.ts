@@ -25,3 +25,12 @@ describe("fs tool impls", () => {
     await expect(editFileImpl({ path: "c.txt", oldString: "x", newString: "y" }, { cwd: dir })).rejects.toThrow(/unique|not found/i);
   });
 });
+
+describe("fs tool confinement", () => {
+  it("refuses to read an absolute path outside the workspace", async () => {
+    await expect(readFileImpl({ path: "/etc/passwd" }, { cwd: dir })).rejects.toThrow(/outside the workspace/);
+  });
+  it("refuses to write outside the workspace via traversal", async () => {
+    await expect(writeFileImpl({ path: "../escape.txt", content: "x" }, { cwd: dir })).rejects.toThrow(/outside the workspace/);
+  });
+});

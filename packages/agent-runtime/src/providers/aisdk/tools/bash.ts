@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { tool, jsonSchema } from "ai";
+import { findBashEscape } from "../../../workspace-guard/index.ts";
 
 export interface ToolCtx {
   cwd?: string;
@@ -16,6 +17,16 @@ const TIMEOUT_MS = 120_000;
 const MAX_OUTPUT = 100_000;
 
 export function runBash(command: string, ctx: ToolCtx, signal?: AbortSignal): Promise<BashResult> {
+  if (ctx.cwd) {
+    const bad = findBashEscape(command, ctx.cwd);
+    if (bad) {
+      return Promise.resolve({
+        stdout: "",
+        stderr: `blocked: '${bad}' is outside the workspace root '${ctx.cwd}'. Operate only within the workspace.`,
+        exitCode: 1,
+      });
+    }
+  }
   return new Promise<BashResult>((resolve) => {
     const child = spawn("bash", ["-lc", command], {
       cwd: ctx.cwd,

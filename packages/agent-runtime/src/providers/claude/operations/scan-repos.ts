@@ -2,6 +2,8 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
 import { resolveSession } from "../utils/session.ts";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
+import { buildWorkspaceHook } from "../utils/workspace-hook.ts";
 import type { ScanReposOptions, ScanReposResult } from "@journeyman/core";
 
 const log = createLogger("claude:scan-repos");
@@ -66,10 +68,12 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
         return ac;
       })()
     : undefined;
+  const root = opts.cwd ?? opts.parentDir;
+  const prompt = [confinementSystemPrompt(root), buildPrompt(opts.parentDir)].join("\n\n");
   let output: ScanReposResult = { repos: [], sessionId };
 
   for await (const msg of query({
-    prompt: buildPrompt(opts.parentDir),
+    prompt,
     options: {
       tools: ["Bash"],
       allowedTools: ["Bash"],
@@ -79,6 +83,8 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
       settingSources: [],
       settings: { allowedMcpServers: [] },
       outputFormat: { type: "json_schema", schema: OUTPUT_SCHEMA },
+      additionalDirectories: [],
+      hooks: buildWorkspaceHook(root),
       ...(opts.model ? { model: opts.model } : {}),
       ...(controller !== undefined ? { abortController: controller } : {}),
       ...queryOption,

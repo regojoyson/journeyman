@@ -1,5 +1,6 @@
 // packages/agent-runtime/src/providers/opencode/operations/scan-repos.ts
 import { createLogger } from "@journeyman/core";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import { resolveOpenCodeModel } from "../model.ts";
 import type { OpenCodeClient } from "../client.ts";
@@ -58,10 +59,11 @@ export async function scanRepos(
 
   const result = await client.session.prompt({
     sessionID: sid,
-    parts: [{ type: "text", text: buildPrompt(opts.parentDir) }],
+    parts: [{ type: "text", text: [confinementSystemPrompt(opts.cwd ?? opts.parentDir), buildPrompt(opts.parentDir)].join("\n\n") }],
     model: resolveOpenCodeModel(opts.model, config.model),
     tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },
     format: { type: "json_schema", schema: OUTPUT_SCHEMA },
+    ...(opts.cwd ? { directory: opts.cwd } : {}),
   });
   if (!result.data) throw new Error("opencode session.prompt returned no data");
 

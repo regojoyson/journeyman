@@ -1,10 +1,16 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname } from "node:path";
 import { spawn } from "node:child_process";
 import { tool, jsonSchema } from "ai";
+import { resolveWithinWorkspace } from "../../../workspace-guard/index.ts";
 import type { ToolCtx } from "./bash.ts";
 
-const resolve = (ctx: ToolCtx, p: string) => (isAbsolute(p) ? p : join(ctx.cwd ?? process.cwd(), p));
+const resolve = (ctx: ToolCtx, p: string): string => {
+  const root = ctx.cwd ?? process.cwd();
+  const r = resolveWithinWorkspace(root, p);
+  if (!r.ok) throw new Error(`${r.reason} Operate only within the workspace.`);
+  return r.path;
+};
 
 export async function readFileImpl(args: { path: string }, ctx: ToolCtx): Promise<{ content: string }> {
   return { content: await readFile(resolve(ctx, args.path), "utf8") };

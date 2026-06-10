@@ -1,4 +1,5 @@
 import { createLogger } from "@journeyman/core";
+import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { logOpenCodeTranscript, logSessionEvent } from "../utils/sdk-logger.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
@@ -70,9 +71,11 @@ export async function runCustomPrompt(
     return { sessionId, error: `opencode session.create failed: ${describeSdkError((session as { error?: unknown }).error)}` };
   }
 
+  const promptText = [opts.cwd ? confinementSystemPrompt(opts.cwd) : "", opts.prompt].filter(Boolean).join("\n\n");
+
   const res = await client.session.prompt({
     sessionID: session.data.id,
-    parts: [{ type: "text", text: opts.prompt }],
+    parts: [{ type: "text", text: promptText }],
     model,
     tools,
     ...(opts.cwd ? { directory: opts.cwd } : {}),

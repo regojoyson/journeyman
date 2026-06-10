@@ -20,3 +20,16 @@ describe("runBash", () => {
     expect(r.stdout.trim()).toMatch(/\/tmp$/);
   });
 });
+
+describe("runBash confinement", () => {
+  it("blocks a command referencing a path outside the workspace", async () => {
+    const r = await runBash("cat /etc/passwd", { cwd: "/workspace" });
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toMatch(/outside the workspace/);
+  });
+  it("runs a command that stays inside the workspace", async () => {
+    const r = await runBash("echo hello", { cwd: process.cwd() });
+    expect(r.exitCode).toBe(0);
+    expect(r.stdout).toContain("hello");
+  });
+});
