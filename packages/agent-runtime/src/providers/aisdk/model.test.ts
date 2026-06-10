@@ -5,7 +5,8 @@ const fakeAnthropic = {
   createAnthropic: (o: { apiKey?: string; baseURL?: string }) => (id: string) => ({ vendor: "anthropic", id, key: o.apiKey }),
 };
 const fakeCompat = {
-  createOpenAICompatible: (o: { baseURL?: string; apiKey?: string }) => (id: string) => ({ vendor: "compat", id, baseURL: o.baseURL }),
+  createOpenAICompatible: (o: { baseURL?: string; apiKey?: string; supportsStructuredOutputs?: boolean }) =>
+    (id: string) => ({ vendor: "compat", id, baseURL: o.baseURL, supportsStructuredOutputs: o.supportsStructuredOutputs }),
 };
 
 describe("resolveModel", () => {
@@ -29,6 +30,14 @@ describe("resolveModel", () => {
 
   it("errors when openai-compatible lacks baseUrl", async () => {
     await expect(resolveModel({ modelId: "x", config: { npm: "@ai-sdk/openai-compatible" } }, { importer })).rejects.toThrow(/baseUrl/);
+  });
+
+  it("enables structured outputs for openai-compatible (sends json_schema, not json_object)", async () => {
+    const m: any = await resolveModel(
+      { modelId: "qwen3-coder-next", config: { npm: "@ai-sdk/openai-compatible", baseUrl: "http://host.docker.internal:1234/v1" } },
+      { importer },
+    );
+    expect(m).toMatchObject({ vendor: "compat", supportsStructuredOutputs: true });
   });
 
   it("configError carries the ConfigurationError name", () => {

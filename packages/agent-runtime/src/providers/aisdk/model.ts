@@ -18,7 +18,12 @@ const LOADERS: Record<string, ProviderFactory> = {
   "@ai-sdk/anthropic":         (m, o) => m.createAnthropic({ apiKey: o.apiKey, baseURL: o.baseURL }),
   "@ai-sdk/openai":            (m, o) => m.createOpenAI({ apiKey: o.apiKey, baseURL: o.baseURL }),
   "@ai-sdk/google":            (m, o) => m.createGoogleGenerativeAI({ apiKey: o.apiKey, baseURL: o.baseURL }),
-  "@ai-sdk/openai-compatible": (m, o) => m.createOpenAICompatible({ name: "custom", baseURL: o.baseURL, apiKey: o.apiKey }),
+  // supportsStructuredOutputs: true makes structured steps send
+  // `response_format: { type: "json_schema" }` (schema-enforced) instead of the
+  // default `{ type: "json_object" }`. Modern OpenAI-compatible servers
+  // (LM Studio, vLLM, llama.cpp, OpenRouter) require json_schema and reject
+  // json_object ("'response_format.type' must be 'json_schema' or 'text'").
+  "@ai-sdk/openai-compatible": (m, o) => m.createOpenAICompatible({ name: "custom", baseURL: o.baseURL, apiKey: o.apiKey, supportsStructuredOutputs: true }),
 };
 
 export function configError(message: string): Error {
