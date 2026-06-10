@@ -1,4 +1,12 @@
-import { WORKFLOW_SCHEMA_VERSION, isTriggerNode, type WorkflowEdge, type WorkflowGraph, type WorkflowNode } from "@journeyman/core";
+import {
+  WORKFLOW_SCHEMA_VERSION,
+  isTriggerNode,
+  type WorkflowDefaults,
+  type WorkflowEdge,
+  type WorkflowGraph,
+  type WorkflowNode,
+} from "@journeyman/core";
+import type { ExecutorKind } from "../step-definition.ts";
 
 export function createBlankFlow(): WorkflowGraph {
   return {
@@ -28,6 +36,40 @@ export function newStepNode(args: {
     config: {},
     position: args.position,
   };
+}
+
+/**
+ * Snapshot the workflow's defaults onto a freshly-created step node.
+ *
+ * A new step starts with empty config, so this is a plain copy — not a merge.
+ * Each field is written only when a value exists, so the node is never
+ * clobbered with `undefined`. The copied values become the node's own: later
+ * edits to the workflow defaults do NOT affect this node.
+ *
+ * `provider` always resolves to the workflow default for this executor kind
+ * when set, otherwise the system default (`systemProvider`). `retry` is
+ * shallow-cloned so the node never shares the defaults object.
+ */
+export function applyDefaultsToNewNode(
+  node: WorkflowNode,
+  defaults: WorkflowDefaults | undefined,
+  executorKind: ExecutorKind,
+  systemProvider: string | undefined,
+): WorkflowNode {
+  const next: WorkflowNode = { ...node };
+
+  // `executorConfig` defaults are keyed by the four runnable kinds; the editor's
+  // "control" kind has no provider, so it falls straight through to the system default.
+  const workflowProvider =
+    executorKind === "control" ? undefined : defaults?.executorConfig?.[executorKind]?.provider;
+  const provider = workflowProvider ?? systemProvider;
+  next.executorConfig = provider ? { provider } : undefined;
+
+  if (defaults?.defaultModel !== undefined) next.model = defaults.defaultModel;
+  if (defaults?.retry !== undefined) next.retry = { ...defaults.retry };
+  if (defaults?.sandboxId !== undefined) next.sandboxId = defaults.sandboxId;
+
+  return next;
 }
 
 export function newEdge(source: string, target: string): WorkflowEdge {
