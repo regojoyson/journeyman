@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { test } from "vitest";
 import type { WorkflowGraph } from "@journeyman/core";
 import { isValidPhase4Graph } from "./validation.ts";
 
@@ -18,16 +19,16 @@ function baseFlow(outputs: Array<{ name: string; type: string }>): WorkflowGraph
   } as unknown as WorkflowGraph;
 }
 
-// Reserved output name → not ok, with a node-attributed error mentioning the name.
-const bad = isValidPhase4Graph(baseFlow([{ name: "payload", type: "json" }]));
-assert.equal(bad.ok, false, "reserved output name should fail the publish gate");
-const issue = bad.issues.find(i => i.nodeId === "ww" && /payload/.test(i.message));
-assert.ok(issue, `expected a node-attributed error mentioning 'payload', got ${JSON.stringify(bad.issues)}`);
-assert.equal(issue!.severity, "error");
+test("validation: pause output names", () => {
+  // Reserved output name → not ok, with a node-attributed error mentioning the name.
+  const bad = isValidPhase4Graph(baseFlow([{ name: "payload", type: "json" }]));
+  assert.equal(bad.ok, false, "reserved output name should fail the publish gate");
+  const issue = bad.issues.find(i => i.nodeId === "ww" && /payload/.test(i.message));
+  assert.ok(issue, `expected a node-attributed error mentioning 'payload', got ${JSON.stringify(bad.issues)}`);
+  assert.equal(issue!.severity, "error");
 
-// Clean output name → no output-name error on the node.
-const good = isValidPhase4Graph(baseFlow([{ name: "issueNumber", type: "number" }]));
-const outErr = good.issues.find(i => i.nodeId === "ww" && /reserved|Duplicate|invalid/.test(i.message));
-assert.equal(outErr, undefined, `clean output should not produce a name error, got ${JSON.stringify(outErr)}`);
-
-console.log("validation.pause-output-names: ok");
+  // Clean output name → no output-name error on the node.
+  const good = isValidPhase4Graph(baseFlow([{ name: "issueNumber", type: "number" }]));
+  const outErr = good.issues.find(i => i.nodeId === "ww" && /reserved|Duplicate|invalid/.test(i.message));
+  assert.equal(outErr, undefined, `clean output should not produce a name error, got ${JSON.stringify(outErr)}`);
+});
