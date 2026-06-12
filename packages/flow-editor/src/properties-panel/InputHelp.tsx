@@ -1,12 +1,10 @@
 import { useState } from "react";
 
-/** Static help copy for mapping a step input. Exported for reuse/testing. */
+/** Static help copy for mapping a step input. Mirrors the two tabs in the UI. */
 export const INPUT_HELP_TITLE = "Mapping this input";
 export const INPUT_HELP_LINES: { label: string; body: string }[] = [
-  { label: "Value", body: "type a fixed value." },
-  { label: "@ Reference", body: "pull a value from an earlier step or the workflow input." },
-  { label: "Path", body: "after picking a JSON or list reference, type a path: .fieldName (object field), [0] (item by position, first is 0), [*] (that field from every item → a list). e.g. payload.user.name, pullRequests[0].title, pullRequests[*].title" },
-  { label: "Combine", body: "in Value mode, mix text and multiple @mentions to join values. e.g. @fullName/@ticketNumber → sam-repo/jrmen/6" },
+  { label: "Value", body: "type a fixed value. You can also mix text with @mentions to combine several values into one — e.g. @fullName/@ticketNumber → sam-repo/jrmen/6" },
+  { label: "@ Reference", body: "pull a value from an earlier step or the workflow input. If it's a JSON object or list, type a path right after it to reach inside: .field (object field), [0] (item by position, first is 0), [*] (that field from every item → a list). e.g. payload.user.name, pullRequests[0].title, pullRequests[*].title" },
 ];
 
 export function InputHelp() {

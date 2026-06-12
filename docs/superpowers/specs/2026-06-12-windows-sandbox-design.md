@@ -118,6 +118,17 @@ The sandbox record's `config` (validated by `WindowsBackend.validateConfig`) hol
 - `tls.*Ref` point into the existing **secrets vault** (same pattern Docker uses for daemon certs) — private keys never sit in the DB in plaintext.
 - Per-run secrets (**SQL connection string**, test-account passwords) are **not** here; they ride along per-run as `op.env` environment variables, exactly like today.
 
+### 4.1 Create/update UX & documentation (required)
+
+When a user **creates or updates** a `machine-windows` sandbox in the UI, the form must show **clear, inline guidance** — a user should not need to read the source to configure it correctly:
+
+- **Field help** for each field: what `agent.host` / `agent.port` mean, what each of the three cert references is and how to generate them, what `workspaceRoot` defaults to, and what `tags` are for.
+- **A prerequisites checklist** surfaced at create time (collapsible): the §8 "must install" list (Node 22, Git, agent+runner files, certs, firewall port) plus a note that product tools (IIS, .NET, SQL Server, browser+driver) are the operator's responsibility.
+- **A "test connection" affordance** (or at least a clear note) so the user can confirm the agent is reachable and the certs match before saving — mirrors the existing Docker daemon connection-test pattern.
+- **Validation messages** that are actionable: e.g. "Couldn't reach the agent at host:port — is the agent running and the firewall port open?", "Certificate mismatch — the agent rejected this client cert."
+
+This guidance lives next to the form (help text / panel), and the full setup walkthrough lives in the package README (`packages/windows-agent/README.md`) and the docs site. The form links to it.
+
 ## 5. Data flow (one run)
 
 1. Worker resolves the sandbox → `machine-windows` → `WindowsBackend.create(worker)` builds the mTLS gRPC client.
@@ -199,4 +210,6 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - `packages/sandbox/src/default-registry.ts` — optional `windows?` registration.
 - `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available.
 - `packages/sandbox/src/sandbox-instance-store.ts` — widen `connection` type to `SandboxConnection` union.
+- Sandbox create/update form — inline field help, prerequisites checklist, connection-test affordance, and actionable validation messages for the `machine-windows` type (§4.1).
+- `packages/windows-agent/README.md` — full setup walkthrough (install, certs, firewall), linked from the form.
 - Import-boundary allowances if `agent-protocol` introduces a new edge.
