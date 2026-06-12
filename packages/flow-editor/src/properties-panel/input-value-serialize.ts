@@ -39,6 +39,20 @@ export function refSegmentsToInput(segs: Segment[]): WorkflowInputValue | undefi
 }
 
 /**
+ * Reference mode with inline drilling: a single ref chip optionally followed by
+ * a typed path tail (".user.name", "[0].title"). The chip's ref plus the
+ * trailing text become one ref string. Text before the chip is ignored; empty
+ * selection yields nothing.
+ */
+export function refWithPathSegmentsToInput(segs: Segment[]): WorkflowInputValue | undefined {
+  const refIdx = segs.findIndex(s => s.kind === "ref");
+  if (refIdx === -1) return undefined;
+  const base = (segs[refIdx] as Extract<Segment, { kind: "ref" }>).ref;
+  const tail = segs.slice(refIdx + 1).map(s => (s.kind === "text" ? s.text : "")).join("");
+  return { kind: "ref", ref: base + tail };
+}
+
+/**
  * String Value mode → literal text, template (text + refs), a normalized sole
  * ref, or undefined when empty.
  */

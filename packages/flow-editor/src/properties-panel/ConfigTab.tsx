@@ -167,17 +167,56 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
     onChange({ ...node, inputs: inputs as WorkflowNode["inputs"], config: cfg });
   };
 
+  /** Stored value of a config field as a WorkflowInputValue, for InputValueEditor. */
+  const inputValueForField = (key: string): WorkflowInputValue | undefined => {
+    const bound = inputsMap[key];
+    if (bound?.kind === "ref" && bound.ref) return { kind: "ref", ref: bound.ref };
+    const cfgVal = config[key];
+    if (typeof cfgVal === "string" && cfgVal !== "") {
+      return /\$\{[^}]*\}/.test(cfgVal) ? { kind: "template", template: cfgVal } : { kind: "literal", value: cfgVal };
+    }
+    return undefined;
+  };
+
+  /** Persist an InputValueEditor value to inputs (ref) or config (literal/template). */
+  const commitInputValue = (key: string, next: WorkflowInputValue | undefined) => {
+    const inputs = { ...((node.inputs ?? {}) as Record<string, unknown>) };
+    const cfg = { ...config };
+    if (!next) { delete inputs[key]; delete cfg[key]; }
+    else if (next.kind === "ref") { inputs[key] = { kind: "ref", ref: sanitizeRef(next.ref) }; delete cfg[key]; }
+    else if (next.kind === "template") { delete inputs[key]; cfg[key] = next.template; }
+    else { delete inputs[key]; cfg[key] = next.value; }
+    onChange({ ...node, inputs: inputs as WorkflowNode["inputs"], config: cfg });
+  };
+
   const renderMentionField = (key: string, meta: { widget?: string }) => {
-    if (!MENTION_WIDGETS.has(meta.widget ?? "text")) return null;
-    return (
-      <MentionInput
-        value={segmentsForField(key)}
-        fields={mentionFields}
-        readOnly={readOnly}
-        expected={expectedForKey(key)}
-        onChange={segs => commitSegments(key, segs)}
-      />
-    );
+    const widget = meta.widget ?? "text";
+    // Text-like fields get the full shared editor (Value/@Reference tabs, path
+    // drilling, help) — same control as custom-AI step inputs.
+    if (widget === "text" || widget === "textarea") {
+      return (
+        <InputValueEditor
+          value={inputValueForField(key)}
+          expected={expectedForKey(key)}
+          fields={mentionFields}
+          readOnly={readOnly}
+          onChange={next => commitInputValue(key, next)}
+        />
+      );
+    }
+    // `code` keeps the lighter mention editor (it is JSON/code, not a typed value).
+    if (MENTION_WIDGETS.has(widget)) {
+      return (
+        <MentionInput
+          value={segmentsForField(key)}
+          fields={mentionFields}
+          readOnly={readOnly}
+          expected={expectedForKey(key)}
+          onChange={segs => commitSegments(key, segs)}
+        />
+      );
+    }
+    return null;
   };
 
   const renderFieldBindControl = (key: string) => {

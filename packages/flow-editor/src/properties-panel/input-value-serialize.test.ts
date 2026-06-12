@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { Shape, WorkflowInputValue } from "@journeyman/core";
 import {
   modeForValue, widgetForShape, jsonContainerForShape,
-  refSegmentsToInput, valueSegmentsToInput,
+  refSegmentsToInput, refWithPathSegmentsToInput, valueSegmentsToInput,
   inputToValueSegments, inputToRefSegments,
   parseJsonLiteral, jsonLiteralToText,
   numberLiteralValue, booleanLiteralValue,
@@ -36,6 +36,17 @@ test("input-value-serialize (assertions)", () => {
   assert.deepEqual(refSegmentsToInput([{ kind: "ref", ref: "a.output.x" }]), { kind: "ref", ref: "a.output.x" });
   assert.equal(refSegmentsToInput([]), undefined);
   assert.equal(refSegmentsToInput([{ kind: "text", text: "hi" }]), undefined);
+
+  // refWithPathSegmentsToInput — single-field reference + inline path tail
+  assert.deepEqual(
+    refWithPathSegmentsToInput([{ kind: "ref", ref: "list.output.prs" }, { kind: "text", text: "[0].title" }]),
+    { kind: "ref", ref: "list.output.prs[0].title" },
+  );
+  assert.deepEqual(
+    refWithPathSegmentsToInput([{ kind: "ref", ref: "wh.output.payload" }]),
+    { kind: "ref", ref: "wh.output.payload" },
+  );
+  assert.equal(refWithPathSegmentsToInput([{ kind: "text", text: "no ref" }]), undefined);
 
   // valueSegmentsToInput (string Value mode)
   assert.deepEqual(valueSegmentsToInput([{ kind: "text", text: "hello" }]), { kind: "literal", value: "hello" });

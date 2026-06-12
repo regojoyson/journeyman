@@ -2,15 +2,16 @@ import { useEffect, useState } from "react";
 import type { Shape, WorkflowInputValue } from "@journeyman/core";
 import { MentionInput } from "./MentionInput.tsx";
 import type { MentionField } from "./mention-fields.ts";
+import type { Segment } from "./mention-serialize.ts";
 import {
   modeForValue, widgetForShape, jsonContainerForShape,
-  refSegmentsToInput, valueSegmentsToInput,
+  refWithPathSegmentsToInput, valueSegmentsToInput,
   inputToValueSegments, inputToRefSegments,
   parseJsonLiteral, jsonLiteralToText,
   numberLiteralValue, booleanLiteralValue,
   type InputMode,
 } from "./input-value-serialize.ts";
-import { splitRefPath, joinRefPath, validatePathTail } from "./ref-path.ts";
+import { splitRefPath, validatePathTail } from "./ref-path.ts";
 import { InputHelp } from "./InputHelp.tsx";
 
 interface Props {
@@ -31,22 +32,19 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
   const [jsonText, setJsonText] = useState<string>(() => jsonLiteralToText(value));
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  // Reference-mode drilling: split the stored ref into the picked base + path tail.
+  // Reference-mode drilling: the picked base ref + an inline path tail live in
+  // ONE field — base rendered as a chip, the tail as trailing text after it.
   const refSplit =
     value?.kind === "ref" ? splitRefPath(value.ref, fields) : { baseRef: "", tail: "" };
   const baseField = fields.find(f => f.ref === refSplit.baseRef);
-  const canDrill = mode === "reference" && !!baseField?.drillable;
+  const tailCheck = validatePathTail(refSplit.tail);
 
-  const [pathTail, setPathTail] = useState<string>(refSplit.tail);
-  const [pathError, setPathError] = useState<string | null>(null);
-
-  // Re-sync the tail buffer when the committed ref changes externally.
-  useEffect(() => {
-    if (value?.kind !== "ref") { setPathTail(""); setPathError(null); return; }
-    const s = splitRefPath(value.ref, fields);
-    setPathTail(prev => (prev === s.tail ? prev : s.tail));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // Segments fed to the single MentionInput: base chip, then the path tail text.
+  const refSegments: Segment[] = refSplit.baseRef
+    ? (refSplit.tail
+        ? [{ kind: "ref", ref: refSplit.baseRef }, { kind: "text", text: refSplit.tail }]
+        : [{ kind: "ref", ref: refSplit.baseRef }])
+    : inputToRefSegments(value);
 
   // Re-sync the JSON buffer when the committed value changes externally
   // (e.g. selecting a different node). No-op while the buffer already encodes
@@ -91,37 +89,19 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
       {mode === "reference" && (
         <>
           <MentionInput
-            value={inputToRefSegments(refSplit.baseRef ? { kind: "ref", ref: refSplit.baseRef } : value)}
+            value={refSegments}
             fields={fields}
             readOnly={readOnly}
             expected={expected}
             placeholder={placeholder ?? (required ? "Required — @ to bind from upstream" : "@ to bind from upstream")}
-            onChange={segs => {
-              // Picking a new base ref resets any existing tail.
-              setPathTail("");
-              setPathError(null);
-              onChange(refSegmentsToInput(segs));
-            }}
+            onChange={segs => onChange(refWithPathSegmentsToInput(segs))}
           />
-          {canDrill && !readOnly && (
-            <div className="je-input-value__path">
-              <span className="je-input-value__path-prefix">path</span>
-              <input
-                className={`je-input-value__path-input${pathError ? " je-input-value__path-input--error" : ""}`}
-                value={pathTail}
-                placeholder="[0].field or .field…"
-                onChange={e => {
-                  const t = e.target.value;
-                  setPathTail(t);
-                  const v = validatePathTail(t);
-                  if (!v.ok) { setPathError(v.error ?? "Invalid path"); return; }
-                  setPathError(null);
-                  onChange({ kind: "ref", ref: joinRefPath(refSplit.baseRef, t) });
-                }}
-              />
-              {pathError && <div className="je-input-value__path-error">{pathError}</div>}
+          {baseField?.drillable && refSplit.tail === "" && !readOnly && (
+            <div className="je-input-value__hint">
+              Tip: type a path right after the chip to reach inside — e.g. <code>.title</code> or <code>[0]</code>.
             </div>
           )}
+          {!tailCheck.ok && <div className="je-input-value__path-error">{tailCheck.error}</div>}
         </>
       )}
 
