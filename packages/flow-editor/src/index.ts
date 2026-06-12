@@ -20,7 +20,7 @@ export type {
   ExecutorKind,
   SecretSlotDef,
 } from "./step-definition.ts";
-export { formatRefShort, summaryValue } from "./step-definition.ts";
+export { formatRefShort, friendlyRef, humanizeTemplate, summaryValue } from "./step-definition.ts";
 export { executorCommonConfig, defaultProviderFor } from "./executor-common-config.ts";
 export { StepRegistry } from "./state/step-registry.ts";
 export { defaultControlCatalog } from "./palette/built-in-categories.ts";

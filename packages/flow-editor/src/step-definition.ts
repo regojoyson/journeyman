@@ -52,6 +52,30 @@ export function formatRefShort(ref: string | undefined | null): string {
   return "${" + ref + "}";
 }
 
+/**
+ * Compact, human-friendly token for a ref in a node summary. Strips the
+ * `workflow.input.` / `workflow.attribute.` / `<node>.output.` scope prefix and
+ * prefixes with `@`, keeping any path tail intact.
+ *   workflow.input.ticketOwner      → @ticketOwner
+ *   list.output.pullRequests[0].title → @pullRequests[0].title
+ */
+export function friendlyRef(ref: string): string {
+  if (!ref) return "";
+  const parts = ref.split(".");
+  if (parts[0] === "workflow" && (parts[1] === "input" || parts[1] === "attribute")) {
+    return "@" + parts.slice(2).join(".");
+  }
+  if (parts.length >= 3 && (parts[1] === "input" || parts[1] === "output")) {
+    return "@" + parts.slice(2).join(".");
+  }
+  return "@" + ref;
+}
+
+/** Rewrite every `${ref}` in a stored template into its friendly @token, for display. */
+export function humanizeTemplate(text: string): string {
+  return text.replace(/\$\{([^}]*)\}/g, (_m, ref) => friendlyRef(String(ref)));
+}
+
 /** Resolve a config field's display value, falling back to its `inputs` binding when bound. */
 export function summaryValue(
   config: unknown,
@@ -60,9 +84,9 @@ export function summaryValue(
 ): string {
   const cfg = config as Record<string, unknown> | undefined;
   const v = cfg?.[key];
-  if (typeof v === "string" && v.length > 0) return v;
+  if (typeof v === "string" && v.length > 0) return humanizeTemplate(v);
   const binding = ctx?.inputs?.[key];
-  if (binding && binding.kind === "ref" && binding.ref) return formatRefShort(binding.ref);
+  if (binding && binding.kind === "ref" && binding.ref) return friendlyRef(binding.ref);
   return "";
 }
 
