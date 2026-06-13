@@ -2,6 +2,14 @@ import { createLogger } from "@journeyman/core";
 
 const log = createLogger("conductor:client");
 
+/** Thrown by ConductorClient.request on a non-2xx response; carries the HTTP status so callers can branch (e.g. treat 404 as "engine no longer knows this workflow"). */
+export class ConductorHttpError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "ConductorHttpError";
+  }
+}
+
 const isTransientSocketError = (e: unknown): boolean => {
   const cause = (e as { cause?: { code?: string; message?: string } })?.cause;
   const code = cause?.code ?? (e as { code?: string })?.code;
@@ -50,7 +58,7 @@ export class ConductorClient {
         if (!res.ok) {
           const body = await res.text();
           log.error({ url, status: res.status, body }, "Conductor request failed");
-          throw new Error(`Conductor ${init.method ?? "GET"} ${path} → ${res.status}: ${body}`);
+          throw new ConductorHttpError(res.status, `Conductor ${init.method ?? "GET"} ${path} → ${res.status}: ${body}`);
         }
         if (res.status === 204) return undefined as T;
         const text = await res.text();
@@ -98,12 +106,18 @@ export class ConductorClient {
     });
   }
 
+  /** Returns null when Conductor 404s the id (engine no longer knows this run); any other error throws. */
   async getWorkflow(workflowId: string): Promise<{
     workflowId: string;
     status: "RUNNING" | "COMPLETED" | "FAILED" | "TERMINATED" | "PAUSED" | "TIMED_OUT";
     output?: Record<string, unknown>;
-  }> {
-    return await this.request(`/workflow/${workflowId}?includeTasks=false`);
+  } | null> {
+    try {
+      return await this.request(`/workflow/${workflowId}?includeTasks=false`);
+    } catch (err) {
+      if (err instanceof ConductorHttpError && err.status === 404) return null;
+      throw err;
+    }
   }
 
   async terminate(workflowId: string, reason?: string): Promise<void> {

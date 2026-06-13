@@ -44,6 +44,15 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
   /** workflowInstanceIds with a pending workflowRetry timer — guards against the syncer firing multiple retries. Transient by design. */
   private workflowRetryPending = new Set<string>();
 
+  /**
+   * Consecutive Conductor-404 counts per instance. A single 404 may be the
+   * engine's read path briefly lagging a just-submitted workflow (start race),
+   * so we only reconcile an orphan to terminal after NOT_FOUND_TERMINAL_THRESHOLD
+   * consecutive 404s. Reset on any successful read. Transient by design.
+   */
+  private notFoundCounts = new Map<string, number>();
+  private static readonly NOT_FOUND_TERMINAL_THRESHOLD = 2;
+
   constructor(private deps: ConductorOrchestratorDeps) {}
 
   async submit(args: SubmitWorkflowInstanceArgs): Promise<{ workflowInstanceId: string; engineWorkflowId: string | null }> {
@@ -213,6 +222,38 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
     const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
     if (!instance?.engineWorkflowId) return instance?.status ?? "pending";
     const live = await this.deps.client.getWorkflow(instance.engineWorkflowId);
+
+    // Conductor 404 (live === null): the engine no longer knows this run — almost
+    // always because its storage was reset while our DB kept the instance active.
+    // Reconcile to a terminal `cancelled` so the syncer stops polling it forever.
+    // Guard against the start race (a just-submitted workflow that 404s before the
+    // engine's read path catches up) by requiring consecutive 404s. This is its OWN
+    // path — it must not flow through the `failed` branch below, which would try to
+    // retryWorkflow() a workflow that doesn't exist.
+    if (live === null) {
+      const count = (this.notFoundCounts.get(workflowInstanceId) ?? 0) + 1;
+      if (count < ConductorOrchestrator.NOT_FOUND_TERMINAL_THRESHOLD) {
+        this.notFoundCounts.set(workflowInstanceId, count);
+        return instance.status;
+      }
+      this.notFoundCounts.delete(workflowInstanceId);
+      log.warn(
+        { workflowInstanceId, engineWorkflowId: instance.engineWorkflowId },
+        "engine no longer knows this workflow (404); reconciling to cancelled",
+      );
+      const completedAt = new Date();
+      const durationMs = instance.startedAt
+        ? completedAt.getTime() - instance.startedAt.getTime() : undefined;
+      await this.deps.workflowInstances.setStatus(workflowInstanceId, "cancelled", {
+        completedAt, durationMs,
+      });
+      if (this.deps.sandboxReaper) {
+        await this.deps.sandboxReaper(workflowInstanceId).catch(() => undefined);
+      }
+      return "cancelled";
+    }
+    this.notFoundCounts.delete(workflowInstanceId);
+
     const mapped = mapConductorStatus(live.status);
 
     // The paused/running distinction for a live (engine-RUNNING) workflow is
