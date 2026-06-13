@@ -16,7 +16,7 @@ export type ExecutorKind =
 export interface FieldMeta {
   label: string;
   help?: string;
-  widget?: "text" | "textarea" | "number" | "select" | "checkbox" | "secret" | "code";
+  widget?: "text" | "textarea" | "number" | "select" | "checkbox" | "secret" | "code" | "string-list";
   options?: { value: string; label: string }[];
 }
 

@@ -13,6 +13,7 @@ import {
 } from "./input-value-serialize.ts";
 import { splitRefPath, validatePathTail } from "./ref-path.ts";
 import { InputHelp } from "./InputHelp.tsx";
+import { StringListEditor } from "./StringListEditor.tsx";
 
 interface Props {
   value: WorkflowInputValue | undefined;
@@ -21,10 +22,12 @@ interface Props {
   readOnly?: boolean;
   required?: boolean;
   placeholder?: string;
+  /** When true, Value mode renders a rows editor (newline-joined string literal). */
+  valueListMode?: boolean;
   onChange: (next: WorkflowInputValue | undefined) => void;
 }
 
-export function InputValueEditor({ value, expected, fields, readOnly, required, placeholder, onChange }: Props) {
+export function InputValueEditor({ value, expected, fields, readOnly, required, placeholder, valueListMode, onChange }: Props) {
   const [mode, setMode] = useState<InputMode>(() => modeForValue(value));
   const widget = widgetForShape(expected);
   const container = jsonContainerForShape(expected);
@@ -105,7 +108,16 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
         </>
       )}
 
-      {mode === "value" && widget === "string" && (
+      {mode === "value" && valueListMode && (
+        <StringListEditor
+          value={value?.kind === "literal" && typeof value.value === "string" ? value.value : ""}
+          readOnly={readOnly}
+          placeholder={placeholder ?? "owner/repo or URL"}
+          onChange={s => onChange(s ? { kind: "literal", value: s } : undefined)}
+        />
+      )}
+
+      {mode === "value" && !valueListMode && widget === "string" && (
         <>
           <MentionInput
             value={inputToValueSegments(value)}
@@ -123,7 +135,7 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
         </>
       )}
 
-      {mode === "value" && widget === "number" && (
+      {mode === "value" && !valueListMode && widget === "number" && (
         <input
           type="number"
           className="je-input-value__number"
@@ -140,7 +152,7 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
         />
       )}
 
-      {mode === "value" && widget === "boolean" && (
+      {mode === "value" && !valueListMode && widget === "boolean" && (
         <select
           className="je-input-value__boolean"
           disabled={readOnly}
@@ -157,7 +169,7 @@ export function InputValueEditor({ value, expected, fields, readOnly, required, 
         </select>
       )}
 
-      {mode === "value" && widget === "json" && (
+      {mode === "value" && !valueListMode && widget === "json" && (
         <div className="je-input-value__json">
           <textarea
             className="je-input-value__json-area"

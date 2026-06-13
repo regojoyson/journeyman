@@ -2149,6 +2149,29 @@ button.je-condition-row__pick:hover {
 
 .je-input-value__hint { font-size: 11px; color: #7a7f8c; }
 
+/* String-list rows editor (Value mode for list fields). */
+.je-string-list { display: flex; flex-direction: column; gap: 6px; }
+.je-string-list__row { display: flex; align-items: center; gap: 6px; }
+.je-string-list__input {
+  flex: 1; box-sizing: border-box;
+  background: #0f0f1a; color: #e2e8f0;
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 6px 8px; font-size: 12px; font-family: monospace;
+}
+.je-string-list__rm {
+  flex: 0 0 auto; width: 26px; height: 30px;
+  background: transparent; color: #94a3b8;
+  border: 1px solid #2a2a3a; border-radius: 4px; cursor: pointer;
+}
+.je-string-list__rm:hover { color: #ff7675; border-color: #5a3a3a; }
+.je-string-list__add {
+  align-self: flex-start;
+  background: transparent; color: #8fbeff;
+  border: 1px dashed #2a2a3a; border-radius: 4px;
+  padding: 6px 12px; font-size: 12px; cursor: pointer;
+}
+.je-string-list__add:hover { border-color: #3a3a5e; }
+
 /* Info-icon help popover. Anchored to the full mode row (not the tiny icon) so
    it stays inside the narrow properties panel instead of overflowing its edge. */
 .je-input-help { display: inline-flex; }

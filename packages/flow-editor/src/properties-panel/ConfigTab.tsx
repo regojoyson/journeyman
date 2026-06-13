@@ -191,6 +191,19 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
 
   const renderMentionField = (key: string, meta: { widget?: string }) => {
     const widget = meta.widget ?? "text";
+    // List fields: rows editor in Value mode, @ Reference for binding the whole array.
+    if (widget === "string-list") {
+      return (
+        <InputValueEditor
+          value={inputValueForField(key)}
+          expected={expectedForKey(key)}
+          fields={mentionFields}
+          valueListMode
+          readOnly={readOnly}
+          onChange={next => commitInputValue(key, next)}
+        />
+      );
+    }
     // Text-like fields get the full shared editor (Value/@Reference tabs, path
     // drilling, help) — same control as custom-AI step inputs.
     if (widget === "text" || widget === "textarea") {

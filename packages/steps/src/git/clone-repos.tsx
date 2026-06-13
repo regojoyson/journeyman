@@ -23,8 +23,8 @@ export const cloneReposStep: StepDefinition<CloneReposConfig> = {
   defaultConfig: { repos: "", branch: "" },
   configSchema: cloneReposConfigSchema,
   configFields: {
-    repos:  { label: "Repos",  widget: "textarea", help: "One owner/repo (or URL) per line" },
-    branch: { label: "Branch", widget: "text",     help: "Optional — defaults to main" },
+    repos:  { label: "Repos",  widget: "string-list", help: "One owner/repo or URL per row" },
+    branch: { label: "Branch", widget: "text",        help: "Optional — defaults to main" },
   },
   tabs: { io: "shown", mcp: "hidden", retry: "shown" },
   slots: [
