@@ -24,8 +24,7 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function save() {
     setError(null);
 
     if (!NAME_RE.test(name)) {
@@ -100,7 +99,10 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
   }
 
   return (
-    <form onSubmit={save} className="mt-2 rounded border border-slate-700 p-3 space-y-2">
+    // NOT a <form>: this panel is rendered inside other <form>s (e.g. the webhook
+    // create wizard). Nested forms are invalid HTML and break submit association,
+    // crashing the page. Use a div + button onClick; Enter on the name input saves.
+    <div className="mt-2 rounded border border-slate-700 p-3 space-y-2">
       <div className="text-xs font-medium text-slate-200">New secret</div>
       <label className="block">
         <span className="block text-[11px] text-slate-400 mb-1">Name (UPPER_SNAKE_CASE)</span>
@@ -108,14 +110,15 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
           className="w-full rounded bg-slate-800 border border-slate-700 px-2 py-1 font-mono text-xs text-slate-100"
           value={name}
           onChange={(e) => setName(e.target.value.toUpperCase())}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void save(); } }}
           placeholder="GITHUB_WEBHOOK_SECRET"
-          required
         />
       </label>
       {error && <p className="text-xs text-red-400">{error}</p>}
       <div className="flex gap-2">
         <button
-          type="submit"
+          type="button"
+          onClick={() => void save()}
           disabled={busy}
           className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm disabled:opacity-50"
         >
@@ -134,6 +137,6 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
         Journeyman will generate a 256-bit hex value, store it under this name, and show
         it once so you can paste it into the provider.
       </p>
-    </form>
+    </div>
   );
 }
