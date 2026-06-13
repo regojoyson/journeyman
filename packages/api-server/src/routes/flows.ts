@@ -5,7 +5,7 @@ import { createRunBody } from "../schemas/run.ts";
 import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
 import { promoteFlowBody } from "../schemas/promote-flow.ts";
-import type { WorkflowGraph, WorkflowScope, WorkflowInputValue, PublishError } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowScope, WorkflowInputValue, PublishError, ProposedCustomStep } from "@journeyman/core";
 import { findManualTriggerNode } from "@journeyman/core";
 import {
   refreshTriggerIndexOnPublish,
@@ -17,6 +17,7 @@ import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalo
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { getCustomAiStep } from "@journeyman/custom-steps";
+import { shapesFromProposedSteps } from "./proposed-custom-steps.ts";
 import { customStepToShape, type CustomStepShape } from "@journeyman/custom-steps/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider, findCodingModel } from "@journeyman/coding-models";
@@ -326,20 +327,24 @@ export function computeValidationReport(
 async function loadCustomStepShapes(
   c: Composition,
   graph: WorkflowGraph,
+  proposed?: ProposedCustomStep[],
 ): Promise<Map<string, CustomStepShape>> {
   const map = new Map<string, CustomStepShape>();
-  if (!c.pool) return map;
-  const ids = new Set<string>();
-  for (const n of graph.nodes) {
-    if (n.type === "step" && n.stepType === "custom-ai") {
-      const id = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
-      if (typeof id === "string" && id) ids.add(id);
+  if (c.pool) {
+    const ids = new Set<string>();
+    for (const n of graph.nodes) {
+      if (n.type === "step" && n.stepType === "custom-ai") {
+        const id = (n.config as { customStepId?: unknown } | undefined)?.customStepId;
+        if (typeof id === "string" && id) ids.add(id);
+      }
+    }
+    for (const id of ids) {
+      const step = await getCustomAiStep(c.pool, id);
+      if (step) map.set(id, customStepToShape(step));
     }
   }
-  for (const id of ids) {
-    const step = await getCustomAiStep(c.pool, id);
-    if (step) map.set(id, customStepToShape(step));
-  }
+  // Merge not-yet-persisted proposed steps (no DB write); they fill their placeholder ids.
+  for (const [id, shape] of shapesFromProposedSteps(proposed)) map.set(id, shape);
   return map;
 }
 
@@ -369,12 +374,12 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
   // Non-destructive validation — caller passes a definition, we return the full report.
   app.post("/workflows/validate", { preHandler: requireAuth() }, async (req, reply) => {
     const ctx = req.runContext!;
-    const body = req.body as { definition?: WorkflowGraph };
+    const body = req.body as { definition?: WorkflowGraph; proposedCustomSteps?: ProposedCustomStep[] };
     if (!body?.definition || typeof body.definition !== "object") {
       reply.code(400);
       return { error: "bad_request", message: "definition is required" };
     }
-    const customStepShapes = await loadCustomStepShapes(c, body.definition);
+    const customStepShapes = await loadCustomStepShapes(c, body.definition, body.proposedCustomSteps);
     const report = computeValidationReport(body.definition, customStepShapes);
     const callerScope: WorkflowScope = "user";
     const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
@@ -422,7 +427,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
         if (!seenErrors.has(msg)) { report.errors.push(msg); seenErrors.add(msg); }
       }
     }
-    const customStepDefs = await loadCustomStepShapes(c, body.definition);
+    const customStepDefs = await loadCustomStepShapes(c, body.definition, body.proposedCustomSteps);
     const catalogMap = new Map(stepCatalog.map(p => [
       p.stepType,
       { stepType: p.stepType, inputFields: p.inputFields, outputSchema: p.outputSchema },

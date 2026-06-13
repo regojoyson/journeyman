@@ -15,6 +15,7 @@ export {
   CUSTOM_STEP_EXPORT_KIND,
   CUSTOM_STEP_EXPORT_VERSION,
 } from "./types/custom-steps.types.ts";
+export type * from "./types/builder.types.ts";
 export * from "./types/custom-step-icons.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";
@@ -127,6 +128,7 @@ export {
 export type { ProviderEntry } from "./registries/provider-catalog.ts";
 // Aliased to avoid colliding with flow-editor's own ExecutorKind (which includes "control").
 export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-catalog.ts";
+export * from "./registries/builder-availability.ts";
 export * from "./registries/opencode-slots.ts";
 export { AISDK_PROVIDER_PACKAGES, isAiSdkPackage, type AiSdkPackage } from "./registries/aisdk-packages.ts";
 

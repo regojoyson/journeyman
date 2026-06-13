@@ -6,6 +6,7 @@ import { Logo, LogoMark } from "./Logo.tsx";
 
 const NAV_ITEMS = [
   { to: "/workflows",          icon: "⚡", label: "Workflows"          },
+  { to: "/builder",            icon: "🛠", label: "Builder"            },
   { to: "/workflow-instances", icon: "▶",  label: "Workflow Instances" },
   { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },

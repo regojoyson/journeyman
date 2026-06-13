@@ -17,6 +17,9 @@ import { registerWorkflowTriggersRoute } from "./routes/workflow-triggers.ts";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
 import { registerMcpRoutes } from "@journeyman/mcp";
+import { registerBuilderRoutes } from "@journeyman/builder";
+import { registerBuilderApplyRoute } from "./routes/builder-apply.ts";
+import { registerBuilderChatRoute } from "./routes/builder-chat.ts";
 import { registerSandboxRoutes, registerSandboxInstanceRoutes } from "@journeyman/sandbox";
 import { registerSkillRoutes } from "@journeyman/skills";
 import { registerCustomStepRoutes } from "@journeyman/custom-steps";
@@ -40,6 +43,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   if (c.pool) {
     await registerSecretsRoutes(app, c.pool);
     await registerMcpRoutes(app, c.pool);
+    await registerBuilderRoutes(app, c.pool);
     await registerSandboxRoutes(app, c.pool);
     if (c.sandboxInstanceRoutesDeps) await registerSandboxInstanceRoutes(app, c.pool, c.sandboxInstanceRoutesDeps);
     await registerSkillRoutes(app, c.pool);
@@ -64,6 +68,8 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     registerHumanTaskRoutes(s, c);
     registerFormRoutes(s, c);
     registerWorkflowTriggersRoute(s, c);
+    registerBuilderApplyRoute(s, c);
+    registerBuilderChatRoute(s, c);
   }, { prefix: "/api" });
   return app;
 }
