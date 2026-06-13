@@ -2,6 +2,10 @@
 # Run with: npm run infra:up / infra:down / infra:reset
 # You then run api-server/worker/web on your host via npm. For the full
 # containerized stack (incl. apps + dind) see compose.deploy.yml at the repo root.
+#
+# NOTE: the api-server is NOT containerized in dev, so app config — including the
+# Builder LLM (BUILDER_LLM_*, e.g. LM Studio at http://localhost:1234/v1) — lives
+# in the repo-root .env, read by the host-run api-server. Nothing to set here.
 name: journeyman-dev
 
 services:

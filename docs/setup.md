@@ -70,6 +70,36 @@ The Claude Agent SDK inherits `process.env` when spawning its subprocess. It aut
 
 > **Note:** The `apiKeyEnv: ANTHROPIC_API_KEY` field in `providerConfig.coding` is **not read by any code** — it's historical dead config. The SDK just inherits whatever's in `process.env`. You can omit the `coding` block entirely.
 
+### Builder LLM (optional)
+
+The conversational **Builder** page (`/builder`) — which turns a plain-language
+goal into a draft workflow — drives its **own** LLM, configured only through
+these env vars. It is deliberately separate from the AI *coding* providers
+above: the Builder authors flows, it does not run them. If these are unset the
+rest of Journeyman is unaffected; only the Builder's chat is disabled (the chat
+route fails fast with a clear error).
+
+```bash
+# Which AI-SDK provider package to load. Must be one of the bundled packages:
+#   @ai-sdk/anthropic | @ai-sdk/openai | @ai-sdk/google | @ai-sdk/openai-compatible
+BUILDER_LLM_PROVIDER=@ai-sdk/anthropic
+BUILDER_LLM_MODEL=claude-opus-4-8     # the provider's model id (required)
+BUILDER_LLM_API_KEY=...               # provider API key
+# Endpoint override. REQUIRED for @ai-sdk/openai-compatible (local model server,
+# an LLM gateway, or Azure OpenAI); an optional override for the other providers.
+BUILDER_LLM_BASE_URL=
+```
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `BUILDER_LLM_PROVIDER` | yes (to enable Builder) | AI-SDK package name (see list above) |
+| `BUILDER_LLM_MODEL` | yes | Model id passed to the provider |
+| `BUILDER_LLM_API_KEY` | provider-dependent | API key for the chosen provider |
+| `BUILDER_LLM_BASE_URL` | only for `@ai-sdk/openai-compatible` | Endpoint URL; optional override for others |
+
+> Adding a new vendor to the allow-list also requires bundling its `@ai-sdk/*`
+> package — see `AISDK_PROVIDER_PACKAGES` in `@journeyman/core`.
+
 ### Required if any product uses GitHub (repos or issues)
 
 ```bash

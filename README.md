@@ -246,7 +246,7 @@ The same env contract drives both deployments. Required at runtime:
 | `LOG_LEVEL` | pino log level (default `info`) |
 | `PORT` | api-server listen port (default `4000`) |
 
-Optional: `ANTHROPIC_API_KEY`, `GITHUB_ACCESS_TOKEN`, `JM_GLOBAL_*` secrets — see [`.env.example`](.env.example) for the full list.
+Optional: `ANTHROPIC_API_KEY`, `GITHUB_ACCESS_TOKEN`, `JM_GLOBAL_*` secrets, and the `BUILDER_LLM_*` keys that power the conversational [Builder](docs/setup.md#builder-llm-optional) page — see [`.env.example`](.env.example) for the full list.
 
 #### Data directory & the runner kit
 

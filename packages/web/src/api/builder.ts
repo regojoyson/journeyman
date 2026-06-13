@@ -30,6 +30,28 @@ export async function applyBuilderPlan(orgId: string, id: string): Promise<{ wor
   );
 }
 
+export async function listBuilderSessions(orgId: string): Promise<BuilderSession[]> {
+  return api<BuilderSession[]>(`/api/orgs/${orgId}/users/me/builder/sessions`);
+}
+
+/** Persist edits to a session (name, status, or the edited build plan). */
+export async function patchBuilderSession(
+  orgId: string,
+  id: string,
+  patch: Partial<Pick<BuilderSession, "name" | "status" | "buildPlan">>,
+): Promise<{ ok: true }> {
+  return api<{ ok: true }>(`/api/orgs/${orgId}/users/me/builder/sessions/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteBuilderSession(orgId: string, id: string): Promise<{ ok: true }> {
+  return api<{ ok: true }>(`/api/orgs/${orgId}/users/me/builder/sessions/${id}`, {
+    method: "DELETE",
+  });
+}
+
 /**
  * Stream a chat turn. The endpoint is a POST SSE, so we read the response body
  * as a stream (EventSource can't POST). Calls `onEvent` per parsed SSE event.

@@ -1,5 +1,6 @@
 import type { BuildPlan } from "@journeyman/core";
 import type { SseEvent } from "../api/sse-parse.ts";
+import type { FlowValidationReport } from "../api/flows.ts";
 
 export interface ChatMsg { role: "user" | "assistant"; content: string; }
 
@@ -32,6 +33,15 @@ export function reduceChatEvent(state: BuilderChatState, ev: SseEvent): BuilderC
 export function canApply(plan: BuildPlan | null): boolean {
   if (!plan) return false;
   return !plan.gaps.some((g) => g.required);
+}
+
+/**
+ * Apply gate used after inline edits: a plan with no required gaps, and — if a
+ * validation has run — a passing report. Null report ⇒ not yet validated, allowed.
+ */
+export function canApplyNow(plan: BuildPlan | null, validation: FlowValidationReport | null): boolean {
+  if (!canApply(plan)) return false;
+  return validation === null || validation.ok;
 }
 
 function safeJson(s: string): unknown {
