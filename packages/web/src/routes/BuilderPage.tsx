@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { BuildPlan } from "@journeyman/core";
 import { useAuth } from "../AuthContext.tsx";
 import {
@@ -127,11 +129,15 @@ export function BuilderPage() {
         <h1 className="mb-3 text-lg font-medium text-slate-100">Builder</h1>
         <div className="flex-1 space-y-3 overflow-y-auto pr-2">
           {state.messages.map((m, i) => (
-            <div key={i} className={m.role === "user"
-              ? "ml-auto max-w-[85%] rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-slate-100"
-              : "mr-auto max-w-[85%] rounded-md bg-slate-800/70 px-3 py-2 text-sm text-slate-200"}>
-              {m.content}
-            </div>
+            m.role === "user" ? (
+              <div key={i} className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-slate-100">
+                {m.content}
+              </div>
+            ) : (
+              <div key={i} className="prose prose-sm prose-invert mr-auto max-w-[85%] rounded-md bg-slate-800/70 px-3 py-2 text-sm text-slate-200 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:mt-2 prose-headings:mb-1 prose-pre:my-2 prose-pre:bg-slate-950/60">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+              </div>
+            )
           ))}
           {state.error && <div className="text-sm text-rose-300">Error: {state.error}</div>}
           {state.streaming && <div className="text-xs text-slate-500">…thinking</div>}
