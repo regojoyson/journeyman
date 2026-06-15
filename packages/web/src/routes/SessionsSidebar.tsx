@@ -7,15 +7,25 @@ export function SessionsSidebar(props: {
   onNew: () => void;
   onResume: (s: BuilderSession) => void;
   onDelete: (s: BuilderSession) => void;
+  onCollapse?: () => void;
 }) {
-  const { sessions, activeId, onNew, onResume, onDelete } = props;
+  const { sessions, activeId, onNew, onResume, onDelete, onCollapse } = props;
   return (
-    <div className="flex w-56 flex-col border-r border-slate-800 pr-3">
-      <button
-        className="mb-3 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-indigo-200 hover:bg-indigo-500/30"
-        onClick={onNew}>
-        + New build
-      </button>
+    <div className="flex w-56 flex-none flex-col border-r border-slate-800 pr-3">
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          className="flex-1 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-indigo-200 hover:bg-indigo-500/30"
+          onClick={onNew}>
+          + New build
+        </button>
+        {onCollapse && (
+          <button
+            className="rounded-md px-2 py-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            title="Hide sessions panel" onClick={onCollapse}>
+            ‹
+          </button>
+        )}
+      </div>
       <div className="flex-1 space-y-1 overflow-y-auto">
         {sessions.length === 0 && <div className="px-2 py-1 text-xs text-slate-500">No past builds yet.</div>}
         {orderSessions(sessions).map((s) => (

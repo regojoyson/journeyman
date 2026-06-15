@@ -18,7 +18,8 @@ import { reduceChatEvent, canApplyNow, type BuilderChatState, type ChatMsg } fro
 import { StepCard, type StepCardInventory } from "./StepCard.tsx";
 import { SessionsSidebar } from "./SessionsSidebar.tsx";
 import { setDefaultModel, setDefaultSandbox } from "./plan-edits.ts";
-import { btnPrimary, card, inputCls } from "./admin-styles.ts";
+import { clampChatWidth } from "./builder-layout.ts";
+import { btnPrimary, card } from "./admin-styles.ts";
 
 const EMPTY: BuilderChatState = { messages: [], plan: null, error: null, streaming: false };
 
@@ -30,6 +31,39 @@ export function BuilderPage() {
   const [sending, setSending] = useState(false);
   const [appliedFlowId, setAppliedFlowId] = useState<string | null>(null);
   const [validation, setValidation] = useState<FlowValidationReport | null>(null);
+
+  // --- Layout: collapsible sidebar + draggable chat/plan splitter ---
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [chatWidth, setChatWidth] = useState(520);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    const onMove = (ev: MouseEvent) => {
+      if (!chatRef.current || !containerRef.current) return;
+      const left = chatRef.current.getBoundingClientRect().left;
+      const containerW = containerRef.current.getBoundingClientRect().width;
+      setChatWidth(clampChatWidth(ev.clientX - left, containerW));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.userSelect = "none";
+  }
+
+  // Auto-grow the composer to fit its content (capped), like a normal chat box.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [input]);
 
   // --- Sessions list ---
   const sessionsQ = useQuery({
@@ -115,18 +149,29 @@ export function BuilderPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] gap-4 p-4">
-      <SessionsSidebar
-        sessions={sessionsQ.data ?? []}
-        activeId={sessionId}
-        onNew={resetToNew}
-        onResume={resume}
-        onDelete={(s) => void remove(s)}
-      />
+    <div ref={containerRef} className="flex h-[calc(100vh-3.5rem)] gap-2 p-4">
+      {sidebarOpen && (
+        <SessionsSidebar
+          sessions={sessionsQ.data ?? []}
+          activeId={sessionId}
+          onNew={resetToNew}
+          onResume={resume}
+          onDelete={(s) => void remove(s)}
+          onCollapse={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Chat */}
-      <div className="flex w-2/5 flex-col">
-        <h1 className="mb-3 text-lg font-medium text-slate-100">Builder</h1>
+      <div ref={chatRef} className="flex flex-none flex-col" style={{ width: chatWidth }}>
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            className="rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            title={sidebarOpen ? "Hide sessions panel" : "Show sessions panel"}
+            onClick={() => setSidebarOpen((o) => !o)}>
+            ☰
+          </button>
+          <h1 className="text-lg font-medium text-slate-100">Builder</h1>
+        </div>
         <div className="flex-1 space-y-3 overflow-y-auto pr-2">
           {state.messages.map((m, i) => (
             m.role === "user" ? (
@@ -142,13 +187,27 @@ export function BuilderPage() {
           {state.error && <div className="text-sm text-rose-300">Error: {state.error}</div>}
           {state.streaming && <div className="text-xs text-slate-500">…thinking</div>}
         </div>
-        <div className="mt-3 flex gap-2">
-          <input className={inputCls} placeholder="Describe the workflow you want…"
-            value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") void send(); }} disabled={sending} />
+        <div className="mt-3 flex items-end gap-2">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            className="flex-1 resize-none rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+            placeholder="Describe the workflow you want…  (Enter to send · Shift+Enter for a new line)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+            }}
+            disabled={sending} />
           <button className={btnPrimary} onClick={() => void send()} disabled={sending || !input.trim()}>Send</button>
         </div>
       </div>
+
+      {/* Draggable splitter */}
+      <div
+        onMouseDown={startResize}
+        title="Drag to resize"
+        className="w-1.5 flex-none cursor-col-resize rounded bg-slate-800 transition-colors hover:bg-indigo-500/60" />
 
       {/* Plan preview + editing */}
       <div className={`flex-1 overflow-y-auto p-4 ${card}`}>
