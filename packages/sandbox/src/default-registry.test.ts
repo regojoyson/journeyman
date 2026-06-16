@@ -18,7 +18,7 @@ describe("createDefaultRegistry", () => {
     const r = createDefaultRegistry({
       runOperation,
       defaultBaseDir: tmpdir(),
-      docker: { client, defaultImage: "journeyman/runner-base:dev" },
+      docker: { makeClient: () => client, defaultImage: "journeyman/runner-base:dev" },
     });
     expect(r.available()).toContain("local");
     expect(r.available()).toContain("docker");

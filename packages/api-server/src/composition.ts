@@ -8,12 +8,11 @@
 // MUST require changing only this file. If a swap forces edits anywhere else,
 // the boundaries are wrong (see spec §12 "Architectural exit criterion").
 
-import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 import {
   getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
-  DockerExecutionEnvironment, makeDockerClient, type DockerConnection,
+  createDefaultRegistry, destroySandboxInstance, makeDockerClient,
   SandboxInstanceReaper, type SandboxInstanceRecord, type SandboxInstanceRoutesDeps,
 } from "@journeyman/sandbox";
 import { isTerminalStatus } from "@journeyman/core";
@@ -117,31 +116,19 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const LOCAL_WORKSPACE_BASE = process.env.JOURNEYMAN_WORKSPACE_BASE_DIR
     ?? join(process.cwd(), ".journeyman", "workspaces");
 
-  const dockerDestroy = async (sb: SandboxInstanceRecord): Promise<void> => {
-    const client = makeDockerClient(sb.connection as DockerConnection);
-    const env = new DockerExecutionEnvironment({ client, defaultImage: RUNNER_IMAGE });
-    await env.destroy({ runId: sb.runId, type: "docker", handle: sb.handle, volume: sb.volume ?? undefined, workspaceDir: "/workspace" });
-  };
+  // Teardown-only registry: local backend has no runOperation (destroy is
+  // filesystem-only); docker builds a per-connection client. All teardown
+  // entrypoints route through the single destroySandboxInstance helper.
+  const teardownRegistry = createDefaultRegistry({
+    defaultBaseDir: LOCAL_WORKSPACE_BASE,
+    docker: {
+      makeClient: (connection) => makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]),
+      defaultImage: RUNNER_IMAGE,
+    },
+  });
 
-  /**
-   * Type-dispatched sandbox destroyer used by both the per-run reaper and the
-   * periodic SandboxInstanceReaper.
-   *
-   * - docker: delegate to dockerDestroy (container + volume teardown).
-   * - local: rm -rf the run dir under LOCAL_WORKSPACE_BASE, unless retainWorkspace
-   *   is set on the record (best-effort; the worker-host sweep in the worker handles
-   *   local orphans authoritatively — this path only runs on the owning host).
-   */
-  const destroyByType = async (sb: SandboxInstanceRecord): Promise<void> => {
-    if (sb.type === "docker") return dockerDestroy(sb);
-    if (sb.type === "local") {
-      // retainWorkspace is a worker-config flag; it is not stored on the sandbox
-      // record today. If it were ever persisted here, honour it.
-      if ((sb as unknown as { retainWorkspace?: boolean }).retainWorkspace) return;
-      await rm(join(LOCAL_WORKSPACE_BASE, sb.runId), { recursive: true, force: true });
-    }
-    // Other types (ecs, ec2, …): no-op until implemented.
-  };
+  const destroyByType = (sb: SandboxInstanceRecord): Promise<void> =>
+    destroySandboxInstance(teardownRegistry, sb);
 
   const isRunActive = async (runId: string): Promise<boolean> => {
     const inst = await workflowInstances.getById(runId).catch(() => null);
@@ -171,7 +158,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
       }
     : undefined;
 
-  const sandboxInstanceRoutesDeps: SandboxInstanceRoutesDeps | undefined = pool ? { destroy: dockerDestroy, isRunActive } : undefined;
+  const sandboxInstanceRoutesDeps: SandboxInstanceRoutesDeps | undefined = pool ? { destroy: destroyByType, isRunActive } : undefined;
   let reaperStop: (() => void) | undefined;
   if (pool) {
     const reaper = new SandboxInstanceReaper({

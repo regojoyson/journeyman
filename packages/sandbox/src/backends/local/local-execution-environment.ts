@@ -14,7 +14,7 @@ import type {
 } from "@journeyman/core";
 
 export interface LocalExecutionEnvironmentDeps {
-  runOperation: OperationRunner;
+  runOperation?: OperationRunner;
   baseDir: string;
   retainWorkspace?: boolean;
 }
@@ -35,6 +35,9 @@ export class LocalExecutionEnvironment implements IExecutionEnvironment {
   }
 
   async exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult> {
+    if (!this.deps.runOperation) {
+      throw new Error("LocalExecutionEnvironment.exec: runOperation not configured (teardown-only env)");
+    }
     return this.deps.runOperation(op, { workspaceDir: env.workspaceDir });
   }
 

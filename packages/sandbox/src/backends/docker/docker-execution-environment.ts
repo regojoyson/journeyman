@@ -9,6 +9,14 @@ export interface DockerExecutionEnvironmentDeps {
   runnerCmd?: string[];
   /** Fallback image when a spec omits imageRef. */
   defaultImage?: string;
+  /** Worker config captured at create() — carries connection, image recipe, __existingHandle, network, etc. */
+  config?: Record<string, unknown>;
+  /**
+   * Resolve the image ref to provision with, ensuring it's present on this daemon.
+   * Injected by the backend deps (orchestrator owns kit/registry specifics).
+   * Falls back to spec.imageRef / defaultImage when absent.
+   */
+  resolveImageRef?: (config: Record<string, unknown>, client: IDockerClient) => Promise<string>;
 }
 
 const DEFAULT_RUNNER_CMD = ["journeyman-runner"];
@@ -20,9 +28,30 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
   constructor(private deps: DockerExecutionEnvironmentDeps) {}
 
   async provision(runId: string, spec: ExecutionEnvironmentSpec): Promise<ProvisionedEnv> {
-    const volume = `jm-run-${runId}`;
-    const image = spec.imageRef ?? this.deps.defaultImage;
+    const config = this.deps.config ?? {};
+
+    // Reconnect path: an existing container handle was recorded (connect()).
+    const existingHandle = config["__existingHandle"];
+    if (existingHandle) {
+      return {
+        runId,
+        type: "docker",
+        handle: String(existingHandle),
+        ...(config["__existingVolume"] ? { volume: String(config["__existingVolume"]) } : {}),
+        workspaceDir: WORKSPACE,
+      };
+    }
+
+    // Fresh provision: resolve the image ref (kit base or pre-built), then run idle.
+    const image = this.deps.resolveImageRef
+      ? await this.deps.resolveImageRef(config, this.deps.client)
+      : (spec.imageRef ?? this.deps.defaultImage);
     if (!image) throw new Error("docker provision requires an imageRef or defaultImage");
+
+    const volume = `jm-run-${runId}`;
+    const network = config["network"] === "none" ? ("none" as const) : (spec.network ?? ("full" as const));
+    const env = (config["env"] as Record<string, string> | undefined) ?? spec.env;
+    const resources = (config["resources"] as ExecutionEnvironmentSpec["resources"] | undefined) ?? spec.resources;
 
     await this.deps.client.createVolume(volume);
     const handle = await this.deps.client.runIdle({
@@ -30,12 +59,12 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
       volume,
       mountPath: WORKSPACE,
       labels: { "journeyman.runId": runId },
-      ...(spec.env ? { env: spec.env } : {}),
-      ...(spec.resources?.cpus ? { cpus: spec.resources.cpus } : {}),
-      ...(spec.resources?.memoryMb ? { memoryMb: spec.resources.memoryMb } : {}),
-      ...(spec.network ? { network: spec.network } : {}),
+      ...(env ? { env } : {}),
+      ...(resources?.cpus ? { cpus: resources.cpus } : {}),
+      ...(resources?.memoryMb ? { memoryMb: resources.memoryMb } : {}),
+      network,
     });
-    return { runId, type: "docker", handle, volume, workspaceDir: WORKSPACE };
+    return { runId, type: "docker", handle, volume, workspaceDir: WORKSPACE, imageRef: image };
   }
 
   async exec(env: ProvisionedEnv, op: ExecOp): Promise<ExecResult> {

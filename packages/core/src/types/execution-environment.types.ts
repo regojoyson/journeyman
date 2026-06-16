@@ -43,6 +43,8 @@ export interface ProvisionedEnv {
   volume?: string;
   /** Absolute path steps should treat as their workspace (e.g. "/workspace" or a local dir). */
   workspaceDir: string;
+  /** Resolved image ref the backend provisioned with (Docker); persisted for reconnect/teardown. */
+  imageRef?: string;
 }
 
 /** A single operation to run inside the environment. */
@@ -113,6 +115,12 @@ export interface ExecutionEnvironmentBackend {
   readonly supportedConnectivity: Connectivity[];
   /** Throws if the worker's config is invalid for this type. */
   validateConfig(config: unknown): void;
+  /**
+   * Optional run-gate called before provisioning. Backends that depend on a
+   * pre-built artifact (docker managed images) throw a retryable
+   * ImageNotReadyError or a terminal ConfigurationError here. No-op when absent.
+   */
+  checkRunnable?(worker: ResolvedSandbox): void | Promise<void>;
   create(worker: ResolvedSandbox): IExecutionEnvironment;
 }
 

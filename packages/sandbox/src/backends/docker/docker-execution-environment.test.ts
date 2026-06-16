@@ -44,7 +44,7 @@ describe("DockerExecutionEnvironment", () => {
     const { client, calls } = fakeClient();
     const env = new DockerExecutionEnvironment({ client });
     const p = await env.provision("run-1", { imageRef: "img:1", network: "none", resources: { cpus: 2 } });
-    expect(p).toEqual({ runId: "run-1", type: "docker", handle: "container123", volume: "jm-run-run-1", workspaceDir: "/workspace" });
+    expect(p).toEqual({ runId: "run-1", type: "docker", handle: "container123", volume: "jm-run-run-1", workspaceDir: "/workspace", imageRef: "img:1" });
     expect(calls.createVolume).toEqual(["jm-run-run-1"]);
     expect(calls.runIdle[0]).toMatchObject({
       image: "img:1", volume: "jm-run-run-1", mountPath: "/workspace",

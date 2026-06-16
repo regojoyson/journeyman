@@ -25,6 +25,9 @@ A small always-on program (the **agent**) runs on the Windows box. The Linux orc
 | Agent runtime mode | **Background Windows service** (headless) | QA browser runs **headless**; nothing needs a visible desktop. IIS, SQL Server, headless browser all run as services. |
 | Scope | **Contract + backend + agent**, manual install | Fastest path to running workflows end-to-end. Packaged installer is a later concern. |
 | Breadth | **Focused, with extensibility seams** | Build only the headless-service case, but reserve a `session` flag, add capability `tags`, and document the machine-state isolation limit + future VM path. |
+| Coding providers on Windows | **Claude + OpenCode supported; AISDK gated; Gemini/Codex are stubs** | Claude needs Git Bash; OpenCode ships a native `opencode.exe`; AISDK hardcodes `bash`/`rg` (finding 16). |
+
+A step picks its provider (`input.provider`) and one workflow can mix providers on the same box. Only workspace-touching steps run on the box; ticket/PR/notification steps run on the Linux worker, and a step must be **pinned** to the Windows sandbox (node or flow default) or it silently runs locally (findings 17–18).
 
 ## 3. Architecture
 
@@ -52,11 +55,17 @@ A small always-on program (the **agent**) runs on the Windows box. The Linux orc
 
 ```proto
 service JourneymanAgent {
+  rpc Readiness(ReadinessRequest) returns (ReadinessReply); // self-check scorecard (finding 1, 8)
   rpc Provision(ProvisionRequest) returns (ProvisionReply);
   rpc Exec(ExecRequest) returns (stream ExecEvent);          // log lines, then a final result event
   rpc Materialize(stream FileChunk) returns (MaterializeReply); // tar upload, replaces a dir
   rpc Destroy(DestroyRequest) returns (DestroyReply);
   rpc List(ListRequest) returns (ListReply);                 // enumerate run workspaces
+}
+
+message ReadinessReply {
+  bool ready = 1;
+  repeated ReadinessCheck checks = 2;   // {name, ok, detail} for bash, git, node, workspace, smoke-test
 }
 
 message ExecRequest {
@@ -76,8 +85,8 @@ message ExecEvent {
 
 **B. `WindowsBackend`** — `packages/sandbox/src/backends/windows/windows-backend.ts`, implements `ExecutionEnvironmentBackend`:
 - `type = "machine-windows"`, `supportedModes = ["shared"]`, `supportedConnectivity = ["agent"]`.
-- `validateConfig(config)`: requires `agent.host`, `agent.port`, and the three mTLS cert references; rejects anything else.
-- `create(worker)`: builds a gRPC client (mTLS credentials resolved from config) and returns a `WindowsExecutionEnvironment`.
+- `validateConfig(config)`: requires `connection.host`, `connection.port`, and a `connection.certDir`; rejects anything else.
+- `create(worker)`: builds a gRPC client (mTLS credentials read from `certDir` on disk, mirroring `makeDockerClient`) and returns a `WindowsExecutionEnvironment`. The client sets **keepalive** (`grpc.keepalive_time_ms`, `keepalive_timeout_ms`, permit-without-calls) and **no deadline** on `Exec`, so a long build that sits idle between log lines isn't dropped (finding 14).
 
 **C. `WindowsExecutionEnvironment`** — same dir, implements `IExecutionEnvironment`:
 
@@ -94,12 +103,35 @@ message ExecEvent {
 - mTLS **server** credentials (server cert/key + client CA to verify the orchestrator).
 - Config: listen address/port, cert paths, `workspaceRoot` (default `C:\jm-runs`), max concurrent runs, and a reserved `session` mode (see §7).
 - Runs as a **background Windows service** (headless). Ships with the runner bundle + Node available on PATH (the runner self-sets `IS_SANDBOX=1`; on Windows there is no root, but the env is set for parity).
+- **Deterministic shell pinning (see §12, finding 1):** on startup the agent locates Git Bash (Git install dir / registry / PATH) and pins its absolute path for the runner's shell tool, so every box behaves identically regardless of where Git was installed.
+- **Readiness self-check (see §12, finding 1):** on startup and on demand (the Test-connection button, §4.1), the agent verifies its own environment — bash, git, node, workspace writability, plus a tiny `git clone` + command smoke test — and reports a pass/fail scorecard. If a required check fails, the agent **refuses runs up front** with an actionable message (e.g. "Git Bash not found — install Git for Windows") rather than failing mid-run.
 
 ### 3.2 Wiring / integration points
 
-- **Registry factory** — `createDefaultRegistry()` (`packages/sandbox/src/default-registry.ts`) gains an optional `windows?: WindowsBackendDeps`; when present, registers `WindowsBackend`. Mirrors how `docker?` is wired today.
-- **Catalog** — `SANDBOX_CATALOG` (`packages/sandbox/src/sandbox-catalog.ts`): update the `machine-windows` entry from `status: "planned"` → `"available"`, `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`, label "Windows machine (agent)". The catalog↔registry drift test keeps this honest.
+- **Backend selection is registry-driven (after the Phase 0 refactor, §3.3).** Today the run path is a scattered type-switch (`if type === "docker" …`) and the registry is unused (finding 7). Rather than add a fourth `if (windows)` to every site, Phase 0 makes the existing registry the single seam, so adding `machine-windows` (and every future type) is **implement one backend + register it once** — no edits to the shared call sites. See §3.3 for the refactor; the Windows backend then drops onto the clean foundation.
+- **Catalog + creation validation** — `SANDBOX_CATALOG` (`packages/sandbox/src/sandbox-catalog.ts`): update the `machine-windows` entry from `status: "planned"` → `"available"`, `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`, label "Windows machine (agent)". **Also (finding 18)** extend `validateSandboxInput`/the create route to reject a (type, executionMode, connectivity) combo outside the catalog's supported sets, with an actionable message — today it only checks the values are known, so an unsupported combo (e.g. `per-instance` + `push` for Windows) saves and fails confusingly at run time. The catalog↔registry drift test keeps the entry honest.
 - **Instance store** — `jm_sandbox_instances.connection` is currently typed `DockerConnection`. Generalize the column's TS type to a union `SandboxConnection = DockerConnection | WindowsAgentConnection`, where `WindowsAgentConnection = { host: string; port: number; certDir?: string }`. The DB column is already `jsonb`, so **no migration is required** — only the TS type widens. The Windows env persists its connection here (type `machine-windows`, `handle: "win:<runId>"`, `volume: null`) so any worker process can rebuild the client to exec/destroy/reconnect — exactly how Docker persists its daemon connection today.
+
+### 3.3 Phase 0 — centralize backend selection (registry-driven)
+
+The current run path chooses backends with scattered `if (type === …)` branches and ignores the registry (finding 7). Before adding Windows, refactor so the registry is the **single backend-selection seam**. This is a behavior-preserving refactor of the existing `local` + `docker` paths, guarded by the existing contract test, the per-backend tests, and the catalog↔registry drift test.
+
+**Changes:**
+
+1. **Backends become self-contained.** Each `ExecutionEnvironmentBackend.create(worker: ResolvedSandbox)` builds a fully-wired `IExecutionEnvironment`, including its own client, from `worker.config`:
+   - `DockerBackend` reads `worker.config.connection` and builds its client via a `makeClient(connection)` factory (the per-connection logic currently inlined in `cli-worker.ts` moves here); keeps `defaultImage`/`runnerCmd`. It also owns the **reconnect** path: when `config.__existingHandle` is present, `provision()` skips creating a container and returns a handle to the existing one (the logic currently in `cli-worker.ts`'s `provisionDocker`).
+   - `WindowsBackend` reads `worker.config.connection` (incl. `certDir`) and builds the mTLS gRPC client via `makeWindowsAgentClient(connection)`. Same reconnect handling.
+   - `LocalBackend`: its `runOperation` dep becomes **optional** — required only for `exec()`, not for `provision()`/`destroy()` — so a teardown-only process (api-server) can build the backend without coding-provider deps (finding 10).
+2. **Run-gating moves into a backend hook (finding 11).** Add an optional `ExecutionEnvironmentBackend.checkRunnable?(worker): void | Promise<void>`. `DockerBackend` implements the image-readiness gate + `verifyImageFresh` (the docker-only logic currently in `ensure-workspace.ts`/`cli-worker.ts`); other backends no-op. Behaviour-preserving constraints — **must hold**:
+   - `ensure-workspace` calls `checkRunnable` at the **same point** as today — *after* the active/provisioning early-returns (so reconnect skips it) and *before* the claim/provision step — so `ImageNotReadyError` is still thrown from inside the Conductor task and triggers the existing exponential-backoff retry (the throw location is load-bearing).
+   - The backend must return the resolved `imageRef` for `provision()` to use; the `onImagePending` re-enqueue stays a `deps`-injected callback (it touches the DB, backend-agnostic).
+3. **Registry is built per-process, not shared (finding 10).** The worker, the api-server, and the standalone `cli-sandbox-instance` cleanup tool are **separate processes** — each constructs its own registry from the same env/config (they already share the DB as source of truth). `createDefaultRegistry` is extended so `docker`/`windows` deps carry a per-connection **client factory** rather than a single pre-built client. The api-server/cleanup build a **teardown-capable** registry (local backend with `runOperation` omitted).
+4. **Call sites collapse to registry lookups:**
+   - `ensure-workspace.ts` provision + `connect()` reconnect → `const b = registry.get(worker.type); await b.checkRunnable?.(worker); const env = b.create(worker); … env.provision(runId, spec)`. The `provisionLocal`/`provisionDocker` closures in `cli-worker.ts` are deleted.
+   - All teardown entrypoints route through one shared helper `destroySandboxInstance(registry, sb)` (synthesizing a `ResolvedSandbox` from the `SandboxInstanceRecord` — `type`/`handle`/`volume`/`connection` are sufficient for `destroy`): `composition.ts` `destroyByType`, the `sandbox-instances` admin routes, and `cli-sandbox-instance.ts`. The per-type switches are deleted. (The worker's image-prune loop is separate — images, not instances — and is untouched.)
+   - `worker-harness.ts` exec routing is already type-agnostic (`wsEnv.exec`) — unchanged.
+
+**Outcome:** adding `machine-windows` (Phase 1) is **one backend class + one `createDefaultRegistry` registration + catalog entry** — zero edits to the shared provision/teardown/exec call sites. Same for any future type (ecs/ec2/kubernetes).
 
 ## 4. Configuration
 
@@ -107,16 +139,15 @@ The sandbox record's `config` (validated by `WindowsBackend.validateConfig`) hol
 
 ```jsonc
 {
-  "agent":  { "host": "win-box.internal", "port": 50051 },
-  "tls":    { "caCertRef": "...", "clientCertRef": "...", "clientKeyRef": "..." },
+  "connection": { "host": "win-box.internal", "port": 50051, "certDir": "/etc/journeyman/win-certs" },
   "workspaceRoot": "C:\\jm-runs",   // optional, default
   "session": "service",             // reserved seam: "service" (only supported value now) | "interactive" (future)
   "tags": ["os:win11", "has-iis", "has-sqlserver", "has-chrome-headless"]  // capability tags for box selection
 }
 ```
 
-- `tls.*Ref` point into the existing **secrets vault** (same pattern Docker uses for daemon certs) — private keys never sit in the DB in plaintext.
-- Per-run secrets (**SQL connection string**, test-account passwords) are **not** here; they ride along per-run as `op.env` environment variables, exactly like today.
+- `connection.certDir` is a folder **on the orchestrator host** holding `ca.pem`/`cert.pem`/`key.pem` for the mTLS client — read from disk at client-build time, exactly like Docker's `makeDockerClient` (finding 4). Placed there by deployment; not stored in the DB.
+- Per-run secrets (**SQL connection string**, test-account passwords) are **not** here; they ride along per-run as `op.env` environment variables resolved from the secrets vault, exactly like today.
 
 ### 4.1 Create/update UX & documentation (required)
 
@@ -187,6 +218,10 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - **Contract tests:** run the **real agent locally** (even on Linux CI) on a loopback port with test certs, and run it through the shared `runExecutionEnvironmentContract()` suite that `local` and `docker` already pass — proving provision → materialize → exec → destroy → list for real, with mTLS.
 - **Manual Windows smoke test:** documented steps to point a dev orchestrator at a real Windows box (or a Windows 11 laptop) and run one workflow end-to-end.
 
+## 9a. Step timeout for long Windows builds (finding 13 — corrected)
+
+The step timeout is **already user-configurable** (default 600s): per-step via the flow editor Retry tab and flow-wide via Defaults → Retry, applied to both `timeoutSeconds` and `responseTimeoutSeconds` per node in `conductor-converter.ts`. So a Windows build/QA step can be given a longer limit today — **not a blocker.** The remaining (smaller) work: (1) **verify** the per-step override beats the hardcoded global task-definition default (`cli-worker.ts:295,300`) at runtime; (2) for very long *silent* runs, confirm whether worker **heartbeating** is needed so the worker-liveness `responseTimeoutSeconds` isn't tripped mid-build; (3) **document** the recommended timeout to set for Windows build/QA steps. The plan should include a quick proof of a >10-min step running to completion on the Windows path.
+
 ## 10. Out of scope / known limitations
 
 - **Machine-state isolation is files-only.** Per-run workspace folders isolate **files**, not machine-wide state: SQL Server data, IIS sites, **ports**, the registry, the GAC, installed certs, machine env. Two runs that both `iisreset`, seed the same DB, or bind the same port **will collide**. This design is right for build/test/QA on a shared box; it is **not** suitable for destructive/stateful work (e.g. "install this MSI and check the registry"). The future path for that is the **per-run or pooled VM topology** (snapshot → run → revert) discussed during brainstorming — explicitly deferred.
@@ -205,11 +240,100 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - `packages/sandbox/src/backends/windows/*.test.ts`, contract wiring
 - `packages/windows-agent/` — the gRPC server, runner-spawn glue, service entrypoint, README (install + cert + firewall steps).
 
-**Changed:**
-- `packages/core/src/types/execution-environment.types.ts` — (if needed) connection type note; `machine-windows` already in `SandboxType`.
-- `packages/sandbox/src/default-registry.ts` — optional `windows?` registration.
-- `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available.
+**Changed — Phase 0 refactor (registry-driven selection, §3.3):**
+- `packages/core/src/types/execution-environment.types.ts` — add optional `checkRunnable?(worker)` to `ExecutionEnvironmentBackend`; `machine-windows` already in `SandboxType`.
+- `packages/sandbox/src/backends/docker/docker-backend.ts` — `create(worker)` builds its client from `worker.config.connection` (via a `makeClient` factory); implements `checkRunnable` (image-readiness gate moved out of the orchestrator).
+- `packages/sandbox/src/backends/local/local-backend.ts` — `create(worker)` unchanged in spirit; conforms to the registry path.
+- `packages/sandbox/src/default-registry.ts` — `docker`/`windows` deps carry a per-connection client factory; registers all configured backends.
+- `packages/orchestrator/src/sandbox/ensure-workspace.ts` — replace `provisionLocal`/`provisionDocker` closures + the docker image `if` with generic `registry.get(type)` + `checkRunnable` + `create` + `provision`; same for `connect()` reconnect.
+- `packages/orchestrator/src/cli-worker.ts` — delete the hand-wired provision closures; build the worker's own registry; move `verifyImageFresh`/reconnect logic into the docker backend.
+- `packages/api-server/src/composition.ts`, `packages/sandbox/src/routes/sandbox-instances.ts`, `packages/sandbox/src/cli-sandbox-instance.ts` — all teardown entrypoints route through one shared `destroySandboxInstance(registry, sb)` helper; each process builds its own teardown-capable registry (local backend with `runOperation` omitted). Per-type `destroyByType` switch deleted.
+
+**Changed — Phase 1 (Windows):**
+- `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available; label "Windows machine (agent)", `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`.
+- `packages/sandbox/src/sandbox-record.ts` (`validateSandboxInput`) / create route — reject (type, mode, connectivity) combos outside the catalog's supported sets (finding 18).
 - `packages/sandbox/src/sandbox-instance-store.ts` — widen `connection` type to `SandboxConnection` union.
-- Sandbox create/update form — inline field help, prerequisites checklist, connection-test affordance, and actionable validation messages for the `machine-windows` type (§4.1).
+- Coding providers (finding 16) — gate/flag `aisdk` as unsupported on Windows (Claude + OpenCode supported); document in the README. No code change to providers in v1 beyond the gate.
+- Sandbox UI (finding 12) — `packages/web/src/components/sandboxes/types/MachineWindowsConfigForm.tsx` (new) + one line in `types/registry.ts`; field help + prereqs checklist + `testConnection: true`.
+- `packages/sandbox/src/test-connection.ts` — extend `runWorkerConnectionTest` to handle `machine-windows` by calling the agent's `Readiness` RPC (returns the scorecard).
+- Step timeout (finding 13, §9a) — already user-configurable (Retry tab / flow defaults → `conductor-converter.ts`). Work is to **verify** the per-step override beats the hardcoded global default (`cli-worker.ts:295,300`), add heartbeating only if long silent runs trip `responseTimeoutSeconds`, and document the recommended value.
+- Packaging (finding 15) — a build step producing the shippable Windows agent bundle (Node + `runner.js` + prod `node_modules` + `windows-agent` + service wrapper); extends `scripts/build-kit.mjs`/images tooling.
 - `packages/windows-agent/README.md` — full setup walkthrough (install, certs, firewall), linked from the form.
 - Import-boundary allowances if `agent-protocol` introduces a new edge.
+
+## 12. Dry-run findings — Windows portability & safety
+
+A trace of one full run against the current code (orchestrator call sequence, the Docker pattern we mirror, and the runner's Windows-portability) confirmed the architecture holds. It also surfaced these items, captured here and folded into scope.
+
+**Confirmed OK (no change):** "one shared box + per-run folders" works — the harness calls `provision`/`destroy` once per run regardless of `executionMode`; image-readiness gating is `docker`-only so `machine-windows` is never blocked; per-run secrets already flow through the secret resolver into `op.env`; the runner's PATH handling and workspace path-resolver already use cross-platform `node:path`.
+
+### Finding 1 — The runner's shell tool needs a Unix-style (bash) shell  *(resolved via agent self-check)*
+The runner's git operations and the Claude `Bash` tool assume bash. Native Windows has no bash by default — but **Git for Windows (already a prerequisite) ships Git Bash**, and Claude Code supports Windows. This is the load-bearing assumption.
+- **One-time (dev):** a small spike proving `runCustomPrompt` + `git clone` works on a real Windows box — validates the *code*.
+- **Per-machine (automatic):** the agent does **deterministic shell pinning** (locates and locks Git Bash) and a **readiness self-check** that fails fast with an actionable message, surfaced as a green/red scorecard on the Test-connection button (§3.1 D, §4.1). This is how we verify *every* box without logging into each one.
+
+### Finding 2 — Workspace-confinement guard only recognizes POSIX paths  *(must-fix, security)*
+The workspace "fence" (`packages/agent-runtime/src/workspace-guard/extract-paths.ts`, `findBashEscape`) detects out-of-workspace access by matching POSIX absolute paths (`/…`). It does **not** match Windows drive paths (`C:\…`) or UNC paths (`\\server\share`), so on Windows the AI could escape its workspace undetected. The core resolver (`resolve.ts`) is already cross-platform; only the escape-detection regex needs Windows shapes added. Security-relevant — must fix before any real Windows run.
+### Finding 3 — Hardcoded `/` separators and `/workspace` convention  *(low risk, contained)*
+Two path-spelling issues:
+- **3a (fix old code):** `packages/skills/src/bundle-skills.ts` `dirsCommonParent()` finds a parent dir via `lastIndexOf("/")` → returns garbage on Windows paths. Replace with `node:path` `dirname()`. One-liner.
+- **3b (build new code right):** Docker fixes the workspace at `/workspace`; Windows uses `C:\jm-runs\<runId>`. The new agent's `exec` must set the runner `cwd` to the **real** Windows folder (not `/workspace`), and `materialize` must map any incoming `/workspace/...` destination onto the Windows workspace dir. New code, so handled correctly from the start — but explicitly called out.
+
+Neither threatens the design; both are caught by the readiness self-check (finding 1) and the shared `IExecutionEnvironment` contract test.
+### Finding 4 — mTLS certs come from a `certDir` on disk, not the secrets vault  *(spec correction)*
+The original spec resolved the orchestrator's mTLS client certs from the secrets vault. The existing Docker backend does **not** do that — `makeDockerClient` reads `ca.pem`/`cert.pem`/`key.pem` from a `certDir` path on disk (placed there by deployment), and the path lives in the sandbox `config`/`connection`. **Correction: mirror Docker** — the Windows config carries a `certDir` (connection certs read from disk). This is separate from **per-run secrets** (SQL connection string, passwords), which still resolve from the vault into `op.env` per run, unchanged.
+### Finding 5 — The client is built in two places (provision *and* teardown)  *(wiring note)*
+The sandbox connection is constructed twice in a run's life: at start by the worker (`cli-worker` provision path) and at end by a separate teardown path (`packages/api-server/src/composition.ts` `sandboxReaper`/`destroyByType`), which **rebuilds the client from the persisted connection** because the original worker may be gone. Docker centralizes this in `makeDockerClient(connection)`, called from both. **Mirror it:** one `makeWindowsAgentClient(connection)` factory wired into **both** the provision and teardown paths. Miss the teardown wiring → workspace folders accumulate on the box and never get cleaned up. No design change; just must wire both.
+### Finding 6 — New dependencies + package registration  *(housekeeping)*
+- **6a:** the repo has **no** gRPC libraries today. Add the standard `@grpc/grpc-js` + a `.proto` loader (e.g. `@grpc/proto-loader` or `ts-proto` for generated types) to the new packages.
+- **6b:** register the two new packages in the import-boundary rulebook (`scripts/check-import-boundaries.mjs` `PKG_LAYER`): `@journeyman/agent-protocol` (shared) and `@journeyman/windows-agent` (backend), so `npm run check:boundaries` passes. Mechanical, ~few lines.
+
+---
+
+*Second dry-run pass (run-path wiring, runner stdio discipline, gRPC edges):*
+
+### Finding 7 — Backend selection is a procedural type-switch, not the registry  *(resolved via Phase 0 refactor)*
+The production run path does **not** use `InMemoryExecutionEnvironmentRegistry`/`createDefaultRegistry` (they're test-only); backends are chosen by scattered `if (type === …)` branches across ensure-workspace, cli-worker, and composition. Per the user's call, we don't perpetuate the smell by adding a fourth `if (windows)` everywhere. Instead, **Phase 0 (§3.3) makes the registry the single backend-selection seam** — pushing client/cert construction and run-gating into each backend — so adding Windows (and future types) is one backend class + one registration, with no edits to the shared call sites. Behavior-preserving for local/docker, guarded by existing tests.
+
+### Finding 8 — Contract needs a `Readiness` RPC  *(added to proto)*
+The self-check (finding 1) and Test-connection (§4.1) need a health call. Added `Readiness(ReadinessRequest) → ReadinessReply { ready, checks[] }` to the `.proto` (§3.1 A).
+
+*Third dry-run pass (Phase 0 refactor feasibility):*
+
+### Finding 10 — Registry can't be "shared" across processes; teardown has 3 entrypoints  *(spec correction — §3.3)*
+The worker, the api-server, and `cli-sandbox-instance.ts` are **separate processes** — no shared in-memory singleton. Each builds its own registry from the same env/config (DB is the shared source of truth). Corrected §3.3: registry is **per-process**; `createDefaultRegistry` deps carry a per-connection **client factory**. Teardown is reached from three entrypoints (`composition.ts` reaper/route, the admin routes, the standalone CLI) — route them all through one shared `destroySandboxInstance(registry, sb)` helper. Also: `LocalBackend`'s `runOperation` dep becomes **optional** (needed only for `exec`), so the teardown-only api-server can build the backend without coding-provider deps.
+
+### Finding 11 — Moving image-gating into `checkRunnable` is viable with strict constraints  *(refactor guardrails)*
+The dry run confirmed "no blocking issues," provided: (a) `checkRunnable` is called at the **same point** — after the active/provisioning early-returns (reconnect skips it), before claim/provision — so `ImageNotReadyError` still throws inside the Conductor task and keeps the existing exponential-backoff retry (throw location is load-bearing); (b) `verifyImageFresh`/fingerprint/kit-pull logic moves into the **docker backend** (needs the docker client); (c) the backend returns the resolved `imageRef` for provision; (d) `onImagePending` stays a `deps`-injected callback; (e) the **reconnect** (`__existingHandle`) branch moves into the docker backend's `provision`. `imageState` stays a docker concern — local/other backends treat the gate as a no-op. Folded into §3.3.
+
+*Fourth dry-run pass (UI wiring, operational edges):*
+
+### Finding 12 — Sandbox create/update UI is descriptor-driven; connection-test already exists  *(scope-reducing)*
+The form is pluggable by type: `packages/web/src/components/sandboxes/types/registry.ts` (`sandboxTypeForms`) maps each `SandboxType` to a `SandboxTypeForm` descriptor (`ConfigForm`, `readConfig`/`buildConfig`, optional `validate`, `testConnection`). A **Test-connection** button already exists (`SandboxFormModal.tsx` → `POST /api/orgs/:orgId/sandboxes/test-connection` → `runWorkerConnectionTest`), and the type picker reads `SANDBOX_CATALOG` (greys out `status !== "available"`). So §4.1 is **small**: add a `MachineWindowsConfigForm.tsx` + one `registry.ts` line, extend `runWorkerConnectionTest` to handle `machine-windows` by calling the agent's `Readiness` RPC, and flip the catalog to available. No modal/schema/API restructuring.
+
+### Finding 13 — Step timeout is already configurable (default 10 min); verify override + heartbeat  *(corrected — not a blocker)*
+**Correction of an earlier overstatement.** The step timeout is **already user-configurable**: the flow editor exposes a per-step timeout (`RetryTab.tsx`, default 600) and a flow-wide default (`DefaultsRetrySection.tsx`); it's stored on the node retry config (`flow.types.ts`, `update-flow.ts`) and applied to **both** `timeoutSeconds` and `responseTimeoutSeconds` per node in `conductor-converter.ts:397-398` (`r.timeoutSeconds ?? 600`). So a user can give a build step 45 minutes today. Remaining narrower work (not a blocker): (a) **verify the per-step override actually wins at runtime** over the hardcoded global task-definition default in `cli-worker.ts:295,300` (Conductor taskDef vs workflow-task precedence); (b) for very long *silent* runs, confirm whether worker **heartbeating** is needed so `responseTimeoutSeconds` (worker-liveness) isn't tripped during a quiet 30-min build. Document the recommended timeout for Windows build/QA steps in the README.
+
+### Finding 14 — Long execs need gRPC keepalive + no deadline  *(design requirement)*
+During a long build the gRPC stream sits idle between log lines. The prior socket-proxy lesson (idle half-close ~500ms, `2026-06-09-replace-dind-with-socket-proxy-design.md`) applies: the Windows gRPC **client and agent must enable keepalive** (`grpc.keepalive_time_ms`/`keepalive_timeout_ms`, permit-without-calls) and set **no overall deadline** on `Exec` (the AbortSignal carries no timeout today; the Conductor task timeout from finding 13 is the real bound). Added to the client/agent design (§3.1 B/D).
+
+### Finding 15 — Packaging the agent for a Windows box is net-new  *(scope addition)*
+The runner ships only as Docker images today (`build-kit.mjs` → registry, per `2026-06-09-registry-backed-runner-kit-design.md`); there's no artifact for a non-Docker host. The bundle itself is cross-platform (esbuild `dist/runner.js`; externalized deps — pino/pg/tar/SDKs — all install on Windows). Net-new: a build step producing a shippable **Windows agent bundle** (folder/zip: Node 22 + `runner.js` + prod `node_modules` + the `windows-agent` server + a service wrapper) for the manual install (§8). Not hard, but on the checklist.
+
+*Fifth dry-run pass (create → use → coding providers):*
+
+### Finding 16 — Coding-provider Windows matrix: Claude ✅, OpenCode ✅, AISDK ❌  *(provider support decision)*
+`createCodingProvider` (factory.ts) wires three providers: `claude`, `opencode`, `aisdk` (gemini/codex aren't even in the switch — stubs that throw). On Windows:
+- **Claude** ✅ — Node SDK + engine subprocess; `Bash` tool needs Git Bash (finding 1); `Grep`/`Glob` are SDK-native (fine).
+- **OpenCode** ✅ — the `opencode-ai` npm package bundles a native **`opencode.exe`** (optional deps for `opencode-windows-x64`/`arm64`); managed server runs on Windows with no shell deps. Fully supported.
+- **AISDK** ❌ — `providers/aisdk/tools/bash.ts` hardcodes `spawn("bash", ["-lc", …])` and `tools/fs.ts` hardcodes `spawn("rg", …)`; both fail on Windows. **Decision:** for v1, support Claude + OpenCode on Windows and **gate/flag AISDK as unsupported** (or fix it later: shell abstraction + bundled/optional ripgrep). Document in the README.
+- Provider is per-step (`input.provider`), so one workflow can mix Claude and OpenCode on the same box.
+
+### Finding 17 — Only workspace steps run on the box; unset sandbox silently runs local  *(confirmed + usability gotcha)*
+Confirmed the routing: steps that need the workspace (`clone-repos`, `start-feature-branch`, `list-workspace-files`, and `custom-ai` when it has workspace tools/skills/MCPs) go through `SandboxInstanceCodingProvider`/`GitProvider` → `ctx.exec` → the box; REST/ticket/notification steps (`get-issue`, `open-pull-request`, `send-message`, …) run **in-process on the Linux worker** and never touch the box. Workspace persists per-run across steps. **Gotcha:** a step runs on the Windows box only if pinned via node `sandboxId` or the flow default; `resolveSandbox(undefined)` **falls back to local** (`apply-flow-defaults.ts`) — so a forgotten selection silently runs on the worker, not Windows. Surface this in the UI/docs (and the run view should show which sandbox a step used).
+
+### Finding 18 — Sandbox creation doesn't validate mode/connectivity against the catalog  *(must-fix — correctness/UX)*
+`validateSandboxInput` checks `type`/`executionMode`/`connectivity` are *known values* but **not** that the combination is in the catalog's `supportedModes`/`supportedConnectivity` for that type. A `machine-windows` sandbox could be saved with an unsupported combo (e.g. `per-instance` + `push`) and then fail confusingly at run time. **Fix:** (a) tighten the `machine-windows` catalog entry to our actual support — label "Windows machine (agent)", `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`; (b) extend `validateSandboxInput` (or the create route) to reject combos outside the catalog's supported sets, with an actionable message (ties to §4.1). The Windows form should default to shared + agent and not offer others.
+
+### Finding 9 — Runner stdout/stderr discipline is airtight  *(confirmed — validates the streaming design)*
+Verified the gRPC streaming approach is safe: the runner (`cli.ts` `guardRunnerStdout()`) writes **exactly one** `RunnerResponse` JSON to stdout and reroutes stray `console.log`/`console.info` to stderr; all logs go to stderr as NDJSON `{line, meta}`; `op.signal` propagates into the SDK `query()` abort controller so killing the child cleanly cancels; no temp files are left behind. So: agent streams stderr lines as `LogLine` events, captures stdout, emits it as the final `ExecFinal`. Two reinforcements: (a) the agent must ensure **Node is on PATH** before spawning the runner (the SDK spawns `node` by bare name — covered by the readiness check); (b) the agent must clear a run's `destDir` with **Node `fs.rm`**, not a `sh -c rm -rf` (Docker's materialize uses a shell *inside the Linux container*; the Windows agent can't — folds into finding 3b). Also set a generous gRPC **max-message-size** so a large `ExecFinal` structured result isn't truncated (logs are streamed, so unaffected).
