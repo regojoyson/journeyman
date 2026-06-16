@@ -52,11 +52,17 @@ A small always-on program (the **agent**) runs on the Windows box. The Linux orc
 
 ```proto
 service JourneymanAgent {
+  rpc Readiness(ReadinessRequest) returns (ReadinessReply); // self-check scorecard (finding 1, 8)
   rpc Provision(ProvisionRequest) returns (ProvisionReply);
   rpc Exec(ExecRequest) returns (stream ExecEvent);          // log lines, then a final result event
   rpc Materialize(stream FileChunk) returns (MaterializeReply); // tar upload, replaces a dir
   rpc Destroy(DestroyRequest) returns (DestroyReply);
   rpc List(ListRequest) returns (ListReply);                 // enumerate run workspaces
+}
+
+message ReadinessReply {
+  bool ready = 1;
+  repeated ReadinessCheck checks = 2;   // {name, ok, detail} for bash, git, node, workspace, smoke-test
 }
 
 message ExecRequest {
@@ -99,7 +105,12 @@ message ExecEvent {
 
 ### 3.2 Wiring / integration points
 
-- **Registry factory** — `createDefaultRegistry()` (`packages/sandbox/src/default-registry.ts`) gains an optional `windows?: WindowsBackendDeps`; when present, registers `WindowsBackend`. Mirrors how `docker?` is wired today.
+- **Run-path wiring is a procedural type-switch, NOT the registry (finding 7).** The `InMemoryExecutionEnvironmentRegistry` / `createDefaultRegistry` is unused in production — the orchestrator selects backends with explicit `if (type === …)` branches. Adding `machine-windows` means editing these sites (each mirrors the docker path):
+  - `packages/orchestrator/src/sandbox/ensure-workspace.ts` — provisioning gate + the `connect()` reconnect path (2 branches).
+  - `packages/orchestrator/src/cli-worker.ts` — add a `provisionWindows` closure (builds `WindowsExecutionEnvironment` via `makeWindowsAgentClient`), like the existing `provisionDocker`/`provisionLocal` closures.
+  - `packages/api-server/src/composition.ts` — add a `machine-windows` case to `destroyByType` (the teardown path, finding 5).
+  - `packages/orchestrator/src/workers/worker-harness.ts` — exec routing is `if (provisioned.type !== "local")` → already covers `machine-windows` for free; no change.
+  - The catalog/registry are still updated (below) for correctness and the drift test, even though the run path doesn't consume the registry.
 - **Catalog** — `SANDBOX_CATALOG` (`packages/sandbox/src/sandbox-catalog.ts`): update the `machine-windows` entry from `status: "planned"` → `"available"`, `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`, label "Windows machine (agent)". The catalog↔registry drift test keeps this honest.
 - **Instance store** — `jm_sandbox_instances.connection` is currently typed `DockerConnection`. Generalize the column's TS type to a union `SandboxConnection = DockerConnection | WindowsAgentConnection`, where `WindowsAgentConnection = { host: string; port: number; certDir?: string }`. The DB column is already `jsonb`, so **no migration is required** — only the TS type widens. The Windows env persists its connection here (type `machine-windows`, `handle: "win:<runId>"`, `volume: null`) so any worker process can rebuild the client to exec/destroy/reconnect — exactly how Docker persists its daemon connection today.
 
@@ -241,3 +252,16 @@ The sandbox connection is constructed twice in a run's life: at start by the wor
 ### Finding 6 — New dependencies + package registration  *(housekeeping)*
 - **6a:** the repo has **no** gRPC libraries today. Add the standard `@grpc/grpc-js` + a `.proto` loader (e.g. `@grpc/proto-loader` or `ts-proto` for generated types) to the new packages.
 - **6b:** register the two new packages in the import-boundary rulebook (`scripts/check-import-boundaries.mjs` `PKG_LAYER`): `@journeyman/agent-protocol` (shared) and `@journeyman/windows-agent` (backend), so `npm run check:boundaries` passes. Mechanical, ~few lines.
+
+---
+
+*Second dry-run pass (run-path wiring, runner stdio discipline, gRPC edges):*
+
+### Finding 7 — Backend selection is a procedural type-switch, not the registry  *(spec correction — important)*
+The production run path does **not** use `InMemoryExecutionEnvironmentRegistry`/`createDefaultRegistry` (they're test-only). Backends are chosen by explicit `if (type === …)` branches. Adding `machine-windows` requires editing the four sites listed in §3.2 (ensure-workspace ×2, cli-worker `provisionWindows`, composition `destroyByType`; worker-harness needs no change). This replaces the earlier "just register it" framing.
+
+### Finding 8 — Contract needs a `Readiness` RPC  *(added to proto)*
+The self-check (finding 1) and Test-connection (§4.1) need a health call. Added `Readiness(ReadinessRequest) → ReadinessReply { ready, checks[] }` to the `.proto` (§3.1 A).
+
+### Finding 9 — Runner stdout/stderr discipline is airtight  *(confirmed — validates the streaming design)*
+Verified the gRPC streaming approach is safe: the runner (`cli.ts` `guardRunnerStdout()`) writes **exactly one** `RunnerResponse` JSON to stdout and reroutes stray `console.log`/`console.info` to stderr; all logs go to stderr as NDJSON `{line, meta}`; `op.signal` propagates into the SDK `query()` abort controller so killing the child cleanly cancels; no temp files are left behind. So: agent streams stderr lines as `LogLine` events, captures stdout, emits it as the final `ExecFinal`. Two reinforcements: (a) the agent must ensure **Node is on PATH** before spawning the runner (the SDK spawns `node` by bare name — covered by the readiness check); (b) the agent must clear a run's `destDir` with **Node `fs.rm`**, not a `sh -c rm -rf` (Docker's materialize uses a shell *inside the Linux container*; the Windows agent can't — folds into finding 3b). Also set a generous gRPC **max-message-size** so a large `ExecFinal` structured result isn't truncated (logs are streamed, so unaffected).
