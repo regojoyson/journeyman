@@ -76,8 +76,8 @@ message ExecEvent {
 
 **B. `WindowsBackend`** — `packages/sandbox/src/backends/windows/windows-backend.ts`, implements `ExecutionEnvironmentBackend`:
 - `type = "machine-windows"`, `supportedModes = ["shared"]`, `supportedConnectivity = ["agent"]`.
-- `validateConfig(config)`: requires `agent.host`, `agent.port`, and the three mTLS cert references; rejects anything else.
-- `create(worker)`: builds a gRPC client (mTLS credentials resolved from config) and returns a `WindowsExecutionEnvironment`.
+- `validateConfig(config)`: requires `connection.host`, `connection.port`, and a `connection.certDir`; rejects anything else.
+- `create(worker)`: builds a gRPC client (mTLS credentials read from `certDir` on disk, mirroring `makeDockerClient`) and returns a `WindowsExecutionEnvironment`.
 
 **C. `WindowsExecutionEnvironment`** — same dir, implements `IExecutionEnvironment`:
 
@@ -94,6 +94,8 @@ message ExecEvent {
 - mTLS **server** credentials (server cert/key + client CA to verify the orchestrator).
 - Config: listen address/port, cert paths, `workspaceRoot` (default `C:\jm-runs`), max concurrent runs, and a reserved `session` mode (see §7).
 - Runs as a **background Windows service** (headless). Ships with the runner bundle + Node available on PATH (the runner self-sets `IS_SANDBOX=1`; on Windows there is no root, but the env is set for parity).
+- **Deterministic shell pinning (see §12, finding 1):** on startup the agent locates Git Bash (Git install dir / registry / PATH) and pins its absolute path for the runner's shell tool, so every box behaves identically regardless of where Git was installed.
+- **Readiness self-check (see §12, finding 1):** on startup and on demand (the Test-connection button, §4.1), the agent verifies its own environment — bash, git, node, workspace writability, plus a tiny `git clone` + command smoke test — and reports a pass/fail scorecard. If a required check fails, the agent **refuses runs up front** with an actionable message (e.g. "Git Bash not found — install Git for Windows") rather than failing mid-run.
 
 ### 3.2 Wiring / integration points
 
@@ -107,16 +109,15 @@ The sandbox record's `config` (validated by `WindowsBackend.validateConfig`) hol
 
 ```jsonc
 {
-  "agent":  { "host": "win-box.internal", "port": 50051 },
-  "tls":    { "caCertRef": "...", "clientCertRef": "...", "clientKeyRef": "..." },
+  "connection": { "host": "win-box.internal", "port": 50051, "certDir": "/etc/journeyman/win-certs" },
   "workspaceRoot": "C:\\jm-runs",   // optional, default
   "session": "service",             // reserved seam: "service" (only supported value now) | "interactive" (future)
   "tags": ["os:win11", "has-iis", "has-sqlserver", "has-chrome-headless"]  // capability tags for box selection
 }
 ```
 
-- `tls.*Ref` point into the existing **secrets vault** (same pattern Docker uses for daemon certs) — private keys never sit in the DB in plaintext.
-- Per-run secrets (**SQL connection string**, test-account passwords) are **not** here; they ride along per-run as `op.env` environment variables, exactly like today.
+- `connection.certDir` is a folder **on the orchestrator host** holding `ca.pem`/`cert.pem`/`key.pem` for the mTLS client — read from disk at client-build time, exactly like Docker's `makeDockerClient` (finding 4). Placed there by deployment; not stored in the DB.
+- Per-run secrets (**SQL connection string**, test-account passwords) are **not** here; they ride along per-run as `op.env` environment variables resolved from the secrets vault, exactly like today.
 
 ### 4.1 Create/update UX & documentation (required)
 
@@ -213,3 +214,30 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - Sandbox create/update form — inline field help, prerequisites checklist, connection-test affordance, and actionable validation messages for the `machine-windows` type (§4.1).
 - `packages/windows-agent/README.md` — full setup walkthrough (install, certs, firewall), linked from the form.
 - Import-boundary allowances if `agent-protocol` introduces a new edge.
+
+## 12. Dry-run findings — Windows portability & safety
+
+A trace of one full run against the current code (orchestrator call sequence, the Docker pattern we mirror, and the runner's Windows-portability) confirmed the architecture holds. It also surfaced these items, captured here and folded into scope.
+
+**Confirmed OK (no change):** "one shared box + per-run folders" works — the harness calls `provision`/`destroy` once per run regardless of `executionMode`; image-readiness gating is `docker`-only so `machine-windows` is never blocked; per-run secrets already flow through the secret resolver into `op.env`; the runner's PATH handling and workspace path-resolver already use cross-platform `node:path`.
+
+### Finding 1 — The runner's shell tool needs a Unix-style (bash) shell  *(resolved via agent self-check)*
+The runner's git operations and the Claude `Bash` tool assume bash. Native Windows has no bash by default — but **Git for Windows (already a prerequisite) ships Git Bash**, and Claude Code supports Windows. This is the load-bearing assumption.
+- **One-time (dev):** a small spike proving `runCustomPrompt` + `git clone` works on a real Windows box — validates the *code*.
+- **Per-machine (automatic):** the agent does **deterministic shell pinning** (locates and locks Git Bash) and a **readiness self-check** that fails fast with an actionable message, surfaced as a green/red scorecard on the Test-connection button (§3.1 D, §4.1). This is how we verify *every* box without logging into each one.
+
+### Finding 2 — Workspace-confinement guard only recognizes POSIX paths  *(must-fix, security)*
+The workspace "fence" (`packages/agent-runtime/src/workspace-guard/extract-paths.ts`, `findBashEscape`) detects out-of-workspace access by matching POSIX absolute paths (`/…`). It does **not** match Windows drive paths (`C:\…`) or UNC paths (`\\server\share`), so on Windows the AI could escape its workspace undetected. The core resolver (`resolve.ts`) is already cross-platform; only the escape-detection regex needs Windows shapes added. Security-relevant — must fix before any real Windows run.
+### Finding 3 — Hardcoded `/` separators and `/workspace` convention  *(low risk, contained)*
+Two path-spelling issues:
+- **3a (fix old code):** `packages/skills/src/bundle-skills.ts` `dirsCommonParent()` finds a parent dir via `lastIndexOf("/")` → returns garbage on Windows paths. Replace with `node:path` `dirname()`. One-liner.
+- **3b (build new code right):** Docker fixes the workspace at `/workspace`; Windows uses `C:\jm-runs\<runId>`. The new agent's `exec` must set the runner `cwd` to the **real** Windows folder (not `/workspace`), and `materialize` must map any incoming `/workspace/...` destination onto the Windows workspace dir. New code, so handled correctly from the start — but explicitly called out.
+
+Neither threatens the design; both are caught by the readiness self-check (finding 1) and the shared `IExecutionEnvironment` contract test.
+### Finding 4 — mTLS certs come from a `certDir` on disk, not the secrets vault  *(spec correction)*
+The original spec resolved the orchestrator's mTLS client certs from the secrets vault. The existing Docker backend does **not** do that — `makeDockerClient` reads `ca.pem`/`cert.pem`/`key.pem` from a `certDir` path on disk (placed there by deployment), and the path lives in the sandbox `config`/`connection`. **Correction: mirror Docker** — the Windows config carries a `certDir` (connection certs read from disk). This is separate from **per-run secrets** (SQL connection string, passwords), which still resolve from the vault into `op.env` per run, unchanged.
+### Finding 5 — The client is built in two places (provision *and* teardown)  *(wiring note)*
+The sandbox connection is constructed twice in a run's life: at start by the worker (`cli-worker` provision path) and at end by a separate teardown path (`packages/api-server/src/composition.ts` `sandboxReaper`/`destroyByType`), which **rebuilds the client from the persisted connection** because the original worker may be gone. Docker centralizes this in `makeDockerClient(connection)`, called from both. **Mirror it:** one `makeWindowsAgentClient(connection)` factory wired into **both** the provision and teardown paths. Miss the teardown wiring → workspace folders accumulate on the box and never get cleaned up. No design change; just must wire both.
+### Finding 6 — New dependencies + package registration  *(housekeeping)*
+- **6a:** the repo has **no** gRPC libraries today. Add the standard `@grpc/grpc-js` + a `.proto` loader (e.g. `@grpc/proto-loader` or `ts-proto` for generated types) to the new packages.
+- **6b:** register the two new packages in the import-boundary rulebook (`scripts/check-import-boundaries.mjs` `PKG_LAYER`): `@journeyman/agent-protocol` (shared) and `@journeyman/windows-agent` (backend), so `npm run check:boundaries` passes. Mechanical, ~few lines.
