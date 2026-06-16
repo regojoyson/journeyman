@@ -45,9 +45,11 @@ const PKG_LAYER = {
   "@journeyman/migrations": "backend",
   "@journeyman/webhooks": "backend",
   "@journeyman/sandbox": "backend",
+  "@journeyman/windows-agent": "backend",
 
   "@journeyman/core": "shared",
   "@journeyman/identity": "shared",
+  "@journeyman/agent-protocol": "shared",
 };
 
 // Subpath overrides — "@journeyman/steps/catalog" is shared (no React).

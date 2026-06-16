@@ -1,0 +1,15 @@
+{
+  "name": "@journeyman/windows-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": { "journeyman-agent": "./src/cli.ts" },
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@journeyman/agent-protocol": "*",
+    "@journeyman/agent-runtime": "*",
+    "@grpc/grpc-js": "^1.12.0",
+    "tar": "^7.4.3"
+  },
+  "devDependencies": { "typescript": "^5", "vitest": "^4" }
+}
