@@ -66,6 +66,23 @@ describe("DockerBackend.checkRunnable", () => {
     await expect(Promise.resolve(b.checkRunnable!(worker({})))).resolves.toBeUndefined();
   });
 
+  it("re-enqueues + throws when a ready image was pruned (no imageRef)", async () => {
+    const onImagePending = vi.fn(async () => {});
+    const b = new DockerBackend({ makeClient: () => fakeClient, defaultImage: "img:dev", onImagePending });
+    const pruned = { ...worker({ image: { kind: "ref", imageRef: "x:1" } }), imageState: "ready" as const, imageRef: null };
+    await expect(Promise.resolve(b.checkRunnable!(pruned))).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(onImagePending).toHaveBeenCalledWith("w1");
+  });
+
+  it("re-enqueues + throws when a ready image drifted (stale)", async () => {
+    const onImagePending = vi.fn(async () => {});
+    const verifyImageFresh = vi.fn(async () => ({ fresh: false, reason: "image drift" }));
+    const b = new DockerBackend({ makeClient: () => fakeClient, defaultImage: "img:dev", onImagePending, verifyImageFresh });
+    const stale = { ...worker({ image: { kind: "ref", imageRef: "x:1" } }), imageState: "ready" as const, imageRef: "built:fp", imageFingerprint: "fp" };
+    await expect(Promise.resolve(b.checkRunnable!(stale))).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(onImagePending).toHaveBeenCalledWith("w1");
+  });
+
   it("passes for a ready+fresh image and stamps __imageRef", async () => {
     const verifyImageFresh = vi.fn(async () => ({ fresh: true }));
     const b = new DockerBackend({ makeClient: () => fakeClient, defaultImage: "img:dev", verifyImageFresh });

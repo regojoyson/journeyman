@@ -13,10 +13,10 @@ import { GitHubProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
-  ProviderFactory, SecretBinding, ProvisionedEnv, IEventBus,
+  ProviderFactory, SecretBinding, IEventBus,
 } from "@journeyman/core";
 import {
-  DockerExecutionEnvironment, LocalExecutionEnvironment,
+  createDefaultRegistry,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
   markImagePending, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
   listReadyImageRefs, listDockerSandboxConnections, resolveKitRefs, registryAuthFromEnv,
@@ -115,6 +115,48 @@ async function waitActive(
  * Demand-driven workspace provisioner — provision-if-missing, status-gated,
  * local + docker. Passed as the `ensureWorkspace` dep to WorkerHarness.
  */
+// Per-process backend registry. Docker deps carry a per-connection client
+// factory + the kit/image callbacks (relocated from the old provision closures).
+const workerRegistry = createDefaultRegistry({
+  runOperation: createCodingOperationRunner({
+    makeProvider: (envVars) => createCodingProvider(undefined, { env: envVars }),
+  }),
+  defaultBaseDir: workspaceBaseDir,
+  docker: {
+    makeClient: (connection) => makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]),
+    defaultImage: RUNNER_IMAGE,
+    resolveImageRef: async (config, client) => {
+      // Spec B: never build inside the run. checkRunnable has already confirmed
+      // readiness and stamped __imageRef (or left it unset → default runner box).
+      const preBuilt = config["__imageRef"] as string | undefined;
+      const { base: baseRef } = await kitRefs();
+      const imageRef = preBuilt ?? baseRef;
+      if (!preBuilt) await ensureKitImage(client, baseRef, REGISTRY_AUTH);
+      return imageRef;
+    },
+    onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
+    verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
+      const connection = (config as Record<string, unknown>)["connection"];
+      const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
+      const { bundle } = await kitRefs();
+      await ensureKitImage(client, bundle, REGISTRY_AUTH);
+      const inputs = await resolveBuildInputs({
+        image: (config as Record<string, unknown>)["image"] as never,
+        client,
+        bundleRef: bundle,
+      });
+      const present = await client.imageExists(storedImageRef);
+      const fresh = present && inputs.fingerprint === storedFingerprint;
+      return {
+        fresh,
+        ...(fresh
+          ? {}
+          : { reason: `image drift: expected ${inputs.fingerprint}, have ${storedFingerprint || "none"}${present ? "" : " (image pruned)"}` }),
+      };
+    },
+  },
+});
+
 const ensureWs = (a: {
   runId: string;
   sandboxId: string | undefined;
@@ -134,6 +176,7 @@ const ensureWs = (a: {
         if (pool) {
           const w = await resolveSandbox(pool, ctx, sandboxId);
           return {
+            id: w.id,
             type: w.type,
             config: (w.config ?? {}) as Record<string, unknown>,
             imageState: w.imageState,
@@ -142,75 +185,9 @@ const ensureWs = (a: {
             imageError: w.imageError,
           };
         }
-        return { type: "local" as const, config: {} };
+        return { id: "local", type: "local" as const, config: {} };
       },
-      onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
-      verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
-        const connection = (config as Record<string, unknown>)["connection"];
-        const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
-        const { bundle } = await kitRefs();
-        // Ensure the kit bundle is present (pulled by digest) before recomputing
-        // the expected fingerprint.
-        await ensureKitImage(client, bundle, REGISTRY_AUTH);
-        const inputs = await resolveBuildInputs({
-          image: (config as Record<string, unknown>)["image"] as never,
-          client,
-          bundleRef: bundle,
-        });
-        const present = await client.imageExists(storedImageRef);
-        const fresh = present && inputs.fingerprint === storedFingerprint;
-        return {
-          fresh,
-          ...(fresh
-            ? {}
-            : { reason: `image drift: expected ${inputs.fingerprint}, have ${storedFingerprint || "none"}${present ? "" : " (image pruned)"}` }),
-        };
-      },
-      provisionLocal: async (runId) => {
-        const env = new LocalExecutionEnvironment({
-          runOperation: createCodingOperationRunner({
-            makeProvider: (envVars) => createCodingProvider(undefined, { env: envVars }),
-          }),
-          baseDir: workspaceBaseDir,
-        });
-        const provisioned = await env.provision(runId, {});
-        return { env, provisioned };
-      },
-      provisionDocker: async (runId, worker) => {
-        const connection = (worker.config as Record<string, unknown>)["connection"];
-        const dockerClient = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
-        const env = new DockerExecutionEnvironment({ client: dockerClient, defaultImage: RUNNER_IMAGE });
-        // If we are reconnecting to an existing container (connect() path), skip provisioning.
-        const existingHandle = (worker.config as Record<string, unknown>)["__existingHandle"];
-        if (existingHandle) {
-          const provisioned: ProvisionedEnv = {
-            runId,
-            type: "docker",
-            handle: String(existingHandle),
-            volume: (worker.config as Record<string, unknown>)["__existingVolume"] as string | undefined,
-            workspaceDir: "/workspace",
-          };
-          return { env, provisioned, connection };
-        }
-        // Spec B: never build inside the run. ensure-workspace's run-gating has
-        // already confirmed the image is ready and stamped __imageRef (or left it
-        // unset → use the default runner box).
-        const cfg = worker.config as Record<string, unknown>;
-        const preBuilt = cfg["__imageRef"] as string | undefined;
-        const { base: baseRef } = await kitRefs();
-        const imageRef = preBuilt ?? baseRef;
-        // Empty-image targets run the default box directly (no build loop), so the
-        // kit base must be present on this daemon — pull it by digest if missing.
-        if (!preBuilt) await ensureKitImage(dockerClient, baseRef, REGISTRY_AUTH);
-        const spec = {
-          imageRef,
-          network: cfg["network"] === "none" ? ("none" as const) : ("full" as const),
-          ...(cfg["resources"] ? { resources: cfg["resources"] as never } : {}),
-          ...(cfg["env"] ? { env: cfg["env"] as Record<string, string> } : {}),
-        };
-        const provisioned = await env.provision(runId, spec);
-        return { env, provisioned, imageRef: spec.imageRef, connection };
-      },
+      registry: workerRegistry,
     },
     a,
   );

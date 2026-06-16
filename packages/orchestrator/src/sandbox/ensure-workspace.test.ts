@@ -1,260 +1,131 @@
 import { describe, it, expect, vi } from "vitest";
 import { ensureWorkspace } from "./ensure-workspace.ts";
+import type { IExecutionEnvironmentRegistry, ProvisionedEnv } from "@journeyman/core";
 
-// Minimal fake ProvisionedEnv / IExecutionEnvironment for tests.
-function fakeEnv(handle: string) {
-  const provisioned = { runId: "r", type: "docker" as const, handle, workspaceDir: "/workspace" };
-  const env = {} as any;
-  return { env, provisioned };
+/** A fake registry whose backend.create() returns an env with a controllable provision result. */
+function fakeRegistry(opts: {
+  checkRunnable?: () => Promise<void>;
+  provision?: (runId: string) => ProvisionedEnv;
+} = {}) {
+  const provision = vi.fn(async (runId: string) =>
+    opts.provision
+      ? opts.provision(runId)
+      : ({ runId, type: "docker", handle: `prov-${runId}`, workspaceDir: "/workspace" } as ProvisionedEnv),
+  );
+  const env = { provision, destroy: vi.fn(), exec: vi.fn(), list: vi.fn(), materialize: vi.fn() };
+  const create = vi.fn(() => env);
+  const backend = { create, ...(opts.checkRunnable ? { checkRunnable: vi.fn(opts.checkRunnable) } : {}) };
+  const registry = { get: vi.fn(() => backend), register: vi.fn(), available: vi.fn(() => []) } as unknown as IExecutionEnvironmentRegistry;
+  return { registry, backend, env, create, provision };
 }
 
-describe("ensureWorkspace", () => {
-  it("connects when an active sandbox already exists", async () => {
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue({
-        runId: "r",
-        type: "docker",
-        status: "active",
-        handle: "c1",
-        connection: { host: "tcp://docker:2375" },
-        volume: "v",
-      }),
-      claim: vi.fn(),
-      provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c1")),
-      provisionLocal: vi.fn(),
-      markActive: vi.fn(),
-      waitActive: vi.fn(),
-      resolveSandbox: vi.fn(),
-    };
-    const r = await ensureWorkspace(deps as any, {
-      runId: "r",
-      sandboxId: undefined,
-      userId: "u",
-      orgId: "o",
+function baseDeps(registry: IExecutionEnvironmentRegistry, over: Record<string, unknown> = {}) {
+  return {
+    getSandboxInstance: vi.fn().mockResolvedValue(null),
+    claim: vi.fn().mockResolvedValue(true),
+    markActive: vi.fn().mockResolvedValue(undefined),
+    waitActive: vi.fn(),
+    resolveSandbox: vi.fn().mockResolvedValue({ id: "w1", type: "docker", config: { connection: { host: "tcp://docker:2375" } } }),
+    registry,
+    ...over,
+  };
+}
+const args = { runId: "r", sandboxId: "w1", userId: "u", orgId: "o" };
+
+describe("ensureWorkspace (registry-driven)", () => {
+  it("connects via the registry when an active sandbox already exists (no claim)", async () => {
+    const { registry, create } = fakeRegistry();
+    const deps = baseDeps(registry, {
+      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: {}, volume: "v" }),
     });
-    expect(r.provisioned.handle).toBe("c1");
+    const r = await ensureWorkspace(deps as never, args);
+    expect(r.provisioned.handle).toBe("prov-r");
     expect(deps.claim).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalled();
   });
 
-  it("waits when another worker is provisioning (existing row has provisioning status)", async () => {
-    const deps = {
+  it("waits when another worker is provisioning", async () => {
+    const { registry } = fakeRegistry();
+    const deps = baseDeps(registry, {
       getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "provisioning" }),
-      claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c2", volume: null, connection: null }),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c2")),
-      provisionLocal: vi.fn(),
-      markActive: vi.fn(),
-    };
-    const r = await ensureWorkspace(deps as any, {
-      runId: "r",
-      sandboxId: undefined,
-      userId: "u",
-      orgId: "o",
     });
+    await ensureWorkspace(deps as never, args);
     expect(deps.waitActive).toHaveBeenCalled();
-    expect(r.provisioned.handle).toBe("c2");
-    // claim must NOT have been called — we noticed provisioning from getSandboxInstance
     expect(deps.claim).not.toHaveBeenCalled();
   });
 
-  it("waits when claim race is lost (no existing row but claim returns false)", async () => {
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
+  it("waits when the claim race is lost", async () => {
+    const { registry } = fakeRegistry();
+    const deps = baseDeps(registry, {
       claim: vi.fn().mockResolvedValue(false),
       waitActive: vi.fn().mockResolvedValue({ handle: "c3", volume: null, connection: null }),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c3")),
-      provisionLocal: vi.fn(),
-      markActive: vi.fn(),
-    };
-    const r = await ensureWorkspace(deps as any, {
-      runId: "r",
-      sandboxId: undefined,
-      userId: "u",
-      orgId: "o",
     });
+    await ensureWorkspace(deps as never, args);
     expect(deps.waitActive).toHaveBeenCalled();
-    expect(r.provisioned.handle).toBe("c3");
   });
 
-  it("provisions docker when claim is won", async () => {
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
-      claim: vi.fn().mockResolvedValue(true),
-      waitActive: vi.fn(),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c4"), imageRef: "img:1", connection: { host: "tcp://docker:2375" } }),
-      provisionLocal: vi.fn(),
-      markActive: vi.fn().mockResolvedValue(undefined),
-    };
-    const r = await ensureWorkspace(deps as any, {
-      runId: "r",
-      sandboxId: undefined,
-      userId: "u",
-      orgId: "o",
+  it("provisions via the registry when claim is won and marks active", async () => {
+    const { registry } = fakeRegistry({
+      provision: (runId) => ({ runId, type: "docker", handle: "c4", volume: "v4", workspaceDir: "/workspace", imageRef: "img:1" }),
     });
-    expect(deps.provisionDocker).toHaveBeenCalled();
-    expect(deps.markActive).toHaveBeenCalledWith("r", expect.objectContaining({ handle: "c4" }));
+    const deps = baseDeps(registry);
+    const r = await ensureWorkspace(deps as never, args);
     expect(r.provisioned.handle).toBe("c4");
+    expect(deps.markActive).toHaveBeenCalledWith("r", expect.objectContaining({
+      handle: "c4", imageRef: "img:1", connection: { host: "tcp://docker:2375" },
+    }));
     expect(deps.waitActive).not.toHaveBeenCalled();
   });
 
-  it("provisions local when claim is won and worker type is local", async () => {
-    const localProvisioned = { runId: "r", type: "local" as const, handle: "local:r", workspaceDir: "/tmp/ws/r" };
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
-      claim: vi.fn().mockResolvedValue(true),
-      waitActive: vi.fn(),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "local", config: {} }),
-      provisionLocal: vi.fn().mockResolvedValue({ env: {}, provisioned: localProvisioned }),
-      provisionDocker: vi.fn(),
-      markActive: vi.fn().mockResolvedValue(undefined),
-    };
-    const r = await ensureWorkspace(deps as any, {
-      runId: "r",
-      sandboxId: undefined,
-      userId: "u",
-      orgId: "o",
+  it("provisions a local worker via the registry", async () => {
+    const { registry } = fakeRegistry({
+      provision: (runId) => ({ runId, type: "local", handle: `local:${runId}`, workspaceDir: `/tmp/${runId}` }),
     });
-    expect(deps.provisionLocal).toHaveBeenCalledWith("r");
-    expect(deps.markActive).toHaveBeenCalledWith("r", { handle: "local:r" });
+    const deps = baseDeps(registry, {
+      resolveSandbox: vi.fn().mockResolvedValue({ id: "w1", type: "local", config: {} }),
+    });
+    const r = await ensureWorkspace(deps as never, args);
     expect(r.provisioned.handle).toBe("local:r");
-    expect(deps.provisionDocker).not.toHaveBeenCalled();
+    expect(deps.markActive).toHaveBeenCalledWith("r", expect.objectContaining({ handle: "local:r" }));
+  });
+
+  it("calls checkRunnable before claim and propagates a not-ready throw", async () => {
+    const err = Object.assign(new Error("not ready"), { name: "ImageNotReadyError" });
+    const { registry, backend } = fakeRegistry({ checkRunnable: async () => { throw err; } });
+    const deps = baseDeps(registry, {
+      resolveSandbox: vi.fn().mockResolvedValue({ id: "w1", type: "docker", config: {}, imageState: "pending" }),
+    });
+    await expect(ensureWorkspace(deps as never, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(backend.checkRunnable).toHaveBeenCalled();
+    expect(deps.claim).not.toHaveBeenCalled();
   });
 
   it("fails loud when user/org missing", async () => {
-    const deps = { getSandboxInstance: vi.fn().mockResolvedValue(null) } as any;
+    const { registry } = fakeRegistry();
+    const deps = baseDeps(registry);
     await expect(
-      ensureWorkspace(deps, { runId: "r", sandboxId: undefined, userId: null, orgId: null }),
+      ensureWorkspace(deps as never, { runId: "r", sandboxId: undefined, userId: null, orgId: null }),
     ).rejects.toThrow(/user\/org/i);
   });
 
-  it("emits lifecycle logs on the docker provision (won) path", async () => {
+  it("emits lifecycle logs on the provision path", async () => {
     const lines: string[] = [];
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
-      claim: vi.fn().mockResolvedValue(true),
-      markActive: vi.fn().mockResolvedValue(undefined),
-      waitActive: vi.fn(),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockResolvedValue({ ...fakeEnv("c1"), imageRef: "img:dev" }),
-      provisionLocal: vi.fn(),
-    };
-    await ensureWorkspace(deps as any, {
-      runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
-    });
+    const { registry } = fakeRegistry();
+    const deps = baseDeps(registry);
+    await ensureWorkspace(deps as never, { ...args, log: (l: string) => lines.push(l) });
     expect(lines.some((l) => /provisioning docker workspace/i.test(l))).toBe(true);
     expect(lines.some((l) => /workspace ready/i.test(l))).toBe(true);
   });
 
-  it("emits 'using existing workspace' on the connect path", async () => {
-    const lines: string[] = [];
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue({ runId: "r", type: "docker", status: "active", handle: "c1", connection: { host: "tcp://docker:2375" } }),
-      provisionDocker: vi.fn().mockResolvedValue(fakeEnv("c1")),
-      claim: vi.fn(), provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(), resolveSandbox: vi.fn(),
-    };
-    await ensureWorkspace(deps as any, {
-      runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
-    });
-    expect(lines.some((l) => /using existing workspace/i.test(l))).toBe(true);
-  });
-
   it("logs a failure line when provisioning throws", async () => {
     const lines: string[] = [];
-    const deps = {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
-      claim: vi.fn().mockResolvedValue(true),
-      resolveSandbox: vi.fn().mockResolvedValue({ type: "docker", config: {} }),
-      provisionDocker: vi.fn().mockRejectedValue(new Error("daemon down")),
-      provisionLocal: vi.fn(), markActive: vi.fn(), waitActive: vi.fn(),
-    };
+    const { registry, env } = fakeRegistry();
+    env.provision = vi.fn().mockRejectedValue(new Error("daemon down"));
+    const deps = baseDeps(registry);
     await expect(
-      ensureWorkspace(deps as any, {
-        runId: "r", sandboxId: "w", userId: "u", orgId: "o", log: (l: string) => lines.push(l),
-      }),
+      ensureWorkspace(deps as never, { ...args, log: (l: string) => lines.push(l) }),
     ).rejects.toThrow(/daemon down/);
     expect(lines.some((l) => /provisioning failed/i.test(l))).toBe(true);
-  });
-});
-
-describe("ensureWorkspace run-gating (Spec B managed images)", () => {
-  function baseDeps(target: any, over: Partial<any> = {}) {
-    return {
-      getSandboxInstance: vi.fn().mockResolvedValue(null),
-      claim: vi.fn().mockResolvedValue(true),
-      markActive: vi.fn().mockResolvedValue(undefined),
-      waitActive: vi.fn(),
-      resolveSandbox: vi.fn().mockResolvedValue(target),
-      provisionLocal: vi.fn(),
-      provisionDocker: vi.fn().mockResolvedValue({
-        env: {}, provisioned: { handle: "h", workspaceDir: "/workspace", type: "docker" },
-        imageRef: "journeyman/jm-built:fp", connection: {},
-      }),
-      onImagePending: vi.fn(),
-      ...over,
-    };
-  }
-  const args = { runId: "r1", sandboxId: "t1", userId: "u", orgId: "o" };
-
-  it("provisions a ready docker image with its imageRef", async () => {
-    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-      imageState: "ready", imageRef: "journeyman/jm-built:fp" });
-    await ensureWorkspace(deps as any, args);
-    expect(deps.provisionDocker).toHaveBeenCalledWith("r1",
-      expect.objectContaining({ config: expect.objectContaining({ __imageRef: "journeyman/jm-built:fp" }) }));
-  });
-
-  it("throws a RETRYABLE error while building", async () => {
-    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-      imageState: "building", imageRef: null });
-    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
-    expect(deps.provisionDocker).not.toHaveBeenCalled();
-  });
-
-  it("throws a TERMINAL ConfigurationError when the build failed", async () => {
-    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-      imageState: "failed", imageRef: null, imageError: "bad Dockerfile" });
-    await expect(ensureWorkspace(deps as any, args))
-      .rejects.toMatchObject({ name: "ConfigurationError", message: expect.stringContaining("bad Dockerfile") });
-  });
-
-  it("re-enqueues + retries when a ready image was pruned (no imageRef)", async () => {
-    const deps = baseDeps({ type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-      imageState: "ready", imageRef: null });
-    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
-    expect(deps.onImagePending).toHaveBeenCalledWith("t1");
-  });
-
-  it("provisions the default box for an empty image", async () => {
-    const deps = baseDeps({ type: "docker", config: {}, imageState: "none", imageRef: null });
-    await ensureWorkspace(deps as any, args);
-    expect(deps.provisionDocker).toHaveBeenCalledOnce();
-  });
-
-  it("re-verifies a ready image and proceeds when fresh", async () => {
-    const verifyImageFresh = vi.fn().mockResolvedValue({ fresh: true });
-    const deps = baseDeps(
-      { type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-        imageState: "ready", imageRef: "journeyman/jm-built:fp", imageFingerprint: "fp" },
-      { verifyImageFresh },
-    );
-    await ensureWorkspace(deps as any, args);
-    expect(verifyImageFresh).toHaveBeenCalled();
-    expect(deps.provisionDocker).toHaveBeenCalledWith("r1",
-      expect.objectContaining({ config: expect.objectContaining({ __imageRef: "journeyman/jm-built:fp" }) }));
-  });
-
-  it("re-enqueues + retries when the ready image drifted (stale)", async () => {
-    const verifyImageFresh = vi.fn().mockResolvedValue({ fresh: false, reason: "image drift" });
-    const deps = baseDeps(
-      { type: "docker", config: { image: { kind: "ref", imageRef: "node:20" } },
-        imageState: "ready", imageRef: "journeyman/jm-built:fp", imageFingerprint: "fp" },
-      { verifyImageFresh },
-    );
-    await expect(ensureWorkspace(deps as any, args)).rejects.toMatchObject({ name: "ImageNotReadyError" });
-    expect(deps.onImagePending).toHaveBeenCalledWith("t1");
-    expect(deps.provisionDocker).not.toHaveBeenCalled();
   });
 });
