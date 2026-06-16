@@ -83,7 +83,7 @@ message ExecEvent {
 **B. `WindowsBackend`** — `packages/sandbox/src/backends/windows/windows-backend.ts`, implements `ExecutionEnvironmentBackend`:
 - `type = "machine-windows"`, `supportedModes = ["shared"]`, `supportedConnectivity = ["agent"]`.
 - `validateConfig(config)`: requires `connection.host`, `connection.port`, and a `connection.certDir`; rejects anything else.
-- `create(worker)`: builds a gRPC client (mTLS credentials read from `certDir` on disk, mirroring `makeDockerClient`) and returns a `WindowsExecutionEnvironment`.
+- `create(worker)`: builds a gRPC client (mTLS credentials read from `certDir` on disk, mirroring `makeDockerClient`) and returns a `WindowsExecutionEnvironment`. The client sets **keepalive** (`grpc.keepalive_time_ms`, `keepalive_timeout_ms`, permit-without-calls) and **no deadline** on `Exec`, so a long build that sits idle between log lines isn't dropped (finding 14).
 
 **C. `WindowsExecutionEnvironment`** — same dir, implements `IExecutionEnvironment`:
 
@@ -215,6 +215,10 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - **Contract tests:** run the **real agent locally** (even on Linux CI) on a loopback port with test certs, and run it through the shared `runExecutionEnvironmentContract()` suite that `local` and `docker` already pass — proving provision → materialize → exec → destroy → list for real, with mTLS.
 - **Manual Windows smoke test:** documented steps to point a dev orchestrator at a real Windows box (or a Windows 11 laptop) and run one workflow end-to-end.
 
+## 9a. Prerequisite dependency — raise the step timeout (finding 13)
+
+Today every Conductor step is capped at 600s (`timeoutSeconds`/`responseTimeoutSeconds`). Real Windows builds + QA suites exceed that, so **before Windows builds are usable** the step timeout must become longer and configurable (per step/sandbox), with task **heartbeating** so a long step signals liveness rather than being reaped. The per-node `r.timeoutSeconds` override already exists in `conductor-converter.ts`; the base task definition in `cli-worker.ts` is fixed and must honor a larger/explicit value. This is not Windows-specific but is a hard dependency for the Windows use case — the implementation plan must sequence it (possibly as its own work item) ahead of real builds.
+
 ## 10. Out of scope / known limitations
 
 - **Machine-state isolation is files-only.** Per-run workspace folders isolate **files**, not machine-wide state: SQL Server data, IIS sites, **ports**, the registry, the GAC, installed certs, machine env. Two runs that both `iisreset`, seed the same DB, or bind the same port **will collide**. This design is right for build/test/QA on a shared box; it is **not** suitable for destructive/stateful work (e.g. "install this MSI and check the registry"). The future path for that is the **per-run or pooled VM topology** (snapshot → run → revert) discussed during brainstorming — explicitly deferred.
@@ -245,7 +249,10 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 **Changed — Phase 1 (Windows):**
 - `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available.
 - `packages/sandbox/src/sandbox-instance-store.ts` — widen `connection` type to `SandboxConnection` union.
-- Sandbox create/update form — inline field help, prerequisites checklist, connection-test affordance, and actionable validation messages for the `machine-windows` type (§4.1).
+- Sandbox UI (finding 12) — `packages/web/src/components/sandboxes/types/MachineWindowsConfigForm.tsx` (new) + one line in `types/registry.ts`; field help + prereqs checklist + `testConnection: true`.
+- `packages/sandbox/src/test-connection.ts` — extend `runWorkerConnectionTest` to handle `machine-windows` by calling the agent's `Readiness` RPC (returns the scorecard).
+- Step timeout (finding 13, §9a) — `packages/orchestrator/src/cli-worker.ts` task definition + `conductor-converter.ts` to honor a larger/configurable `timeoutSeconds`/`responseTimeoutSeconds` (+ heartbeating).
+- Packaging (finding 15) — a build step producing the shippable Windows agent bundle (Node + `runner.js` + prod `node_modules` + `windows-agent` + service wrapper); extends `scripts/build-kit.mjs`/images tooling.
 - `packages/windows-agent/README.md` — full setup walkthrough (install, certs, firewall), linked from the form.
 - Import-boundary allowances if `agent-protocol` introduces a new edge.
 
@@ -293,6 +300,20 @@ The worker, the api-server, and `cli-sandbox-instance.ts` are **separate process
 
 ### Finding 11 — Moving image-gating into `checkRunnable` is viable with strict constraints  *(refactor guardrails)*
 The dry run confirmed "no blocking issues," provided: (a) `checkRunnable` is called at the **same point** — after the active/provisioning early-returns (reconnect skips it), before claim/provision — so `ImageNotReadyError` still throws inside the Conductor task and keeps the existing exponential-backoff retry (throw location is load-bearing); (b) `verifyImageFresh`/fingerprint/kit-pull logic moves into the **docker backend** (needs the docker client); (c) the backend returns the resolved `imageRef` for provision; (d) `onImagePending` stays a `deps`-injected callback; (e) the **reconnect** (`__existingHandle`) branch moves into the docker backend's `provision`. `imageState` stays a docker concern — local/other backends treat the gate as a no-op. Folded into §3.3.
+
+*Fourth dry-run pass (UI wiring, operational edges):*
+
+### Finding 12 — Sandbox create/update UI is descriptor-driven; connection-test already exists  *(scope-reducing)*
+The form is pluggable by type: `packages/web/src/components/sandboxes/types/registry.ts` (`sandboxTypeForms`) maps each `SandboxType` to a `SandboxTypeForm` descriptor (`ConfigForm`, `readConfig`/`buildConfig`, optional `validate`, `testConnection`). A **Test-connection** button already exists (`SandboxFormModal.tsx` → `POST /api/orgs/:orgId/sandboxes/test-connection` → `runWorkerConnectionTest`), and the type picker reads `SANDBOX_CATALOG` (greys out `status !== "available"`). So §4.1 is **small**: add a `MachineWindowsConfigForm.tsx` + one `registry.ts` line, extend `runWorkerConnectionTest` to handle `machine-windows` by calling the agent's `Readiness` RPC, and flip the catalog to available. No modal/schema/API restructuring.
+
+### Finding 13 — Hard 10-minute step timeout will kill real Windows builds  *(BLOCKER — must resolve)*
+Conductor task definitions hardcode `timeoutSeconds: 600` and `responseTimeoutSeconds: 600` (`cli-worker.ts`; `conductor-converter.ts` defaults `r.timeoutSeconds ?? 600`). A .NET build + browser QA suite routinely exceeds 10 minutes → the step is killed (`TIME_OUT_WF`). Not Windows-specific, but the Windows workloads make it unavoidable. **Must** make the timeout longer + configurable per step/sandbox (the `r.timeoutSeconds` override path exists in the converter but the base task def is fixed), and likely add task **heartbeating** so a long step signals liveness. Flagged as a prerequisite dependency for usable Windows builds; tracked here so the plan addresses it (may be its own work item).
+
+### Finding 14 — Long execs need gRPC keepalive + no deadline  *(design requirement)*
+During a long build the gRPC stream sits idle between log lines. The prior socket-proxy lesson (idle half-close ~500ms, `2026-06-09-replace-dind-with-socket-proxy-design.md`) applies: the Windows gRPC **client and agent must enable keepalive** (`grpc.keepalive_time_ms`/`keepalive_timeout_ms`, permit-without-calls) and set **no overall deadline** on `Exec` (the AbortSignal carries no timeout today; the Conductor task timeout from finding 13 is the real bound). Added to the client/agent design (§3.1 B/D).
+
+### Finding 15 — Packaging the agent for a Windows box is net-new  *(scope addition)*
+The runner ships only as Docker images today (`build-kit.mjs` → registry, per `2026-06-09-registry-backed-runner-kit-design.md`); there's no artifact for a non-Docker host. The bundle itself is cross-platform (esbuild `dist/runner.js`; externalized deps — pino/pg/tar/SDKs — all install on Windows). Net-new: a build step producing a shippable **Windows agent bundle** (folder/zip: Node 22 + `runner.js` + prod `node_modules` + the `windows-agent` server + a service wrapper) for the manual install (§8). Not hard, but on the checklist.
 
 ### Finding 9 — Runner stdout/stderr discipline is airtight  *(confirmed — validates the streaming design)*
 Verified the gRPC streaming approach is safe: the runner (`cli.ts` `guardRunnerStdout()`) writes **exactly one** `RunnerResponse` JSON to stdout and reroutes stray `console.log`/`console.info` to stderr; all logs go to stderr as NDJSON `{line, meta}`; `op.signal` propagates into the SDK `query()` abort controller so killing the child cleanly cancels; no temp files are left behind. So: agent streams stderr lines as `LogLine` events, captures stdout, emits it as the final `ExecFinal`. Two reinforcements: (a) the agent must ensure **Node is on PATH** before spawning the runner (the SDK spawns `node` by bare name — covered by the readiness check); (b) the agent must clear a run's `destDir` with **Node `fs.rm`**, not a `sh -c rm -rf` (Docker's materialize uses a shell *inside the Linux container*; the Windows agent can't — folds into finding 3b). Also set a generous gRPC **max-message-size** so a large `ExecFinal` structured result isn't truncated (logs are streamed, so unaffected).
