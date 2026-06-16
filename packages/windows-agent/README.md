@@ -40,6 +40,25 @@ journeyman-agent
 
 On startup it prints a **readiness scorecard** (bash / git / node / workspace) and **refuses to start** if a required check fails — so a misconfigured box is caught immediately, not mid-run.
 
+## Long builds (step timeout)
+
+Windows build/QA steps often exceed the default **10-minute** step timeout. Raise it per step on the **Retry** tab (or for the whole flow under **Defaults → Retry**) — e.g. `2700` seconds for large .NET builds. That value flows to Conductor's `timeoutSeconds` *and* `responseTimeoutSeconds` for the step, and the agent's gRPC keepalive holds the connection open during quiet compile stretches.
+
+## Packaging & install
+
+Build a shippable bundle:
+
+```
+node scripts/build-windows-agent.mjs
+```
+
+This writes `packages/windows-agent/dist/`:
+- `windows-agent.js` — the bundled agent entrypoint
+- `journeyman-agent.proto` — loaded at runtime (kept beside the bundle)
+- `manifest.json` — entry + externals + box requirements
+
+To install on a box: copy `dist/` + the **runner bundle** (`runner.js` + prod `node_modules`) to the machine; install **Node 22** and **Git for Windows**; `npm ci --omit=dev` for the externals (`@grpc/grpc-js`, `@grpc/proto-loader`, `tar`); place certs in `JM_AGENT_CERT_DIR`; open the firewall port; run `node windows-agent.js` (or register it as a Windows service). A full installer / NSSM service wrapper and auto-bundling the Node binary are a later iteration.
+
 ## Generating test certs (dev)
 
 `spike/make-certs.sh` writes a throwaway CA + server/client certs into `spike/certs/` for the loopback integration test. Not for production.

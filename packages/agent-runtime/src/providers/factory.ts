@@ -27,6 +27,11 @@ export function createCodingProvider(
       // reaches the spawn via process.env (Docker) or applyEnv (local).
       return new OpenCodeProvider({ mode: "managed" });
     case "aisdk":
+      if (process.platform === "win32") {
+        const err = new Error("the 'aisdk' coding provider is not supported on Windows (it requires bash + ripgrep); use 'claude' or 'opencode'") as Error & { name: string };
+        err.name = "ConfigurationError";
+        throw err;
+      }
       // Model + per-vendor credential arrive per-operation via opts.model /
       // opts.modelConfig / opts.env; the provider loads the @ai-sdk package
       // selected by config.npm at run time.

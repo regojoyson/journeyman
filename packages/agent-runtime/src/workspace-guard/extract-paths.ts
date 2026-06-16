@@ -28,11 +28,28 @@ export function findBashEscape(command: string, root: string): string | null {
   const cd = command.match(/\bcd\s+(['"]?)([^\s'";|&]+)\1/);
   if (cd) {
     const target = cd[2];
-    if (!resolveWithinWorkspace(root, target).ok) return target;
+    const looksWindows = /^(?:[A-Za-z]:\\|\\\\)/.test(target);
+    const escapes = looksWindows ? isWindowsPathOutside(root, target) : !resolveWithinWorkspace(root, target).ok;
+    if (escapes) return target;
   }
   const absTokens = command.match(/(?<![\w/=])\/[^\s'";|&)<>]+/g) ?? [];
   for (const tok of absTokens) {
     if (!resolveWithinWorkspace(root, tok).ok) return tok;
   }
+  // Windows drive-absolute (C:\…) and UNC (\\server\share) tokens — the POSIX
+  // scan above never matches these, so on Windows they'd otherwise slip through.
+  const winTokens = command.match(/(?<!\w)(?:[A-Za-z]:\\|\\\\)[^\s'";|&)<>]*/g) ?? [];
+  for (const tok of winTokens) {
+    if (isWindowsPathOutside(root, tok)) return tok;
+  }
   return null;
+}
+
+/** True if a Windows drive/UNC token is not contained within `root` (case-insensitive). */
+function isWindowsPathOutside(root: string, tok: string): boolean {
+  const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase().replace(/\\+$/, "");
+  const t = norm(tok);
+  if (t.includes("..")) return true; // any climb-out is suspect
+  const r = norm(root);
+  return !(t === r || t.startsWith(r + "\\"));
 }

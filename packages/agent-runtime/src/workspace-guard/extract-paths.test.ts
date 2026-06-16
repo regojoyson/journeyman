@@ -35,3 +35,31 @@ describe("findBashEscape", () => {
     expect(findBashEscape("cd ../../ && ls", root)).toBe("../../");
   });
 });
+
+describe("findBashEscape — Windows paths", () => {
+  const root = "C:\\jm-runs\\r1";
+
+  it("flags a drive-absolute path outside the workspace", () => {
+    expect(findBashEscape("type C:\\Windows\\System32\\drivers\\etc\\hosts", root)).toBe("C:\\Windows\\System32\\drivers\\etc\\hosts");
+  });
+
+  it("flags a UNC path", () => {
+    expect(findBashEscape("copy \\\\fileserver\\share\\secrets.txt .", root)).toBe("\\\\fileserver\\share\\secrets.txt");
+  });
+
+  it("allows a drive path under the workspace root (case-insensitive)", () => {
+    expect(findBashEscape("type c:\\jm-runs\\r1\\src\\a.cs", root)).toBeNull();
+  });
+
+  it("flags a drive path that climbs out via ..", () => {
+    expect(findBashEscape("type C:\\jm-runs\\r1\\..\\r2\\x", root)).toBe("C:\\jm-runs\\r1\\..\\r2\\x");
+  });
+
+  it("flags cd to a Windows path outside root", () => {
+    expect(findBashEscape("cd C:\\Windows && dir", root)).toBe("C:\\Windows");
+  });
+
+  it("still allows a clean POSIX command (regression)", () => {
+    expect(findBashEscape("cat src/a.txt", "/work")).toBeNull();
+  });
+});
