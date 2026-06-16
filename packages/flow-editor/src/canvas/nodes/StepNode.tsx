@@ -18,10 +18,10 @@ export interface StepNodeData {
 }
 
 const STATUS_COLORS: Record<StepRunState["status"], string> = {
-  idle:      "#999",
-  running:   "#4a9eff",
-  succeeded: "#00b894",
-  failed:    "#ff7675",
+  idle:      "rgb(var(--color-text-muted) / 1)",
+  running:   "rgb(var(--color-info) / 1)",
+  succeeded: "rgb(var(--color-success) / 1)",
+  failed:    "rgb(var(--color-danger) / 1)",
 };
 
 function DefaultStatusBadge({ state }: { state: StepRunState }) {
@@ -61,7 +61,7 @@ export function StepNode(props: NodeProps) {
   const customDef =
     typeof customStepId === "string" && customStepId ? customDefs[customStepId] : null;
 
-  const accent = customDef ? "#a29bfe" : (definition?.color ?? "#6c5ce7");
+  const accent = customDef ? "rgb(var(--color-accent) / 1)" : (definition?.color ?? "rgb(var(--color-accent) / 1)");
   const rawIcon = customDef ? (customDef.icon ?? null) : (definition?.icon ?? "⚙");
   const icon = resolveStepIcon(rawIcon, { size: 16 });
   const subtitle =

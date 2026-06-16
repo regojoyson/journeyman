@@ -36,7 +36,7 @@ export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettings
   return (
     <div>
       <div className="je-props__title">Flow settings</div>
-      <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 12 }}>
         These apply to the whole flow, not just one node.
       </div>
 

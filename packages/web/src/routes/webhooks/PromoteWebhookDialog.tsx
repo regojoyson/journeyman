@@ -245,7 +245,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
                 <input
                   readOnly
                   value={newWebhook.ingestUrl}
-                  className="flex-1 rounded bg-slate-950 border border-slate-700 px-2 py-1 font-mono text-xs text-slate-100"
+                  className="flex-1 rounded bg-bg border border-slate-700 px-2 py-1 font-mono text-xs text-slate-100"
                 />
                 <button
                   onClick={copyUrl}

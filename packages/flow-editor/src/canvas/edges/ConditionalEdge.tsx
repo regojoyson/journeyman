@@ -21,13 +21,13 @@ export function ConditionalEdge(props: EdgeProps) {
     <>
       <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd}
         style={{
-          stroke: props.selected ? "#fff8c0" : "#fdcb6e",
+          stroke: props.selected ? "rgb(var(--color-warning) / 0.25)" : "rgb(var(--color-warning) / 1)",
           strokeWidth: props.selected ? 3.5 : 2,
           strokeDasharray: "6 4",
         }} />
       <EdgeLabelRenderer>
         <div style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-          background: "#1a1a24", border: "1px solid #fdcb6e", color: "#fdcb6e",
+          background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-warning) / 1)", color: "rgb(var(--color-warning) / 1)",
           fontSize: 10, padding: "1px 6px", borderRadius: 4, pointerEvents: "all" }}>
           {label}
         </div>

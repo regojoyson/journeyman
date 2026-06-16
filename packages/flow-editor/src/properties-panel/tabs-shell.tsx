@@ -66,8 +66,8 @@ export function TabsShell({ active, onChange, visibility, requiredEmpty, childre
               onClick={() => onChange(t.id)}
               style={{
                 padding: "6px 8px",
-                borderBottom: t.id === active ? "2px solid #4a9eff" : "2px solid transparent",
-                color: t.id === active ? "#4a9eff" : "#aaa",
+                borderBottom: t.id === active ? "2px solid rgb(var(--color-info) / 1)" : "2px solid transparent",
+                color: t.id === active ? "rgb(var(--color-info) / 1)" : "rgb(var(--color-text-muted) / 1)",
                 fontWeight: t.id === active ? 600 : 400,
                 cursor: "pointer",
               }}

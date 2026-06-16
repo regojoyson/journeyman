@@ -8,7 +8,8 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:boundaries": "node scripts/check-import-boundaries.mjs",
-    "check": "npm run typecheck && npm run check:boundaries",
+    "check:theme-colors": "node scripts/check-theme-colors.mjs",
+    "check": "npm run typecheck && npm run check:boundaries && npm run check:theme-colors",
     "test": "npm test --workspaces --if-present",
     "infra:up": "docker compose -f infra/compose.dev.yml up -d",
     "infra:down": "docker compose -f infra/compose.dev.yml down",

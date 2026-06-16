@@ -110,7 +110,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
       <div className={`${card} w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col`}>
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div>

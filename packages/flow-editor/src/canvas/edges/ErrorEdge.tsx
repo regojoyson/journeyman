@@ -10,7 +10,7 @@ export function ErrorEdge(props: EdgeProps) {
   return (
     <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd}
       style={{
-        stroke: props.selected ? "#ffc1c0" : "#ff7675",
+        stroke: props.selected ? "rgb(var(--color-danger) / 1)" : "rgb(var(--color-danger) / 1)",
         strokeWidth: props.selected ? 3.5 : 2,
         strokeDasharray: "4 3",
       }} />

@@ -129,10 +129,10 @@ export function FlowEditorPage() {
       flowStatus: flowQ.status, versionStatus: versionQ.status,
       hasGraph: !!graph,
     });
-    return <div style={{ padding: 24, color: "#888" }}>Loading editor…</div>;
+    return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading editor…</div>;
   }
   if (flowQ.isError || !flowQ.data) {
-    return <div style={{ padding: 24, color: "#ff7675" }}>Flow not found.</div>;
+    return <div style={{ padding: 24, color: "rgb(var(--color-danger) / 1)" }}>Flow not found.</div>;
   }
 
   const flow = flowQ.data;
@@ -174,7 +174,7 @@ export function FlowEditorPage() {
     <>
       <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {triggers && triggers.length > 0 ? (
-          <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "#666", flex: "0 0 auto" }}>
+          <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "rgb(var(--color-border-strong) / 1)", flex: "0 0 auto" }}>
             Triggered by:{" "}
             {triggers.map((t, i) => (
               <span key={t.id}>
@@ -191,7 +191,7 @@ export function FlowEditorPage() {
         {!editable && (
           <div style={{
             padding: "8px 12px", marginBottom: 12,
-            background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 4,
+            background: "rgb(var(--color-warning) / 0.18)", border: "1px solid rgb(var(--color-warning) / 1)", borderRadius: 4,
           }}>
             This is a {flow.scope} template. <button onClick={onClone}>Clone to my flows</button> to make changes.
           </div>

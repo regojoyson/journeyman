@@ -52,8 +52,8 @@ export function PanelResizer({ width, onResize, min = 220, max = 720, side }: Pa
         width: 6,
         cursor: "col-resize",
         background: "transparent",
-        borderLeft: "1px solid #2a2a3a",
-        borderRight: "1px solid #2a2a3a",
+        borderLeft: "1px solid rgb(var(--color-surface-raised) / 1)",
+        borderRight: "1px solid rgb(var(--color-surface-raised) / 1)",
         position: "relative",
       }}
       aria-label="Resize panel"
@@ -65,9 +65,9 @@ export function PanelResizer({ width, onResize, min = 220, max = 720, side }: Pa
         display: "flex", flexDirection: "column", gap: 3,
         pointerEvents: "none",
       }}>
-        <span style={{ width: 2, height: 2, background: "#666", borderRadius: 1 }} />
-        <span style={{ width: 2, height: 2, background: "#666", borderRadius: 1 }} />
-        <span style={{ width: 2, height: 2, background: "#666", borderRadius: 1 }} />
+        <span style={{ width: 2, height: 2, background: "rgb(var(--color-border-strong) / 1)", borderRadius: 1 }} />
+        <span style={{ width: 2, height: 2, background: "rgb(var(--color-border-strong) / 1)", borderRadius: 1 }} />
+        <span style={{ width: 2, height: 2, background: "rgb(var(--color-border-strong) / 1)", borderRadius: 1 }} />
       </div>
     </div>
   );

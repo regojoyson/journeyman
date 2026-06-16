@@ -9,9 +9,9 @@ interface InheritanceChipProps {
 }
 
 const CHIP_STYLES: Record<ChipKind, React.CSSProperties> = {
-  inherited:  { background: "#1a2a1a", border: "1px solid #2e4a2e", color: "#7fc480" },
-  override:   { background: "#2a2010", border: "1px solid #4a3a10", color: "#fdcb6e" },
-  suppressed: { background: "#2a1a1a", border: "1px solid #4a2020", color: "#e17055" },
+  inherited:  { background: "rgb(var(--color-success) / 0.12)", border: "1px solid rgb(var(--color-success) / 0.12)", color: "rgb(var(--color-success) / 1)" },
+  override:   { background: "rgb(var(--color-warning) / 0.12)", border: "1px solid rgb(var(--color-warning) / 0.12)", color: "rgb(var(--color-warning) / 1)" },
+  suppressed: { background: "rgb(var(--color-danger) / 0.12)", border: "1px solid rgb(var(--color-danger) / 0.12)", color: "rgb(var(--color-danger) / 1)" },
 };
 
 function formatValue(value: unknown): string {

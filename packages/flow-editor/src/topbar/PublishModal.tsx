@@ -139,10 +139,10 @@ export function PublishModal({ flow, onCancel, onConfirm, onSelectNode, hasTrigg
 
         {published ? (
           <>
-            <p style={{ color: "#55efc4" }}>✓ Published successfully.</p>
+            <p style={{ color: "rgb(var(--color-success) / 1)" }}>✓ Published successfully.</p>
             {issues.length > 0 && (
               <>
-                <p style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>
+                <p style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 6 }}>
                   The following may affect runtime behaviour:
                 </p>
                 <ul className="fe-publish-checklist">

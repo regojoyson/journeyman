@@ -25,6 +25,11 @@ const semantic = {
   success: withAlpha("--color-success"),
   warning: withAlpha("--color-warning"),
   danger: withAlpha("--color-danger"),
+  info: withAlpha("--color-info"),
+  "info-muted": withAlpha("--color-info-muted"),
+  canvas: withAlpha("--color-canvas"),
+  "canvas-dot": withAlpha("--color-canvas-dot"),
+  overlay: "var(--color-overlay)",
 };
 
 const slateRemap = {

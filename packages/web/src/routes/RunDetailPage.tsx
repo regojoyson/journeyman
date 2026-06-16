@@ -46,8 +46,8 @@ export function RunDetailPage() {
   }, [detailQ.data?.events, liveEvents]);
 
   if (!id) { navigate("/workflow-instances"); return null; }
-  if (detailQ.isLoading) return <div style={{ padding: 24, color: "#888" }}>Loading run…</div>;
-  if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "#ff7675" }}>Run not found.</div>;
+  if (detailQ.isLoading) return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading run…</div>;
+  if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "rgb(var(--color-danger) / 1)" }}>Run not found.</div>;
 
   const busy = actions.cancel.isPending || actions.pause.isPending || actions.resume.isPending
     || actions.retry.isPending || actions.rerun.isPending || actions.fork.isPending
@@ -59,9 +59,9 @@ export function RunDetailPage() {
         <div style={{
           padding: "8px 16px",
           margin: "0 0 8px",
-          background: "#2a2a3a",
-          borderLeft: "3px solid #6c8eff",
-          color: "#cfd6e4",
+          background: "rgb(var(--color-surface-raised) / 1)",
+          borderLeft: "3px solid rgb(var(--color-info) / 1)",
+          color: "rgb(var(--color-text) / 1)",
           fontSize: 13,
         }}>
           You're viewing this run as an org peer. Only the run's owner or an org admin can pause, retry, or cancel.
@@ -94,7 +94,7 @@ export function RunDetailPage() {
       </StepRegistryProvider>
       </OrgIdProvider>
       {busy && (
-        <div style={{ position: "fixed", bottom: 16, left: 16, color: "#888", fontSize: 11 }}>
+        <div style={{ position: "fixed", bottom: 16, left: 16, color: "rgb(var(--color-text-muted) / 1)", fontSize: 11 }}>
           working…
         </div>
       )}

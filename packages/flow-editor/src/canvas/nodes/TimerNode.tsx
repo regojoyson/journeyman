@@ -9,7 +9,7 @@ export function TimerNode(props: NodeProps) {
       <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
-        <div className="je-node__icon" style={{ background: "#fdcb6e" }}>⏱</div>
+        <div className="je-node__icon" style={{ background: "rgb(var(--color-warning) / 1)" }}>⏱</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "Wait"}</div>
           <div className="je-node__subtitle">{data.duration ?? "—"}</div>

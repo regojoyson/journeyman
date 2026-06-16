@@ -45,7 +45,7 @@ export function EditMcpModal(props: EditMcpModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
       <div className={`${card} w-full max-w-xl max-h-[90vh] overflow-y-auto p-6`}>
         <h2 className="text-lg font-semibold text-slate-100 mb-1">Edit MCP</h2>
         <div className="text-sm text-slate-400 mb-4">

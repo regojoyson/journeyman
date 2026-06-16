@@ -9,7 +9,7 @@ export function SessionExpiredModal({ onDismiss }: Props) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="session-expired-title"
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-overlay"
     >
       <div className="w-[420px] rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-2xl">
         <h2 id="session-expired-title" className="text-lg font-semibold text-slate-100">

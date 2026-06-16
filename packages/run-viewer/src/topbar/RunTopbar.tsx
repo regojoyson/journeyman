@@ -41,32 +41,32 @@ export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
   const isTerminal = ["completed", "failed", "cancelled"].includes(p.workflowInstance.status);
 
   const btn: React.CSSProperties = {
-    background: "#2a2a3e", border: "1px solid #444", color: "#ddd",
+    background: "rgb(var(--color-surface-raised) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)",
     padding: "5px 12px", borderRadius: 5, fontSize: 12, cursor: "pointer",
   };
   const danger: React.CSSProperties = {
-    ...btn, background: "rgba(255,118,117,0.10)", borderColor: "#ff7675", color: "#ff7675",
+    ...btn, background: "rgba(255,118,117,0.10)", borderColor: "rgb(var(--color-danger) / 1)", color: "rgb(var(--color-danger) / 1)",
   };
 
   return (
     <header className="je-runview__topbar">
       <h1 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{p.workflowName}</h1>
       <span className={`je-runview__pill ${p.workflowInstance.status}`}>{p.workflowInstance.status}</span>
-      <span style={{ color: "#888", fontSize: 11 }}>{startedLabel}</span>
+      <span style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11 }}>{startedLabel}</span>
       {p.workflowInstance.durationMs && (
-        <span style={{ color: "#888", fontSize: 11 }}>· {formatDuration(p.workflowInstance.durationMs)}</span>
+        <span style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11 }}>· {formatDuration(p.workflowInstance.durationMs)}</span>
       )}
       <div style={{ flex: 1 }} />
       {p.onRefresh && (
         <>
           <button style={btn} disabled={p.busy} onClick={p.onRefresh} title="Refresh now">↻ Refresh</button>
-          <label style={{ color: "#888", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+          <label style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
             Auto
             <select
               value={autoRefreshMs}
               onChange={e => setAutoRefreshMs(Number(e.target.value))}
               style={{
-                background: "#2a2a3e", border: "1px solid #444", color: "#ddd",
+                background: "rgb(var(--color-surface-raised) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)",
                 padding: "4px 6px", borderRadius: 5, fontSize: 12, cursor: "pointer",
               }}
             >
@@ -100,7 +100,7 @@ export function WorkflowInstanceTopbar(p: WorkflowInstanceTopbarProps) {
         >
           {p.logsOpen ? "▾ Hide logs" : "▴ Show logs"}
           {typeof p.logsCount === "number" && p.logsCount > 0 && (
-            <span style={{ marginLeft: 6, color: "#888", fontSize: 11 }}>
+            <span style={{ marginLeft: 6, color: "rgb(var(--color-text-muted) / 1)", fontSize: 11 }}>
               ({p.logsCount})
             </span>
           )}

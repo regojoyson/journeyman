@@ -7,7 +7,7 @@ export function DefaultEdge(props: EdgeProps) {
     sourcePosition: props.sourcePosition,
     targetPosition: props.targetPosition,
   });
-  const stroke = props.selected ? "#4a9eff" : "#888";
+  const stroke = props.selected ? "rgb(var(--color-info) / 1)" : "rgb(var(--color-text-muted) / 1)";
   const width = props.selected ? 3 : 2;
   return <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd}
     style={{ stroke, strokeWidth: width }} />;

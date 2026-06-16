@@ -32,7 +32,7 @@ export function HumanTaskNode(props: NodeProps) {
     <div
       className="je-node je-node--human"
       style={{
-        borderColor: "#fbc531",
+        borderColor: "rgb(var(--color-warning) / 1)",
         position: "relative",
         animation: isWaiting ? "je-pulse 1.5s ease-in-out infinite" : undefined,
       }}
@@ -40,7 +40,7 @@ export function HumanTaskNode(props: NodeProps) {
       <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
-        <div className="je-node__icon" style={{ background: "#fbc531" }}>⏳</div>
+        <div className="je-node__icon" style={{ background: "rgb(var(--color-warning) / 1)" }}>⏳</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "Human Task"}</div>
           <div className="je-node__subtitle" title={data.prompt}>

@@ -69,8 +69,8 @@ export default function Sidebar() {
     justifyContent: expanded ? "flex-start" : "center",
     borderRadius: 6,
     textDecoration: "none",
-    color: isActive ? "#4a9eff" : "#777",
-    background: isActive ? "#4a9eff22" : "transparent",
+    color: isActive ? "rgb(var(--color-info) / 1)" : "rgb(var(--color-text-subtle) / 1)",
+    background: isActive ? "rgb(var(--color-info) / 0.13)" : "transparent",
     fontWeight: isActive ? 600 : 400,
     fontSize: 13,
     transition: "color 0.15s, background 0.15s",
@@ -84,8 +84,8 @@ export default function Sidebar() {
         width: expanded ? 200 : 52,
         minWidth: expanded ? 200 : 52,
         height: "100vh",
-        background: "#11111a",
-        borderRight: "1px solid #2a2a3a",
+        background: "rgb(var(--color-bg) / 1)",
+        borderRight: "1px solid rgb(var(--color-surface-raised) / 1)",
         display: "flex",
         flexDirection: "column",
         alignItems: expanded ? "stretch" : "center",
@@ -108,7 +108,7 @@ export default function Sidebar() {
         <Link
           to="/"
           style={{
-            color: "#e2e8f0",
+            color: "rgb(var(--color-text) / 1)",
             fontWeight: 700,
             textDecoration: "none",
             fontSize: 13,
@@ -125,13 +125,13 @@ export default function Sidebar() {
             onClick={() => setPinned(p => !p)}
             title={pinned ? "Unpin sidebar" : "Pin sidebar open"}
             style={{
-              background: "#4a9eff22",
+              background: "rgb(var(--color-info) / 0.13)",
               border: "none",
               borderRadius: 4,
               width: 20,
               height: 20,
               cursor: "pointer",
-              color: "#4a9eff",
+              color: "rgb(var(--color-info) / 1)",
               fontSize: 11,
               display: "flex",
               alignItems: "center",
@@ -163,11 +163,11 @@ export default function Sidebar() {
 
         {role === "admin" && (
           <>
-            <div style={{ borderTop: "1px solid #2a2a3a", margin: "6px 0" }} />
+            <div style={{ borderTop: "1px solid rgb(var(--color-surface-raised) / 1)", margin: "6px 0" }} />
             {expanded && (
               <div style={{
                 padding: "2px 8px 4px",
-                color: "#444",
+                color: "rgb(var(--color-border) / 1)",
                 fontSize: 9,
                 textTransform: "uppercase",
                 letterSpacing: 1,
@@ -192,7 +192,7 @@ export default function Sidebar() {
         ref={menuRef}
         style={{
           padding: expanded ? "8px 8px 0" : "8px 0 0",
-          borderTop: "1px solid #1e1e2e",
+          borderTop: "1px solid rgb(var(--color-surface) / 1)",
           position: "relative",
         }}
       >
@@ -206,21 +206,21 @@ export default function Sidebar() {
               transform: expanded ? "none" : "translateX(-50%)",
               marginBottom: 6,
               width: 220,
-              background: "#0f0f1a",
-              border: "1px solid #2a2a3a",
+              background: "rgb(var(--color-bg) / 1)",
+              border: "1px solid rgb(var(--color-surface-raised) / 1)",
               borderRadius: 8,
               boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
               zIndex: 50,
               overflow: "hidden",
             }}
           >
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid #1e1e2e" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{label}</div>
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid rgb(var(--color-surface) / 1)" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "rgb(var(--color-text) / 1)" }}>{label}</div>
               {user?.username && user?.displayName && (
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>@{user.username}</div>
+                <div style={{ fontSize: 11, color: "rgb(var(--color-border-strong) / 1)", marginTop: 2 }}>@{user.username}</div>
               )}
               {subtitle && (
-                <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>{subtitle}</div>
+                <div style={{ fontSize: 11, color: "rgb(var(--color-border) / 1)", marginTop: 2 }}>{subtitle}</div>
               )}
             </div>
             {[
@@ -235,7 +235,7 @@ export default function Sidebar() {
                 to={to}
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
-                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "#cbd5e1", textDecoration: "none" }}
+                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "rgb(var(--color-text) / 1)", textDecoration: "none" }}
                 className="hover:bg-slate-800"
               >
                 {itemLabel}
@@ -250,10 +250,10 @@ export default function Sidebar() {
                 textAlign: "left",
                 padding: "8px 12px",
                 fontSize: 13,
-                color: "#fca5a5",
+                color: "rgb(var(--color-danger) / 1)",
                 background: "none",
                 border: "none",
-                borderTop: "1px solid #1e1e2e",
+                borderTop: "1px solid rgb(var(--color-surface) / 1)",
                 cursor: "pointer",
               }}
               className="hover:bg-rose-950/40"
@@ -291,12 +291,12 @@ export default function Sidebar() {
           <div style={{
             width: 30,
             height: 30,
-            background: "#5555aa44",
+            background: "rgb(var(--color-accent) / 0.27)",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#8888cc",
+            color: "rgb(var(--color-accent) / 1)",
             fontSize: 11,
             fontWeight: 700,
             flexShrink: 0,
@@ -305,8 +305,8 @@ export default function Sidebar() {
           </div>
           {expanded && (
             <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#cbd5e1", whiteSpace: "nowrap" }}>{label}</div>
-              {role && <div style={{ fontSize: 10, color: "#64748b" }}>{role}</div>}
+              <div style={{ fontSize: 12, fontWeight: 600, color: "rgb(var(--color-text) / 1)", whiteSpace: "nowrap" }}>{label}</div>
+              {role && <div style={{ fontSize: 10, color: "rgb(var(--color-border-strong) / 1)" }}>{role}</div>}
             </div>
           )}
         </button>

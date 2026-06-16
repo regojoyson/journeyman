@@ -41,9 +41,9 @@ function CloseButton({ onClose }: { onClose: () => void }) {
         alignItems: "center",
         justifyContent: "center",
         background: "transparent",
-        border: "1px solid #2a2a3e",
+        border: "1px solid rgb(var(--color-surface-raised) / 1)",
         borderRadius: 6,
-        color: "#aaa",
+        color: "rgb(var(--color-text-muted) / 1)",
         cursor: "pointer",
         fontSize: 16,
         lineHeight: 1,
@@ -65,7 +65,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
   if (!p.nodeId) {
     return (
       <aside className="je-runview__drawer">
-        <div style={{ color: "#888", textAlign: "center", padding: "24px 12px" }}>
+        <div style={{ color: "rgb(var(--color-text-muted) / 1)", textAlign: "center", padding: "24px 12px" }}>
           Click a node to inspect it.
         </div>
       </aside>
@@ -81,7 +81,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
       <aside className="je-runview__drawer" style={{ position: "relative" }}>
         {p.onClose && <CloseButton onClose={p.onClose} />}
         <h2 style={{ paddingRight: 36 }}>{p.displayName ?? p.nodeId}</h2>
-        <div style={{ color: "#aaa", fontSize: 11, marginBottom: 10 }}>
+        <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11, marginBottom: 10 }}>
           {p.status ? p.status.status : "trigger"}
         </div>
         {p.nodeType === "trigger-webhook" && p.triggerEvent ? (
@@ -120,7 +120,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
     <aside className="je-runview__drawer" style={{ position: "relative" }}>
       {p.onClose && <CloseButton onClose={p.onClose} />}
       <h2 style={{ paddingRight: 36 }}>{p.displayName ?? p.nodeId}</h2>
-      <div style={{ color: "#aaa", fontSize: 11, marginBottom: 10 }}>
+      <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11, marginBottom: 10 }}>
         {p.status ? `${p.status.status} · attempt ${p.status.attempt || 0}` : "no status"}
         {p.status?.durationMs ? ` · ${formatDuration(p.status.durationMs)}` : ""}
       </div>
@@ -138,7 +138,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
       {p.status?.errorClass && (
         <div className="je-runview__section">
           <h3>Error</h3>
-          <pre className="je-runview__pre" style={{ color: "#ff7675" }}>
+          <pre className="je-runview__pre" style={{ color: "rgb(var(--color-danger) / 1)" }}>
             {p.status.errorClass}{lastExec?.errorMessage ? `\n\n${lastExec.errorMessage}` : ""}
           </pre>
         </div>
@@ -147,12 +147,12 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
       <div className="je-runview__section">
         <h3>Attempts</h3>
         <div className="je-runview__attempts">
-          {p.executions.length === 0 && <div style={{ color: "#666" }}>(none yet)</div>}
+          {p.executions.length === 0 && <div style={{ color: "rgb(var(--color-border-strong) / 1)" }}>(none yet)</div>}
           {[...p.executions].sort((a, b) => a.attempt - b.attempt).map(e => (
             <div key={e.id} className="je-runview__attempt">
               <span style={{ fontWeight: 600 }}>#{e.attempt}</span>
-              <span style={{ color: "#888", marginLeft: 8 }}>{e.status}</span>
-              {e.errorClass && <span style={{ color: "#ff7675", marginLeft: 8 }}>{e.errorClass}</span>}
+              <span style={{ color: "rgb(var(--color-text-muted) / 1)", marginLeft: 8 }}>{e.status}</span>
+              {e.errorClass && <span style={{ color: "rgb(var(--color-danger) / 1)", marginLeft: 8 }}>{e.errorClass}</span>}
             </div>
           ))}
         </div>
@@ -163,7 +163,7 @@ export function NodeDetailDrawer(p: NodeDetailDrawerProps) {
           <button
             onClick={p.onRetryStep}
             style={{
-              background: "#fdcb6e", border: "none", color: "#1a1a24",
+              background: "rgb(var(--color-warning) / 1)", border: "none", color: "rgb(var(--color-surface) / 1)",
               padding: "6px 12px", borderRadius: 4, fontSize: 12, fontWeight: 600,
               cursor: "pointer", width: "100%",
             }}
@@ -218,7 +218,7 @@ function HumanTaskResolveForm({
       <div className="je-runview__section">
         <h3>Human Task</h3>
         {pending.prompt && <div style={{ fontSize: 12, marginBottom: 8 }}>{pending.prompt}</div>}
-        <div style={{ color: "#888", fontSize: 11 }}>
+        <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11 }}>
           Waiting since {new Date(pending.startedAt).toLocaleString()}
         </div>
       </div>
@@ -274,7 +274,7 @@ function HumanTaskResolveForm({
       {pending.prompt && (
         <div style={{ fontSize: 12, marginBottom: 8, whiteSpace: "pre-wrap" }}>{pending.prompt}</div>
       )}
-      <div style={{ color: "#888", fontSize: 11, marginBottom: 8 }}>
+      <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11, marginBottom: 8 }}>
         Waiting since {new Date(pending.startedAt).toLocaleString()}
         {pending.timeout && ` · auto-resolves after ${Math.round(pending.timeout.durationMs / 60000)}m`}
       </div>
@@ -285,15 +285,15 @@ function HumanTaskResolveForm({
             <div key={o.name} style={{ marginBottom: 6 }}>
               <label style={{ display: "block", fontSize: 12, marginBottom: 2 }}>
                 {o.label ?? o.name}
-                {o.required && <span style={{ color: "#ff7675" }}> *</span>}
-                <span style={{ color: "#666", marginLeft: 4 }}>({o.type})</span>
+                {o.required && <span style={{ color: "rgb(var(--color-danger) / 1)" }}> *</span>}
+                <span style={{ color: "rgb(var(--color-border-strong) / 1)", marginLeft: 4 }}>({o.type})</span>
               </label>
               {renderField(o, values[o.name], v => setField(o.name, v))}
               {fieldErrors[o.name] && (
-                <div style={{ fontSize: 10, color: "#ff7675", marginTop: 2 }}>{fieldErrors[o.name]}</div>
+                <div style={{ fontSize: 10, color: "rgb(var(--color-danger) / 1)", marginTop: 2 }}>{fieldErrors[o.name]}</div>
               )}
               {o.description && (
-                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>{o.description}</div>
+                <div style={{ fontSize: 10, color: "rgb(var(--color-border-strong) / 1)", marginTop: 2 }}>{o.description}</div>
               )}
             </div>
           ))}
@@ -324,13 +324,13 @@ function HumanTaskResolveForm({
         </>
       )}
 
-      {error && <div style={{ color: "#ff7675", fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      {error && <div style={{ color: "rgb(var(--color-danger) / 1)", fontSize: 12, marginBottom: 8 }}>{error}</div>}
       <button
         type="button"
         disabled={submitting}
         onClick={submit}
         style={{
-          background: "#fbc531", border: "none", color: "#1a1a24",
+          background: "rgb(var(--color-warning) / 1)", border: "none", color: "rgb(var(--color-surface) / 1)",
           padding: "6px 12px", borderRadius: 4, fontSize: 12, fontWeight: 600,
           cursor: submitting ? "wait" : "pointer", width: "100%", opacity: submitting ? 0.6 : 1,
         }}

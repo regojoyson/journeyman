@@ -44,7 +44,7 @@ export function WebhookWaitNode(props: NodeProps) {
     <div
       className="je-node je-node--human"
       style={{
-        borderColor: "#00a8ff",
+        borderColor: "rgb(var(--color-info) / 1)",
         position: "relative",
         animation: isWaiting ? "je-pulse 1.5s ease-in-out infinite" : undefined,
       }}
@@ -52,7 +52,7 @@ export function WebhookWaitNode(props: NodeProps) {
       <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
-        <div className="je-node__icon" style={{ background: "#00a8ff" }}>🔔</div>
+        <div className="je-node__icon" style={{ background: "rgb(var(--color-info) / 1)" }}>🔔</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "Webhook Wait"}</div>
           <div className="je-node__subtitle" title={(data.listensFor ?? []).join(", ")}>

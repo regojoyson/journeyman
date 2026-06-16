@@ -120,7 +120,7 @@ export function Topbar(p: TopbarProps) {
             onChange={e => setDraft(e.target.value)}
             onBlur={() => { setEditing(false); if (draft !== p.flowName) p.onRename!(draft); }}
             onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            style={{ background: "#1f1f2c", border: "1px solid #2a2a3a", color: "#fff", padding: "4px 8px", borderRadius: 4 }}
+            style={{ background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "4px 8px", borderRadius: 4 }}
           />
         ) : (
           <h1
@@ -130,7 +130,7 @@ export function Topbar(p: TopbarProps) {
             {p.flowName}
           </h1>
         )}
-        {p.dirty && <span style={{ color: "#fdcb6e", fontSize: 11 }}>● unsaved</span>}
+        {p.dirty && <span style={{ color: "rgb(var(--color-warning) / 1)", fontSize: 11 }}>● unsaved</span>}
         {p.status && <StatusPill status={p.status} />}
         <div className="spacer" />
         {p.status === "draft" && p.onPublishClick && (
@@ -193,8 +193,8 @@ export function Topbar(p: TopbarProps) {
       </header>
       {p.validationErrors && p.validationErrors.length > 0 && !report && (
         <div style={{
-          background: "#2a1a1a", borderBottom: "1px solid #ff7675",
-          color: "#ff7675", fontSize: 11, padding: "6px 14px",
+          background: "rgb(var(--color-danger) / 0.12)", borderBottom: "1px solid rgb(var(--color-danger) / 1)",
+          color: "rgb(var(--color-danger) / 1)", fontSize: 11, padding: "6px 14px",
         }}>
           {p.validationErrors.length > 1 && (
             <>{p.validationErrors.length} validation issues — </>
@@ -389,13 +389,13 @@ function ImportPanel({
     <div className="je-export-panel">
       <div className="je-export-panel__header">
         <div className="je-export-panel__tabs">
-          <span style={{ fontSize: 12, color: "#bbb" }}>Import flow (JSON)</span>
+          <span style={{ fontSize: 12, color: "rgb(var(--color-text) / 1)" }}>Import flow (JSON)</span>
         </div>
         <div className="je-export-panel__spacer" />
         <label
           className="je-icon-btn"
           style={{
-            background: "#2a2a3e", border: "1px solid #3a3a4e", color: "#ddd",
+            background: "rgb(var(--color-surface-raised) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)",
             padding: "6px 10px", borderRadius: 5, fontSize: 12, cursor: "pointer",
             display: "inline-flex", alignItems: "center", gap: 6,
           }}
@@ -419,7 +419,7 @@ function ImportPanel({
           onClick={handleImport}
           disabled={text.trim().length === 0}
           style={{
-            background: "#00b894", border: "1px solid #00b894", color: "#fff",
+            background: "rgb(var(--color-success) / 1)", border: "1px solid rgb(var(--color-success) / 1)", color: "#fff" /* theme-colors-allow: white-on-success */,
             padding: "6px 12px", borderRadius: 5, fontSize: 12, fontWeight: 600,
             cursor: text.trim().length === 0 ? "not-allowed" : "pointer",
             opacity: text.trim().length === 0 ? 0.5 : 1,
@@ -435,14 +435,14 @@ function ImportPanel({
         />
       </div>
       {filename && (
-        <div style={{ padding: "6px 14px", fontSize: 11, color: "#bbb", borderBottom: "1px solid #2a2a3a" }}>
+        <div style={{ padding: "6px 14px", fontSize: 11, color: "rgb(var(--color-text) / 1)", borderBottom: "1px solid rgb(var(--color-surface-raised) / 1)" }}>
           Loaded: <code>{filename}</code>
         </div>
       )}
       {error && (
         <div style={{
-          padding: "8px 14px", fontSize: 12, color: "#ff7675",
-          background: "#2a1a1a", borderBottom: "1px solid #ff7675",
+          padding: "8px 14px", fontSize: 12, color: "rgb(var(--color-danger) / 1)",
+          background: "rgb(var(--color-danger) / 0.12)", borderBottom: "1px solid rgb(var(--color-danger) / 1)",
         }}>
           {error}
         </div>
@@ -455,7 +455,7 @@ function ImportPanel({
         spellCheck={false}
         style={{
           width: "100%", minHeight: 280, resize: "vertical",
-          background: "#11111a", color: "#ddd", border: 0, outline: "none",
+          background: "rgb(var(--color-bg) / 1)", color: "rgb(var(--color-text) / 1)", border: 0, outline: "none",
           fontFamily: "ui-monospace, monospace", fontSize: 12, padding: 14,
           boxSizing: "border-box",
         }}
@@ -621,8 +621,8 @@ function SecretWarningsBody({
                     key={n}
                     style={{
                       padding: "1px 6px",
-                      border: "1px solid #c08a3e",
-                      color: "#f0c97a",
+                      border: "1px solid rgb(var(--color-warning) / 1)",
+                      color: "rgb(var(--color-warning) / 1)",
                       borderRadius: 3,
                       fontSize: 11,
                       fontFamily: "ui-monospace, monospace",
@@ -637,7 +637,7 @@ function SecretWarningsBody({
           return (
             <div key={i} style={{ marginBottom: 8 }}>
               <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "rgb(var(--color-text) / 1)" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
                     <code>{e.slot}</code> on node {renderNodeIdChip(e.nodeId)} pinned to{" "}
@@ -652,7 +652,7 @@ function SecretWarningsBody({
           return (
             <div key={i} style={{ marginBottom: 8 }}>
               <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "rgb(var(--color-text) / 1)" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
                     <code>{e.slot}</code> on node {renderNodeIdChip(e.nodeId)} — no longer declared on the step
@@ -666,7 +666,7 @@ function SecretWarningsBody({
           return (
             <div key={i} style={{ marginBottom: 8 }}>
               <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#bbb" }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "rgb(var(--color-text) / 1)" }}>
                 {w.entries.map((e, j) => (
                   <li key={j}>
                     <code>{e.modelId}</code> ({e.provider}) — {e.location === "workflow-default"

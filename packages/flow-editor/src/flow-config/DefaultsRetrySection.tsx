@@ -45,11 +45,11 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
   const backoff = r.backoff ?? "exponential";
 
   return (
-    <div style={{ borderTop: "1px solid #2a2a3a", paddingTop: 8, marginTop: 8 }}>
+    <div style={{ borderTop: "1px solid rgb(var(--color-surface-raised) / 1)", paddingTop: 8, marginTop: 8 }}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 12, padding: 0, marginBottom: 6 }}
+        style={{ background: "none", border: "none", color: "rgb(var(--color-text) / 1)", cursor: "pointer", fontSize: 12, padding: 0, marginBottom: 6 }}
       >
         {open ? "▾" : "▸"} Default retry policy
       </button>
@@ -144,7 +144,7 @@ export function DefaultsRetrySection({ defaults, onChange, readOnly }: Props) {
             type="button"
             disabled={readOnly}
             onClick={() => onChange({ ...defaults, retry: undefined })}
-            style={{ fontSize: 11, color: "#e17055", background: "none", border: "1px solid #4a2020", borderRadius: 3, padding: "2px 8px", cursor: "pointer", marginTop: 4 }}
+            style={{ fontSize: 11, color: "rgb(var(--color-danger) / 1)", background: "none", border: "1px solid rgb(var(--color-danger) / 0.12)", borderRadius: 3, padding: "2px 8px", cursor: "pointer", marginTop: 4 }}
           >
             Clear retry default
           </button>

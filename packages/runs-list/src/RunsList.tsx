@@ -47,9 +47,9 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
         )}
         <WorkflowInstanceFilters filter={p.filter} onChange={p.onFilterChange} />
       </div>
-      {p.isLoading && <div style={{ color: "#888" }}>Loading…</div>}
+      {p.isLoading && <div style={{ color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>}
       {!p.isLoading && p.workflowInstances.length === 0 && (
-        <div style={{ color: "#888" }}>No workflow instances match the current filters.</div>
+        <div style={{ color: "rgb(var(--color-text-muted) / 1)" }}>No workflow instances match the current filters.</div>
       )}
       {p.workflowInstances.length > 0 && (
         <table className="je-runslist__table">
@@ -88,20 +88,20 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                   >
                     <td
                       title={ref.title}
-                      style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#cfd6e4", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "rgb(var(--color-text) / 1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                     >
                       {ref.text}
                     </td>
                     <td><span className={`je-runslist__pill ${r.status}`}>{r.status}</span></td>
                     <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 11 }}>{r.id.slice(0, 8)}</td>
-                    <td style={{ color: "#aaa" }}>
+                    <td style={{ color: "rgb(var(--color-text-muted) / 1)" }}>
                       {(r.workflowVersionId && p.workflowNameByVersionId?.[r.workflowVersionId])
                         || r.workflowNameSnapshot
                         || (r.workflowVersionId ? r.workflowVersionId.slice(0, 8) : "—")}
                     </td>
                     <td><span className={`je-badge je-badge--scope-${r.workflowScopeSnapshot}`}>{r.workflowScopeSnapshot}</span></td>
                     {scope !== "mine" && (
-                      <td style={{ color: "#aaa", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
+                      <td style={{ color: "rgb(var(--color-text-muted) / 1)", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
                         {r.startedByUserId ? r.startedByUserId.slice(0, 8) : "—"}
                       </td>
                     )}
@@ -112,21 +112,21 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                         <ProviderBadge provider={r.triggerSource} />
                       )}
                     </td>
-                    <td style={{ color: "#888" }}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"}</td>
-                    <td style={{ color: "#888" }}>{formatDuration(r.durationMs)}</td>
-                    <td style={{ color: "#ff7675" }}>{r.failedAtNodeId ?? ""}</td>
+                    <td style={{ color: "rgb(var(--color-text-muted) / 1)" }}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"}</td>
+                    <td style={{ color: "rgb(var(--color-text-muted) / 1)" }}>{formatDuration(r.durationMs)}</td>
+                    <td style={{ color: "rgb(var(--color-danger) / 1)" }}>{r.failedAtNodeId ?? ""}</td>
                   </tr>
                   {isIgnored && expandedIgnored.has(r.id) && (
                     <tr>
-                      <td colSpan={99} style={{ background: "#1a1a2e", padding: "8px 16px", color: "#fbbf24", fontSize: 12 }}>
+                      <td colSpan={99} style={{ background: "rgb(var(--color-surface) / 1)", padding: "8px 16px", color: "rgb(var(--color-warning) / 1)", fontSize: 12 }}>
                         ⚠ Webhook ignored — no matching workflow found
                         {webhookEvent?.deliveryId && (
-                          <span style={{ marginLeft: 12, color: "#888" }}>
+                          <span style={{ marginLeft: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
                             Delivery: {webhookEvent.deliveryId}
                           </span>
                         )}
                         {webhookEvent?.receivedAt && (
-                          <span style={{ marginLeft: 12, color: "#888" }}>
+                          <span style={{ marginLeft: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
                             Received: {new Date(webhookEvent.receivedAt).toUTCString()}
                           </span>
                         )}

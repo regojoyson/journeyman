@@ -179,7 +179,7 @@ export function BuilderPage() {
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="prose prose-sm prose-invert mr-auto max-w-[85%] rounded-md bg-slate-800/70 px-3 py-2 text-sm text-slate-200 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:mt-2 prose-headings:mb-1 prose-pre:my-2 prose-pre:bg-slate-950/60">
+              <div key={i} className="prose prose-sm prose-invert mr-auto max-w-[85%] rounded-md bg-slate-800/70 px-3 py-2 text-sm text-slate-200 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:mt-2 prose-headings:mb-1 prose-pre:my-2 prose-pre:bg-bg/60">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
               </div>
             )

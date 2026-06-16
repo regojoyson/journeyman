@@ -63,8 +63,8 @@ export function RunFormPage() {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [workflowId]);
 
-  if (error) return <div style={{ padding: 24, color: "#ff7675" }}>Error: {error}</div>;
-  if (!schema) return <div style={{ padding: 24, color: "#888" }}>Loading…</div>;
+  if (error) return <div style={{ padding: 24, color: "rgb(var(--color-danger) / 1)" }}>Error: {error}</div>;
+  if (!schema) return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>;
 
   async function onSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();

@@ -12,9 +12,9 @@ export function FormsInventoryPage() {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
-  if (error) return <div style={{ padding: 24, color: "#ff7675" }}>Error: {error}</div>;
-  if (!items) return <div style={{ padding: 24, color: "#888" }}>Loading…</div>;
-  if (items.length === 0) return <div style={{ padding: 24, color: "#888" }}>No forms available.</div>;
+  if (error) return <div style={{ padding: 24, color: "rgb(var(--color-danger) / 1)" }}>Error: {error}</div>;
+  if (!items) return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>;
+  if (items.length === 0) return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>No forms available.</div>;
 
   return (
     <div className="jm-forms-inventory" style={{ padding: 24 }}>

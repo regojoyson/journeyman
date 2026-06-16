@@ -12,9 +12,9 @@ import { useAuth } from "../AuthContext.tsx";
 const SCOPE_LABELS: Record<string, string> = { user: "Personal", org: "Org", global: "Global" };
 
 function scopeBadgeStyle(scope: string): React.CSSProperties {
-  if (scope === "org") return { background: "rgba(37,99,235,0.18)", color: "#93c5fd", border: "1px solid rgba(37,99,235,0.4)" };
-  if (scope === "global") return { background: "rgba(124,58,237,0.18)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.4)" };
-  return { background: "rgba(107,114,128,0.18)", color: "#d1d5db", border: "1px solid rgba(107,114,128,0.4)" };
+  if (scope === "org") return { background: "rgba(37,99,235,0.18)", color: "rgb(var(--color-info) / 1)", border: "1px solid rgba(37,99,235,0.4)" };
+  if (scope === "global") return { background: "rgba(124,58,237,0.18)", color: "rgb(var(--color-accent) / 1)", border: "1px solid rgba(124,58,237,0.4)" };
+  return { background: "rgba(107,114,128,0.18)", color: "rgb(var(--color-text) / 1)", border: "1px solid rgba(107,114,128,0.4)" };
 }
 
 interface NewRunDialogProps {
@@ -89,19 +89,19 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
       display: "flex", alignItems: "center", justifyContent: "center",
     }} onClick={onClose}>
       <div style={{
-        background: "#1a1a2e", border: "1px solid #2a2a3e", borderRadius: 10,
+        background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", borderRadius: 10,
         padding: 28, minWidth: 440, maxWidth: 560, width: "100%",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.5)", color: "#fff",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.5)", color: "rgb(var(--color-text) / 1)",
       }} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700 }}>New Run</h3>
 
         {/* Flow selector */}
         <label style={{ display: "block", marginBottom: 14 }}>
-          <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>Workflow *</span>
+          <span style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)", display: "block", marginBottom: 5 }}>Workflow *</span>
           <select
             value={flowId}
             onChange={e => { setFlowId(e.target.value); setDynValues({}); setError(null); }}
-            style={{ width: "100%", background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+            style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
           >
             <option value="">— select a workflow —</option>
             {(["user", "org", "global"] as const).map(scope =>
@@ -128,19 +128,19 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 
         {/* Dynamic inputs from flow definition */}
         {versionQ.isLoading && flowId && (
-          <div style={{ color: "#888", fontSize: 12, marginBottom: 12 }}>Loading flow inputs…</div>
+          <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 12, marginBottom: 12 }}>Loading flow inputs…</div>
         )}
         {dynamicDefs.map(def => (
           <label key={def.name} style={{ display: "block", marginBottom: 14 }}>
-            <span style={{ fontSize: 12, color: "#aaa", display: "block", marginBottom: 5 }}>
-              {def.name}{def.required && <span style={{ color: "#ff7675" }}> *</span>}
-              {def.description && <span style={{ color: "#666", marginLeft: 6 }}>— {def.description}</span>}
+            <span style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)", display: "block", marginBottom: 5 }}>
+              {def.name}{def.required && <span style={{ color: "rgb(var(--color-danger) / 1)" }}> *</span>}
+              {def.description && <span style={{ color: "rgb(var(--color-border-strong) / 1)", marginLeft: 6 }}>— {def.description}</span>}
             </span>
             {def.type === "boolean" ? (
               <select
                 value={dynValues[def.name] ?? ""}
                 onChange={e => setDynValues(v => ({ ...v, [def.name]: e.target.value }))}
-                style={{ width: "100%", background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
               >
                 <option value="">— select —</option>
                 <option value="true">true</option>
@@ -152,27 +152,27 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
                 value={dynValues[def.name] ?? ""}
                 onChange={e => setDynValues(v => ({ ...v, [def.name]: e.target.value }))}
                 placeholder={def.type === "json-object" ? '{"key": "value"}' : def.type === "json-array" ? '[ ... ]' : undefined}
-                style={{ width: "100%", background: "#0f0f1e", border: "1px solid #2a2a3e", color: "#fff", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
               />
             )}
           </label>
         ))}
 
         {error && (
-          <div style={{ color: "#ff7675", fontSize: 12, marginBottom: 12 }}>{error}</div>
+          <div style={{ color: "rgb(var(--color-danger) / 1)", fontSize: 12, marginBottom: 12 }}>{error}</div>
         )}
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
           <button
             type="button"
             onClick={onClose}
-            style={{ background: "transparent", border: "1px solid #444", color: "#ccc", padding: "7px 16px", borderRadius: 6, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+            style={{ background: "transparent", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "7px 16px", borderRadius: 6, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
           >Cancel</button>
           <button
             type="button"
             disabled={!canRun}
             onClick={() => submitM.mutate()}
-            style={{ background: canRun ? "#6c5ce7" : "#2a2a3e", border: "none", color: canRun ? "#fff" : "#555", padding: "7px 18px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: canRun ? "pointer" : "default", fontFamily: "inherit" }}
+            style={{ background: canRun ? "rgb(var(--color-accent) / 1)" : "rgb(var(--color-surface-raised) / 1)", border: "none", color: canRun ? "#fff" /* theme-colors-allow: white-on-accent */ : "rgb(var(--color-border-strong) / 1)", padding: "7px 18px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: canRun ? "pointer" : "default", fontFamily: "inherit" }}
           >{submitM.isPending ? "Starting…" : "Run"}</button>
         </div>
       </div>

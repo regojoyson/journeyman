@@ -36,7 +36,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
 
   return (
     <>
-      {fullscreen && <div className="fixed inset-0 z-[65] bg-black/70" />}
+      {fullscreen && <div className="fixed inset-0 z-[65] bg-overlay" />}
       <div className={wrapperCls}>
         {/* Header: Edit/Preview toggle + fullscreen */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/70">

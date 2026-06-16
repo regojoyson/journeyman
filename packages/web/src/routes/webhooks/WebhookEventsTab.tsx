@@ -99,13 +99,13 @@ export function WebhookEventsTab({ webhookId }: { webhookId: string }) {
                       {ev.error && <p className="text-xs text-red-400">error: {ev.error}</p>}
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Payload</div>
-                        <pre className="text-xs text-slate-300 overflow-x-auto bg-slate-950 rounded p-2">
+                        <pre className="text-xs text-slate-300 overflow-x-auto bg-bg rounded p-2">
                           {JSON.stringify(ev.rawPayload, null, 2)}
                         </pre>
                       </div>
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Headers</div>
-                        <pre className="text-xs text-slate-300 overflow-x-auto bg-slate-950 rounded p-2">
+                        <pre className="text-xs text-slate-300 overflow-x-auto bg-bg rounded p-2">
                           {JSON.stringify(ev.rawHeaders, null, 2)}
                         </pre>
                       </div>

@@ -88,7 +88,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
                 <button
                   disabled={readOnly}
                   onClick={() => removeRow(k)}
-                  style={{ background: "transparent", border: "1px solid #444", color: "#888", padding: "0 8px", borderRadius: 4, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text-muted) / 1)", padding: "0 8px", borderRadius: 4, cursor: "pointer" }}
                 >×</button>
               </div>
             );
@@ -97,7 +97,7 @@ export function IoTab({ flow, node, onChange, readOnly }: IoTabProps) {
         {!readOnly && (
           <button
             onClick={addRow}
-            style={{ marginTop: 6, background: "#2a2a3e", border: "1px solid #444", color: "#ddd", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}
+            style={{ marginTop: 6, background: "rgb(var(--color-surface-raised) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}
           >+ Add</button>
         )}
       </div>

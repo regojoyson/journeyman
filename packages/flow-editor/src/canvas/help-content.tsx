@@ -78,20 +78,20 @@ export const NODE_GROUPS: NodeGroup[] = [
 
 // 3a — Handles legend
 export const HANDLES: LegendRow[] = [
-  { swatch: <span style={dot("#4a9eff")} />, label: "Blue dot",
+  { swatch: <span style={dot("rgb(var(--color-info) / 1)")} />, label: "Blue dot",
     desc: "Flow input/output. Drag from one to another node to connect." },
-  { swatch: <span style={dot("#ff7675")} />, label: "Red dot",
+  { swatch: <span style={dot("rgb(var(--color-danger) / 1)")} />, label: "Red dot",
     desc: "Error output. Connect to the node that handles failures for this step." },
-  { swatch: <span style={dot("#00b894", "rgba(0,184,148,0.55)")} />, label: "Green glow",
+  { swatch: <span style={dot("rgb(var(--color-success) / 1)", "rgba(0,184,148,0.55)")} />, label: "Green glow",
     desc: "Transient — appears while you're dragging a connection. Means \"valid drop target\"." },
 ];
 
 // 3b — Edges legend
 export const EDGES: LegendRow[] = [
-  { swatch: <span style={lineSwatch("#888")} />,          label: "Solid grey",    desc: "Default flow." },
-  { swatch: <span style={lineSwatch("#fdcb6e", true)} />, label: "Dashed yellow", desc: "Conditional branch (labeled \"if\")." },
-  { swatch: <span style={lineSwatch("#888", true)} />,    label: "Dashed grey",   desc: "Else branch." },
-  { swatch: <span style={lineSwatch("#ff7675", true)} />, label: "Dashed red",    desc: "Error path." },
+  { swatch: <span style={lineSwatch("rgb(var(--color-text-muted) / 1)")} />,          label: "Solid grey",    desc: "Default flow." },
+  { swatch: <span style={lineSwatch("rgb(var(--color-warning) / 1)", true)} />, label: "Dashed yellow", desc: "Conditional branch (labeled \"if\")." },
+  { swatch: <span style={lineSwatch("rgb(var(--color-text-muted) / 1)", true)} />,    label: "Dashed grey",   desc: "Else branch." },
+  { swatch: <span style={lineSwatch("rgb(var(--color-danger) / 1)", true)} />, label: "Dashed red",    desc: "Error path." },
 ];
 
 // 4 — Publish & read-only

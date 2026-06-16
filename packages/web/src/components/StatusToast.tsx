@@ -16,7 +16,7 @@ export function StatusToast({ kind, message, onDismiss, autoDismissMs }: StatusT
     return () => clearTimeout(id);
   }, [ms, onDismiss]);
 
-  const accent = kind === "success" ? "#00b894" : "#ff7675";
+  const accent = kind === "success" ? "rgb(var(--color-success) / 1)" : "rgb(var(--color-danger) / 1)";
   const title = kind === "success" ? "Saved" : "Save failed";
 
   return (
@@ -24,9 +24,9 @@ export function StatusToast({ kind, message, onDismiss, autoDismissMs }: StatusT
       role="status"
       aria-live="polite"
       style={{
-        position: "fixed", bottom: 20, right: 20, background: "#1f1f2c",
+        position: "fixed", bottom: 20, right: 20, background: "rgb(var(--color-surface) / 1)",
         border: `1px solid ${accent}`, borderRadius: 6, padding: "6px 10px",
-        color: "#fff", fontSize: 12, maxWidth: 320, zIndex: 100,
+        color: "rgb(var(--color-text) / 1)", fontSize: 12, maxWidth: 320, zIndex: 100,
         boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
         display: "flex", alignItems: "center", gap: 8, lineHeight: 1.3,
       }}
@@ -35,13 +35,13 @@ export function StatusToast({ kind, message, onDismiss, autoDismissMs }: StatusT
         width: 7, height: 7, borderRadius: "50%", background: accent, flexShrink: 0,
       }} />
       <span style={{ fontWeight: 600 }}>{title}:</span>
-      <span style={{ color: "#bbb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span style={{ color: "rgb(var(--color-text) / 1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {message}
       </span>
       <button
         onClick={onDismiss}
         style={{
-          background: "transparent", border: "none", color: "#888",
+          background: "transparent", border: "none", color: "rgb(var(--color-text-muted) / 1)",
           cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2,
         }}
         aria-label="Dismiss"

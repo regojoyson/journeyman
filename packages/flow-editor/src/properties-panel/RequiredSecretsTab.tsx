@@ -169,7 +169,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     if (slotsFromKind && !kindProvider) {
       return (
         <div className="je-props__field">
-          <div style={{ color: "#f0c97a", fontSize: 11 }}>
+          <div style={{ color: "rgb(var(--color-warning) / 1)", fontSize: 11 }}>
             This step needs the workflow's <code>{slotsFromKind}</code> credentials.
             Pick a {slotsFromKind} in Workflow settings to see the required slot.
           </div>
@@ -178,7 +178,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     }
     return (
       <div className="je-props__field">
-        <div style={{ color: "#888", fontSize: 11, fontStyle: "italic" }}>
+        <div style={{ color: "rgb(var(--color-text-muted) / 1)", fontSize: 11, fontStyle: "italic" }}>
           This step doesn't need any secrets.
         </div>
       </div>
@@ -191,21 +191,21 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
         <button
           onClick={() => setHelpOpen(o => !o)}
           style={{
-            background: "transparent", border: "1px solid #2a3148", color: "#7da7ff",
+            background: "transparent", border: "1px solid rgb(var(--color-surface) / 1)", color: "rgb(var(--color-info) / 1)",
             padding: "4px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer",
           }}
         >{helpOpen ? "▾" : "▸"} How secrets are resolved</button>
         {helpOpen && (
           <div style={{
-            marginTop: 6, padding: "8px 10px", background: "#161a26",
-            border: "1px solid #2a3148", borderRadius: 4, fontSize: 11, color: "#bbb",
+            marginTop: 6, padding: "8px 10px", background: "rgb(var(--color-bg) / 1)",
+            border: "1px solid rgb(var(--color-surface) / 1)", borderRadius: 4, fontSize: 11, color: "rgb(var(--color-text) / 1)",
             lineHeight: 1.5,
           }}>
             Each row below is something this step needs at run time.<br />
-            <b style={{ color: "#7da7ff" }}>Auto</b> — system finds a secret with the
+            <b style={{ color: "rgb(var(--color-info) / 1)" }}>Auto</b> — system finds a secret with the
             exact same name. Looks in <i>your secrets first</i>, then <i>organization</i>,
             then <i>global</i>. First match wins.<br />
-            <b style={{ color: "#7da7ff" }}>Pin</b> — pick one specific secret from any
+            <b style={{ color: "rgb(var(--color-info) / 1)" }}>Pin</b> — pick one specific secret from any
             tier. That exact one is used; no fallback.<br />
             Names are exact and case-sensitive. <code>GITHUB_TOKEN</code> won't match
             <code>MY_GITHUB_TOKEN</code>.
@@ -260,17 +260,17 @@ function SlotRow({ slot, binding, visible, grouped, loaded, workflowScope, readO
 
   return (
     <div className="je-props__field" style={{
-      borderTop: "1px solid #2a2a3a", paddingTop: 10, marginTop: 10,
+      borderTop: "1px solid rgb(var(--color-surface-raised) / 1)", paddingTop: 10, marginTop: 10,
     }}>
       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#ddd" }}>
+        <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "rgb(var(--color-text) / 1)" }}>
           {slot.name}
         </code>
         {slot.optional && (
-          <span style={{ fontSize: 10, color: "#888" }}>(optional)</span>
+          <span style={{ fontSize: 10, color: "rgb(var(--color-text-muted) / 1)" }}>(optional)</span>
         )}
       </label>
-      <div style={{ fontSize: 10, color: "#888", marginTop: 2, marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: "rgb(var(--color-text-muted) / 1)", marginTop: 2, marginBottom: 6 }}>
         {slot.description}
       </div>
 
@@ -280,7 +280,7 @@ function SlotRow({ slot, binding, visible, grouped, loaded, workflowScope, readO
         disabled={readOnly}
         style={{
           width: "100%", fontFamily: "ui-monospace, monospace", fontSize: 11,
-          background: "#1f1f2c", border: "1px solid #444", color: "#ddd",
+          background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)",
           padding: "4px 6px", borderRadius: 4,
         }}
       >
@@ -308,9 +308,9 @@ function SlotRow({ slot, binding, visible, grouped, loaded, workflowScope, readO
 
       {crossScope && (
         <div style={{
-          marginTop: 6, fontSize: 11, color: "#f0c97a",
-          padding: "4px 8px", background: "#3a2e1a",
-          border: "1px solid #c08a3e", borderRadius: 4,
+          marginTop: 6, fontSize: 11, color: "rgb(var(--color-warning) / 1)",
+          padding: "4px 8px", background: "rgb(var(--color-warning) / 0.12)",
+          border: "1px solid rgb(var(--color-warning) / 1)", borderRadius: 4,
         }}>
           ⚠ This is a {workflowScope}-scope flow but you pinned a {(binding as { scope: SecretScope }).scope}-scope secret.
           Other runners won't see it.
@@ -341,15 +341,15 @@ function Preview({ slot, binding, autoTier, exists, loaded }: PreviewProps) {
   });
   if (binding.mode === "auto") {
     if (autoTier) {
-      return <div style={style("#7fc480")}>✓ Will use: {slot.name} from {SCOPE_LABEL[autoTier]}</div>;
+      return <div style={style("rgb(var(--color-success) / 1)")}>✓ Will use: {slot.name} from {SCOPE_LABEL[autoTier]}</div>;
     }
     if (slot.optional) {
-      return <div style={style("#9aaab9")}>ℹ Optional. None found — step will use its own default.</div>;
+      return <div style={style("rgb(var(--color-text-muted) / 1)")}>ℹ Optional. None found — step will use its own default.</div>;
     }
-    return <div style={style("#f0c97a")}>⚠ No secret named {slot.name} in any tier. Run will fail.</div>;
+    return <div style={style("rgb(var(--color-warning) / 1)")}>⚠ No secret named {slot.name} in any tier. Run will fail.</div>;
   }
   if (!exists) {
-    return <div style={style("#f0c97a")}>⚠ Pinned secret {binding.name} ({SCOPE_LABEL[binding.scope]}) is not accessible. Runs will fail.</div>;
+    return <div style={style("rgb(var(--color-warning) / 1)")}>⚠ Pinned secret {binding.name} ({SCOPE_LABEL[binding.scope]}) is not accessible. Runs will fail.</div>;
   }
-  return <div style={style("#9aaab9")}>ℹ Pinned to {binding.name} ({SCOPE_LABEL[binding.scope]}). No fallback.</div>;
+  return <div style={style("rgb(var(--color-text-muted) / 1)")}>ℹ Pinned to {binding.name} ({SCOPE_LABEL[binding.scope]}). No fallback.</div>;
 }

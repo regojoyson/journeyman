@@ -64,19 +64,19 @@ export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
     <div>
       <div className="je-props__field">
         <label>Skills</label>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 8 }}>
           Skill packages to load when this step runs. Manage your skills at{" "}
-          <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/skills</a>{" "}
+          <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/skills</a>{" "}
           or{" "}
-          <a href="/admin/skills" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/admin/skills</a>.
+          <a href="/admin/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/admin/skills</a>.
         </div>
 
         {loading ? (
-          <div style={{ fontSize: 12, color: "#888" }}>Loading…</div>
+          <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>
         ) : available.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#888" }}>
+          <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
             No ready skill packages. Add some at{" "}
-            <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/skills</a>.
+            <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/skills</a>.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -87,8 +87,8 @@ export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
                   key={s.id}
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
-                    background: "#1f1f2c",
-                    border: `1px solid ${checked ? "#4a9eff" : "#2a2a3a"}`,
+                    background: "rgb(var(--color-surface) / 1)",
+                    border: `1px solid ${checked ? "rgb(var(--color-info) / 1)" : "rgb(var(--color-surface-raised) / 1)"}`,
                     borderRadius: 6,
                     padding: "6px 8px",
                     cursor: readOnly ? "not-allowed" : "pointer",
@@ -103,7 +103,7 @@ export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
                     onChange={() => toggle(s.id)}
                   />
                   <span style={{ flex: 1 }}>{s.name}</span>
-                  <span style={{ fontSize: 10, color: "#888" }}>{s.scope}</span>
+                  <span style={{ fontSize: 10, color: "rgb(var(--color-text-muted) / 1)" }}>{s.scope}</span>
                 </label>
               );
             })}

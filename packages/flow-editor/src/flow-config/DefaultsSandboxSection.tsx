@@ -34,8 +34,8 @@ export function DefaultsSandboxSection({ defaults, onChange, readOnly }: Props) 
   const setSandboxId = (workerId: string | undefined) => onChange({ ...defaults, sandboxId: workerId });
 
   return (
-    <div style={{ borderTop: "1px solid #2a2a3a", paddingTop: 8, marginTop: 8 }}>
-      <div style={{ color: "#ccc", fontSize: 12, marginBottom: 6 }}>Sandbox (where this workflow runs)</div>
+    <div style={{ borderTop: "1px solid rgb(var(--color-surface-raised) / 1)", paddingTop: 8, marginTop: 8 }}>
+      <div style={{ color: "rgb(var(--color-text) / 1)", fontSize: 12, marginBottom: 6 }}>Sandbox (where this workflow runs)</div>
       <div className="je-props__field">
         <select
           value={defaults.sandboxId ?? ""}
@@ -49,7 +49,7 @@ export function DefaultsSandboxSection({ defaults, onChange, readOnly }: Props) 
         </select>
       </div>
       {!defaults.sandboxId && (
-        <div className="je-props__field-help" style={{ marginTop: 4, color: "#f0a" }}>
+        <div className="je-props__field-help" style={{ marginTop: 4, color: "rgb(var(--color-danger) / 1)" }}>
           Required — pick where this workflow runs. Publishing is blocked until you choose one.
         </div>
       )}

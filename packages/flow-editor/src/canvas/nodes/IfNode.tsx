@@ -9,7 +9,7 @@ export function IfNode(props: NodeProps) {
       <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
-        <div className="je-node__icon" style={{ background: "#74b9ff" }}>?</div>
+        <div className="je-node__icon" style={{ background: "rgb(var(--color-info) / 1)" }}>?</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "If"}</div>
           <div className="je-node__subtitle">then / else</div>

@@ -9,7 +9,7 @@ export function SubflowNode(props: NodeProps) {
       <NodeIssueBadges nodeId={props.id} />
       <Handle type="target" position={Position.Left} style={handleBlue} />
       <div className="je-node__row">
-        <div className="je-node__icon" style={{ background: "#a29bfe" }}>⊞</div>
+        <div className="je-node__icon" style={{ background: "rgb(var(--color-accent) / 1)" }}>⊞</div>
         <div className="je-node__text">
           <div className="je-node__label">{data.displayName ?? "Subflow"}</div>
           <div className="je-node__subtitle">{data.workflowName ?? "—"}</div>

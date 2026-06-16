@@ -89,8 +89,8 @@ export function EditCustomStepModal(props: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 md:p-6">
-      <div className="bg-slate-950 border border-slate-800 rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4 md:p-6">
+      <div className="bg-bg border border-slate-800 rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <header className="flex items-start justify-between px-5 py-4 border-b border-slate-800">
           <div>
@@ -117,7 +117,7 @@ export function EditCustomStepModal(props: {
         </header>
 
         {/* Tabs */}
-        <nav className="flex items-center gap-1 px-3 pt-3 border-b border-slate-800 bg-slate-950">
+        <nav className="flex items-center gap-1 px-3 pt-3 border-b border-slate-800 bg-bg">
           {TABS.map(t => {
             const Icon = t.icon;
             const active = activeTab === t.id;
@@ -288,7 +288,7 @@ export function EditCustomStepModal(props: {
         </div>
 
         {/* Footer */}
-        <footer className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-slate-950">
+        <footer className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-bg">
           <div className="text-xs">
             {error && (
               <div className="flex items-center gap-1.5 text-rose-300">

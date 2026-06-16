@@ -168,7 +168,7 @@ function ModelForm(props: {
     }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
       <div className={`${card} w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6`}>
         <div>
           <h2 className="text-lg font-semibold text-slate-100">{props.title}</h2>

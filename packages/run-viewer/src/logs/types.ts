@@ -17,12 +17,12 @@ export interface ParsedLog {
 }
 
 export const KIND_COLOR: Record<LogKind, string> = {
-  assistant: "#74b9ff",
-  tool: "#fdcb6e",
-  tool_result: "#a4b0be",
-  result_ok: "#55efc4",
-  result_err: "#ff7675",
-  other: "#ddd",
+  assistant: "rgb(var(--color-info) / 1)",
+  tool: "rgb(var(--color-warning) / 1)",
+  tool_result: "rgb(var(--color-text) / 1)",
+  result_ok: "rgb(var(--color-success) / 1)",
+  result_err: "rgb(var(--color-danger) / 1)",
+  other: "rgb(var(--color-text) / 1)",
 };
 
 export const KIND_LABEL: Record<LogKind, string> = {

@@ -62,13 +62,13 @@ export function ListensForPicker({
           gap: 6,
           padding: "6px 8px",
           minHeight: 32,
-          border: "1px solid var(--je-border, #2a2f3a)",
+          border: "1px solid var(--je-border, rgb(var(--color-surface) / 1))",
           borderRadius: 4,
-          background: "var(--je-input-bg, #1a1d24)",
+          background: "var(--je-input-bg, rgb(var(--color-surface) / 1))",
         }}
       >
         {value.length === 0 ? (
-          <span style={{ color: "#777", fontSize: 12, fontStyle: "italic" }}>
+          <span style={{ color: "rgb(var(--color-text-subtle) / 1)", fontSize: 12, fontStyle: "italic" }}>
             (no filters — accepts any event type)
           </span>
         ) : (
@@ -80,8 +80,8 @@ export function ListensForPicker({
                 alignItems: "center",
                 gap: 4,
                 padding: "2px 6px",
-                background: "#4a9eff22",
-                color: "#9cc7ff",
+                background: "rgb(var(--color-info) / 0.13)",
+                color: "rgb(var(--color-info) / 1)",
                 borderRadius: 3,
                 fontSize: 12,
                 fontFamily: "monospace",
@@ -96,7 +96,7 @@ export function ListensForPicker({
                   style={{
                     border: "none",
                     background: "transparent",
-                    color: "#9cc7ff",
+                    color: "rgb(var(--color-info) / 1)",
                     cursor: "pointer",
                     padding: 0,
                     fontSize: 14,

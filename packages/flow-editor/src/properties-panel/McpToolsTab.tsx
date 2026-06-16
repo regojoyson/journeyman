@@ -112,19 +112,19 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
     <div>
       <div className="je-props__field">
         <label>MCPs</label>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 8 }}>
           MCPs to attach when this step runs. Manage your MCPs at{" "}
-          <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/mcps</a>{" "}
+          <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/mcps</a>{" "}
           or{" "}
-          <a href="/admin/mcps" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/admin/mcps</a>.
+          <a href="/admin/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/admin/mcps</a>.
         </div>
 
         {loading ? (
-          <div style={{ fontSize: 12, color: "#888" }}>Loading…</div>
+          <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>
         ) : available.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#888" }}>
+          <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
             No MCPs registered. Add some at{" "}
-            <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "#4a9eff" }}>/me/mcps</a>.
+            <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/mcps</a>.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -135,8 +135,8 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
                   key={m.id}
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
-                    background: "#1f1f2c",
-                    border: `1px solid ${checked ? "#4a9eff" : "#2a2a3a"}`,
+                    background: "rgb(var(--color-surface) / 1)",
+                    border: `1px solid ${checked ? "rgb(var(--color-info) / 1)" : "rgb(var(--color-surface-raised) / 1)"}`,
                     borderRadius: 6,
                     padding: "6px 8px",
                     cursor: readOnly ? "not-allowed" : "pointer",
@@ -151,7 +151,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
                     onChange={() => toggle(m.id)}
                   />
                   <span style={{ flex: 1 }}>{m.name}</span>
-                  <span style={{ fontSize: 10, color: "#888" }}>{m.scope}</span>
+                  <span style={{ fontSize: 10, color: "rgb(var(--color-text-muted) / 1)" }}>{m.scope}</span>
                 </label>
               );
             })}
@@ -164,9 +164,9 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
           <label>
             Tools{" "}
             {overriding ? (
-              <span style={{ fontSize: 11, color: "#fdcb6e" }}>(overriding definition)</span>
+              <span style={{ fontSize: 11, color: "rgb(var(--color-warning) / 1)" }}>(overriding definition)</span>
             ) : (
-              <span style={{ fontSize: 11, color: "#888" }}>(definition default)</span>
+              <span style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)" }}>(definition default)</span>
             )}
           </label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -181,9 +181,9 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
                     gap: 4,
                     fontSize: 12,
                     padding: "2px 6px",
-                    border: "1px solid #444",
+                    border: "1px solid rgb(var(--color-border) / 1)",
                     borderRadius: 4,
-                    background: active ? "#4a9eff22" : "transparent",
+                    background: active ? "rgb(var(--color-info) / 0.13)" : "transparent",
                     cursor: readOnly ? "default" : "pointer",
                   }}
                 >

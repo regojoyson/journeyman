@@ -11,10 +11,10 @@ export function toReactWorkflowEdges(flow: WorkflowGraph): Edge[] {
   return flow.edges.map(e => {
     const t = e.type ?? "default";
     const arrowColor =
-      t === "error"       ? "#ff7675" :
-      t === "conditional" ? "#fdcb6e" :
-      t === "else"        ? "#888"    :
-      /* default */        "#888";
+      t === "error"       ? "rgb(var(--color-danger) / 1)" :
+      t === "conditional" ? "rgb(var(--color-warning) / 1)" :
+      t === "else"        ? "rgb(var(--color-text-muted) / 1)"    :
+      /* default */        "rgb(var(--color-text-muted) / 1)";
     // For multi-handle source nodes (If/Else has "then"+"else"; Step has
     // "default"+"error"; Loop has "body"+"exit"), set sourceHandle so React
     // Flow routes the edge to the intended port instead of stacking edges on

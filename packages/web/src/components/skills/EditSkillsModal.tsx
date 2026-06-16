@@ -80,7 +80,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-4 animate-in fade-in"
       onClick={props.onClose}
     >
       <div

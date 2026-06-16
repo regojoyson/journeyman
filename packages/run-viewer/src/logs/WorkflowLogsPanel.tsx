@@ -219,7 +219,7 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
                 className={`je-runview__log-chip${on ? " je-runview__log-chip--on" : ""}`}
                 style={{
                   borderColor: KIND_COLOR[k],
-                  color: on ? "#1a1a24" : KIND_COLOR[k],
+                  color: on ? "rgb(var(--color-surface) / 1)" : KIND_COLOR[k],
                   background: on ? KIND_COLOR[k] : "transparent",
                 }}
                 title={`Toggle ${KIND_LABEL[k]}`}
@@ -238,9 +238,9 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
             onClick={clearSteps}
             className={`je-runview__log-chip${activeSteps.size === 0 ? " je-runview__log-chip--on" : ""}`}
             style={{
-              borderColor: "#888",
-              color: activeSteps.size === 0 ? "#1a1a24" : "#aaa",
-              background: activeSteps.size === 0 ? "#888" : "transparent",
+              borderColor: "rgb(var(--color-text-muted) / 1)",
+              color: activeSteps.size === 0 ? "rgb(var(--color-surface) / 1)" : "rgb(var(--color-text-muted) / 1)",
+              background: activeSteps.size === 0 ? "rgb(var(--color-text-muted) / 1)" : "transparent",
             }}
             title="Show all steps"
           >All steps</button>
@@ -253,9 +253,9 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
                 onClick={() => toggleStep(p.id)}
                 className={`je-runview__log-chip${on ? " je-runview__log-chip--on" : ""}`}
                 style={{
-                  borderColor: "#7d8aff",
-                  color: on ? "#1a1a24" : "#7d8aff",
-                  background: on ? "#7d8aff" : "transparent",
+                  borderColor: "rgb(var(--color-accent) / 1)",
+                  color: on ? "rgb(var(--color-surface) / 1)" : "rgb(var(--color-accent) / 1)",
+                  background: on ? "rgb(var(--color-accent) / 1)" : "transparent",
                 }}
                 title={`Toggle step ${p.name}`}
               >{p.name}</button>
@@ -265,9 +265,9 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
       )}
 
       <div ref={scrollerRef} className="je-runview__log je-runview__logspanel-list">
-        {allLogs.length === 0 && <div style={{ color: "#666" }}>(no logs yet)</div>}
+        {allLogs.length === 0 && <div style={{ color: "rgb(var(--color-border-strong) / 1)" }}>(no logs yet)</div>}
         {allLogs.length > 0 && filtered.length === 0 && (
-          <div style={{ color: "#666" }}>(all filters hide every log)</div>
+          <div style={{ color: "rgb(var(--color-border-strong) / 1)" }}>(all filters hide every log)</div>
         )}
         {filtered.map(l => {
           const isExpanded = expanded.has(l.id);

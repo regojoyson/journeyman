@@ -8,8 +8,8 @@ import type { CSSProperties } from "react";
 export const handleBlue: CSSProperties = {
   width: 14,
   height: 14,
-  background: "#4a9eff",
-  border: "2px solid #11111a",
+  background: "rgb(var(--color-info) / 1)",
+  border: "2px solid rgb(var(--color-bg) / 1)",
   borderRadius: "50%",
   boxShadow: "0 0 0 2px rgba(74, 158, 255, 0.25)",
 };
@@ -17,8 +17,8 @@ export const handleBlue: CSSProperties = {
 export const handleRed: CSSProperties = {
   width: 14,
   height: 14,
-  background: "#ff7675",
-  border: "2px solid #11111a",
+  background: "rgb(var(--color-danger) / 1)",
+  border: "2px solid rgb(var(--color-bg) / 1)",
   borderRadius: "50%",
   boxShadow: "0 0 0 2px rgba(255, 118, 117, 0.25)",
 };

@@ -39,7 +39,7 @@ export function StepCard(props: {
 
       {/* Inputs / outputs reveal (human-readable wiring) */}
       {showIo && (
-        <div className="mt-2 rounded bg-slate-950/60 p-2 text-xs text-slate-300">
+        <div className="mt-2 rounded bg-bg/60 p-2 text-xs text-slate-300">
           {binding.io.inputs.length === 0 && binding.io.outputs.length === 0 ? (
             <span className="text-slate-500">No wired inputs or outputs.</span>
           ) : (
