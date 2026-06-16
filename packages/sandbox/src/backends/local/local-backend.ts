@@ -15,7 +15,7 @@ export interface LocalWorkerConfig {
 }
 
 export interface LocalBackendDeps {
-  runOperation: OperationRunner;
+  runOperation?: OperationRunner;
   defaultBaseDir: string;
 }
 
@@ -44,7 +44,7 @@ export class LocalBackend implements ExecutionEnvironmentBackend {
     this.validateConfig(worker.config);
     const cfg = (worker.config ?? {}) as LocalWorkerConfig;
     return new LocalExecutionEnvironment({
-      runOperation: this.deps.runOperation,
+      ...(this.deps.runOperation ? { runOperation: this.deps.runOperation } : {}),
       baseDir: cfg.baseDir ?? this.deps.defaultBaseDir,
       retainWorkspace: cfg.retainWorkspace,
     });

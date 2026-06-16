@@ -41,3 +41,22 @@ describe("LocalBackend", () => {
     await env.destroy(p);
   });
 });
+
+describe("LocalBackend without runOperation (teardown-only)", () => {
+  it("create + provision + destroy works without runOperation", async () => {
+    const b = new LocalBackend({ defaultBaseDir: tmpdir() });
+    const env = b.create(worker({}));
+    const p = await env.provision("run-teardown", {});
+    await expect(env.destroy(p)).resolves.toBeUndefined();
+  });
+
+  it("exec without runOperation throws a clear error", async () => {
+    const b = new LocalBackend({ defaultBaseDir: tmpdir() });
+    const env = b.create(worker({}));
+    const p = await env.provision("run-exec", {});
+    await expect(env.exec(p, { op: "echo", stdin: {} })).rejects.toThrow(
+      /runOperation not configured/,
+    );
+    await env.destroy(p);
+  });
+});
