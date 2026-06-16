@@ -17,7 +17,7 @@ describe("SANDBOX_CATALOG", () => {
   it("matches every registered backend (no drift)", () => {
     const registry = createDefaultRegistry({
       runOperation, defaultBaseDir: tmpdir(),
-      docker: { client, defaultImage: "journeyman/runner-base:dev" },
+      docker: { makeClient: () => client, defaultImage: "journeyman/runner-base:dev" },
     });
     for (const type of registry.available()) {
       const backend = registry.get(type);
