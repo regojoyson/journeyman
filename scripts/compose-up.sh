@@ -2,6 +2,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Ensure workspace deps are installed/linked before the host-side kit build
+# (build:kit / register-kit run here with tsx and need node_modules — incl. any
+# packages added since the last pull, e.g. @journeyman/agent-protocol).
+# Deterministic install for deploy; fall back to `npm install` if there's no lockfile.
+echo ">>> installing workspace deps"
+if [ -f package-lock.json ]; then
+  npm ci --no-audit --no-fund
+else
+  npm install --no-audit --no-fund
+fi
+
 # Deploy uses a dedicated env file so it can't clash with the dev .env
 # (e.g. the registry port: dev = localhost:5500, deploy = localhost:5000).
 ENV_FILE=".env.production"
