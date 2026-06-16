@@ -105,14 +105,28 @@ message ExecEvent {
 
 ### 3.2 Wiring / integration points
 
-- **Run-path wiring is a procedural type-switch, NOT the registry (finding 7).** The `InMemoryExecutionEnvironmentRegistry` / `createDefaultRegistry` is unused in production — the orchestrator selects backends with explicit `if (type === …)` branches. Adding `machine-windows` means editing these sites (each mirrors the docker path):
-  - `packages/orchestrator/src/sandbox/ensure-workspace.ts` — provisioning gate + the `connect()` reconnect path (2 branches).
-  - `packages/orchestrator/src/cli-worker.ts` — add a `provisionWindows` closure (builds `WindowsExecutionEnvironment` via `makeWindowsAgentClient`), like the existing `provisionDocker`/`provisionLocal` closures.
-  - `packages/api-server/src/composition.ts` — add a `machine-windows` case to `destroyByType` (the teardown path, finding 5).
-  - `packages/orchestrator/src/workers/worker-harness.ts` — exec routing is `if (provisioned.type !== "local")` → already covers `machine-windows` for free; no change.
-  - The catalog/registry are still updated (below) for correctness and the drift test, even though the run path doesn't consume the registry.
+- **Backend selection is registry-driven (after the Phase 0 refactor, §3.3).** Today the run path is a scattered type-switch (`if type === "docker" …`) and the registry is unused (finding 7). Rather than add a fourth `if (windows)` to every site, Phase 0 makes the existing registry the single seam, so adding `machine-windows` (and every future type) is **implement one backend + register it once** — no edits to the shared call sites. See §3.3 for the refactor; the Windows backend then drops onto the clean foundation.
 - **Catalog** — `SANDBOX_CATALOG` (`packages/sandbox/src/sandbox-catalog.ts`): update the `machine-windows` entry from `status: "planned"` → `"available"`, `supportedModes: ["shared"]`, `supportedConnectivity: ["agent"]`, label "Windows machine (agent)". The catalog↔registry drift test keeps this honest.
 - **Instance store** — `jm_sandbox_instances.connection` is currently typed `DockerConnection`. Generalize the column's TS type to a union `SandboxConnection = DockerConnection | WindowsAgentConnection`, where `WindowsAgentConnection = { host: string; port: number; certDir?: string }`. The DB column is already `jsonb`, so **no migration is required** — only the TS type widens. The Windows env persists its connection here (type `machine-windows`, `handle: "win:<runId>"`, `volume: null`) so any worker process can rebuild the client to exec/destroy/reconnect — exactly how Docker persists its daemon connection today.
+
+### 3.3 Phase 0 — centralize backend selection (registry-driven)
+
+The current run path chooses backends with scattered `if (type === …)` branches and ignores the registry (finding 7). Before adding Windows, refactor so the registry is the **single backend-selection seam**. This is a behavior-preserving refactor of the existing `local` + `docker` paths, guarded by the existing contract test, the per-backend tests, and the catalog↔registry drift test.
+
+**Changes:**
+
+1. **Backends become self-contained.** Each `ExecutionEnvironmentBackend.create(worker: ResolvedSandbox)` builds a fully-wired `IExecutionEnvironment`, including its own client, from `worker.config`:
+   - `DockerBackend` reads `worker.config.connection` and builds its client via a `makeClient(connection)` factory (the per-connection logic currently inlined in `cli-worker.ts` moves here); keeps `defaultImage`/`runnerCmd`.
+   - `WindowsBackend` reads `worker.config.connection` (incl. `certDir`) and builds the mTLS gRPC client via `makeWindowsAgentClient(connection)`.
+   - `LocalBackend` keeps its `runOperation` + `baseDir` deps.
+2. **Run-gating moves into a backend hook.** Add an optional `ExecutionEnvironmentBackend.checkRunnable?(worker): void | Promise<void>`. `DockerBackend` implements the image-readiness gate (the docker-only `if` currently in `ensure-workspace.ts`); other backends no-op. `ensure-workspace` calls `backend.checkRunnable?.(worker)` generically.
+3. **One composition root.** Build the registry once (`createDefaultRegistry({ local, docker, windows })`) and share it across the worker (provision/exec) and api-server (teardown). `createDefaultRegistry` is extended so `docker`/`windows` deps each carry a per-connection client factory rather than a single pre-built client.
+4. **Call sites collapse to registry lookups:**
+   - `ensure-workspace.ts` provision + `connect()` reconnect → `const b = registry.get(worker.type); await b.checkRunnable?.(worker); const env = b.create(worker); … env.provision(runId, spec)`. The `provisionLocal`/`provisionDocker` closures in `cli-worker.ts` are deleted.
+   - `composition.ts` `destroyByType` → `registry.get(sb.type).create(asResolved(sb)).destroy(env)`. The per-type switch is deleted.
+   - `worker-harness.ts` exec routing is already type-agnostic (`wsEnv.exec`) — unchanged.
+
+**Outcome:** adding `machine-windows` (Phase 1) is **one backend class + one `createDefaultRegistry` registration + catalog entry** — zero edits to the shared provision/teardown/exec call sites. Same for any future type (ecs/ec2/kubernetes).
 
 ## 4. Configuration
 
@@ -217,9 +231,16 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - `packages/sandbox/src/backends/windows/*.test.ts`, contract wiring
 - `packages/windows-agent/` — the gRPC server, runner-spawn glue, service entrypoint, README (install + cert + firewall steps).
 
-**Changed:**
-- `packages/core/src/types/execution-environment.types.ts` — (if needed) connection type note; `machine-windows` already in `SandboxType`.
-- `packages/sandbox/src/default-registry.ts` — optional `windows?` registration.
+**Changed — Phase 0 refactor (registry-driven selection, §3.3):**
+- `packages/core/src/types/execution-environment.types.ts` — add optional `checkRunnable?(worker)` to `ExecutionEnvironmentBackend`; `machine-windows` already in `SandboxType`.
+- `packages/sandbox/src/backends/docker/docker-backend.ts` — `create(worker)` builds its client from `worker.config.connection` (via a `makeClient` factory); implements `checkRunnable` (image-readiness gate moved out of the orchestrator).
+- `packages/sandbox/src/backends/local/local-backend.ts` — `create(worker)` unchanged in spirit; conforms to the registry path.
+- `packages/sandbox/src/default-registry.ts` — `docker`/`windows` deps carry a per-connection client factory; registers all configured backends.
+- `packages/orchestrator/src/sandbox/ensure-workspace.ts` — replace `provisionLocal`/`provisionDocker` closures + the docker image `if` with generic `registry.get(type)` + `checkRunnable` + `create` + `provision`; same for `connect()` reconnect.
+- `packages/orchestrator/src/cli-worker.ts` — delete the hand-wired provision closures; build/share the registry.
+- `packages/api-server/src/composition.ts` — replace `destroyByType` switch with `registry.get(sb.type).create(asResolved(sb)).destroy(...)`; share the same registry.
+
+**Changed — Phase 1 (Windows):**
 - `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available.
 - `packages/sandbox/src/sandbox-instance-store.ts` — widen `connection` type to `SandboxConnection` union.
 - Sandbox create/update form — inline field help, prerequisites checklist, connection-test affordance, and actionable validation messages for the `machine-windows` type (§4.1).
@@ -257,8 +278,8 @@ The sandbox connection is constructed twice in a run's life: at start by the wor
 
 *Second dry-run pass (run-path wiring, runner stdio discipline, gRPC edges):*
 
-### Finding 7 — Backend selection is a procedural type-switch, not the registry  *(spec correction — important)*
-The production run path does **not** use `InMemoryExecutionEnvironmentRegistry`/`createDefaultRegistry` (they're test-only). Backends are chosen by explicit `if (type === …)` branches. Adding `machine-windows` requires editing the four sites listed in §3.2 (ensure-workspace ×2, cli-worker `provisionWindows`, composition `destroyByType`; worker-harness needs no change). This replaces the earlier "just register it" framing.
+### Finding 7 — Backend selection is a procedural type-switch, not the registry  *(resolved via Phase 0 refactor)*
+The production run path does **not** use `InMemoryExecutionEnvironmentRegistry`/`createDefaultRegistry` (they're test-only); backends are chosen by scattered `if (type === …)` branches across ensure-workspace, cli-worker, and composition. Per the user's call, we don't perpetuate the smell by adding a fourth `if (windows)` everywhere. Instead, **Phase 0 (§3.3) makes the registry the single backend-selection seam** — pushing client/cert construction and run-gating into each backend — so adding Windows (and future types) is one backend class + one registration, with no edits to the shared call sites. Behavior-preserving for local/docker, guarded by existing tests.
 
 ### Finding 8 — Contract needs a `Readiness` RPC  *(added to proto)*
 The self-check (finding 1) and Test-connection (§4.1) need a health call. Added `Readiness(ReadinessRequest) → ReadinessReply { ready, checks[] }` to the `.proto` (§3.1 A).
