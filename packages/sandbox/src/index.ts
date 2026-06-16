@@ -51,3 +51,4 @@ export { SandboxInstanceReaper } from "./sandbox-instance-reaper.ts";
 export type { SandboxInstanceReaperDeps } from "./sandbox-instance-reaper.ts";
 export { registerSandboxInstanceRoutes } from "./routes/sandbox-instances.ts";
 export type { SandboxInstanceRoutesDeps } from "./routes/sandbox-instances.ts";
+export { destroySandboxInstance } from "./destroy-sandbox-instance.ts";
