@@ -93,7 +93,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
               <span>Configure skills</span>
               <span className="text-slate-700">·</span>
-              <span className={props.pkg.scope === "org" ? "text-amber-400" : "text-sky-400"}>
+              <span className={props.pkg.scope === "org" ? "text-warning" : "text-info"}>
                 {props.pkg.scope}
               </span>
             </div>
@@ -133,7 +133,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
             <button
               type="button"
               onClick={toggleAll}
-              className="text-xs font-medium text-indigo-400 hover:text-indigo-300 whitespace-nowrap transition"
+              className="text-xs font-medium text-accent hover:text-accent whitespace-nowrap transition"
             >
               {allSelected ? "Clear all" : "Select all"}
             </button>
@@ -193,7 +193,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
                       <span
                         className={
                           "font-mono text-xs truncate " +
-                          (checked ? "text-indigo-200" : "text-slate-300")
+                          (checked ? "text-accent" : "text-slate-300")
                         }
                       >
                         {skill}
@@ -210,7 +210,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
         <div className="px-6 py-3 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3">
           <div className="min-w-0 text-xs">
             {error ? (
-              <span className="text-rose-400 truncate block">{error}</span>
+              <span className="text-danger truncate block">{error}</span>
             ) : (
               <span className="text-slate-500">
                 {someSelected || allSelected

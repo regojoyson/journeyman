@@ -94,7 +94,7 @@ export function SetupWizardPage(props: { onDone: () => void }) {
         </div>
 
         {error && (
-          <div className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded px-3 py-2">
+          <div className="text-sm text-danger bg-danger/10 border border-danger/25 rounded px-3 py-2">
             {error}
           </div>
         )}

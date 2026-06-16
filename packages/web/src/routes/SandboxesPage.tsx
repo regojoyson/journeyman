@@ -6,10 +6,10 @@ import { SandboxFormModal } from "../components/sandboxes/SandboxFormModal.tsx";
 function ImageStateBadge({ state, error }: { state?: string; error?: string | null }) {
   if (!state || state === "none") return <span className="text-slate-600">—</span>;
   const map: Record<string, string> = {
-    pending: "bg-amber-900/40 text-amber-300",
-    building: "bg-amber-900/40 text-amber-300",
-    ready: "bg-emerald-900/40 text-emerald-300",
-    failed: "bg-rose-900/40 text-rose-300",
+    pending: "bg-warning/10 text-warning",
+    building: "bg-warning/10 text-warning",
+    ready: "bg-success/10 text-success",
+    failed: "bg-danger/10 text-danger",
   };
   const label = state === "building" ? "building…" : state;
   return (

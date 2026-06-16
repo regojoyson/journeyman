@@ -98,9 +98,9 @@ export function WebhookOverviewTab({ webhook, onChange }: Props) {
                   onChange={setSecretDraft}
                 />
               ) : (
-                <p className="text-xs text-red-400">No active org context.</p>
+                <p className="text-xs text-danger">No active org context.</p>
               )}
-              {secretError && <p className="text-xs text-red-400">{secretError}</p>}
+              {secretError && <p className="text-xs text-danger">{secretError}</p>}
               <div className="flex gap-2">
                 <button
                   onClick={() => void saveSecret()}

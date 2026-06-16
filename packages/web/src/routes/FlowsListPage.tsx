@@ -108,9 +108,9 @@ export function FlowsListPage() {
   const scopeBadge = (scope: Workflow["scope"]) => {
     const cls =
       scope === "global"
-        ? "bg-violet-900/40 text-violet-200 border-violet-800/60"
+        ? "bg-accent/10 text-accent border-violet-800/60"
         : scope === "org"
-        ? "bg-blue-900/40 text-blue-200 border-blue-800/60"
+        ? "bg-info/10 text-info border-blue-800/60"
         : "bg-slate-800/60 text-slate-300 border-slate-700";
     return (
       <span className={`ml-2 inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
@@ -121,8 +121,8 @@ export function FlowsListPage() {
 
   const statusBadge = (status: Workflow["status"]) => {
     const cls = status === "ready"
-      ? "bg-emerald-900/40 text-emerald-200 border-emerald-800/60"
-      : "bg-amber-900/40 text-amber-200 border-amber-800/60";
+      ? "bg-success/10 text-success border-emerald-800/60"
+      : "bg-warning/10 text-warning border-amber-800/60";
     const label = status === "ready" ? "Ready" : "Draft";
     return (
       <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
@@ -151,7 +151,7 @@ export function FlowsListPage() {
                 onClick={() => handleScopeChange(s)}
                 className={
                   active
-                    ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-3 py-1.5 text-xs font-medium text-indigo-200 transition"
+                    ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-3 py-1.5 text-xs font-medium text-accent transition"
                     : btnGhost
                 }
               >
@@ -165,7 +165,7 @@ export function FlowsListPage() {
           {loading ? (
             <div className="p-10 text-center text-sm text-slate-500">Loading…</div>
           ) : error ? (
-            <div className="p-6 text-sm text-rose-300 border border-rose-900/40 bg-rose-950/30 rounded-md">
+            <div className="p-6 text-sm text-danger border border-danger/25 bg-danger/10 rounded-md">
               Error: {error}
             </div>
           ) : flows.length === 0 ? (
@@ -201,31 +201,31 @@ export function FlowsListPage() {
                         <div className="flex flex-wrap gap-3 text-xs">
                           {editable ? (
                             <>
-                              <Link to={`/workflows/${f.id}/edit`} className="text-indigo-300 hover:text-indigo-200">
+                              <Link to={`/workflows/${f.id}/edit`} className="text-accent hover:text-accent">
                                 Edit
                               </Link>
                               <button
                                 onClick={() => handleRename(f)}
-                                className="text-indigo-300 hover:text-indigo-200"
+                                className="text-accent hover:text-accent"
                               >Rename</button>
                               <button
                                 onClick={() => handleClone(f)}
-                                className="text-indigo-300 hover:text-indigo-200"
+                                className="text-accent hover:text-accent"
                               >Clone</button>
                               <button
                                 onClick={() => handleDelete(f)}
-                                className="text-rose-300 hover:text-rose-200"
+                                className="text-danger hover:text-danger"
                               >Delete</button>
                               {f.scope === "user" && (
                                 <button
                                   onClick={() => handlePromote(f, "org")}
-                                  className="text-amber-300 hover:text-amber-200"
+                                  className="text-warning hover:text-warning"
                                 >Promote → Org</button>
                               )}
                               {(f.scope === "org" || f.scope === "user") && (
                                 <button
                                   onClick={() => handlePromote(f, "global")}
-                                  className="text-violet-300 hover:text-violet-200"
+                                  className="text-accent hover:text-accent"
                                 >Promote → Global</button>
                               )}
                             </>
@@ -233,7 +233,7 @@ export function FlowsListPage() {
                             <>
                               <button
                                 onClick={() => handleClone(f)}
-                                className="text-indigo-300 hover:text-indigo-200"
+                                className="text-accent hover:text-accent"
                               >Clone to my flows</button>
                               <Link to={`/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
                                 Open (read-only)

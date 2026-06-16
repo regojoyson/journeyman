@@ -104,8 +104,8 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
       <div className={`${card} w-full max-w-xl max-h-[90vh] overflow-y-auto p-6`}>
         <h2 className="text-lg font-semibold text-slate-100 mb-1">{editing ? "Edit sandbox" : "New sandbox"}</h2>
-        <div className="flex gap-2 rounded-lg border border-indigo-900/40 bg-indigo-950/30 p-3 mb-4 text-xs leading-relaxed text-slate-300">
-          <Info size={16} className="mt-0.5 shrink-0 text-indigo-400" aria-hidden />
+        <div className="flex gap-2 rounded-lg border border-accent/25 bg-accent/10 p-3 mb-4 text-xs leading-relaxed text-slate-300">
+          <Info size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
           <span>A <b>sandbox</b> is where a workflow's steps run. Pick a type, then fill its connection/runtime details below.</span>
         </div>
         <form onSubmit={submit} className="space-y-4">
@@ -127,7 +127,7 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
 
           {ConfigForm
             ? <ConfigForm state={config} onChange={setConfig} editing={editing} />
-            : <div className="text-sm text-amber-400">This worker type isn't available yet.</div>}
+            : <div className="text-sm text-warning">This worker type isn't available yet.</div>}
 
           {form?.testConnection && (
             <div className="space-y-1">
@@ -135,14 +135,14 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
                 {testing ? "Testing…" : "Test connection"}
               </button>
               {testResult && (
-                <p className={`text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-400"}`}>
+                <p className={`text-xs ${testResult.ok ? "text-success" : "text-danger"}`}>
                   {testResult.ok ? "✓ Connected" : `✗ ${testResult.error}`}
                 </p>
               )}
             </div>
           )}
 
-          {error && <div className="text-sm text-rose-400">{error}</div>}
+          {error && <div className="text-sm text-danger">{error}</div>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={props.onClose} className={btnGhost}>Cancel</button>

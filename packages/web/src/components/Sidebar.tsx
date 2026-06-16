@@ -256,7 +256,7 @@ export default function Sidebar() {
                 borderTop: "1px solid rgb(var(--color-surface) / 1)",
                 cursor: "pointer",
               }}
-              className="hover:bg-rose-950/40"
+              className="hover:bg-danger/10"
             >
               Sign out
             </button>

@@ -18,8 +18,8 @@ export function WebhookSecretReveal({ webhook, onDone }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded border border-emerald-700/40 bg-emerald-900/10 p-4">
-        <h3 className="text-base font-medium text-emerald-200 mb-1">Webhook created</h3>
+      <div className="rounded border border-emerald-700/40 bg-success/10 p-4">
+        <h3 className="text-base font-medium text-success mb-1">Webhook created</h3>
         <p className="text-sm text-slate-300">
           Copy the URL into the provider's webhook settings. The URL token can be
           rotated later if it leaks.

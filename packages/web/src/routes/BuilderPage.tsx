@@ -184,7 +184,7 @@ export function BuilderPage() {
               </div>
             )
           ))}
-          {state.error && <div className="text-sm text-rose-300">Error: {state.error}</div>}
+          {state.error && <div className="text-sm text-danger">Error: {state.error}</div>}
           {state.streaming && <div className="text-xs text-slate-500">…thinking</div>}
         </div>
         <div className="mt-3 flex items-end gap-2">
@@ -255,13 +255,13 @@ export function BuilderPage() {
 
             {/* Gap footer + validation */}
             {plan.gaps.length > 0 && (
-              <div className="text-xs text-amber-300/90">
+              <div className="text-xs text-warning/90">
                 {plan.gaps.filter((g) => g.required).length} required ·{" "}
                 {plan.gaps.filter((g) => !g.required).length} optional gap(s) remaining
               </div>
             )}
             {validation && !validation.ok && (
-              <div className="text-xs text-rose-300">
+              <div className="text-xs text-danger">
                 Validation: {validation.errors.concat(validation.missing).join("; ") || "failed"}
               </div>
             )}
@@ -274,7 +274,7 @@ export function BuilderPage() {
                 {applyM.isPending ? "Applying…" : "Apply"}
               </button>
             )}
-            {applyM.isError && <p className="text-sm text-rose-300">{(applyM.error as Error).message}</p>}
+            {applyM.isError && <p className="text-sm text-danger">{(applyM.error as Error).message}</p>}
           </div>
         )}
       </div>

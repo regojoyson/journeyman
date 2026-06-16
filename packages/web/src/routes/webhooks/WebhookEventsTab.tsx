@@ -6,11 +6,11 @@ const PAGE_SIZE = 25;
 
 const STATUS_COLORS: Record<WebhookEventStatus, string> = {
   received: "bg-slate-700 text-slate-200",
-  processed: "bg-emerald-900 text-emerald-200",
+  processed: "bg-success/10 text-success",
   ignored: "bg-slate-800 text-slate-400",
-  error: "bg-red-900 text-red-200",
-  auth_failed: "bg-red-900 text-red-200",
-  schema_invalid: "bg-amber-900 text-amber-200",
+  error: "bg-danger/10 text-danger",
+  auth_failed: "bg-danger/10 text-danger",
+  schema_invalid: "bg-warning/10 text-warning",
 };
 
 function StatusBadge({ status }: { status: WebhookEventStatus }) {
@@ -64,7 +64,7 @@ export function WebhookEventsTab({ webhookId }: { webhookId: string }) {
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       {loading && <p className="text-sm text-slate-400">Loading…</p>}
 
       {!loading && !error && events.length === 0 && (
@@ -96,7 +96,7 @@ export function WebhookEventsTab({ webhookId }: { webhookId: string }) {
                 {expandedId === ev.id && (
                   <tr className="border-b border-slate-800 bg-slate-900/60">
                     <td colSpan={4} className="py-3 px-2 space-y-3">
-                      {ev.error && <p className="text-xs text-red-400">error: {ev.error}</p>}
+                      {ev.error && <p className="text-xs text-danger">error: {ev.error}</p>}
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Payload</div>
                         <pre className="text-xs text-slate-300 overflow-x-auto bg-bg rounded p-2">

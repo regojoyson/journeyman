@@ -14,7 +14,7 @@ export function SessionsSidebar(props: {
     <div className="flex w-56 flex-none flex-col border-r border-slate-800 pr-3">
       <div className="mb-3 flex items-center gap-2">
         <button
-          className="flex-1 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-indigo-200 hover:bg-indigo-500/30"
+          className="flex-1 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-accent hover:bg-indigo-500/30"
           onClick={onNew}>
           + New build
         </button>
@@ -37,7 +37,7 @@ export function SessionsSidebar(props: {
               <span className="ml-1 text-[10px] uppercase text-slate-500">{sessionStatusBadge(s)}</span>
             </button>
             <button
-              className="ml-1 hidden text-slate-500 hover:text-rose-300 group-hover:inline"
+              className="ml-1 hidden text-slate-500 hover:text-danger group-hover:inline"
               title="Delete" onClick={() => onDelete(s)}>
               ✕
             </button>

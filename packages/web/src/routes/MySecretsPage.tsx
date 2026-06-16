@@ -111,13 +111,13 @@ export function MySecretsPage(props: { orgId: string }) {
               <button type="submit" disabled={busy} className={btnPrimary}>
                 {busy ? "Saving…" : "Add secret"}
               </button>
-              {error && <span className="text-sm text-rose-400">{error}</span>}
+              {error && <span className="text-sm text-danger">{error}</span>}
             </div>
           </form>
         </section>
 
         {promoteError && (
-          <div className="rounded border border-red-700/40 bg-red-900/10 p-3 text-sm text-red-200">
+          <div className="rounded border border-red-700/40 bg-danger/10 p-3 text-sm text-danger">
             {promoteError}
           </div>
         )}

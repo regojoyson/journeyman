@@ -61,6 +61,13 @@ export default {
         DEFAULT: withAlpha("--color-border"),
         strong: withAlpha("--color-border-strong"),
       },
+      // Named, theme-aware elevation. Does not override Tailwind's default
+      // `shadow-*` scale — use `shadow-card`, `shadow-card-sm`, `shadow-card-lg`.
+      boxShadow: {
+        "card-sm": "var(--shadow-sm)",
+        card: "var(--shadow-md)",
+        "card-lg": "var(--shadow-lg)",
+      },
     },
   },
 };

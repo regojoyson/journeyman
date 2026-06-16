@@ -95,7 +95,7 @@ export function EditCustomStepModal(props: {
         <header className="flex items-start justify-between px-5 py-4 border-b border-slate-800">
           <div>
             <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <Sparkles className="w-4 h-4 text-accent" />
               {initial ? "Edit custom step" : "New custom step"}
               <span className="text-[11px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                 {scope}
@@ -140,7 +140,7 @@ export function EditCustomStepModal(props: {
                   <span className={
                     "ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full " +
                     (badge === "!"
-                      ? "bg-rose-950/60 text-rose-300 border border-rose-900/60"
+                      ? "bg-danger/10 text-danger border border-danger/25"
                       : "bg-slate-800 text-slate-300 border border-slate-700")
                   }>
                     {badge}
@@ -193,7 +193,7 @@ export function EditCustomStepModal(props: {
                     Workflows using this step must have at least one skill attached.
                   </p>
                   {requiresSkills && (initial?.defaultSkillIds?.length ?? 0) === 0 && (
-                    <p className="text-[11px] text-amber-400 mt-1 ml-6">
+                    <p className="text-[11px] text-warning mt-1 ml-6">
                       ⚠ No default skills set. Flow authors will have to pick skills manually each time.
                       Consider adding defaults so the step works out of the box.
                     </p>
@@ -212,7 +212,7 @@ export function EditCustomStepModal(props: {
                     Workflows using this step must have at least one MCP attached.
                   </p>
                   {requiresMcp && (initial?.defaultMcpIds?.length ?? 0) === 0 && (
-                    <p className="text-[11px] text-amber-400 mt-1 ml-6">
+                    <p className="text-[11px] text-warning mt-1 ml-6">
                       ⚠ No default MCPs set. Flow authors will have to pick MCPs manually each time.
                       Consider adding defaults so the step works out of the box.
                     </p>
@@ -291,7 +291,7 @@ export function EditCustomStepModal(props: {
         <footer className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-bg">
           <div className="text-xs">
             {error && (
-              <div className="flex items-center gap-1.5 text-rose-300">
+              <div className="flex items-center gap-1.5 text-danger">
                 <AlertTriangle className="w-3.5 h-3.5" />
                 {error}
               </div>

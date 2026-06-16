@@ -121,7 +121,7 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
       >
         {busy ? "Sending…" : "Send test event"}
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
 
       {body && (body.triggers?.length || body.waits?.length) ? (
         <div className="space-y-1">
@@ -131,20 +131,20 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
           </div>
           {body.triggers?.map((o) => (
             <div key={`t-${o.workflowId}`} className="flex items-center gap-2 text-xs">
-              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-emerald-900 text-emerald-200" : "bg-red-900 text-red-200"}`}>
+              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
                 {o.ok ? "started" : "failed"}
               </span>
               <span className="text-slate-200">{o.workflowName ?? o.workflowId}</span>
-              {o.error && <span className="text-red-400 truncate">{o.error}</span>}
+              {o.error && <span className="text-danger truncate">{o.error}</span>}
             </div>
           ))}
           {body.waits?.map((o) => (
             <div key={`w-${o.workflowInstanceId}-${o.nodeId}`} className="flex items-center gap-2 text-xs">
-              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-emerald-900 text-emerald-200" : "bg-red-900 text-red-200"}`}>
+              <span className={`rounded px-1.5 py-0.5 ${o.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
                 {o.ok ? "resumed" : "failed"}
               </span>
               <span className="text-slate-200 font-mono">{o.nodeId}</span>
-              {o.error && <span className="text-red-400 truncate">{o.error}</span>}
+              {o.error && <span className="text-danger truncate">{o.error}</span>}
             </div>
           ))}
         </div>

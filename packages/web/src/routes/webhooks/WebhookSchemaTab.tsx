@@ -44,7 +44,7 @@ export function WebhookSchemaTab({ webhook, onChange }: Props) {
         onChange={(e) => setText(e.target.value)}
         placeholder="{}"
       />
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <button
         onClick={save}
         disabled={busy}

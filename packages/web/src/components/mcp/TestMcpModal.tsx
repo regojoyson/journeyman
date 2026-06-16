@@ -129,7 +129,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
 
         {stage === "error" && lastError && (
           <div className="p-6 space-y-3">
-            <div className="rounded border border-rose-700/40 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+            <div className="rounded border border-rose-700/40 bg-danger/10 px-4 py-3 text-sm text-danger">
               <div className="font-medium">Test failed at phase: <code className={codePill}>{lastError.phase}</code></div>
               <div className="mt-1 whitespace-pre-wrap break-words">{lastError.error}</div>
             </div>
@@ -141,7 +141,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
           <div className="flex flex-1 min-h-0 flex-col md:flex-row">
             <aside className="md:w-72 md:border-r md:border-slate-800 overflow-y-auto p-4 space-y-1">
               {onlyAuthenticate && (
-                <div className="rounded border border-amber-700/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-200 mb-2">
+                <div className="rounded border border-amber-700/40 bg-warning/10 px-3 py-2 text-xs text-warning mb-2">
                   Server returned only an <code className={codePill}>authenticate</code> tool. This usually means auth is missing or invalid — check the bound secret and required env.
                 </div>
               )}
@@ -179,7 +179,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
                       value={argsByTool[selected.name] ?? ""}
                       onChange={(e) => setArgsByTool((prev) => ({ ...prev, [selected.name]: e.target.value }))}
                     />
-                    {parseError && <div className="text-sm text-rose-400 mt-1">{parseError}</div>}
+                    {parseError && <div className="text-sm text-danger mt-1">{parseError}</div>}
                   </div>
 
                   <details className="text-xs text-slate-400">
@@ -198,7 +198,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
               {selected && stage === "result" && (
                 <div className="space-y-4">
                   {lastError ? (
-                    <div className="rounded border border-rose-700/40 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+                    <div className="rounded border border-rose-700/40 bg-danger/10 px-4 py-3 text-sm text-danger">
                       <div className="font-medium">Failed at phase: <code className={codePill}>{lastError.phase}</code></div>
                       <div className="mt-1 whitespace-pre-wrap break-words">{lastError.error}</div>
                     </div>
@@ -212,7 +212,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
                         </div>
                       </div>
                       {truncated && (
-                        <div className="text-xs text-amber-300">Result truncated for display ({resultText.length.toLocaleString()} bytes). Use "Download full" for the complete payload.</div>
+                        <div className="text-xs text-warning">Result truncated for display ({resultText.length.toLocaleString()} bytes). Use "Download full" for the complete payload.</div>
                       )}
                       <pre className="bg-slate-900/60 rounded p-3 overflow-auto max-h-[50vh] text-xs whitespace-pre-wrap break-words">{resultDisplay}</pre>
                     </>

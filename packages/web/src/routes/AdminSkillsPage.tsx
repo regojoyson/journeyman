@@ -96,7 +96,7 @@ export function AdminSkillsPage(props: { orgId: string }) {
                         <div className="flex items-center gap-2">
                           <code className={codePill}>{r.name}</code>
                           {r.localPath && (sharedPathCounts[r.localPath] ?? 0) > 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">
                               shared ({sharedPathCounts[r.localPath]})
                             </span>
                           )}
@@ -188,8 +188,8 @@ export function AdminSkillsPage(props: { orgId: string }) {
 
 function statusColor(status: string) {
   const base = "text-xs font-medium px-2 py-0.5 rounded-full ";
-  if (status === "ready") return base + "bg-emerald-900/40 text-emerald-400";
-  if (status === "error") return base + "bg-rose-900/40 text-rose-400";
-  if (status === "installing") return base + "bg-amber-900/40 text-amber-400";
+  if (status === "ready") return base + "bg-success/10 text-success";
+  if (status === "error") return base + "bg-danger/10 text-danger";
+  if (status === "installing") return base + "bg-warning/10 text-warning";
   return base + "bg-slate-800 text-slate-400";
 }

@@ -35,7 +35,7 @@ export function ToolsPicker(props: {
         return (
           <label
             key={t}
-            className={`flex items-center gap-2 text-xs ${unsupported ? "text-rose-300" : "text-slate-300"}`}
+            className={`flex items-center gap-2 text-xs ${unsupported ? "text-danger" : "text-slate-300"}`}
           >
             <input
               type="checkbox"
@@ -50,7 +50,7 @@ export function ToolsPicker(props: {
               <span className="text-[10px] uppercase tracking-wide text-slate-500">workspace</span>
             )}
             {unsupported && (
-              <span className="text-[10px] uppercase tracking-wide text-rose-400">
+              <span className="text-[10px] uppercase tracking-wide text-danger">
                 not supported by selected provider
               </span>
             )}

@@ -27,9 +27,15 @@ const HEX_RE = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 // likewise excluded. Real bugs are non-themeable backgrounds/borders/fills and
 // non-white text colors that won't flip between themes.
 const PALETTE = "white|black|gray|zinc|neutral|stone|slate-(?:50|950)";
+// Dark semantic tints (e.g. bg-rose-950, border-emerald-900) read fine in dark
+// but render as muddy dark blocks in light. Backgrounds/borders/rings on these
+// must use the themed semantic tokens (bg-danger/10, border-success/25, …).
+const DARK_TINT =
+  "(?:indigo|violet|purple|fuchsia|emerald|green|teal|sky|blue|cyan|amber|orange|yellow|red|rose|pink)-(?:900|950)";
 const CLASS_RE = new RegExp(
   `\\b(?:(?:bg|border|ring|from|to|via|fill|stroke|divide|placeholder|outline|decoration)-(?:${PALETTE})` +
-    `|text-(?:black|gray|zinc|neutral|stone|slate-(?:50|950)))\\b`,
+    `|text-(?:black|gray|zinc|neutral|stone|slate-(?:50|950))` +
+    `|(?:bg|border|ring|divide|from|to|via|fill|stroke)-${DARK_TINT})\\b`,
   "g",
 );
 

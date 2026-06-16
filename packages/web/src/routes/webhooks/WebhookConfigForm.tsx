@@ -149,7 +149,7 @@ export function WebhookConfigForm({ preset, initial, submitLabel = "Create webho
             onChange={(e) => setSchemaText(e.target.value)}
             placeholder={"{}"}
           />
-          {schemaError && <p className="text-xs text-red-400 mt-1">{schemaError}</p>}
+          {schemaError && <p className="text-xs text-danger mt-1">{schemaError}</p>}
         </label>
 
         <label className="block">

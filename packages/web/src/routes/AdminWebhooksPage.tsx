@@ -68,7 +68,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
                 {rows.map((w) => (
                   <tr key={w.id} className="border-b border-slate-800 hover:bg-slate-800/30">
                     <td className="px-4 py-2">
-                      <Link to={`/admin/webhooks/${w.id}`} className="text-emerald-300 hover:underline">{w.name}</Link>
+                      <Link to={`/admin/webhooks/${w.id}`} className="text-success hover:underline">{w.name}</Link>
                       {w.description && <div className="text-xs text-slate-500">{w.description}</div>}
                     </td>
                     <td className="px-4 py-2"><code className={codePill}>{w.preset}</code></td>
@@ -79,7 +79,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
                     <td className="px-4 py-2 text-right">
                       <button
                         onClick={() => remove(w)}
-                        className="text-xs text-red-300 hover:text-red-200"
+                        className="text-xs text-danger hover:text-danger"
                       >
                         Delete
                       </button>

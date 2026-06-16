@@ -159,7 +159,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
 
         {stage === "ready" && (
           <div className="space-y-3">
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-success">
               {needsSecret
                 ? `✓ "${secretRef}" exists in org scope.`
                 : `✓ This webhook needs no secret.`}
@@ -184,7 +184,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
 
         {stage === "missing" && (
           <div className="space-y-3">
-            <p className="text-sm text-amber-300">
+            <p className="text-sm text-warning">
               ⚠ "{secretRef}" is in your personal vault but not in org scope. The
               org-scope webhook can't read personal secrets at ingest time.
             </p>
@@ -207,13 +207,13 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
 
         {stage === "not-found" && (
           <div className="space-y-3">
-            <p className="text-sm text-red-300">
+            <p className="text-sm text-danger">
               ⚠ "{secretRef}" doesn't exist in any vault yet. The webhook references a
               secret name that hasn't been created.
             </p>
             <p className="text-xs text-slate-400">
-              Go to <a href="/me/secrets" className="underline text-emerald-300">My Secrets</a> (or
-              <a href="/admin/secrets" className="underline text-emerald-300"> Org Secrets</a>) and
+              Go to <a href="/me/secrets" className="underline text-success">My Secrets</a> (or
+              <a href="/admin/secrets" className="underline text-success"> Org Secrets</a>) and
               create a secret named <code className="font-mono">{secretRef}</code> with the value
               you pasted into the provider's webhook configuration. Then re-open this dialog.
             </p>
@@ -236,7 +236,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
 
         {stage === "done" && newWebhook && (
           <div className="space-y-3">
-            <p className="text-sm text-emerald-300">✓ Webhook promoted.</p>
+            <p className="text-sm text-success">✓ Webhook promoted.</p>
             <label className="block">
               <span className="block text-xs text-slate-400 mb-1">
                 New ingest URL — copy now into the provider's webhook settings
@@ -269,7 +269,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
         )}
 
         {error && (
-          <p className="text-xs text-red-400">{error}</p>
+          <p className="text-xs text-danger">{error}</p>
         )}
 
         {visible.length === 0 && stage !== "loading" && (

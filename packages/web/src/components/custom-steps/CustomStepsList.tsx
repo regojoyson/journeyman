@@ -117,7 +117,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
         </div>
 
         {error && (
-          <div className="px-6 py-3 text-sm text-rose-300 border-b border-rose-900/40 bg-rose-950/20">
+          <div className="px-6 py-3 text-sm text-danger border-b border-danger/25 bg-danger/10">
             {error}
           </div>
         )}

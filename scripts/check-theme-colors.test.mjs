@@ -18,6 +18,16 @@ test("does NOT flag text-white or shadow-* (theme-safe / color-agnostic)", () =>
   assert.equal(v.length, 0);
 });
 
+test("flags dark semantic tints used as backgrounds/borders", () => {
+  const v = findViolations("a.tsx", '<div className="bg-rose-950/40 border-emerald-900/40 bg-indigo-950" />');
+  assert.equal(v.length, 3);
+});
+
+test("does NOT flag mid-shade semantic colors or themed tints", () => {
+  const v = findViolations("a.tsx", '<div className="bg-indigo-500 text-emerald-600 bg-danger/10 border-success/25" />');
+  assert.equal(v.length, 0);
+});
+
 test("does NOT flag themed var() usage", () => {
   const v = findViolations("a.css", ".x { color: rgb(var(--color-text) / 1); }");
   assert.equal(v.length, 0);

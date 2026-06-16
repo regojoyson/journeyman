@@ -114,7 +114,7 @@ export function InlineEdit({
             className={commonClass}
           />
         )}
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         {multiline && !error && (
           <p className="text-xs text-slate-500">Press ⌘/Ctrl+Enter to save, Esc to cancel.</p>
         )}

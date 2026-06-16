@@ -91,11 +91,11 @@ export function AdminCodingModelsPage() {
                 {(data ?? []).map((m) => (
                   <tr key={m.id} className="hover:bg-slate-900/40 text-slate-200">
                     <td className="px-4 py-3">{m.provider}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-indigo-300">{m.modelId}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-accent">{m.modelId}</td>
                     <td className="px-4 py-3">{m.label}</td>
-                    <td className="px-4 py-3">{m.isDefault ? <span className="text-amber-400">★</span> : <span className="text-slate-600">—</span>}</td>
-                    <td className="px-4 py-3">{m.enabled ? <span className="text-emerald-400">yes</span> : <span className="text-slate-500">no</span>}</td>
-                    <td className="px-4 py-3">{m.deprecated ? <span className="text-rose-400">yes</span> : <span className="text-slate-600">—</span>}</td>
+                    <td className="px-4 py-3">{m.isDefault ? <span className="text-warning">★</span> : <span className="text-slate-600">—</span>}</td>
+                    <td className="px-4 py-3">{m.enabled ? <span className="text-success">yes</span> : <span className="text-slate-500">no</span>}</td>
+                    <td className="px-4 py-3">{m.deprecated ? <span className="text-danger">yes</span> : <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3 text-slate-300">{m.contextWindow ?? <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button className={btnGhost} onClick={() => setEditing(m)}>Edit</button>

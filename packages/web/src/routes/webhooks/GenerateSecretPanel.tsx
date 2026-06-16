@@ -65,8 +65,8 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
 
   if (generatedValue) {
     return (
-      <div className="mt-2 rounded border border-emerald-700/40 bg-emerald-900/10 p-3 space-y-2">
-        <div className="text-xs font-medium text-emerald-200">
+      <div className="mt-2 rounded border border-emerald-700/40 bg-success/10 p-3 space-y-2">
+        <div className="text-xs font-medium text-success">
           Generated value — copy now, won't be shown again
         </div>
         <div className="flex gap-2">
@@ -114,7 +114,7 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
           placeholder="GITHUB_WEBHOOK_SECRET"
         />
       </label>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
         <button
           type="button"

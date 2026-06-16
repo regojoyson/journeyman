@@ -48,14 +48,14 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
         <KeyRound className="w-4 h-4 mt-0.5 text-slate-500 shrink-0" />
         <p>
           Declare credentials this step needs. Each slot becomes a{" "}
-          <code className="text-indigo-300 bg-indigo-950/40 px-1 py-0.5 rounded text-[11px]">$SLOT_NAME</code>{" "}
+          <code className="text-accent bg-accent/10 px-1 py-0.5 rounded text-[11px]">$SLOT_NAME</code>{" "}
           environment variable in the Bash tool. Flow authors bind each slot to a
           specific secret when adding this step to a workflow.
         </p>
       </div>
 
       {!hasBashTool && value.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+        <div className="flex items-start gap-2 rounded-md border border-amber-800/60 bg-warning/10 px-3 py-2 text-xs text-warning">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             Slots are declared but the <code>bash</code> tool isn't selected — env values
@@ -79,7 +79,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
               {value.map(slot => (
                 <tr key={slot.name} className="group hover:bg-slate-900/40 transition">
                   <td className="px-3 py-2 align-top">
-                    <code className="font-mono text-[13px] text-indigo-200">{slot.name}</code>
+                    <code className="font-mono text-[13px] text-accent">{slot.name}</code>
                   </td>
                   <td className="px-3 py-2 align-top text-xs text-slate-300">
                     {slot.description}
@@ -96,7 +96,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
                     <button
                       type="button"
                       onClick={() => remove(slot.name)}
-                      className="p-1.5 rounded text-slate-500 hover:text-rose-300 hover:bg-rose-950/30 transition opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded text-slate-500 hover:text-danger hover:bg-danger/10 transition opacity-0 group-hover:opacity-100"
                       title="Remove slot"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -137,7 +137,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
           </button>
         </div>
         {error && (
-          <div className="flex items-center gap-1 text-xs text-rose-300">
+          <div className="flex items-center gap-1 text-xs text-danger">
             <AlertTriangle className="w-3.5 h-3.5" /> {error}
           </div>
         )}

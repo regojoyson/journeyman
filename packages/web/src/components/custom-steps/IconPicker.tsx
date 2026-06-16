@@ -69,7 +69,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                 onChange(null);
                 setOpen(false);
               }}
-              className="text-[11px] text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
+              className="text-[11px] text-accent hover:text-accent underline-offset-2 hover:underline"
             >
               Reset to default
             </button>
@@ -96,7 +96,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                   className={
                     "h-8 w-8 flex items-center justify-center rounded border transition " +
                     (isSelected
-                      ? "bg-indigo-500/20 border-indigo-400 text-indigo-100"
+                      ? "bg-indigo-500/20 border-indigo-400 text-accent"
                       : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-600 hover:text-slate-100")
                   }
                 >

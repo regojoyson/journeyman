@@ -118,7 +118,7 @@ export function AdminSecretsPage(props: { orgId: string }) {
               <button type="submit" disabled={busy} className={btnPrimary}>
                 {busy ? "Saving…" : "Add secret"}
               </button>
-              {error && <span className="text-sm text-rose-400">{error}</span>}
+              {error && <span className="text-sm text-danger">{error}</span>}
             </div>
           </form>
         </section>

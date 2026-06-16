@@ -29,31 +29,43 @@
   --color-canvas: 15 15 30;
   --color-canvas-dot: 136 136 136;
   --color-overlay: rgb(0 0 0 / 0.6);
+
+  /* Elevation — dark themes lean on darker, softer shadows. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.45);
 }
 
 [data-theme="light"] {
   color-scheme: light;
 
-  --color-bg: 255 255 255;
-  --color-surface: 248 250 252;
+  /* Soft neutral page; raised surfaces are white and earn depth from shadow,
+     not from a lighter fill (there's nothing lighter than white). */
+  --color-bg: 250 251 253;
+  --color-surface: 255 255 255;
   --color-surface-raised: 255 255 255;
-  --color-surface-hover: 241 245 249;
-  --color-surface-active: 226 232 240;
-  --color-border: 226 232 240;
-  --color-border-strong: 203 213 225;
-  --color-text: 15 23 42;
-  --color-text-muted: 71 85 105;
-  --color-text-subtle: 100 116 139;
+  --color-surface-hover: 244 245 248;
+  --color-surface-active: 237 239 243;
+  --color-border: 235 236 241;
+  --color-border-strong: 216 219 226;
+  --color-text: 26 29 41;
+  --color-text-muted: 91 101 116;
+  --color-text-subtle: 140 148 162;
   --color-accent: 79 70 229;
   --color-accent-hover: 67 56 202;
   --color-success: 5 150 105;
-  --color-warning: 217 119 6;
-  --color-danger: 220 38 38;
+  --color-warning: 202 110 8;
+  --color-danger: 200 50 43;
   --color-info: 37 99 235;
   --color-info-muted: 96 165 250;
-  --color-canvas: 248 250 252;
-  --color-canvas-dot: 203 213 225;
-  --color-overlay: rgb(15 23 42 / 0.5);
+  --color-canvas: 249 250 252;
+  --color-canvas-dot: 217 221 229;
+  --color-overlay: rgb(17 24 39 / 0.4);
+
+  /* Elevation — light themes need subtle, cool-tinted shadows for depth. */
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow-md: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 0.12);
 }
 
 html {

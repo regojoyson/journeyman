@@ -93,7 +93,7 @@ export function WebhookCreateWizard({ scope, onCreated, onCancel }: Props) {
           <h2 className="text-lg font-medium text-slate-100">Configure {preset.name}</h2>
           <button onClick={() => setStep("pick")} className="text-sm text-slate-400 hover:text-slate-100">← back</button>
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         {loadingSchema ? (
           <p className="text-sm text-slate-400">Loading preset schema…</p>
         ) : (

@@ -177,7 +177,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
               </div>
             )}
 
-            {error && <div className="text-sm text-rose-400">{error}</div>}
+            {error && <div className="text-sm text-danger">{error}</div>}
 
             <div className="flex justify-between pt-2">
               <button type="button" onClick={() => setChosen(null)} className={btnGhost}>← Back</button>

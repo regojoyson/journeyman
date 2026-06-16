@@ -192,7 +192,7 @@ export function SecretPicker(props: SecretPickerProps) {
               </li>
             ))}
           </ul>
-          {promoteError && <p className="text-red-400">{promoteError}</p>}
+          {promoteError && <p className="text-danger">{promoteError}</p>}
         </div>
       )}
 
@@ -207,7 +207,7 @@ export function SecretPicker(props: SecretPickerProps) {
       )}
 
       {panel === "type" && (
-        <p className="text-[11px] text-amber-300/80">
+        <p className="text-[11px] text-warning/80">
           Make sure a secret with this name exists in your vault before events start arriving.
         </p>
       )}

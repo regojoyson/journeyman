@@ -15,11 +15,11 @@ export const btnGhost =
   "px-3 py-1.5 text-xs font-medium text-slate-300 transition";
 
 export const btnDanger =
-  "rounded-md border border-rose-900/60 hover:border-rose-500 hover:bg-rose-950/40 " +
-  "px-3 py-1.5 text-xs font-medium text-rose-300 transition";
+  "rounded-md border border-danger/25 hover:border-rose-500 hover:bg-danger/10 " +
+  "px-3 py-1.5 text-xs font-medium text-danger transition";
 
 export const card =
   "bg-slate-900/60 backdrop-blur border border-slate-800 rounded-xl shadow-xl";
 
 export const codePill =
-  "text-indigo-300 bg-indigo-950/40 border border-indigo-900/40 rounded px-1.5 py-0.5 text-xs";
+  "text-accent bg-accent/10 border border-accent/25 rounded px-1.5 py-0.5 text-xs";

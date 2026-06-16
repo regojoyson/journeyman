@@ -39,7 +39,7 @@ export function PromoteSkillDialog(props: PromoteSkillDialogProps) {
           <span className="text-slate-500 text-xs">{props.row.gitUrl}</span>
         </div>
 
-        {error && <div className="mt-3 text-sm text-rose-400">{error}</div>}
+        {error && <div className="mt-3 text-sm text-danger">{error}</div>}
 
         <div className="flex justify-end gap-2 mt-4">
           <button type="button" onClick={props.onClose} className={btnGhost}>Cancel</button>

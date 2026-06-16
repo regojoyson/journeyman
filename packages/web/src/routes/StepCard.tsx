@@ -82,7 +82,7 @@ export function StepCard(props: {
               return (
                 <button key={t}
                   className={on
-                    ? "rounded bg-indigo-500/30 px-2 py-0.5 text-xs text-indigo-200"
+                    ? "rounded bg-indigo-500/30 px-2 py-0.5 text-xs text-accent"
                     : "rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-400"}
                   onClick={() => onChange(toggleStepTool(plan, id, t))}>
                   {t}
@@ -137,9 +137,9 @@ export function StepCard(props: {
 
       {/* Inline gaps on this step */}
       {gaps.map((g: Gap) => (
-        <div key={g.id} className="mt-2 flex items-center justify-between rounded border border-amber-900/40 bg-amber-950/30 px-2 py-1 text-xs text-amber-200/90">
+        <div key={g.id} className="mt-2 flex items-center justify-between rounded border border-warning/25 bg-warning/10 px-2 py-1 text-xs text-warning/90">
           <span>{g.required ? "⚠️ " : "• "}{g.reason}</span>
-          <button className="rounded bg-amber-500/20 px-2 py-0.5 text-amber-200 hover:bg-amber-500/30"
+          <button className="rounded bg-amber-500/20 px-2 py-0.5 text-warning hover:bg-amber-500/30"
             onClick={() => onChange(resolveGap(plan, g.id))}>
             Resolve
           </button>

@@ -42,7 +42,7 @@ export function WebhookDetailPage(props: { backTo: string }) {
     setWebhook(updated);
   }
 
-  if (error) return <p className="p-6 text-sm text-red-400">{error}</p>;
+  if (error) return <p className="p-6 text-sm text-danger">{error}</p>;
   if (!webhook) return <p className="p-6 text-sm text-slate-400">Loading…</p>;
 
   const tabs: Array<{ id: Tab; label: string }> = [
@@ -78,7 +78,7 @@ export function WebhookDetailPage(props: { backTo: string }) {
               />
             </div>
           </div>
-          <button onClick={remove} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+          <button onClick={remove} className="text-xs text-danger hover:text-danger">Delete</button>
         </header>
 
         <nav className="flex gap-2 border-b border-slate-700">

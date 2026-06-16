@@ -123,12 +123,12 @@ export function AdminUsersPage(props: { orgId: string }) {
             </button>
           </form>
           {info && (
-            <div className="mt-4 rounded-md border border-indigo-900/40 bg-indigo-950/40 px-4 py-2 text-sm text-indigo-200">
+            <div className="mt-4 rounded-md border border-accent/25 bg-accent/10 px-4 py-2 text-sm text-accent">
               {info}
             </div>
           )}
           {error && (
-            <div className="mt-4 rounded-md border border-rose-900/40 bg-rose-950/30 px-4 py-2 text-sm text-rose-300">
+            <div className="mt-4 rounded-md border border-danger/25 bg-danger/10 px-4 py-2 text-sm text-danger">
               {error}
             </div>
           )}
@@ -179,8 +179,8 @@ export function AdminUsersPage(props: { orgId: string }) {
                           className={
                             "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
                             (isDisabled
-                              ? "bg-rose-950/40 text-rose-300 border border-rose-900/40"
-                              : "bg-emerald-950/40 text-emerald-300 border border-emerald-900/40")
+                              ? "bg-danger/10 text-danger border border-danger/25"
+                              : "bg-success/10 text-success border border-success/25")
                           }
                         >
                           <span className={"h-1.5 w-1.5 rounded-full " + (isDisabled ? "bg-rose-400" : "bg-emerald-400")} />

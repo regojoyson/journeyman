@@ -77,12 +77,12 @@ export function ChangePasswordPage() {
           </div>
 
           {error && (
-            <div className="rounded-md border border-rose-900/40 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">
+            <div className="rounded-md border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
             </div>
           )}
           {info && (
-            <div className="rounded-md border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">
+            <div className="rounded-md border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
               {info}
             </div>
           )}

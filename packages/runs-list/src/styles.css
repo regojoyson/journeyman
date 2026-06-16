@@ -4,7 +4,7 @@
 .je-runslist__filters { display: flex; gap: 8px; align-items: center; }
 .je-runslist__filters select { background: rgb(var(--color-surface-raised) / 1); border: 1px solid rgb(var(--color-border) / 1); color: rgb(var(--color-text) / 1); padding: 4px 10px; border-radius: 4px; font-size: 12px; }
 .je-runslist__table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.je-runslist__table thead tr { color: rgb(var(--color-text-muted) / 1); text-align: left; border-bottom: 1px solid rgb(var(--color-surface-raised) / 1); }
+.je-runslist__table thead tr { color: rgb(var(--color-text-muted) / 1); text-align: left; border-bottom: 1px solid rgb(var(--color-border) / 1); }
 .je-runslist__table thead th { padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
 .je-runslist__table tbody tr { border-bottom: 1px solid rgb(var(--color-surface) / 1); cursor: pointer; }
 .je-runslist__table tbody tr:hover { background: rgb(var(--color-surface) / 1); }
@@ -24,7 +24,7 @@
 /* Scope chip toggles in the header (Mine / Organization / All). */
 .je-chip {
   background: rgb(var(--color-surface) / 1);
-  border: 1px solid rgb(var(--color-surface-raised) / 1);
+  border: 1px solid rgb(var(--color-border) / 1);
   color: rgb(var(--color-text) / 1);
   padding: 4px 12px;
   border-radius: 14px;

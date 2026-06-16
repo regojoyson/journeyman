@@ -73,7 +73,7 @@ export function MyWebhooksPage() {
                 {rows.map((w) => (
                   <tr key={w.id} className="border-b border-slate-800 hover:bg-slate-800/30">
                     <td className="px-4 py-2">
-                      <Link to={`/me/webhooks/${w.id}`} className="text-emerald-300 hover:underline">{w.name}</Link>
+                      <Link to={`/me/webhooks/${w.id}`} className="text-success hover:underline">{w.name}</Link>
                       {w.description && <div className="text-xs text-slate-500">{w.description}</div>}
                     </td>
                     <td className="px-4 py-2"><code className={codePill}>{w.preset}</code></td>
@@ -86,14 +86,14 @@ export function MyWebhooksPage() {
                         {isAdmin && (
                           <button
                             onClick={() => setPromoting(w)}
-                            className="text-xs text-emerald-300 hover:text-emerald-200"
+                            className="text-xs text-success hover:text-success"
                           >
                             Promote to org →
                           </button>
                         )}
                         <button
                           onClick={() => remove(w)}
-                          className="text-xs text-red-300 hover:text-red-200"
+                          className="text-xs text-danger hover:text-danger"
                         >
                           Delete
                         </button>

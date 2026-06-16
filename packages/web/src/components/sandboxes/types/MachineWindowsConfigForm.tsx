@@ -27,7 +27,7 @@ const MachineWindowsConfigForm: FC<{ state: Record<string, unknown>; onChange: (
           hint={<>Where per-run folders are created on the box. Blank = <Code>C:\jm-runs</Code>.</>}>
           <input className={inputCls} placeholder="C:\jm-runs" value={s.workspaceRoot} onChange={(e) => set({ workspaceRoot: e.target.value })} />
         </Field>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-xs text-subtle mt-1">
           Prerequisites on the box: Node 22, Git for Windows, the agent + runner, certs, an open firewall port.
           Supported AI providers: Claude and OpenCode (AISDK is not supported on Windows).
         </p>
