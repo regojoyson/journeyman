@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { Pool } from "pg";
 import {
   getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
-  createDefaultRegistry, destroySandboxInstance, makeDockerClient,
+  createDefaultRegistry, destroySandboxInstance, makeDockerClient, makeWindowsAgentClient,
   SandboxInstanceReaper, type SandboxInstanceRecord, type SandboxInstanceRoutesDeps,
 } from "@journeyman/sandbox";
 import { isTerminalStatus } from "@journeyman/core";
@@ -125,6 +125,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
       makeClient: (connection) => makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]),
       defaultImage: RUNNER_IMAGE,
     },
+    windows: { makeClient: (connection) => makeWindowsAgentClient(connection) },
   });
 
   const destroyByType = (sb: SandboxInstanceRecord): Promise<void> =>

@@ -16,7 +16,7 @@ import type {
   ProviderFactory, SecretBinding, IEventBus,
 } from "@journeyman/core";
 import {
-  createDefaultRegistry,
+  createDefaultRegistry, makeWindowsAgentClient,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
   markImagePending, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
   listReadyImageRefs, listDockerSandboxConnections, resolveKitRefs, registryAuthFromEnv,
@@ -154,6 +154,9 @@ const workerRegistry = createDefaultRegistry({
           : { reason: `image drift: expected ${inputs.fingerprint}, have ${storedFingerprint || "none"}${present ? "" : " (image pruned)"}` }),
       };
     },
+  },
+  windows: {
+    makeClient: (connection) => makeWindowsAgentClient(connection),
   },
 });
 

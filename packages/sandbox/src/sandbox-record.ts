@@ -1,5 +1,6 @@
 import type { Connectivity, ExecutionMode, SandboxType } from "@journeyman/core";
 import type { Sandbox, SandboxScope } from "@journeyman/core";
+import { SANDBOX_CATALOG } from "./sandbox-catalog.ts";
 
 export class InvalidSandboxInputError extends Error {}
 
@@ -33,6 +34,21 @@ export function validateSandboxInput(input: SandboxInputShape): void {
     !CONNECTIVITY.includes(input.connectivity as Connectivity)
   ) {
     throw new InvalidSandboxInputError(`unknown connectivity '${String(input.connectivity)}'`);
+  }
+  // Reject (type, mode, connectivity) combinations the catalog doesn't support.
+  const desc = SANDBOX_CATALOG.find((d) => d.type === input.type);
+  if (desc) {
+    if (!desc.supportedModes.includes(input.executionMode as ExecutionMode)) {
+      throw new InvalidSandboxInputError(
+        `${desc.type} does not support executionMode '${String(input.executionMode)}' (allowed: ${desc.supportedModes.join(", ")})`,
+      );
+    }
+    const conn = input.connectivity;
+    if (conn !== undefined && conn !== null && !desc.supportedConnectivity.includes(conn as Connectivity)) {
+      throw new InvalidSandboxInputError(
+        `${desc.type} does not support connectivity '${String(conn)}' (allowed: ${desc.supportedConnectivity.join(", ") || "none"})`,
+      );
+    }
   }
 }
 

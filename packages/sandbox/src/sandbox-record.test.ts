@@ -23,6 +23,15 @@ describe("validateSandboxInput", () => {
   it("rejects an unknown connectivity", () => {
     expect(() => validateSandboxInput({ ...ok, connectivity: "carrier-pigeon" })).toThrow(/connectivity/);
   });
+
+  it("accepts machine-windows with shared + agent", () => {
+    expect(() => validateSandboxInput({ name: "w", type: "machine-windows", executionMode: "shared", connectivity: "agent" })).not.toThrow();
+  });
+
+  it("rejects machine-windows with an unsupported mode/connectivity combo", () => {
+    expect(() => validateSandboxInput({ name: "w", type: "machine-windows", executionMode: "per-instance", connectivity: "push" }))
+      .toThrow(/machine-windows/i);
+  });
 });
 
 describe("rowToSandbox", () => {

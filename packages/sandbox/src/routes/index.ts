@@ -9,6 +9,7 @@ import { validateSandboxInput, InvalidSandboxInputError } from "../sandbox-recor
 import { SANDBOX_CATALOG } from "../sandbox-catalog.ts";
 import { runWorkerConnectionTest } from "../test-connection.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
+import { makeWindowsAgentClient } from "../backends/windows/windows-agent-client.ts";
 
 export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): Promise<void> {
   const requireAuth = makeRequireAuth({ pool });
@@ -36,7 +37,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
     if (!body?.type) return reply.code(400).send({ error: "type is required" });
     return runWorkerConnectionTest(
       { type: body.type as never, config: body.config ?? {} },
-      { makeDockerClient },
+      { makeDockerClient, makeWindowsClient: makeWindowsAgentClient },
     );
   });
 

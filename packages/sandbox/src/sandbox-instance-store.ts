@@ -1,5 +1,9 @@
 import type { Queryable } from "./db.ts";
 import type { DockerConnection } from "./backends/docker/docker-client.ts";
+import type { WindowsAgentConnection } from "./backends/windows/windows-agent-client.ts";
+
+/** Any backend's persisted connection (so any process can rebuild its client). */
+export type SandboxConnection = DockerConnection | WindowsAgentConnection;
 
 export interface SandboxInstanceRecord {
   runId: string;
@@ -8,8 +12,8 @@ export interface SandboxInstanceRecord {
   volume: string | null;
   imageRef: string | null;
   owner: string | null;
-  /** How to reach the daemon — so exec/teardown in other processes rebuild the right client. */
-  connection: DockerConnection | null;
+  /** How to reach the target — so exec/teardown in other processes rebuild the right client. */
+  connection: SandboxConnection | null;
   status: "provisioning" | "active" | "destroyed";
 }
 
@@ -20,7 +24,7 @@ export interface RecordSandboxInstanceArgs {
   volume?: string | null;
   imageRef?: string | null;
   owner?: string | null;
-  connection?: DockerConnection | null;
+  connection?: SandboxConnection | null;
 }
 
 const COLS = "run_id, type, handle, volume, image_ref, owner, connection, status";
@@ -33,7 +37,7 @@ function rowToSandboxInstance(r: Record<string, any>): SandboxInstanceRecord {
     volume: r.volume ?? null,
     imageRef: r.image_ref ?? null,
     owner: r.owner ?? null,
-    connection: (r.connection ?? null) as DockerConnection | null,
+    connection: (r.connection ?? null) as SandboxConnection | null,
     status: r.status,
   };
 }
