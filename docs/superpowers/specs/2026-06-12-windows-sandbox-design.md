@@ -116,14 +116,16 @@ The current run path chooses backends with scattered `if (type === …)` branche
 **Changes:**
 
 1. **Backends become self-contained.** Each `ExecutionEnvironmentBackend.create(worker: ResolvedSandbox)` builds a fully-wired `IExecutionEnvironment`, including its own client, from `worker.config`:
-   - `DockerBackend` reads `worker.config.connection` and builds its client via a `makeClient(connection)` factory (the per-connection logic currently inlined in `cli-worker.ts` moves here); keeps `defaultImage`/`runnerCmd`.
-   - `WindowsBackend` reads `worker.config.connection` (incl. `certDir`) and builds the mTLS gRPC client via `makeWindowsAgentClient(connection)`.
-   - `LocalBackend` keeps its `runOperation` + `baseDir` deps.
-2. **Run-gating moves into a backend hook.** Add an optional `ExecutionEnvironmentBackend.checkRunnable?(worker): void | Promise<void>`. `DockerBackend` implements the image-readiness gate (the docker-only `if` currently in `ensure-workspace.ts`); other backends no-op. `ensure-workspace` calls `backend.checkRunnable?.(worker)` generically.
-3. **One composition root.** Build the registry once (`createDefaultRegistry({ local, docker, windows })`) and share it across the worker (provision/exec) and api-server (teardown). `createDefaultRegistry` is extended so `docker`/`windows` deps each carry a per-connection client factory rather than a single pre-built client.
+   - `DockerBackend` reads `worker.config.connection` and builds its client via a `makeClient(connection)` factory (the per-connection logic currently inlined in `cli-worker.ts` moves here); keeps `defaultImage`/`runnerCmd`. It also owns the **reconnect** path: when `config.__existingHandle` is present, `provision()` skips creating a container and returns a handle to the existing one (the logic currently in `cli-worker.ts`'s `provisionDocker`).
+   - `WindowsBackend` reads `worker.config.connection` (incl. `certDir`) and builds the mTLS gRPC client via `makeWindowsAgentClient(connection)`. Same reconnect handling.
+   - `LocalBackend`: its `runOperation` dep becomes **optional** — required only for `exec()`, not for `provision()`/`destroy()` — so a teardown-only process (api-server) can build the backend without coding-provider deps (finding 10).
+2. **Run-gating moves into a backend hook (finding 11).** Add an optional `ExecutionEnvironmentBackend.checkRunnable?(worker): void | Promise<void>`. `DockerBackend` implements the image-readiness gate + `verifyImageFresh` (the docker-only logic currently in `ensure-workspace.ts`/`cli-worker.ts`); other backends no-op. Behaviour-preserving constraints — **must hold**:
+   - `ensure-workspace` calls `checkRunnable` at the **same point** as today — *after* the active/provisioning early-returns (so reconnect skips it) and *before* the claim/provision step — so `ImageNotReadyError` is still thrown from inside the Conductor task and triggers the existing exponential-backoff retry (the throw location is load-bearing).
+   - The backend must return the resolved `imageRef` for `provision()` to use; the `onImagePending` re-enqueue stays a `deps`-injected callback (it touches the DB, backend-agnostic).
+3. **Registry is built per-process, not shared (finding 10).** The worker, the api-server, and the standalone `cli-sandbox-instance` cleanup tool are **separate processes** — each constructs its own registry from the same env/config (they already share the DB as source of truth). `createDefaultRegistry` is extended so `docker`/`windows` deps carry a per-connection **client factory** rather than a single pre-built client. The api-server/cleanup build a **teardown-capable** registry (local backend with `runOperation` omitted).
 4. **Call sites collapse to registry lookups:**
    - `ensure-workspace.ts` provision + `connect()` reconnect → `const b = registry.get(worker.type); await b.checkRunnable?.(worker); const env = b.create(worker); … env.provision(runId, spec)`. The `provisionLocal`/`provisionDocker` closures in `cli-worker.ts` are deleted.
-   - `composition.ts` `destroyByType` → `registry.get(sb.type).create(asResolved(sb)).destroy(env)`. The per-type switch is deleted.
+   - All teardown entrypoints route through one shared helper `destroySandboxInstance(registry, sb)` (synthesizing a `ResolvedSandbox` from the `SandboxInstanceRecord` — `type`/`handle`/`volume`/`connection` are sufficient for `destroy`): `composition.ts` `destroyByType`, the `sandbox-instances` admin routes, and `cli-sandbox-instance.ts`. The per-type switches are deleted. (The worker's image-prune loop is separate — images, not instances — and is untouched.)
    - `worker-harness.ts` exec routing is already type-agnostic (`wsEnv.exec`) — unchanged.
 
 **Outcome:** adding `machine-windows` (Phase 1) is **one backend class + one `createDefaultRegistry` registration + catalog entry** — zero edits to the shared provision/teardown/exec call sites. Same for any future type (ecs/ec2/kubernetes).
@@ -237,8 +239,8 @@ The agent is **plain Node** — not Windows-specific in its *code*, it just norm
 - `packages/sandbox/src/backends/local/local-backend.ts` — `create(worker)` unchanged in spirit; conforms to the registry path.
 - `packages/sandbox/src/default-registry.ts` — `docker`/`windows` deps carry a per-connection client factory; registers all configured backends.
 - `packages/orchestrator/src/sandbox/ensure-workspace.ts` — replace `provisionLocal`/`provisionDocker` closures + the docker image `if` with generic `registry.get(type)` + `checkRunnable` + `create` + `provision`; same for `connect()` reconnect.
-- `packages/orchestrator/src/cli-worker.ts` — delete the hand-wired provision closures; build/share the registry.
-- `packages/api-server/src/composition.ts` — replace `destroyByType` switch with `registry.get(sb.type).create(asResolved(sb)).destroy(...)`; share the same registry.
+- `packages/orchestrator/src/cli-worker.ts` — delete the hand-wired provision closures; build the worker's own registry; move `verifyImageFresh`/reconnect logic into the docker backend.
+- `packages/api-server/src/composition.ts`, `packages/sandbox/src/routes/sandbox-instances.ts`, `packages/sandbox/src/cli-sandbox-instance.ts` — all teardown entrypoints route through one shared `destroySandboxInstance(registry, sb)` helper; each process builds its own teardown-capable registry (local backend with `runOperation` omitted). Per-type `destroyByType` switch deleted.
 
 **Changed — Phase 1 (Windows):**
 - `packages/sandbox/src/sandbox-catalog.ts` — `machine-windows` → available.
@@ -283,6 +285,14 @@ The production run path does **not** use `InMemoryExecutionEnvironmentRegistry`/
 
 ### Finding 8 — Contract needs a `Readiness` RPC  *(added to proto)*
 The self-check (finding 1) and Test-connection (§4.1) need a health call. Added `Readiness(ReadinessRequest) → ReadinessReply { ready, checks[] }` to the `.proto` (§3.1 A).
+
+*Third dry-run pass (Phase 0 refactor feasibility):*
+
+### Finding 10 — Registry can't be "shared" across processes; teardown has 3 entrypoints  *(spec correction — §3.3)*
+The worker, the api-server, and `cli-sandbox-instance.ts` are **separate processes** — no shared in-memory singleton. Each builds its own registry from the same env/config (DB is the shared source of truth). Corrected §3.3: registry is **per-process**; `createDefaultRegistry` deps carry a per-connection **client factory**. Teardown is reached from three entrypoints (`composition.ts` reaper/route, the admin routes, the standalone CLI) — route them all through one shared `destroySandboxInstance(registry, sb)` helper. Also: `LocalBackend`'s `runOperation` dep becomes **optional** (needed only for `exec`), so the teardown-only api-server can build the backend without coding-provider deps.
+
+### Finding 11 — Moving image-gating into `checkRunnable` is viable with strict constraints  *(refactor guardrails)*
+The dry run confirmed "no blocking issues," provided: (a) `checkRunnable` is called at the **same point** — after the active/provisioning early-returns (reconnect skips it), before claim/provision — so `ImageNotReadyError` still throws inside the Conductor task and keeps the existing exponential-backoff retry (throw location is load-bearing); (b) `verifyImageFresh`/fingerprint/kit-pull logic moves into the **docker backend** (needs the docker client); (c) the backend returns the resolved `imageRef` for provision; (d) `onImagePending` stays a `deps`-injected callback; (e) the **reconnect** (`__existingHandle`) branch moves into the docker backend's `provision`. `imageState` stays a docker concern — local/other backends treat the gate as a no-op. Folded into §3.3.
 
 ### Finding 9 — Runner stdout/stderr discipline is airtight  *(confirmed — validates the streaming design)*
 Verified the gRPC streaming approach is safe: the runner (`cli.ts` `guardRunnerStdout()`) writes **exactly one** `RunnerResponse` JSON to stdout and reroutes stray `console.log`/`console.info` to stderr; all logs go to stderr as NDJSON `{line, meta}`; `op.signal` propagates into the SDK `query()` abort controller so killing the child cleanly cancels; no temp files are left behind. So: agent streams stderr lines as `LogLine` events, captures stdout, emits it as the final `ExecFinal`. Two reinforcements: (a) the agent must ensure **Node is on PATH** before spawning the runner (the SDK spawns `node` by bare name — covered by the readiness check); (b) the agent must clear a run's `destDir` with **Node `fs.rm`**, not a `sh -c rm -rf` (Docker's materialize uses a shell *inside the Linux container*; the Windows agent can't — folds into finding 3b). Also set a generous gRPC **max-message-size** so a large `ExecFinal` structured result isn't truncated (logs are streamed, so unaffected).
