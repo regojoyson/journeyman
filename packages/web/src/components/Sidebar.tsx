@@ -84,8 +84,8 @@ export default function Sidebar() {
         width: expanded ? 200 : 52,
         minWidth: expanded ? 200 : 52,
         height: "100vh",
-        background: "rgb(var(--color-bg) / 1)",
-        borderRight: "1px solid rgb(var(--color-surface-raised) / 1)",
+        background: "rgb(var(--color-surface) / 1)",
+        borderRight: "1px solid rgb(var(--color-border) / 1)",
         display: "flex",
         flexDirection: "column",
         alignItems: expanded ? "stretch" : "center",
@@ -163,11 +163,11 @@ export default function Sidebar() {
 
         {role === "admin" && (
           <>
-            <div style={{ borderTop: "1px solid rgb(var(--color-surface-raised) / 1)", margin: "6px 0" }} />
+            <div style={{ borderTop: "1px solid rgb(var(--color-border) / 1)", margin: "6px 0" }} />
             {expanded && (
               <div style={{
                 padding: "2px 8px 4px",
-                color: "rgb(var(--color-border) / 1)",
+                color: "rgb(var(--color-text-subtle) / 1)",
                 fontSize: 9,
                 textTransform: "uppercase",
                 letterSpacing: 1,
@@ -192,7 +192,7 @@ export default function Sidebar() {
         ref={menuRef}
         style={{
           padding: expanded ? "8px 8px 0" : "8px 0 0",
-          borderTop: "1px solid rgb(var(--color-surface) / 1)",
+          borderTop: "1px solid rgb(var(--color-border) / 1)",
           position: "relative",
         }}
       >
@@ -207,14 +207,14 @@ export default function Sidebar() {
               marginBottom: 6,
               width: 220,
               background: "rgb(var(--color-bg) / 1)",
-              border: "1px solid rgb(var(--color-surface-raised) / 1)",
+              border: "1px solid rgb(var(--color-border) / 1)",
               borderRadius: 8,
               boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
               zIndex: 50,
               overflow: "hidden",
             }}
           >
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid rgb(var(--color-surface) / 1)" }}>
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid rgb(var(--color-border) / 1)" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "rgb(var(--color-text) / 1)" }}>{label}</div>
               {user?.username && user?.displayName && (
                 <div style={{ fontSize: 11, color: "rgb(var(--color-border-strong) / 1)", marginTop: 2 }}>@{user.username}</div>
@@ -253,7 +253,7 @@ export default function Sidebar() {
                 color: "rgb(var(--color-danger) / 1)",
                 background: "none",
                 border: "none",
-                borderTop: "1px solid rgb(var(--color-surface) / 1)",
+                borderTop: "1px solid rgb(var(--color-border) / 1)",
                 cursor: "pointer",
               }}
               className="hover:bg-danger/10"

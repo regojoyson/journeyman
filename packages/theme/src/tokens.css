@@ -39,15 +39,15 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Soft neutral page; raised surfaces are white and earn depth from shadow,
-     not from a lighter fill (there's nothing lighter than white). */
-  --color-bg: 250 251 253;
+  /* Light gray page so white panels/sidebar/cards stand out against it;
+     borders are a clearly-visible hairline, not a near-invisible tint. */
+  --color-bg: 247 248 250;
   --color-surface: 255 255 255;
   --color-surface-raised: 255 255 255;
-  --color-surface-hover: 244 245 248;
-  --color-surface-active: 237 239 243;
-  --color-border: 235 236 241;
-  --color-border-strong: 216 219 226;
+  --color-surface-hover: 242 244 247;
+  --color-surface-active: 233 236 240;
+  --color-border: 224 228 234;
+  --color-border-strong: 199 205 215;
   --color-text: 26 29 41;
   --color-text-muted: 91 101 116;
   --color-text-subtle: 140 148 162;

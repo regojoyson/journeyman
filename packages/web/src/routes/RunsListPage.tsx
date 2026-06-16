@@ -89,7 +89,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
       display: "flex", alignItems: "center", justifyContent: "center",
     }} onClick={onClose}>
       <div style={{
-        background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", borderRadius: 10,
+        background: "rgb(var(--color-surface) / 1)", border: "1px solid rgb(var(--color-border) / 1)", borderRadius: 10,
         padding: 28, minWidth: 440, maxWidth: 560, width: "100%",
         boxShadow: "0 8px 40px rgba(0,0,0,0.5)", color: "rgb(var(--color-text) / 1)",
       }} onClick={e => e.stopPropagation()}>
@@ -101,7 +101,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
           <select
             value={flowId}
             onChange={e => { setFlowId(e.target.value); setDynValues({}); setError(null); }}
-            style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+            style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
           >
             <option value="">— select a workflow —</option>
             {(["user", "org", "global"] as const).map(scope =>
@@ -140,7 +140,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
               <select
                 value={dynValues[def.name] ?? ""}
                 onChange={e => setDynValues(v => ({ ...v, [def.name]: e.target.value }))}
-                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
+                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
               >
                 <option value="">— select —</option>
                 <option value="true">true</option>
@@ -152,7 +152,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
                 value={dynValues[def.name] ?? ""}
                 onChange={e => setDynValues(v => ({ ...v, [def.name]: e.target.value }))}
                 placeholder={def.type === "json-object" ? '{"key": "value"}' : def.type === "json-array" ? '[ ... ]' : undefined}
-                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-surface-raised) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }}
               />
             )}
           </label>
