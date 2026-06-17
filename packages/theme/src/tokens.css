@@ -9,13 +9,15 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --color-bg: 26 26 36;
-  --color-surface: 15 23 42;
-  --color-surface-raised: 30 41 59;
-  --color-surface-hover: 30 41 59;
+  /* Standard slate ramp with correct elevation: page is darkest, cards sit
+     above it (lighter), border is a subtle one-step edge — not a hard outline. */
+  --color-bg: 15 23 42;
+  --color-surface: 30 41 59;
+  --color-surface-raised: 38 50 71;
+  --color-surface-hover: 44 57 79;
   --color-surface-active: 51 65 85;
-  --color-border: 44 51 64;
-  --color-border-strong: 64 76 94;
+  --color-border: 47 59 78;
+  --color-border-strong: 64 78 100;
   --color-text: 241 245 249;
   --color-text-muted: 148 163 184;
   --color-text-subtle: 100 116 139;
@@ -39,18 +41,18 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Light gray page so white panels/sidebar/cards stand out against it;
-     borders are a clearly-visible hairline, not a near-invisible tint. */
-  --color-bg: 247 248 250;
+  /* Standard slate ramp: light-gray page, white elevated cards, slate-200
+     hairline borders — the de-facto SaaS convention. */
+  --color-bg: 248 250 252;
   --color-surface: 255 255 255;
   --color-surface-raised: 255 255 255;
-  --color-surface-hover: 242 244 247;
-  --color-surface-active: 233 236 240;
-  --color-border: 224 228 234;
-  --color-border-strong: 199 205 215;
-  --color-text: 26 29 41;
-  --color-text-muted: 91 101 116;
-  --color-text-subtle: 140 148 162;
+  --color-surface-hover: 241 245 249;
+  --color-surface-active: 226 232 240;
+  --color-border: 226 232 240;
+  --color-border-strong: 203 213 225;
+  --color-text: 15 23 42;
+  --color-text-muted: 71 85 105;
+  --color-text-subtle: 148 163 184;
   --color-accent: 79 70 229;
   --color-accent-hover: 67 56 202;
   --color-success: 5 150 105;
