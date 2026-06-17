@@ -150,7 +150,8 @@ interface Agent {
   };
 
   triggers: AgentTrigger[];       // zero or more automated triggers; manual is always implicit
-  enabled: boolean;
+  status: "draft" | "active";     // draft while being configured (triggers never fire); Enable runs a readiness check
+  enabled: boolean;               // on/off kill-switch once active (§15.1)
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -396,27 +397,36 @@ Connectors tab and resolved by the existing `@journeyman/mcp` registry + secret 
 
 ## 9. UI
 
-Full-page creation form (not a modal), in Journeyman's monochrome theme. Reuses the MCP,
-sandbox, tools, and skills pickers from `flow-editor`.
+Journeyman's monochrome theme; reuses the MCP, sandbox, tools, and skills pickers from
+`flow-editor`. **Create-then-configure** flow (not one giant form):
 
-- **Agents list** (`MyAgentsPage` / `AdminAgentsPage`): name, active triggers, repos,
-  status, last run; "Create agent" button.
-- **Create/Edit Agent (page)** with a sticky top bar (breadcrumb + Cancel/Create) and
-  stacked section cards:
-  - **Basics** — Name · rich-markdown Instructions (formatting toolbar).
-  - **Workspace & model** — multi-repo picker (from a git Connection) · environment
-    (sandbox) · **Provider select (first) → Model select (then)**.
-  - **Triggers** — multi-select Schedule / Webhook / API (manual always on).
-  - **Configuration tabs** — **Connectors** (MCP, incl. RAG) · **Skills** (packages from the
-    `@journeyman/skills` registry) · **Tools** (canonical tools) · **Behavior** (max steps,
-    timeout, output mode, retry) · **Notifications** (connection + channel + success/failure)
-    · **Permissions** (per-tool read/write grid) · **Webhook config** (preset Jira/GitHub +
-    filter builder + payload mapping).
+- **Agents list** (`MyAgentsPage` / `AdminAgentsPage`): name, status (draft/active),
+  active triggers, repos, last run; "Create agent" button.
+- **Step 0 — name-first create modal**: takes just the **Name** (instructions optional) and
+  creates a **draft** agent, then routes to its edit page. Keeps the entry point tiny.
+- **Agent edit page (used for both create-continue and later editing)** — a **side-nav of
+  sections**, each **saved independently** ("Save section"), with per-section status markers
+  (✓ complete / ! needs attention). Sections:
+  - **Instructions & Inputs** — rich-markdown instructions + the **inputs** editor (§5b) and
+    an **inputs helper** beside the editor: shows available variables (`{{ticketKey}}`,
+    `{{note}}`, `{{payload}}`, `{{trigger.type}}`) with an **Insert variable** dropdown.
+  - **Workspace & model** — multi-repo picker (from a git Connection) · environment (sandbox)
+    · **Provider select (first) → Model select (then)**.
+  - **Triggers** — multi-select Webhook / Schedule / API (manual always on); each selected
+    trigger expands its **full inline config** (webhook: preset + security type + filter +
+    mapping; schedule: cadence + timezone + next-runs; API: endpoint + token + inputs).
+  - **Connectors** (MCP, incl. RAG) · **Skills** · **Tools** (canonical) · **Behavior**
+    (maxTurns, timeout, output mode, retry) · **Notifications** (connection + channel +
+    success/failure) · **Permissions** (per-tool read/write grid).
   - **Skills** are picked like Connectors — from the `@journeyman/skills` registry (not a
     Connection). A private skill *repo* reuses a git Connection only to clone it. Reuses the
-    existing flow-editor SkillsTab; resolved at run time by the existing `skillsResolver`
-    (clones packages into the sandbox and exposes them to the Claude SDK).
-  - **Post-create reveal** — webhook URL + secret and/or API token (shown once).
+    existing flow-editor SkillsTab; resolved at run time by `skillsResolver`.
+- **Draft → Enable.** An agent stays `status: "draft"` while being configured; **triggers do
+  not fire** until it is **enabled**, and Enable runs a **readiness check** (required fields,
+  ≥1 valid trigger, etc.). After enabling, the per-agent `enabled` flag is the on/off
+  kill-switch (§15.1).
+- **Reveal (shown once)** — when a webhook/API trigger is first configured, its URL + secret
+  / token are revealed once (§6).
 - **Connections** page (`Settings → Connections`): grouped by category (Git accounts /
   Notification channels); a single "New connection" form with a **Type** toggle
   (Git / Notification), per-provider fields, and **Test connection** with whoami/repo or
