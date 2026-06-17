@@ -612,6 +612,14 @@ behaviour:
    **org-level `paused` flag** (pause-all). The trigger ingestion checks both before
    starting any run; an admin toggles them in the UI.
 
+**Stop semantics (dry-test issue #5)** — two distinct actions:
+- **Disable agent / pause-all** — stops *new* fires and **drops queued (not-yet-started)
+  runs**, but **lets in-flight runs finish gracefully** (cancelling mid-run can leave
+  half-done branches/PRs). Disabling also re-unlocks the settings for editing (§9).
+- **Cancel a run** — per-run, aborts one in-flight run via the existing `AbortSignal`;
+  sandbox teardown still runs (partial artifacts may remain — issue #5b below).
+- **Cancel all running** — a separate admin action for true emergencies (hard stop).
+
 **Data model additions** (org settings + per-agent overrides):
 
 ```ts
