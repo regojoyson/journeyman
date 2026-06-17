@@ -27,6 +27,25 @@ export interface ConfigTabProps {
   flowDefaults?: WorkflowDefaults;
 }
 
+/**
+ * Compute the next node config when the "Max steps" field changes.
+ * Blank / non-numeric / `< 1` removes the key (revert to the provider default);
+ * a positive value is stored as a floored integer. Other config keys are kept.
+ */
+export function nextMaxStepsConfig(
+  config: Record<string, unknown>,
+  raw: string,
+): Record<string, unknown> {
+  const next = { ...config };
+  const n = Number(raw);
+  if (raw.trim() === "" || !Number.isFinite(n) || n < 1) {
+    delete next.maxSteps;
+  } else {
+    next.maxSteps = Math.floor(n);
+  }
+  return next;
+}
+
 export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefaults }: ConfigTabProps) {
   const registry = useStepRegistry();
   const definition = registry.get(node.stepType);
@@ -315,6 +334,27 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           </select>
           <div className="je-props__field-help">
             Streams Claude SDK activity to the run viewer as it runs. Higher levels store more data per run.
+          </div>
+        </div>
+      )}
+
+      {definition?.executor.kind === "coding-cli"
+        && definition.executor.method === "runCustomPrompt" && (
+        <div className="je-props__field">
+          <label>Max steps</label>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            placeholder="Default (80)"
+            value={(config.maxSteps as number | undefined) ?? ""}
+            disabled={readOnly}
+            onChange={e => onChange({ ...node, config: nextMaxStepsConfig(config, e.target.value) })}
+          />
+          <div className="je-props__field-help">
+            Most steps the agent can take (tool calls + replies) before it&apos;s stopped.
+            Leave blank for the default (80). Raise it for big implementation steps; lower
+            it to keep small steps cheap.
           </div>
         </div>
       )}
