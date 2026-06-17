@@ -178,7 +178,7 @@ interface AgentNotifications {
 
 // Zero or more automated triggers per agent. Manual "Run now" is always available.
 type AgentTrigger =
-  | { type: "schedule"; cron: string; timezone: string }        // IANA tz mandatory
+  | { type: "schedule"; cron: string; timezone: string; fixedInputs?: Record<string, unknown> } // IANA tz mandatory; fixedInputs satisfy required inputs (§5b)
   | { type: "api"; tokenHash: string }                          // per-agent bearer token (shown once)
   | {
       type: "webhook";
