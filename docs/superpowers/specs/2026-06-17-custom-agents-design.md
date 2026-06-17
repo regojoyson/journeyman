@@ -580,8 +580,14 @@ Autonomous agents need a big-picture view on top of the existing per-run logs (r
    for sensitive actions: agent create/edit/delete, Connection create/edit/delete, manual
    "run now", and kill-switch/pause toggles.
 
-Per-run execution logs and live status already exist via the run-viewer (§9); §15.4 adds the
-aggregate/operational view and the audit trail.
+**Per-run logging reuses the workflow logs.** An agent run is a WorkflowInstance, so the
+run-viewer canvas, per-step logs, live status, and events stream all apply unchanged —
+filtered by `agentId`. No new per-run logging system. Three additions on top of that reuse:
+(a) **secret redaction** in those logs (§15.3 #1 — critical since agent runs carry git/Slack
+tokens); (b) **tokens/cost + duration surfaced per run** (the providers report usage; feeds
+the §15.1 budget); (c) a **log retention policy** (agents run far more often than hand-run
+workflows, so set a keep-for-N-days + auto-clean). The §15.4 metrics/alerts/audit sit on top
+of these per-run logs as the aggregate/operational view.
 
 ---
 
