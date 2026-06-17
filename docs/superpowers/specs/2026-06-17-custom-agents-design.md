@@ -129,6 +129,12 @@ interface Agent {
   outputMode: "none" | "text" | "structured";
   outputFields?: CustomStepOutputField[]; // when outputMode === "structured"
 
+  behavior: {                     // see §14 — most of these need NEW wiring
+    maxTurns?: number;            // NEW: wire to SDK maxTurns / configurable step cap
+    timeoutSeconds?: number;      // NEW: enforced by the worker via AbortSignal
+    retry?: RetryPolicy;          // reuse RetryPolicy; compiled onto the step node
+  };
+
   triggers: AgentTrigger[];       // zero or more automated triggers; manual is always implicit
   enabled: boolean;
   createdBy: string;
@@ -232,9 +238,13 @@ or GitHub's webhook settings.
 
 1. **Resolve** the agent record and its mapped inputs (from webhook payload via mapping,
    freeform API body, or empty for schedule/manual).
-2. **Compile** to an ephemeral `WorkflowGraph`: `trigger-<type>` node → one `custom-ai`
-   step whose config carries the agent's inline instructions, provider+model, tools, MCP
-   ids, skill ids, repo selections, sandbox id, permissions, and output schema.
+2. **Compile** to an ephemeral `WorkflowGraph`: `trigger-<type>` node →
+   **(a `clone-repos` node if `repoSelections` is non-empty)** → one `custom-ai` step whose
+   config carries the agent's inline instructions, provider+model, tools, MCP ids, skill
+   ids, sandbox id, permissions, behavior (maxTurns/timeout/retry), and output schema.
+   Reusing the existing `clone-repos` step handler to clone the selected repos is preferred
+   over teaching `custom-ai` to clone — it is less new code and keeps `custom-ai` focused.
+   (See §14: the `custom-ai` step does **not** clone repos on its own today.)
 3. **Submit** via `IOrchestratorEngine.submit()` with `triggerSource` set
    (`manual` | `api` | `webhook` | `schedule`) and the instance tagged with `agentId`.
 4. The worker harness behaves as it already does: provisions a sandbox **only if** the
@@ -407,14 +417,56 @@ This exercises every new piece end to end.
 
 1. **Agent core** — `@journeyman/agents` (types, store, fire-time compiler), `custom-ai`
    inline extension, manual trigger + run-now, full-page agents UI (basics/workspace/
-   provider→model/behavior/permissions/notifications-shell), run history.
+   provider→model/behavior/permissions/notifications-shell), run history. **Includes the
+   behavior wiring gaps (§14): `maxTurns` → SDK + configurable step cap; `timeoutSeconds` →
+   worker AbortSignal enforcement; per-agent `retry` compiled onto the step node. Gate the
+   provider picker to implemented providers (Claude, OpenCode) only.**
 2. **Connections + repos** — `jm_connections`, Connections page, git provider Test/List,
    `GitLabProvider` (base-URL aware) + `listRepos` + repo picker; wire repoSelections into
-   the run-time credential flow.
+   the run-time credential flow. **Includes emitting a `clone-repos` node in the compiled
+   graph so selected repos land in the workspace (§14, gap #1).**
 3. **Automated triggers** — webhook (presets Jira/GitHub, filter builder, mapping, dedup),
    API token + `/fire`, scheduler tick; the create-time reveal.
-4. **Notifications + polish** — `SlackProvider` (post/list/test), notification Connections,
-   the per-tool permission grid, structured notify wiring.
+4. **Notifications + polish** — **the automatic on-terminal-state notification hook
+   (§14, gap #4)**, `SlackProvider` (post/list/test), notification Connections, the per-tool
+   permission grid, structured notify wiring.
+
+## 14. End-to-end verification — every Create-Agent option → execution path
+
+Traceability audit (against the current codebase) of each configurable option to a concrete
+runtime path. ✅ = reuse, works today; ⚠️ = needs building (named below). This is the
+authoritative list of gaps the implementation must close for the form to work end to end.
+
+| Create-Agent option | Status | Path / gap |
+|---|---|---|
+| Name | ✅ | Stored on the agent record |
+| Instructions (markdown) | ✅ | Passed as the prompt to `runCustomPrompt` |
+| Provider | ⚠️ gate | Only **Claude / OpenCode** implement `runCustomPrompt`; Gemini/Codex are stubs → restrict the picker |
+| Model | ✅ | Passed to the provider/SDK |
+| **Repositories** | ⚠️ #1 | `custom-ai` does **not** clone repos; compiler must emit a `clone-repos` node (reuses existing handler) + the git-token binding |
+| Environment (sandbox) | ✅ | Existing sandbox provisioning (local/docker/windows) |
+| Connectors (MCP) | ✅ | `mcpResolver` → `runCustomPrompt` |
+| Skills | ✅ | `skillsResolver` → materialized into sandbox |
+| Tools (canonical) | ✅ | `tool-mapping` → `{ tools, allowedTools }` |
+| Output mode (none/text/structured) | ✅ | `outputFieldsToJsonSchema` → json_schema |
+| **Behavior: max steps** | ⚠️ #2 | Not wired — add `maxTurns` to `RunCustomPromptOptions` + Claude SDK; make AI-SDK `STEP_CAP` configurable |
+| **Behavior: timeout** | ⚠️ #3 | `AbortSignal` is plumbed but no auto-timeout — worker must abort after `timeoutSeconds` |
+| Behavior: retry | ⚠️ small | `RetryPolicy` + Conductor retry exist; compiler must set retry on the step node |
+| **Notifications (on success/failure)** | ⚠️ #4 | No automatic terminal-state hook today (only a manual `send-message` step); build the hook + implement `SlackProvider` |
+| Permissions: tool allow-list | ✅ | Maps to `{ tools, allowedTools }` |
+| Permissions: connector enable | ✅ | Controls which MCPs are resolved |
+| Permissions: connector read/**write** granularity | ⚠️ coarse | MCP exposes all of a connector's tools; fine write-vs-read gating *within* a connector isn't enforceable without tool-name filtering — v1 treats it as enable/disable + (optional) allow/deny by tool name |
+| Permissions: repo writes (`allowWrites`) | ✅* | Push gating via branch policy; *enforced by the clone/push logic built in gap #1 |
+| Triggers: manual | ✅ | Existing manual submission |
+| Triggers: webhook + filters + mapping | ⚠️ build | Reuses webhook ingest + JSONLogic + extract; agent-trigger index + Jira/GitHub presets are new |
+| Triggers: API token / `/fire` | ⚠️ build | Token issuance + endpoint new; submit reused |
+| Triggers: schedule (cron) | ⚠️ build | New scheduler tick + `jm_agent_schedules` |
+| Create-time reveal (URL/secret/token) | ⚠️ build | New endpoints + one-time secret display |
+
+**Verdict:** the architecture is sound and ~half the surface is pure reuse, but the form does
+**not** work end to end as-is. Four substantive gaps (**#1 repo auto-clone, #2 max-steps
+wiring, #3 timeout enforcement, #4 auto-notification hook**) plus provider gating and the
+new trigger/connection machinery must be built. All are assigned to phases in §13.
 
 ---
 
