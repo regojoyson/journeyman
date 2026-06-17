@@ -286,6 +286,17 @@ Missing optional inputs fall back to their `default`; the renderer is applied be
 `agent-run` step executes. This is the same template + input-field machinery the `custom-ai`
 step already provides — reused, not new.
 
+**Required-input satisfiability (dry-test issue #3).** Every **required** input must be
+fillable by each enabled trigger, or the agent fails at runtime. Enforced as:
+- **Webhook** — a mapping entry must target each required input (or the input has a default);
+  checked at the Enable gate.
+- **Schedule** — has no payload, so each required input needs a **default** *or* a **fixed
+  value set on the schedule**. The schedule trigger therefore carries optional
+  `fixedInputs: Record<string, unknown>`; checked at the Enable gate.
+- **API** — required inputs are part of the documented contract; a call whose body omits a
+  required input is rejected `400` at runtime.
+- **Manual** — the Run-now form marks required inputs mandatory.
+
 ## 6. Execution (compile → run) and the create-time reveal
 
 **Create-time reveal (shown once).** When an agent with a webhook and/or API trigger is
