@@ -124,7 +124,8 @@ interface Agent {
   orgId: string;
 
   name: string;
-  instructions: string;           // markdown; the prompt — "what Claude should do each session"
+  instructions: string;           // markdown + mustache template; uses {{input}} vars (§5b)
+  inputs: AgentInputField[];      // named variables (may be empty); filled per-trigger (§5b)
   provider: string;               // chosen FIRST — claude | opencode | gemini | codex
   model: string;                  // chosen from the provider's models (default Claude Opus 4.8)
 
@@ -251,6 +252,38 @@ double-fire.
 - A **scheduler tick** in the orchestrator worker polls for due schedules and fires them
   through the same submit path. Durable (missed fires visible); v1 catch-up policy: skip
   missed, fire next due. DST handled via the stored tz.
+
+## 5b. Inputs & variables (trigger → instructions)
+
+An agent declares named **inputs** (variables); each trigger fills them; the **instructions**
+reference them via `{{ }}` templating. Inputs are optional — an agent may have none.
+
+```ts
+interface AgentInputField {            // mirrors custom-step inputFields
+  name: string;                        // e.g. "ticketKey"
+  type: "text" | "number" | "boolean";
+  required: boolean;
+  default?: unknown;
+  description?: string;
+}
+// on Agent: inputs: AgentInputField[]
+```
+
+**How each trigger fills inputs:**
+- **Webhook** — JSONPath mapping from the payload (`$.issue.key → ticketKey`), per §5.3.
+- **API** — taken from the JSON request body keys.
+- **Schedule** — no payload; inputs use their `default` (or fixed values set on the schedule).
+- **Manual** — a small form (the `trigger-human` form) to enter values, else defaults.
+
+**How instructions use them:** the agent's `instructions` are a **mustache template**
+(reusing the custom-step `promptTemplate` mechanism). Available variables:
+- each input by name — `{{ticketKey}}`, `{{note}}`;
+- `{{trigger.type}}` / trigger metadata (which trigger fired, timestamp);
+- `{{payload}}` — the whole raw inbound payload, for when specific fields weren't mapped.
+
+Missing optional inputs fall back to their `default`; the renderer is applied before the
+`agent-run` step executes. This is the same template + input-field machinery the `custom-ai`
+step already provides — reused, not new.
 
 ## 6. Execution (compile → run) and the create-time reveal
 
