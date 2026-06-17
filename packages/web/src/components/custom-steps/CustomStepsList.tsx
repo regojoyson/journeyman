@@ -130,7 +130,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
+            <thead className="text-subtle text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left font-medium px-6 py-3">Name</th>
                 <th className="text-left font-medium px-6 py-3">Output</th>
@@ -139,7 +139,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-slate-700 border-t border-slate-700">
               {items.map((p) => (
                 <tr key={p.id} className="hover:bg-surface-hover">
                   <td className="px-6 py-3">

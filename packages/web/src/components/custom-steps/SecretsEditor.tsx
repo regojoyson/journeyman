@@ -67,7 +67,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
       {value.length > 0 && (
         <div className="rounded-md border border-slate-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-900/60 text-[11px] uppercase tracking-wide text-slate-500">
+            <thead className="text-[11px] uppercase tracking-wide text-subtle">
               <tr>
                 <th className="text-left px-3 py-2 font-medium w-[28%]">Name</th>
                 <th className="text-left px-3 py-2 font-medium">Description</th>
@@ -75,7 +75,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
                 <th className="w-[44px]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-slate-700 border-t border-slate-700">
               {value.map(slot => (
                 <tr key={slot.name} className="group hover:bg-surface-hover transition">
                   <td className="px-3 py-2 align-top">

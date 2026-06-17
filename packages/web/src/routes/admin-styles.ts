@@ -11,15 +11,15 @@ export const btnPrimary =
   "px-4 py-2 text-sm font-medium text-white transition";
 
 export const btnGhost =
-  "rounded-md border hover:border-strong hover:bg-surface-hover " +
-  "px-3 py-1.5 text-xs font-medium text-muted transition";
+  "rounded-md hover:bg-surface-hover px-2.5 py-1.5 text-xs font-medium " +
+  "text-muted hover:text-default transition";
 
 export const btnDanger =
-  "rounded-md border border-danger/25 hover:border-danger/50 hover:bg-danger/10 " +
-  "px-3 py-1.5 text-xs font-medium text-danger transition";
+  "rounded-md hover:bg-danger/10 px-2.5 py-1.5 text-xs font-medium " +
+  "text-danger transition";
 
 export const card =
-  "bg-surface border rounded-xl shadow-card";
+  "bg-surface border rounded-lg shadow-card";
 
 export const codePill =
   "text-accent bg-accent/10 border border-accent/25 rounded px-1.5 py-0.5 text-xs";

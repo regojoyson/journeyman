@@ -75,7 +75,7 @@ export function AdminCodingModelsPage() {
             <div className="px-6 py-8 text-slate-400">Loading…</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="text-subtle text-xs uppercase tracking-wide">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Provider</th>
                   <th className="px-4 py-3 text-left font-medium">Model ID</th>
@@ -87,7 +87,7 @@ export function AdminCodingModelsPage() {
                   <th className="px-4 py-3 text-right font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-slate-700 border-t border-slate-700">
                 {(data ?? []).map((m) => (
                   <tr key={m.id} className="hover:bg-surface-hover text-slate-200">
                     <td className="px-4 py-3">{m.provider}</td>

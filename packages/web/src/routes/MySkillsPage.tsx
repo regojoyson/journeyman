@@ -80,7 +80,7 @@ export function MySkillsPage(props: { orgId: string }) {
                 <col style={{ width: "150px" }} />
                 <col style={{ width: "290px" }} />
               </colgroup>
-              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="text-subtle text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Status</th>
@@ -89,7 +89,7 @@ export function MySkillsPage(props: { orgId: string }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-slate-700 border-t border-slate-700">
                 {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3 align-middle">

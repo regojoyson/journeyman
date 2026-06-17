@@ -76,7 +76,7 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
             <div className="p-10 text-center text-sm text-slate-500">No sandboxes yet. Use "New sandbox" above.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="text-subtle text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Type</th>
@@ -85,7 +85,7 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-slate-700 border-t border-slate-700">
                 {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
