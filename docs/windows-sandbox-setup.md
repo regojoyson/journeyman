@@ -30,13 +30,20 @@ There are **two machines**:
 
 ## Prerequisites at a glance
 
-**On the Windows box:**
+**On the Windows box — required (the agent needs these to run at all):**
 - [ ] Node.js 22
 - [ ] Git for Windows (gives you `git` **and Git Bash** — the agent needs it)
-- [ ] Your product's toolchain (only what your workflows use): IIS + Classic ASP/ASP.NET, .NET SDK / MSBuild, SQL Server, a headless browser + WebDriver
 - [ ] The agent + runner files (built in Part 1)
 - [ ] Server certificates (Part 2)
 - [ ] One open inbound firewall port (default **50051**)
+
+**On the Windows box — optional, only if a workflow uses it (per your product):**
+- [ ] IIS + Classic ASP / ASP.NET — only for steps that host/run those apps
+- [ ] .NET SDK / MSBuild — only for steps that build .NET code
+- [ ] SQL Server (local or reachable) — only for steps that need the database
+- [ ] A headless browser + matching WebDriver — only for browser QA steps
+
+> The agent doesn't care what's installed — it just runs whatever commands your steps issue. A box with only the **required** list can already clone repos and run, e.g., PowerShell or Node workflows. Add a toolchain piece **when a workflow needs it**, not before.
 
 **On the orchestrator host:**
 - [ ] Client certificates (Part 2)
