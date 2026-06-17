@@ -161,6 +161,7 @@ Human Task and Webhook Wait are **separate** node types — one is person-driven
 
 | Doc | Description |
 |---|---|
+| [Windows Sandbox Setup](docs/windows-sandbox-setup.md) | Connect a Windows machine as a sandbox — install + run the agent, mTLS certs, and run workflows on Windows |
 | [Security](docs/security.md) | Threat model, token management, secret rotation, encryption |
 | [Troubleshooting](docs/troubleshooting.md) | Runbook for common failure modes |
 
