@@ -7,10 +7,10 @@
 ## 1. Summary
 
 Custom Agents are a new, first-class product surface in Journeyman: a user defines an
-agent (name, instructions, model, connectors, tools, skills, repos, sandbox), attaches
-one or more triggers, and the agent runs **autonomously and statelessly** each time a
-trigger fires. It is analogous to AWS Bedrock Agents / Anthropic "Claude Routines" as a
-*concept*, but it is **not** the same thing as a Journeyman flow.
+agent (name, instructions, provider+model, connectors, tools, skills, repos, sandbox),
+attaches one or more triggers, and the agent runs **autonomously and statelessly** each
+time a trigger fires. It is analogous to AWS Bedrock Agents / Anthropic "Claude Routines"
+as a *concept*, but it is **not** the same thing as a Journeyman flow.
 
 Internally, an agent reuses the existing execution engine. It is **the source of truth**;
 when a trigger fires, a thin compiler builds an ephemeral single-step `WorkflowGraph`
@@ -25,22 +25,29 @@ agent — agents are a new front-end onto the engine that already exists.
 | Agent vs flow | Separate first-class entity; compiles to a `WorkflowGraph` internally |
 | Compile timing | **At fire-time** — agent is the source of truth, graph is ephemeral |
 | Execution shape | **Autonomous one-shot per trigger** (stateless), reusing `runCustomPrompt` |
-| Triggers | Manual (always on) + Schedule + API + Webhook — **multi-select** (one, several, or all) |
-| Webhook trigger | Universal "any app" inbound webhook (Jira/GitHub/Linear/Monday/custom), per-agent URL + secret |
+| Triggers | Manual (always on) + Schedule + API + Webhook — **multi-select** (zero, one, several, or all automated triggers per agent) |
+| Webhook trigger | Universal "any app" inbound webhook with a per-agent URL + secret; v1 presets **Jira + GitHub** (Linear/Monday later) |
+| Webhook filtering | Condition builder (field / operator / value, AND-combined) + JSONPath payload→input mapping |
 | Differentiators in v1 | Per-tool permission grid · structured notifications · payload mapping + filters |
 | Instructions | Rich markdown editor (formatting toolbar) |
-| Repositories | Multi-repo, chosen from **Connected Accounts** |
-| Connected Accounts | Full subsystem; credentials are **fine-grained PATs** wrapped in the secrets vault |
+| Model selection | **Provider first, then model** (Claude / OpenCode / Gemini / Codex via `@journeyman/coding-models`) |
+| Repositories | Multi-repo, chosen from **Connections** (git category) |
+| Connections | Unified subsystem with a `category` (`git` \| `notification`); single `jm_connections` table; per-connection **Test** + **List** |
+| Git credentials | Fine-grained **PAT**; GitHub + GitLab + self-hosted GitLab (instance URL) |
+| Notifications | A `notification` Connection (Slack / Console) + channel; structured notify on success/failure |
 | RAG / knowledge | **Path A** — exposed as an MCP connector (agentic retrieval); no new core infra |
+| Create UX | **Full page** (not a modal) |
+| Methodology (BMAD / OpenSpec) | **Process only** — no agent changes; documented as a usage appendix |
 | Conversational mode, guardrails catalog, versioning/aliases, cross-run memory, multi-agent | Deferred |
 
 ## 2. Goals & non-goals
 
 **Goals**
-- Let users create autonomous agents from a single form (matching the reference UI).
-- Trigger agents via Manual, Schedule (cron), API (POST), and Webhook (any external app).
-- Make the webhook trigger a *universal* ingestion point so Jira and any other SaaS app can drive agents with zero vendor-specific code.
+- Let users create autonomous agents from a single full-page form (matching the reference UI).
+- Trigger agents via Manual, Schedule (cron), API (POST), and Webhook (any external app) — any combination.
+- Make the webhook trigger a *universal* ingestion point so Jira, GitHub, and any other app can drive agents with zero vendor-specific code, with a usable filter + mapping layer.
 - Give each agent real, scoped, temporary access to selected git repositories inside a sandbox.
+- Unify external credentials under one **Connections** model (git + notification), each with Test + List.
 - Best-in-class differentiators Claude Routines lacks: per-tool permission grid, structured notifications, payload filters + mapping.
 - Reuse the orchestrator, sandbox, MCP/skills/secret resolution, run-viewer, and runs-list unchanged.
 
@@ -49,9 +56,10 @@ agent — agents are a new front-end onto the engine that already exists.
 - A named guardrails catalog (tripwires, moderation).
 - Agent versioning / aliases.
 - Cross-run long-term memory.
-- Multi-agent supervisor/collaborator orchestration.
+- Multi-agent supervisor/collaborator orchestration *as a platform feature* (BMAD-style pipelines are achieved as process — see Appendix A).
 - OAuth / GitHub App installation flows for git connections (PAT only in v1).
 - Journeyman-hosted vector knowledge bases (RAG is external-via-MCP in v1).
+- Linear / Monday webhook presets (Jira + GitHub only in v1).
 
 ## 3. Architecture
 
@@ -68,17 +76,19 @@ Manual "Run now" ──────────────┘    (auth · dedup
 
 Mirrors the structure of `@journeyman/custom-steps` and `@journeyman/mcp`.
 
-- **Store** — `jm_agents`, `jm_agent_triggers` (and `jm_agent_schedules` for cron).
-- **Compiler** — `agent → WorkflowGraph` (one trigger node + one `custom-ai` step carrying
-  the agent's inline config).
-- **Trigger index / resolver** — a unified index that maps an inbound event (webhook id,
-  API token, schedule tick) to its agent + trigger config.
+- **Store** — `jm_agents`, `jm_agent_triggers`, `jm_agent_schedules` (cron).
+- **Compiler** — `agent → WorkflowGraph` (one trigger node + one `custom-ai` step carrying the agent's inline config).
+- **Trigger index / resolver** — a unified index mapping an inbound event (webhook id, API token, schedule tick) to its agent + trigger config.
 - **Scheduler tick** — the only genuinely new runtime mechanism (see §5.4).
+
+### Connections subsystem (new, shared)
+
+A unified credential/integration registry (see §7), used by agents for both repositories and notifications, and reusable by the rest of the platform.
 
 ### Type source: `@journeyman/core`
 
-New `agent.types.ts` holding `Agent`, `AgentTrigger`, and related option/result types.
-Per the project rule, all shared types live here; `@journeyman/agents` imports them.
+New `agent.types.ts` (`Agent`, `AgentTrigger`) and `connection.types.ts` (`Connection`,
+`ConnectionCategory`). Per the project rule, all shared types live here.
 
 ### Execution reuse
 
@@ -102,13 +112,14 @@ interface Agent {
 
   name: string;
   instructions: string;           // markdown; the prompt — "what Claude should do each session"
-  model: string;                  // provider+model via @journeyman/coding-models (default Claude Opus 4.8)
+  provider: string;               // chosen FIRST — claude | opencode | gemini | codex
+  model: string;                  // chosen from the provider's models (default Claude Opus 4.8)
 
   // Capabilities — all already resolvable today
   connectorMcpIds: string[];      // MCP instances (RAG/knowledge bases are connectors too)
   tools: CanonicalTool[];         // bash/read-file/write-file/edit-file/search/web-* (gates workspace need)
   skillIds: string[];             // skill packages
-  repoSelections: RepoSelection[];// chosen from Connected Accounts (optional)
+  repoSelections: RepoSelection[];// chosen from git Connections (optional)
   sandboxId?: string;             // execution environment (optional; required only if workspace tools used)
 
   // Differentiators
@@ -118,6 +129,7 @@ interface Agent {
   outputMode: "none" | "text" | "structured";
   outputFields?: CustomStepOutputField[]; // when outputMode === "structured"
 
+  triggers: AgentTrigger[];       // zero or more automated triggers; manual is always implicit
   enabled: boolean;
   createdBy: string;
   createdAt: string;
@@ -125,8 +137,8 @@ interface Agent {
 }
 
 interface RepoSelection {
-  connectionId: string;           // FK → jm_git_connections
-  fullName: string;               // e.g. "cadmium/api-server"
+  connectionId: string;           // FK → jm_connections (category "git")
+  fullName: string;               // e.g. "acme/acme-api"
   branch: string;                 // branch to start from (default: repo default branch)
   allowWrites: boolean;           // false → agent may push claude/* branches only
 }
@@ -139,24 +151,26 @@ interface AgentPermissions {
 
 interface AgentNotifications {
   on: ("success" | "failure")[];
-  channel: { provider: "slack" | "console"; target?: string }; // via @journeyman/notification-provider
+  connectionId: string;           // FK → jm_connections (category "notification")
+  target?: string;                // channel id/name (for token-based providers); omitted for webhook-URL providers
 }
 
-// One agent has 0..n automated triggers (manual is always implicitly available).
+// Zero or more automated triggers per agent. Manual "Run now" is always available.
 type AgentTrigger =
   | { type: "schedule"; cron: string; timezone: string }        // IANA tz mandatory
   | { type: "api"; tokenHash: string }                          // per-agent bearer token (shown once)
   | {
       type: "webhook";
       webhookId: string;                                        // dedicated per-agent endpoint + secret
-      preset?: "jira" | "github" | "linear" | "monday" | "custom";
-      filters?: ConditionExpr;                                  // JSONLogic — reuses existing evaluator
+      preset?: "jira" | "github";                               // v1; linear/monday later. omit = custom
+      event?: string;                                           // preset-specific event (e.g. "issue_transitioned", "pull_request")
+      filters?: ConditionExpr;                                  // condition builder → JSONLogic; AND-combined
       inputsMapping: Record<string, string>;                    // JSONPath payload → agent inputs
     };
 ```
 
 `tokenHash` and the webhook secret are stored hashed/encrypted; raw values are shown once
-on creation.
+on creation (see §6 reveal).
 
 ## 5. Triggers
 
@@ -181,108 +195,159 @@ double-fire.
 ### 5.3 Webhook (universal "any app" trigger)
 - `POST /agents/:id/webhook/:webhookId` — a **dedicated endpoint + secret per agent**.
 - **Reuses `@journeyman/webhooks`**: HMAC signature verification on raw bytes, schema
-  lint/validate, payload field extraction, and the preset library; and the existing
-  webhook-ingest pipeline, retargeted from workflow trigger-nodes to agents.
-- **Preset** (`jira`/`github`/`linear`/`monday`/`custom`) pre-fills event filters and the
-  payload→inputs JSONPath mapping. `custom` leaves both open.
-- **Filters** reuse the existing JSONLogic condition evaluator (e.g. "only Bug issuetype",
-  "only PRs targeting main").
+  lint/validate, payload field extraction, the preset library, and the existing
+  webhook-ingest pipeline (retargeted from workflow trigger-nodes to agents).
+- **Presets (v1): Jira + GitHub.** Each preset supplies the available **events**, the
+  **filterable fields**, and a default payload→inputs mapping. `custom` (no preset) leaves
+  everything open. Linear / Monday presets are a fast follow.
+  - *Jira* — events: issue transitioned / created / updated / comment added. Fields:
+    project, issue type, status (to/from), priority, labels, assignee, reporter, component.
+    Default map: `$.issue.key → ticketKey`.
+  - *GitHub* — events: pull_request, issues, push, release. Fields: action, target/base
+    branch, labels, title, body, author, draft, merged. Default map:
+    `$.pull_request.number → prNumber`.
+- **Filter builder** — a list of `field / operator / value` rows (AND-combined), compiled to
+  the existing JSONLogic condition evaluator. Operators: `is`, `is not`, `contains`,
+  `is one of`, `matches regex`.
+- **Mapping** — JSONPath rows mapping payload fields to named agent inputs (reuses the
+  existing webhook field-extract logic).
 - This is the same zero-vendor-code pattern as Jira Automation's "Send web request": any
   app that can POST can drive an agent.
 
 ### 5.4 Schedule (cron) — the one new runtime mechanism
 - `jm_agent_schedules`: canonical cron string + **mandatory IANA timezone**.
 - A **scheduler tick** in the orchestrator worker polls for due schedules and fires them
-  through the same submit path. The tick must be durable (missed fires visible) and define
-  catch-up-vs-skip behaviour explicitly (v1: skip missed, fire next due).
-- Minimum interval and DST handling follow the stored cron + tz.
+  through the same submit path. Durable (missed fires visible); v1 catch-up policy: skip
+  missed, fire next due. DST handled via the stored tz.
 
-## 6. Execution (compile → run)
+## 6. Execution (compile → run) and the create-time reveal
 
-When any trigger fires:
+**Create-time reveal (shown once).** When an agent with a webhook and/or API trigger is
+created, the post-create screen reveals the **webhook URL + signing secret** and/or the
+**API bearer token**. These are shown once; the raw values are not retrievable afterward
+(rotate to regenerate). The webhook URL is what a user pastes into Jira's "Send web request"
+or GitHub's webhook settings.
+
+**On any trigger firing:**
 
 1. **Resolve** the agent record and its mapped inputs (from webhook payload via mapping,
    freeform API body, or empty for schedule/manual).
 2. **Compile** to an ephemeral `WorkflowGraph`: `trigger-<type>` node → one `custom-ai`
-   step whose config carries the agent's inline instructions, model, tools, MCP ids, skill
-   ids, repo selections, sandbox id, permissions, and output schema.
+   step whose config carries the agent's inline instructions, provider+model, tools, MCP
+   ids, skill ids, repo selections, sandbox id, permissions, and output schema.
 3. **Submit** via `IOrchestratorEngine.submit()` with `triggerSource` set
    (`manual` | `api` | `webhook` | `schedule`) and the instance tagged with `agentId`.
 4. The worker harness behaves as it already does: provisions a sandbox **only if** the
-   agent's tools require a workspace, resolves MCPs/skills/secrets (including the git
-   credential — see §7), runs `runCustomPrompt`'s agentic loop, and captures structured
-   output.
+   agent's tools require a workspace, resolves MCPs/skills/secrets (including git
+   credentials — see §7), runs `runCustomPrompt`'s agentic loop, captures structured output.
 5. On terminal state the worker emits the configured **notification** (success/failure) via
-   `@journeyman/notification-provider`.
+   the agent's notification Connection (see §7.4).
 
 Each fire is a normal `WorkflowInstance` tagged with `agentId`, so the **run-viewer** (live
 canvas + per-step logs) and **runs-list** (filterable table) work unchanged — scoped to the
 agent.
 
-## 7. Connected Accounts & repository access
+## 7. Connections (unified credential/integration subsystem)
 
-Repos are selected from connected git accounts. There is no such concept today, so this is
-a new subsystem.
+A single subsystem replaces the earlier "Connected Accounts" idea. A **Connection** is a
+reusable, encrypted credential + config, classified by **category**. Today: `git` and
+`notification`; new providers drop in under an existing category with no new subsystem.
 
-### 7.1 Connect (once)
-- **Connected Accounts** page (web). User adds an account → new `jm_git_connections` row:
-  provider (`github`/`gitlab`), label, scope (user/org), and a reference to a secret.
-- Credential = a **fine-grained PAT**, encrypted in the secrets vault (`@journeyman/secrets`,
-  AES). The connection row references the secret id. (OAuth / GitHub App installation are
-  deferred.)
+```ts
+// @journeyman/core/src/types/connection.types.ts
+type ConnectionCategory = "git" | "notification";
 
-### 7.2 Build the agent
-- Repo picker calls `GET /git/repos?connectionId=…` → new **`listRepos()`** method on
-  `IGitProvider` (+ GitHub/GitLab implementations), using the connection's token via
-  `@journeyman/github-api`.
-- Agent stores `repoSelections[]` (connection, full name, branch, allowWrites).
+interface Connection {
+  id: string;
+  scope: "user" | "org";
+  category: ConnectionCategory;
+  provider: string;          // git: "github" | "gitlab" ; notification: "slack" | "console"
+  label: string;
+  baseUrl?: string;          // git self-hosted instance URL / slack workspace; defaults per provider
+  secretRef: string;         // → encrypted credential in @journeyman/secrets (AES)
+  config?: Record<string, unknown>; // provider-specific (e.g. slack method: "token" | "webhook")
+  createdBy: string; createdAt: string; updatedAt: string;
+}
+```
 
-### 7.3 Run-time credential flow
-- The worker resolves the connection's token from the vault into `StepContext.env` using
-  the **same binding-resolver path** that already injects MCP/skill secrets.
-- The token is injected as an env var into the **ephemeral per-instance sandbox only**.
-- Inside the box, `agent-runtime` configures git auth (credential helper / `http.extraHeader`)
-  and clones the selected repos into the workspace.
-- The agentic loop edits code. **Pushes use the same token, gated by
-  `RepoSelection.allowWrites`** (off → `claude/*` branches only).
-- Opening a PR/MR uses the **same connection token** via `@journeyman/git-provider` (REST).
-- Run ends → sandbox is destroyed → the injected token is gone.
+Every connection follows the same lifecycle: **Connect → Test → List → (agent picks).**
+The **Test** and **List** actions reuse the existing `testConnection` UI/API pattern
+already used by sandboxes and MCP instances.
 
-**Security model:** token encrypted at rest, decrypted only at run-time, injected only into
-the ephemeral per-instance sandbox, destroyed with it. Least-privilege relies on the user
-scoping the fine-grained PAT to the intended repos.
+### 7.1 Git connections
+- Providers: **GitHub** (implemented) and **GitLab** (stub today — must be built).
+- Credential: **fine-grained PAT**, encrypted in the vault.
+- `baseUrl`: `github.com` (fixed) / `gitlab.com` (default, editable for **self-hosted
+  GitLab** e.g. `https://gitlab.acme.com`). GitLab.com and self-hosted share one
+  base-URL-aware `GitLabProvider`.
+- **Test** → validate token (whoami) + report accessible repo count.
+- **List** → `listRepos()` (new on `IGitProvider` + GitHub/GitLab impls) — powers both the
+  test preview and the agent repo picker.
+- Self-hosted GitLab on the public internet needs no special networking; a private-network
+  instance requires running the agent on a sandbox backend inside that network (noted as a
+  deployment consideration). Private CA certs must be trusted in the sandbox image.
+
+### 7.2 Repo selection & run-time credential flow (agents)
+- Repo picker lists a connection's repos (`listRepos`), multi-select, per-repo branch +
+  `allowWrites`. Saved as `Agent.repoSelections[]` referencing `connectionId`.
+- At run time the worker resolves the connection's token from the vault into
+  `StepContext.env` (same binding-resolver path used for MCP/skill secrets), injected into
+  the **ephemeral per-instance sandbox only**.
+- `agent-runtime` configures git auth (credential helper / `http.extraHeader`) and clones
+  the selected repos. Pushes use the same token, gated by `allowWrites` (off → `claude/*`
+  only). PR/MR opened via `@journeyman/git-provider` with the same token. Sandbox teardown
+  destroys the injected token.
+
+### 7.3 Notification connections
+- Providers: **Slack** (stub today — must be built) and **Console** (implemented, zero-config).
+- Slack connect method (`config.method`): **bot token** (`xoxb-…` → can list channels, post
+  anywhere, testable) or **incoming webhook URL** (single fixed channel, no listing).
+- **Test** → post a test message. **List** → `listChannels()` (token method only).
+- Extensible later: Teams, Discord, email/SMTP, generic webhook — new providers under the
+  `notification` category.
+
+### 7.4 Notification use by agents
+- The agent's Notifications config picks a **notification Connection** + a **channel**
+  (`target`) and toggles **notify on success / failure**.
+- On terminal run state the worker posts via `@journeyman/notification-provider`, resolving
+  the connection credential from the vault. (Implementing `SlackProvider` is the one new
+  piece; `ConsoleProvider` already works.)
 
 ## 8. RAG / knowledge (Path A — connector-based)
 
 RAG is **not** a new core subsystem in v1. A knowledge base is exposed to the agent as an
-**MCP connector** (e.g. a vector-store or docs-search service that speaks MCP), attached in
-the Connectors tab and resolved by the existing `@journeyman/mcp` registry + secret
-resolution.
+**MCP connector** (a vector-store or docs-search service speaking MCP), attached in the
+Connectors tab and resolved by the existing `@journeyman/mcp` registry + secret resolution.
 
-- Retrieval is **agentic**: the model calls the retrieval tool during its loop when it needs
-  context.
+- Retrieval is **agentic**: the model calls the retrieval tool during its loop as needed.
 - We may ship a few **preset RAG connectors** for convenience.
 - The agent data model is unchanged — a KB is just an entry in `connectorMcpIds`.
 - **Future option (documented, not built):** Journeyman-hosted knowledge bases (ingest →
-  embed → pgvector) behind the *same* connector slot, and auto-retrieve-on-trigger
-  (prepend top-k from the trigger payload to the instructions). Both can be added later
-  without changing the agent model.
+  embed → pgvector) behind the same connector slot; auto-retrieve-on-trigger. Both can be
+  added later without changing the agent model.
 
 ## 9. UI
 
-Single-page creation form matching the reference screenshot, in Journeyman's monochrome
-theme. Reuses the MCP, sandbox, tools, and skills pickers from `flow-editor`.
+Full-page creation form (not a modal), in Journeyman's monochrome theme. Reuses the MCP,
+sandbox, tools, and skills pickers from `flow-editor`.
 
 - **Agents list** (`MyAgentsPage` / `AdminAgentsPage`): name, active triggers, repos,
   status, last run; "Create agent" button.
-- **Create/Edit Agent**: Name · rich-markdown Instructions · dedicated multi-repo picker ·
-  environment (sandbox) · model · **multi-select triggers** · tabs:
-  **Connectors** (MCP) · **Behavior** (max steps, timeout, output mode, retry) ·
-  **Notifications** (success/failure toggles + channel) · **Permissions** (per-tool
-  read/write grid) · **Trigger config** (preset, filters, payload mapping, cron + tz).
-- **Connected Accounts** page + Add-PAT modal.
-- **Repo picker**: searchable multi-select from a connected account, per-repo branch +
-  allow-writes.
+- **Create/Edit Agent (page)** with a sticky top bar (breadcrumb + Cancel/Create) and
+  stacked section cards:
+  - **Basics** — Name · rich-markdown Instructions (formatting toolbar).
+  - **Workspace & model** — multi-repo picker (from a git Connection) · environment
+    (sandbox) · **Provider select (first) → Model select (then)**.
+  - **Triggers** — multi-select Schedule / Webhook / API (manual always on).
+  - **Configuration tabs** — **Connectors** (MCP, incl. RAG) · **Behavior** (max steps,
+    timeout, output mode, retry) · **Notifications** (connection + channel + success/failure)
+    · **Permissions** (per-tool read/write grid) · **Webhook config** (preset Jira/GitHub +
+    filter builder + payload mapping).
+  - **Post-create reveal** — webhook URL + secret and/or API token (shown once).
+- **Connections** page (`Settings → Connections`): grouped by category (Git accounts /
+  Notification channels); a single "New connection" form with a **Type** toggle
+  (Git / Notification), per-provider fields, and **Test connection** with whoami/repo or
+  test-message/channel result.
 - **Agent run history**: runs-list filtered by `agentId`, click-through to the run-viewer.
 
 UI stack: Tailwind v4 + lucide-react + plain React hooks + `@journeyman/theme` (no form
@@ -293,20 +358,91 @@ library), per existing conventions.
 | New (build it) | Reused (already exists) |
 |---|---|
 | `@journeyman/agents` pkg: store, **fire-time compiler**, agent-trigger index | Orchestrator submit · Conductor · sandbox provisioning |
-| `Agent` + `AgentTrigger` types in core | `custom-ai` execution / `runCustomPrompt` loop (extended for inline spec) |
+| `Agent` + `AgentTrigger` + `Connection` types in core | `custom-ai` execution / `runCustomPrompt` loop (extended for inline spec) |
 | **Scheduler tick** (cron + IANA tz) + `jm_agent_schedules` | Webhook ingest (HMAC, presets, extract, dedup, filters) |
 | Agent CRUD routes + `/fire` + `/webhook` + run-now | MCP / skills / secret binding resolution |
-| **Connected Accounts**: `jm_git_connections`, page, PAT-wrapped secret | Secrets vault (AES) · git-provider REST (PR/MR) |
-| `listRepos()` on `IGitProvider` + `/git/repos` route + repo picker widget | WorkflowInstance store · run-viewer · runs-list |
-| Per-tool permission grid · structured notifications config · agents UI | notification-provider · access-grant / scope pattern |
+| **Connections** subsystem: `jm_connections`, page, Test/List per provider | Secrets vault (AES) · `testConnection` UI/API pattern (sandboxes/MCP) |
+| `GitLabProvider` (base-URL aware) + `listRepos()` on IGitProvider + `/git/repos` route + repo picker | GitHub provider · git-provider REST (PR/MR) |
+| `SlackProvider` (post + `listChannels` + test) | `ConsoleProvider` · `INotificationProvider` interface |
+| Webhook **filter builder** UI (Jira/GitHub presets) | JSONLogic evaluator · webhook field-extract |
+| Per-tool permission grid · provider→model picker · full-page agents UI · post-create reveal | WorkflowInstance store · run-viewer · runs-list · access-grant/scope pattern |
 
-## 11. Open questions / follow-ups
+## 11. End-to-end flow (acceptance narrative)
 
-- **Schedule semantics:** confirm minimum interval and catch-up-vs-skip policy at
-  implementation time (v1 default: skip missed, fire next due).
-- **Multi-trigger run attribution:** each trigger produces its own `WorkflowInstance` tagged
-  with both `agentId` and the firing trigger — confirm the run-history grouping in the UI.
-- **`listRepos` pagination & rate limits** for large orgs.
-- **Preset RAG connectors:** which services to ship first (if any) in v1.
-- **DB migrations:** `jm_agents`, `jm_agent_triggers`, `jm_agent_schedules`,
-  `jm_git_connections` — author per `docs/constitution/DATABASE_ARCHITECTURE.md` (append-only).
+1. **Connect** (one-time): user adds a **git Connection** (PAT + instance URL, Test → repos)
+   and a **notification Connection** (Slack token, Test → channels).
+2. **Create agent** (full page): Name + Instructions; pick Provider→Model; add repos from the
+   git Connection; pick a sandbox; select triggers (e.g. Webhook); configure Connectors,
+   Behavior, Notifications (Slack channel), Permissions, and Webhook config (Jira preset,
+   filter `status → In Development`, map `$.issue.key → ticketKey`). Click **Create**.
+3. **Reveal**: copy the webhook URL + secret; paste into Jira Automation "Send web request".
+4. **Fire**: a Jira transition POSTs the webhook → auth + dedup + filter pass → payload
+   mapped to inputs → compiled to a 1-step graph → submitted.
+5. **Run**: sandbox provisioned; git token injected; repos cloned; agentic loop runs
+   (reads ticket via the Atlassian connector, edits code, opens a PR gated by `allowWrites`).
+6. **Notify + record**: Slack success/failure message posted; run appears in the agent's
+   history, openable in the run-viewer.
+
+This exercises every new piece end to end.
+
+## 12. Open questions / follow-ups
+
+- **Schedule semantics:** confirm minimum interval and catch-up-vs-skip at implementation
+  (v1 default: skip missed, fire next due).
+- **Slack connect default:** bot token vs incoming webhook — both supported; pick the default
+  during implementation.
+- **`listRepos` / `listChannels` pagination & rate limits** for large orgs/workspaces.
+- **Multi-trigger run attribution:** each firing trigger produces its own `WorkflowInstance`
+  tagged with `agentId` + the firing trigger; confirm run-history grouping in the UI.
+- **DB migrations:** `jm_agents`, `jm_agent_triggers`, `jm_agent_schedules`, `jm_connections`
+  — author per `docs/constitution/DATABASE_ARCHITECTURE.md` (append-only).
+- **Preset RAG connectors:** which services to ship first (if any).
+
+## 13. Suggested implementation phases
+
+1. **Agent core** — `@journeyman/agents` (types, store, fire-time compiler), `custom-ai`
+   inline extension, manual trigger + run-now, full-page agents UI (basics/workspace/
+   provider→model/behavior/permissions/notifications-shell), run history.
+2. **Connections + repos** — `jm_connections`, Connections page, git provider Test/List,
+   `GitLabProvider` (base-URL aware) + `listRepos` + repo picker; wire repoSelections into
+   the run-time credential flow.
+3. **Automated triggers** — webhook (presets Jira/GitHub, filter builder, mapping, dedup),
+   API token + `/fire`, scheduler tick; the create-time reveal.
+4. **Notifications + polish** — `SlackProvider` (post/list/test), notification Connections,
+   the per-tool permission grid, structured notify wiring.
+
+---
+
+## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
+
+This appendix documents how spec-driven methodologies run **on top of** the agent platform.
+**None of this requires changes to the agent product** — it is configuration and convention.
+
+### A.1 BMAD lifecycle (PDLC + AIDLC), Jira-orchestrated
+- **Roles are agents.** Analyst / PM / Architect (PDLC) and Scrum Master / Dev / QA (AIDLC)
+  are each an `Agent` with role-specific instructions.
+- **Jira is the orchestrator.** Each Jira status transition fires the webhook of the agent
+  bound to that status (e.g. *In Development* → Dev agent, *In Testing* → QA agent).
+- **Context lives in git + the ticket — no context store to manage.** Self-contained
+  artifact documents (BMAD principle) plus the Jira ticket as the running ledger. The
+  **ticket key** is the correlation key across runs. Agents read/write the ticket via the
+  **Atlassian MCP connector** (so the Jira provider stub is not a prerequisite).
+- **Polyrepo (one product, many code repos):** a dedicated **docs repo**
+  (`acme-product-docs`) holds the PRD / architecture / stories; the architecture's
+  `repo-map.md` lists which repo owns what; each story declares `repos: [...]`. At run time
+  an agent clones the **docs repo (always) + the story's listed code repos** into one
+  workspace. This maps directly onto `Agent.repoSelections[]` (multi-repo, GitHub + GitLab).
+- How an agent decides which code repos to clone (story-declared / agent-fixed / clone-all)
+  is purely configuration.
+
+### A.2 OpenSpec fit
+- **Fits the platform** the same way BMAD does — files-in-git + CLI/slash-commands, no
+  server, runs via `bash` + file tools in the sandbox. No agent changes.
+- **Weaker fit for this deployment:** OpenSpec is single-repo by design (multi-repo is beta,
+  non-cloning, "not for automation") and has no role/status model, so the Jira-status→role
+  assembly line isn't native to it. BMAD is the closer fit for the polyrepo + status setup.
+
+### A.3 Takeaway
+The agent platform is **methodology-agnostic**: BMAD, OpenSpec, Spec Kit, or a custom
+convention all run as process on top of the same agent (instructions + tools + multi-repo
+clone + git + connectors). The v1 spec does not change for any of them.
