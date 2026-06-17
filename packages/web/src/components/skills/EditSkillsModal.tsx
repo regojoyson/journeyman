@@ -133,7 +133,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
             <button
               type="button"
               onClick={toggleAll}
-              className="text-xs font-medium text-accent hover:text-accent whitespace-nowrap transition"
+              className="text-xs font-medium text-foreground hover:text-foreground whitespace-nowrap transition"
             >
               {allSelected ? "Clear all" : "Select all"}
             </button>
@@ -180,7 +180,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
                       className={
                         "group flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition " +
                         (checked
-                          ? "bg-indigo-500/10 border-indigo-500/40 hover:border-indigo-400"
+                          ? "bg-primary/10 border-indigo-500/40 hover:border-indigo-400"
                           : "bg-slate-800/30 border-slate-700 hover:border-slate-700 hover:bg-surface-hover")
                       }
                     >
@@ -193,7 +193,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
                       <span
                         className={
                           "font-mono text-xs truncate " +
-                          (checked ? "text-accent" : "text-slate-300")
+                          (checked ? "text-foreground" : "text-slate-300")
                         }
                       >
                         {skill}

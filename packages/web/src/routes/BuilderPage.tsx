@@ -175,7 +175,7 @@ export function BuilderPage() {
         <div className="flex-1 space-y-3 overflow-y-auto pr-2">
           {state.messages.map((m, i) => (
             m.role === "user" ? (
-              <div key={i} className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-slate-100">
+              <div key={i} className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-md bg-primary/20 px-3 py-2 text-sm text-slate-100">
                 {m.content}
               </div>
             ) : (
@@ -207,7 +207,7 @@ export function BuilderPage() {
       <div
         onMouseDown={startResize}
         title="Drag to resize"
-        className="w-1.5 flex-none cursor-col-resize rounded bg-slate-800 transition-colors hover:bg-indigo-500/60" />
+        className="w-1.5 flex-none cursor-col-resize rounded bg-slate-800 transition-colors hover:bg-primary/60" />
 
       {/* Plan preview + editing */}
       <div className={`flex-1 overflow-y-auto p-4 ${card}`}>

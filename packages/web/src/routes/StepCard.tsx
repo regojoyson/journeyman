@@ -82,7 +82,7 @@ export function StepCard(props: {
               return (
                 <button key={t}
                   className={on
-                    ? "rounded bg-indigo-500/30 px-2 py-0.5 text-xs text-accent"
+                    ? "rounded bg-primary/30 px-2 py-0.5 text-xs text-foreground"
                     : "rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-400"}
                   onClick={() => onChange(toggleStepTool(plan, id, t))}>
                   {t}

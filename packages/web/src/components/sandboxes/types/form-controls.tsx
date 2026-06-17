@@ -14,7 +14,7 @@ export function Field({ icon: Icon, label, hint, children }: {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
-        <Icon size={14} className="text-accent shrink-0" aria-hidden />
+        <Icon size={14} className="text-foreground shrink-0" aria-hidden />
         {label}
       </div>
       {children}
@@ -31,7 +31,7 @@ export function CheckField({ icon: Icon, label, hint, checked, onChange }: {
     <div className="space-y-1">
       <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <Icon size={14} className="text-accent shrink-0" aria-hidden />
+        <Icon size={14} className="text-foreground shrink-0" aria-hidden />
         {label}
       </label>
       {hint && <p className="ml-6 text-xs leading-relaxed text-slate-500">{hint}</p>}

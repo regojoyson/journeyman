@@ -97,7 +97,7 @@ export function MySkillsPage(props: { orgId: string }) {
                         <div className="flex items-center gap-2 min-w-0">
                           <code className={`${codePill} truncate`}>{r.name}</code>
                           {r.localPath && (sharedPathCounts[r.localPath] ?? 0) > 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-foreground">
                               shared ({sharedPathCounts[r.localPath]})
                             </span>
                           )}

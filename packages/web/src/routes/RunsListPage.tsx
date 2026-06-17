@@ -172,7 +172,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
             type="button"
             disabled={!canRun}
             onClick={() => submitM.mutate()}
-            style={{ background: canRun ? "rgb(var(--color-accent) / 1)" : "rgb(var(--color-surface-raised) / 1)", border: "none", color: canRun ? "#fff" /* theme-colors-allow: white-on-accent */ : "rgb(var(--color-border-strong) / 1)", padding: "7px 18px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: canRun ? "pointer" : "default", fontFamily: "inherit" }}
+            style={{ background: canRun ? "rgb(var(--color-accent) / 1)" : "rgb(var(--color-surface-raised) / 1)", border: "none", color: canRun ? "rgb(var(--primary-foreground) / 1)" /* theme-colors-allow: white-on-primary */ : "rgb(var(--color-border-strong) / 1)", padding: "7px 18px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: canRun ? "pointer" : "default", fontFamily: "inherit" }}
           >{submitM.isPending ? "Starting…" : "Run"}</button>
         </div>
       </div>

@@ -108,7 +108,7 @@ export function FlowsListPage() {
   const scopeBadge = (scope: Workflow["scope"]) => {
     const cls =
       scope === "global"
-        ? "bg-accent/10 text-accent border-violet-800/60"
+        ? "bg-accent/10 text-foreground border-violet-800/60"
         : scope === "org"
         ? "bg-info/10 text-info border-blue-800/60"
         : "bg-slate-800/60 text-slate-300 border-slate-700";
@@ -151,7 +151,7 @@ export function FlowsListPage() {
                 onClick={() => handleScopeChange(s)}
                 className={
                   active
-                    ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-3 py-1.5 text-xs font-medium text-accent transition"
+                    ? "rounded-md border border-indigo-400/60 bg-primary/20 px-3 py-1.5 text-xs font-medium text-foreground transition"
                     : btnGhost
                 }
               >
@@ -201,16 +201,16 @@ export function FlowsListPage() {
                         <div className="flex flex-wrap gap-3 text-xs">
                           {editable ? (
                             <>
-                              <Link to={`/workflows/${f.id}/edit`} className="text-accent hover:text-accent">
+                              <Link to={`/workflows/${f.id}/edit`} className="text-foreground hover:text-foreground">
                                 Edit
                               </Link>
                               <button
                                 onClick={() => handleRename(f)}
-                                className="text-accent hover:text-accent"
+                                className="text-foreground hover:text-foreground"
                               >Rename</button>
                               <button
                                 onClick={() => handleClone(f)}
-                                className="text-accent hover:text-accent"
+                                className="text-foreground hover:text-foreground"
                               >Clone</button>
                               <button
                                 onClick={() => handleDelete(f)}
@@ -225,7 +225,7 @@ export function FlowsListPage() {
                               {(f.scope === "org" || f.scope === "user") && (
                                 <button
                                   onClick={() => handlePromote(f, "global")}
-                                  className="text-accent hover:text-accent"
+                                  className="text-foreground hover:text-foreground"
                                 >Promote → Global</button>
                               )}
                             </>
@@ -233,7 +233,7 @@ export function FlowsListPage() {
                             <>
                               <button
                                 onClick={() => handleClone(f)}
-                                className="text-accent hover:text-accent"
+                                className="text-foreground hover:text-foreground"
                               >Clone to my flows</button>
                               <Link to={`/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
                                 Open (read-only)

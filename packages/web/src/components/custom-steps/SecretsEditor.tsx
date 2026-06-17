@@ -48,7 +48,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
         <KeyRound className="w-4 h-4 mt-0.5 text-slate-500 shrink-0" />
         <p>
           Declare credentials this step needs. Each slot becomes a{" "}
-          <code className="text-accent bg-accent/10 px-1 py-0.5 rounded text-[11px]">$SLOT_NAME</code>{" "}
+          <code className="text-foreground bg-accent/10 px-1 py-0.5 rounded text-[11px]">$SLOT_NAME</code>{" "}
           environment variable in the Bash tool. Flow authors bind each slot to a
           specific secret when adding this step to a workflow.
         </p>
@@ -79,7 +79,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
               {value.map(slot => (
                 <tr key={slot.name} className="group hover:bg-surface-hover transition">
                   <td className="px-3 py-2 align-top">
-                    <code className="font-mono text-[13px] text-accent">{slot.name}</code>
+                    <code className="font-mono text-[13px] text-foreground">{slot.name}</code>
                   </td>
                   <td className="px-3 py-2 align-top text-xs text-slate-300">
                     {slot.description}
@@ -131,7 +131,7 @@ export function SecretsEditor({ value, onChange, hasBashTool }: SecretsEditorPro
           <button
             type="button"
             onClick={add}
-            className="inline-flex items-center gap-1 rounded-md bg-indigo-500/90 hover:bg-indigo-400 px-3 py-2 text-sm font-medium text-white transition whitespace-nowrap"
+            className="inline-flex items-center gap-1 rounded-md bg-primary hover:bg-primary/90 px-3 py-2 text-sm font-medium text-primary-foreground transition whitespace-nowrap"
           >
             <Plus className="w-4 h-4" /> Add
           </button>

@@ -14,7 +14,7 @@ export function SessionsSidebar(props: {
     <div className="flex w-56 flex-none flex-col border-r border-slate-700 pr-3">
       <div className="mb-3 flex items-center gap-2">
         <button
-          className="flex-1 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-accent hover:bg-indigo-500/30"
+          className="flex-1 rounded-md bg-primary/20 px-3 py-2 text-sm text-foreground hover:bg-primary/30"
           onClick={onNew}>
           + New build
         </button>

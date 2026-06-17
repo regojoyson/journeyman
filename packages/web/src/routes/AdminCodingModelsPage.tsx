@@ -91,7 +91,7 @@ export function AdminCodingModelsPage() {
                 {(data ?? []).map((m) => (
                   <tr key={m.id} className="hover:bg-surface-hover text-slate-200">
                     <td className="px-4 py-3">{m.provider}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-accent">{m.modelId}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-foreground">{m.modelId}</td>
                     <td className="px-4 py-3">{m.label}</td>
                     <td className="px-4 py-3">{m.isDefault ? <span className="text-warning">★</span> : <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3">{m.enabled ? <span className="text-success">yes</span> : <span className="text-slate-500">no</span>}</td>

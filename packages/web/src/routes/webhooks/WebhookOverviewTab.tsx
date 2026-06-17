@@ -105,7 +105,7 @@ export function WebhookOverviewTab({ webhook, onChange }: Props) {
                 <button
                   onClick={() => void saveSecret()}
                   disabled={secretBusy}
-                  className="text-xs px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
+                  className="text-xs px-2 py-1 rounded bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
                 >
                   {secretBusy ? "Saving…" : "Save"}
                 </button>

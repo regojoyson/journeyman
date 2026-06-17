@@ -95,7 +95,7 @@ export function EditCustomStepModal(props: {
         <header className="flex items-start justify-between px-5 py-4 border-b border-slate-700">
           <div>
             <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-accent" />
+              <Sparkles className="w-4 h-4 text-foreground" />
               {initial ? "Edit custom step" : "New custom step"}
               <span className="text-[11px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                 {scope}

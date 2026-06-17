@@ -105,7 +105,7 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
       <div className={`${card} w-full max-w-xl max-h-[90vh] overflow-y-auto p-6`}>
         <h2 className="text-lg font-semibold text-slate-100 mb-1">{editing ? "Edit sandbox" : "New sandbox"}</h2>
         <div className="flex gap-2 rounded-lg border border-accent/25 bg-accent/10 p-3 mb-4 text-xs leading-relaxed text-slate-300">
-          <Info size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+          <Info size={16} className="mt-0.5 shrink-0 text-foreground" aria-hidden />
           <span>A <b>sandbox</b> is where a workflow's steps run. Pick a type, then fill its connection/runtime details below.</span>
         </div>
         <form onSubmit={submit} className="space-y-4">

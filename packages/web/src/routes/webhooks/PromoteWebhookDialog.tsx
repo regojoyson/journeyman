@@ -168,7 +168,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
             <div className="flex gap-2">
               <button
                 onClick={promoteWebhook}
-                className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+                className="px-3 py-1.5 rounded bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
               >
                 Promote webhook
               </button>
@@ -191,7 +191,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
             <div className="flex gap-2">
               <button
                 onClick={promoteSecret}
-                className="px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-sm"
+                className="px-3 py-1.5 rounded bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
               >
                 Promote secret first
               </button>
@@ -261,7 +261,7 @@ export function PromoteWebhookDialog({ webhook, orgId, onClose, onPromoted }: Pr
             </p>
             <button
               onClick={finish}
-              className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+              className="px-3 py-1.5 rounded bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
             >
               Done
             </button>

@@ -123,7 +123,7 @@ export function AdminUsersPage(props: { orgId: string }) {
             </button>
           </form>
           {info && (
-            <div className="mt-4 rounded-md border border-accent/25 bg-accent/10 px-4 py-2 text-sm text-accent">
+            <div className="mt-4 rounded-md border border-accent/25 bg-accent/10 px-4 py-2 text-sm text-foreground">
               {info}
             </div>
           )}

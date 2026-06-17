@@ -102,7 +102,7 @@ export function SetupWizardPage(props: { onDone: () => void }) {
         <button
           disabled={busy}
           type="submit"
-          className="w-full rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium py-2 transition"
+          className="w-full rounded-md bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-primary-foreground font-medium py-2 transition"
         >
           {busy ? "Creating…" : "Create organization"}
         </button>

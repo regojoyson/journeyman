@@ -117,7 +117,7 @@ export function WebhookTestPanel({ webhook }: { webhook: Webhook }) {
       <button
         onClick={send}
         disabled={busy}
-        className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm disabled:opacity-50"
+        className="px-3 py-1.5 rounded bg-primary hover:bg-primary/90 text-primary-foreground text-sm disabled:opacity-50"
       >
         {busy ? "Sending…" : "Send test event"}
       </button>
