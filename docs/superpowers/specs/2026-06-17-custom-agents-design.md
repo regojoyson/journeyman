@@ -477,6 +477,45 @@ authoritative list of gaps the implementation must close for the form to work en
 wiring, #3 timeout enforcement, #4 auto-notification hook**) plus provider gating and the
 new trigger/connection machinery must be built. All are assigned to phases in §13.
 
+## 15. Production readiness
+
+Operational guardrails required to run agents safely at scale, on top of the §14 feature
+gaps. Worked through one item at a time.
+
+### 15.1 Safety rails (the brakes)
+
+Agents fire autonomously, so a webhook storm, a misconfiguration, or a loop could start
+huge numbers of runs and burn significant model cost. Three controls prevent runaway
+behaviour:
+
+1. **Concurrency limit** — `maxConcurrentRuns` per **agent** and per **org**. Before
+   submitting a run, the trigger/submit path checks the current running count; if at the
+   limit, the run waits in the existing Redis/Conductor queue rather than overwhelming the
+   system.
+2. **Daily run cap + spend budget** — `dailyRunCap` and a `budget` (max tokens and/or cost)
+   per **agent** and per **org**. A per-day counter and a token/cost tally (the coding
+   providers already report usage) are checked before each run; over the cap → skip the run
+   and surface why. Counters reset daily.
+3. **Kill-switch** — the per-agent `enabled` flag (already in the model) plus a new
+   **org-level `paused` flag** (pause-all). The trigger ingestion checks both before
+   starting any run; an admin toggles them in the UI.
+
+**Data model additions** (org settings + per-agent overrides):
+
+```ts
+interface AgentSafetyLimits {       // on Agent (overrides) and on org settings (defaults)
+  maxConcurrentRuns?: number;
+  dailyRunCap?: number;
+  budget?: { maxTokens?: number; maxCostUsd?: number };
+}
+// org settings also carry: paused: boolean   // global kill-switch
+```
+
+**Enforcement points:** the trigger ingestion core (§5) checks `paused`, concurrency, daily
+cap, and budget *before* compiling/submitting; the worker records token/cost usage per run
+so the tally stays current. All four checks fail safe (skip + log) rather than silently
+proceeding.
+
 ---
 
 ## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
