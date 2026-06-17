@@ -704,6 +704,32 @@ the §15.1 budget); (c) a **log retention policy** (agents run far more often th
 workflows, so set a keep-for-N-days + auto-clean). The §15.4 metrics/alerts/audit sit on top
 of these per-run logs as the aggregate/operational view.
 
+## 16. Resolved edge cases (dry-test)
+
+Smaller issues surfaced by the full-lifecycle dry test, resolved with these behaviors:
+
+1. **Test connection — three outcomes, not two.** Distinguish: bad credential (`401` → error),
+   valid but **zero accessible repos/channels** (warn: "connected, but nothing visible —
+   check token scope"), and success. Never leave the picker mysteriously empty.
+2. **Slack channel picker depends on method.** Bot-token connections → show a channel picker
+   (`listChannels`); incoming-webhook-URL connections → **no picker** (channel is fixed by
+   the URL); the Notifications tab shows "posts to the webhook's configured channel".
+3. **Unknown-variable warning.** On save, parse `{{ }}` in instructions and **warn
+   (non-blocking)** for any variable not in the agent's inputs or the known set
+   (`payload`, `trigger.*`) — catches typos like `{{ticketKy}}`.
+4. **Rotate webhook secret.** The webhook signing secret/token has a **rotate** action
+   (mirrors the API-token rotate), revealing the new value once; the sender must be updated.
+5. **Queued runs are visible.** When the concurrency limit (§15.1) is hit, the run is created
+   with status `queued` and shows in history; it is dropped if the agent is disabled.
+6. **Webhook response by state.** Disabled agent → **`200/202` ack + skip** (so Jira/GitHub
+   don't retry or alarm), logged "skipped: disabled". Filtered-out event → `200` ack +
+   "skipped: filtered". Bad auth → `401`. Deleted agent / unknown webhook id → `410 Gone`.
+7. **Partial work on cancel (#5b).** Cancelling mid-run may leave a partial `claude/*` branch
+   and no PR; sandbox teardown still runs; the run is marked `cancelled` with whatever
+   artifacts exist. **No auto-rollback in v1** — documented behaviour.
+8. **Org-wide runs view.** In addition to the per-agent Run-history tab, reuse `runs-list` as
+   an admin **"All agent runs"** page, filterable by agent / status / trigger.
+
 ---
 
 ## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
