@@ -205,7 +205,14 @@ Idempotency/dedup is keyed on `(triggerId, deliveryId)` using the source's deliv
 double-fire.
 
 ### 5.1 Manual (always on)
-- `POST /agents/:id/runs` — reuses the existing manual submission path. No config.
+- `POST /agents/:id/runs` — reuses the existing manual submission path.
+- **"Run now" opens an inputs form** built from the agent's `inputs` (required mandatory,
+  optional pre-filled with defaults); submitting fires the run.
+- **Allowed in `draft`** so the agent can be test-run before enabling (automated triggers
+  stay off until enabled), and **allowed while enabled** (running is an action, not a
+  settings edit, so it works even though the settings tabs are locked).
+- A manual run is a **real run** subject to the same permissions — for a safe test, set
+  `allowWrites` off (works on `claude/*` only) or use read-only tools.
 
 ### 5.2 API
 - `POST /agents/:id/fire` with `Authorization: Bearer <token>`.
