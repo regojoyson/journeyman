@@ -404,9 +404,11 @@ Journeyman's monochrome theme; reuses the MCP, sandbox, tools, and skills picker
   active triggers, repos, last run; "Create agent" button.
 - **Step 0 — name-first create modal**: takes just the **Name** (instructions optional) and
   creates a **draft** agent, then routes to its edit page. Keeps the entry point tiny.
-- **Agent edit page (used for both create-continue and later editing)** — a **side-nav of
-  sections**, each **saved independently** ("Save section"), with per-section status markers
-  (✓ complete / ! needs attention). Sections:
+- **Agent edit page (used for both create-continue and later editing)** — a header (name +
+  status badge + Run now / Enable) with a **horizontal tab bar across the top** (AWS-console
+  style); each tab **saves independently** ("Save section") and shows a status marker
+  (✓ complete / ! needs attention). **Run history is a tab too**, so config and monitoring
+  live on one page. Tabs:
   - **Instructions & Inputs** — rich-markdown instructions + the **inputs** editor (§5b) and
     an **inputs helper** beside the editor: shows available variables (`{{ticketKey}}`,
     `{{note}}`, `{{payload}}`, `{{trigger.type}}`) with an **Insert variable** dropdown.
