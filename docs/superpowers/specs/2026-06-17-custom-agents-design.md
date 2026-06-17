@@ -382,6 +382,21 @@ already used by sandboxes and MCP instances.
   the connection credential from the vault. (Implementing `SlackProvider` is the one new
   piece; `ConsoleProvider` already works.)
 
+### 7.5 Connection lifecycle (references, delete, rotate)
+
+A connection may be referenced by many agents (`repoSelections.connectionId` and
+`notifications.connectionId`).
+
+- **Usage tracking** — the connections list shows **"used by N agents"** with the list.
+- **Delete (in use)** — **blocked**. Deletion is refused while any agent references the
+  connection; the UI shows the referencing agents so the user detaches/replaces them first.
+  An unreferenced connection deletes normally.
+- **Rotate** — allowed freely; pasting a new token **re-validates** it and all referencing
+  agents pick it up on their next run (no per-agent change). This is the intended rotation
+  path.
+- **Test surfacing** — a credential that later fails (`401`, §15.3) is flagged
+  "needs attention" on the connection **and** on every agent that uses it.
+
 ## 8. RAG / knowledge (Path A — connector-based)
 
 RAG is **not** a new core subsystem in v1. A knowledge base is exposed to the agent as an
