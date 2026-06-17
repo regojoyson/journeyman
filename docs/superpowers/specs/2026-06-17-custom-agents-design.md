@@ -566,6 +566,23 @@ Scope is the credentials and the public endpoint — not prompt content (see §2
 Tenant isolation (one org cannot read another's Connections/secrets) is already provided by
 the existing user/org access-grant scope model and is reused unchanged.
 
+### 15.4 Observability (see it, get alerted, audit it)
+
+Autonomous agents need a big-picture view on top of the existing per-run logs (run-viewer).
+
+1. **Metrics.** Emit counters/timers from the worker on run terminal state — runs started,
+   succeeded, failed, duration, and tokens/cost — tagged by agent + org, exported to the
+   metrics stack with a simple dashboard. (Builds on the existing `step.completed` /
+   `step.failed` events.)
+2. **Alerts.** Threshold rules over those metrics — failure rate over X%, a run timed out /
+   stuck, budget near cap (ties to §15.1) — routed to a Slack channel or email.
+3. **Audit log.** An append-only audit table recording `actor · action · target · timestamp`
+   for sensitive actions: agent create/edit/delete, Connection create/edit/delete, manual
+   "run now", and kill-switch/pause toggles.
+
+Per-run execution logs and live status already exist via the run-viewer (§9); §15.4 adds the
+aggregate/operational view and the audit trail.
+
 ---
 
 ## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
