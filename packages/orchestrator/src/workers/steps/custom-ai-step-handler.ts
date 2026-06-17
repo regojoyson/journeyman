@@ -194,6 +194,7 @@ export class CustomAiStepHandler implements IStepHandler {
     ctx.log(`Running custom step "${step.name}" (${step.outputMode})`);
 
     const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
+    const maxSteps = typeof input.maxSteps === "number" && input.maxSteps > 0 ? input.maxSteps : undefined;
     const result = await coding.runCustomPrompt({
       prompt,
       outputMode: step.outputMode,
@@ -210,6 +211,7 @@ export class CustomAiStepHandler implements IStepHandler {
       ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
       ...(model ? { model } : {}),
       ...(modelConfig ? { modelConfig } : {}),
+      ...(maxSteps ? { maxSteps } : {}),
     });
 
     if (result.error) {

@@ -64,11 +64,41 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(r.structured).toEqual({ ok: true });
   });
 
-  it("returns a clear error (does not throw) when no JSON is present", async () => {
+  it("returns a clear error (does not throw) when no JSON is present even after the forced turn", async () => {
     generateText.mockResolvedValue(resultWithThrowingOutput({ text: "no json here" }));
     const r = await runCustomPrompt(structuredOpts);
     expect(r.structured).toBeUndefined();
     expect(r.error).toMatch(/no parseable JSON/i);
+  });
+
+  it("forces a final tool-free JSON turn when the agent loop ends without JSON", async () => {
+    generateText
+      .mockResolvedValueOnce(resultWithThrowingOutput({ text: "<think>ran out of steps</think>", steps: [] }))
+      .mockResolvedValueOnce({ output: { branch: "b", status: "failed" }, steps: [] });
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ branch: "b", status: "failed" });
+    expect(generateText).toHaveBeenCalledTimes(2);
+    const forcedArgs = generateText.mock.calls[1][0];
+    expect(forcedArgs.tools).toBeUndefined();          // forced call uses no tools
+    expect(Array.isArray(forcedArgs.messages)).toBe(true);
+  });
+
+  it("does not force a second turn when the first call already yields JSON", async () => {
+    generateText.mockResolvedValue({ output: { ok: true }, steps: [] });
+    await runCustomPrompt(structuredOpts);
+    expect(generateText).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses a configured maxSteps as the step budget", async () => {
+    generateText.mockResolvedValue({ output: { ok: true }, steps: [] });
+    await runCustomPrompt({ ...structuredOpts, maxSteps: 200 });
+    expect(generateText.mock.calls[0][0].stopWhen).toBe(200); // stepCountIs is mocked to identity
+  });
+
+  it("defaults the step budget to 80 when maxSteps is unset", async () => {
+    generateText.mockResolvedValue({ output: { ok: true }, steps: [] });
+    await runCustomPrompt(structuredOpts);
+    expect(generateText.mock.calls[0][0].stopWhen).toBe(80);
   });
 
   it("errors when structured mode has no schema", async () => {

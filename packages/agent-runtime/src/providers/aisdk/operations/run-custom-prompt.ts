@@ -11,7 +11,20 @@ import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 
 const log = createLogger("aisdk:custom-prompt");
-const STEP_CAP = 40;
+
+/** Default agent step budget when the step doesn't specify `maxSteps`. */
+const DEFAULT_STEP_BUDGET = 80;
+
+/**
+ * Sent as a final, tool-free turn when the agent loop ended without producing
+ * structured JSON (ran out of step budget, or stopped on a reasoning-only turn).
+ * Forces a clean final answer that reflects what actually happened.
+ */
+const FORCE_JSON_INSTRUCTION =
+  "You have finished working (or run out of steps). Output ONLY the JSON object that " +
+  "matches the required schema, reflecting what you actually accomplished. Do not call " +
+  "any tools and do not add any other text. If the task could not be completed, still " +
+  "produce the JSON and set the appropriate status/error fields.";
 
 function truncate(s: string, max = 2000): string {
   return s.length > max ? s.slice(0, max) + "…" : s;
@@ -38,17 +51,21 @@ function finalAssistantText(result: { text?: unknown; steps?: unknown }): string
  * final step's finishReason is "stop"; with tool-using steps it is often
  * "tool-calls"/"unknown", so `result.output` throws NoOutputGeneratedError even
  * though the model printed valid JSON (vercel/ai#10235, #11348 — both open). In
- * that case we recover the JSON from the model's text ourselves.
+ * that case we recover the JSON from the model's text ourselves. Returns
+ * `undefined` when no parseable JSON is present (never throws).
  */
-function readStructured(result: { output?: unknown; text?: unknown; steps?: unknown }): unknown {
+function tryReadStructured(result: { output?: unknown; text?: unknown; steps?: unknown }): unknown {
   try {
     const out = result.output;
     if (out !== undefined) return out;
   } catch {
     /* NoOutputGeneratedError — fall through to text recovery */
   }
-  const text = finalAssistantText(result);
-  return JSON.parse(extractJsonPayload(text));
+  try {
+    return JSON.parse(extractJsonPayload(finalAssistantText(result)));
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -105,11 +122,12 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     const confinement = opts.cwd ? confinementSystemPrompt(opts.cwd) : "";
     const prompt = [confinement, opts.prompt, buildSkillMenu(skills)].filter(Boolean).join("\n\n");
 
+    const maxSteps = opts.maxSteps && opts.maxSteps > 0 ? opts.maxSteps : DEFAULT_STEP_BUDGET;
     const result: any = await generateText({
       model,
       prompt,
       ...(hasTools ? { tools } : {}),
-      stopWhen: stepCountIs(STEP_CAP),
+      stopWhen: stepCountIs(maxSteps),
       // AI SDK 6 stable option is `output` (was `experimental_output`); result is on `result.output`.
       ...(opts.outputMode === "structured" ? { output: buildOutput(opts.outputSchema) } : {}),
       ...(opts.signal ? { abortSignal: opts.signal } : {}),
@@ -121,12 +139,33 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
 
     if (opts.outputMode === "none") return { sessionId };
     if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "" };
-    try {
-      return { sessionId, structured: readStructured(result) };
-    } catch {
+
+    let structured = tryReadStructured(result);
+
+    // Safety net: tool-using agents often exhaust their step budget or stop on a
+    // reasoning-only turn without ever emitting the final JSON. Ask once more, with
+    // no tools, replaying the conversation so the model has full context.
+    if (structured === undefined) {
+      log.warn({ sessionId }, "agent loop produced no structured output; forcing a final JSON turn");
+      const forced: any = await generateText({
+        model,
+        messages: [
+          { role: "user", content: prompt },
+          ...((result.response?.messages as unknown[]) ?? []),
+          { role: "user", content: FORCE_JSON_INSTRUCTION },
+        ],
+        output: buildOutput(opts.outputSchema),
+        ...(opts.signal ? { abortSignal: opts.signal } : {}),
+        onStepFinish: makeStepLogger(opts.onLog, level),
+      } as any);
+      structured = tryReadStructured(forced);
+    }
+
+    if (structured === undefined) {
       const text = finalAssistantText(result);
       return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}` };
     }
+    return { sessionId, structured };
   } catch (err) {
     const error = describeError(err);
     logFinal(false, error, opts.onLog, level);

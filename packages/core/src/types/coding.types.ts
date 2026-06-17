@@ -69,6 +69,12 @@ export interface RunCustomPromptOptions {
   onLog?: CodingCliLogFn;
   /** Verbosity for SDK log lines emitted via `onLog`. Defaults to "all" when `onLog` is provided. */
   agentLogLevel?: AgentLogLevel;
+  /**
+   * Max agent steps/turns (tool calls + generations) before the loop is stopped.
+   * A small step (make a branch) needs ~10–30; an implementation step on a large
+   * repo can need a few hundred. Providers apply their own default when omitted.
+   */
+  maxSteps?: number;
 }
 
 export interface RunCustomPromptResult {

@@ -17,6 +17,9 @@ import type {
 
 const log = createLogger("claude:custom-prompt");
 
+/** Default agent turn budget when the step doesn't specify `maxSteps`. */
+const DEFAULT_STEP_BUDGET = 80;
+
 export type { RunCustomPromptOptions, RunCustomPromptResult };
 
 /**
@@ -104,6 +107,7 @@ export async function runCustomPrompt(
     ...(tools.length ? { tools, allowedTools: tools } : {}),
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
+    maxTurns: opts.maxSteps && opts.maxSteps > 0 ? opts.maxSteps : DEFAULT_STEP_BUDGET,
     settingSources: [],
     stderr: captureStderr,
     ...(cliPath ? { pathToClaudeCodeExecutable: cliPath } : {}),
