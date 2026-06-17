@@ -14,7 +14,7 @@ as a *concept*, but it is **not** the same thing as a Journeyman flow.
 
 Internally, an agent reuses the existing execution engine. It is **the source of truth**;
 when a trigger fires, a thin compiler builds an ephemeral single-step `WorkflowGraph`
-(trigger node → one `custom-ai` step) and submits it to the existing orchestrator. No
+(trigger node → one self-contained `agent-run` step) and submits it to the existing orchestrator. No
 changes to Conductor, the worker harness, or sandbox provisioning are required to run an
 agent — agents are a new front-end onto the engine that already exists.
 
@@ -77,7 +77,8 @@ Manual "Run now" ──────────────┘    (auth · dedup
 Mirrors the structure of `@journeyman/custom-steps` and `@journeyman/mcp`.
 
 - **Store** — `jm_agents`, `jm_agent_triggers`, `jm_agent_schedules` (cron).
-- **Compiler** — `agent → WorkflowGraph` (one trigger node + one `custom-ai` step carrying the agent's inline config).
+- **Compiler** — `agent → WorkflowGraph` (one trigger node + one self-contained `agent-run` step carrying the agent's inline config; the step clones repos + runs).
+- **`agent-run` step handler** — clones `repoSelections` (shared clone helper) + runs `runCustomPrompt`; leaves the flow-author `custom-ai` step untouched.
 - **Trigger index / resolver** — a unified index mapping an inbound event (webhook id, API token, schedule tick) to its agent + trigger config.
 - **Scheduler tick** — the only genuinely new runtime mechanism (see §5.4).
 
@@ -90,14 +91,21 @@ A unified credential/integration registry (see §7), used by agents for both rep
 New `agent.types.ts` (`Agent`, `AgentTrigger`) and `connection.types.ts` (`Connection`,
 `ConnectionCategory`). Per the project rule, all shared types live here.
 
-### Execution reuse
+### Execution: a dedicated `agent-run` step
 
-The compiled `custom-ai` step runs through the existing `runCustomPrompt` agentic loop.
+The agent compiles to a **single self-contained `agent-run` step** (not a multi-node graph,
+and not the flow-author `custom-ai` step). The `agent-run` handler owns the whole agent
+lifecycle in one place:
+
+- **clones the agent's `repoSelections`** into the workspace (sharing the existing
+  `clone-repos` clone helper — no duplicated logic);
+- runs the existing `runCustomPrompt` agentic loop with the agent's inline instructions,
+  provider+model, tools, MCP, skills, structured output, `maxTurns`, and `timeoutSeconds`.
+
 Connectors (MCP), canonical tools, skills, structured output, and sandbox provisioning all
-work with no new execution code. **One extension is required:** the `custom-ai` step
-handler must accept an **inline** prompt/config supplied by the agent compiler, in addition
-to its current path of loading a saved `customStepId` from the DB. (We extend the handler;
-we do **not** introduce a new step type.)
+reuse existing resolution. **`custom-ai` is left untouched** so flow authors are unaffected.
+Notifications are **not** part of this step — they are an orchestrator-level terminal hook
+(see §6) so they fire even if `agent-run` crashes or times out.
 
 ## 4. Data model
 
@@ -238,13 +246,12 @@ or GitHub's webhook settings.
 
 1. **Resolve** the agent record and its mapped inputs (from webhook payload via mapping,
    freeform API body, or empty for schedule/manual).
-2. **Compile** to an ephemeral `WorkflowGraph`: `trigger-<type>` node →
-   **(a `clone-repos` node if `repoSelections` is non-empty)** → one `custom-ai` step whose
-   config carries the agent's inline instructions, provider+model, tools, MCP ids, skill
-   ids, sandbox id, permissions, behavior (maxTurns/timeout/retry), and output schema.
-   Reusing the existing `clone-repos` step handler to clone the selected repos is preferred
-   over teaching `custom-ai` to clone — it is less new code and keeps `custom-ai` focused.
-   (See §14: the `custom-ai` step does **not** clone repos on its own today.)
+2. **Compile** to an ephemeral `WorkflowGraph`: `trigger-<type>` node → one **`agent-run`**
+   step whose config carries the agent's inline instructions, provider+model, tools, MCP
+   ids, skill ids, **repoSelections**, sandbox id, permissions, behavior
+   (maxTurns/timeout/retry), and output schema. The `agent-run` handler clones the repos
+   itself (shared clone helper) and runs the loop — one self-contained step, not a
+   multi-node graph.
 3. **Submit** via `IOrchestratorEngine.submit()` with `triggerSource` set
    (`manual` | `api` | `webhook` | `schedule`) and the instance tagged with `agentId`.
 4. The worker harness behaves as it already does: provisions a sandbox **only if** the
@@ -373,7 +380,9 @@ library), per existing conventions.
 | New (build it) | Reused (already exists) |
 |---|---|
 | `@journeyman/agents` pkg: store, **fire-time compiler**, agent-trigger index | Orchestrator submit · Conductor · sandbox provisioning |
-| `Agent` + `AgentTrigger` + `Connection` types in core | `custom-ai` execution / `runCustomPrompt` loop (extended for inline spec) |
+| `Agent` + `AgentTrigger` + `Connection` types in core | `runCustomPrompt` agentic loop · `custom-ai` (left untouched) |
+| New **`agent-run` step** (clones repos + runs in one step; maxTurns/timeout/retry) | `clone-repos` clone helper (shared, not duplicated) |
+| **Auto-notification orchestrator hook** (on terminal run state) | `INotificationProvider` · run-terminal events |
 | **Scheduler tick** (cron + IANA tz) + `jm_agent_schedules` | Webhook ingest (HMAC, presets, extract, dedup, filters) |
 | Agent CRUD routes + `/fire` + `/webhook` + run-now | MCP / skills / secret binding resolution |
 | **Connections** subsystem: `jm_connections`, page, Test/List per provider | Secrets vault (AES) · `testConnection` UI/API pattern (sandboxes/MCP) |
@@ -415,16 +424,16 @@ This exercises every new piece end to end.
 
 ## 13. Suggested implementation phases
 
-1. **Agent core** — `@journeyman/agents` (types, store, fire-time compiler), `custom-ai`
-   inline extension, manual trigger + run-now, full-page agents UI (basics/workspace/
-   provider→model/behavior/permissions/notifications-shell), run history. **Includes the
-   behavior wiring gaps (§14): `maxTurns` → SDK + configurable step cap; `timeoutSeconds` →
-   worker AbortSignal enforcement; per-agent `retry` compiled onto the step node. Gate the
-   provider picker to implemented providers (Claude, OpenCode) only.**
+1. **Agent core** — `@journeyman/agents` (types, store, fire-time compiler), the new
+   **`agent-run` step** (clones repoSelections via the shared clone helper + runs the loop),
+   manual trigger + run-now, full-page agents UI (basics/workspace/provider→model/behavior/
+   permissions/notifications-shell), run history. **Includes the behavior wiring gaps (§14):
+   `maxTurns` → SDK + configurable step cap; `timeoutSeconds` → worker AbortSignal
+   enforcement; per-agent `retry` compiled onto the step node. Gate the provider picker to
+   implemented providers (Claude, OpenCode) only.**
 2. **Connections + repos** — `jm_connections`, Connections page, git provider Test/List,
    `GitLabProvider` (base-URL aware) + `listRepos` + repo picker; wire repoSelections into
-   the run-time credential flow. **Includes emitting a `clone-repos` node in the compiled
-   graph so selected repos land in the workspace (§14, gap #1).**
+   the run-time credential flow so the `agent-run` step clones them (§14, gap #1).
 3. **Automated triggers** — webhook (presets Jira/GitHub, filter builder, mapping, dedup),
    API token + `/fire`, scheduler tick; the create-time reveal.
 4. **Notifications + polish** — **the automatic on-terminal-state notification hook
@@ -443,7 +452,7 @@ authoritative list of gaps the implementation must close for the form to work en
 | Instructions (markdown) | ✅ | Passed as the prompt to `runCustomPrompt` |
 | Provider | ⚠️ gate | Only **Claude / OpenCode** implement `runCustomPrompt`; Gemini/Codex are stubs → restrict the picker |
 | Model | ✅ | Passed to the provider/SDK |
-| **Repositories** | ⚠️ #1 | `custom-ai` does **not** clone repos; compiler must emit a `clone-repos` node (reuses existing handler) + the git-token binding |
+| **Repositories** | ⚠️ #1 | The new `agent-run` step clones `repoSelections` internally, sharing the existing `clone-repos` clone helper (no duplication) + the git-token binding |
 | Environment (sandbox) | ✅ | Existing sandbox provisioning (local/docker/windows) |
 | Connectors (MCP) | ✅ | `mcpResolver` → `runCustomPrompt` |
 | Skills | ✅ | `skillsResolver` → materialized into sandbox |
