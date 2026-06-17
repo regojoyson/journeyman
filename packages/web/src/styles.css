@@ -1,6 +1,17 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Tailwind v4 defaults the `border` utility's color to currentColor (the text
+   color) — which renders near-white borders in dark mode. Restore a themed
+   default so bare `border` uses the hairline token in both themes. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: rgb(var(--color-border) / 1);
+  }
+}
+
 html, body, #root { height: 100%; margin: 0; }
 body {
   background: rgb(var(--color-bg) / 1);
