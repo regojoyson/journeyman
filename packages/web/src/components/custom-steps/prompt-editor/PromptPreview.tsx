@@ -26,7 +26,7 @@ const components: Components = {
       ? "bg-warning/15 text-warning border border-warning/30"
       : cls.includes("jm-token-input")
         ? "bg-success/15 text-success border border-success/30"
-        : "bg-accent/15 text-foreground border border-accent/30";
+        : "bg-muted text-foreground border";
     return <span className={`${chipBase} ${tone}`}>{children}</span>;
   },
 };
