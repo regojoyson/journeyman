@@ -339,10 +339,15 @@ sandbox, tools, and skills pickers from `flow-editor`.
   - **Workspace & model** — multi-repo picker (from a git Connection) · environment
     (sandbox) · **Provider select (first) → Model select (then)**.
   - **Triggers** — multi-select Schedule / Webhook / API (manual always on).
-  - **Configuration tabs** — **Connectors** (MCP, incl. RAG) · **Behavior** (max steps,
+  - **Configuration tabs** — **Connectors** (MCP, incl. RAG) · **Skills** (packages from the
+    `@journeyman/skills` registry) · **Tools** (canonical tools) · **Behavior** (max steps,
     timeout, output mode, retry) · **Notifications** (connection + channel + success/failure)
     · **Permissions** (per-tool read/write grid) · **Webhook config** (preset Jira/GitHub +
     filter builder + payload mapping).
+  - **Skills** are picked like Connectors — from the `@journeyman/skills` registry (not a
+    Connection). A private skill *repo* reuses a git Connection only to clone it. Reuses the
+    existing flow-editor SkillsTab; resolved at run time by the existing `skillsResolver`
+    (clones packages into the sandbox and exposes them to the Claude SDK).
   - **Post-create reveal** — webhook URL + secret and/or API token (shown once).
 - **Connections** page (`Settings → Connections`): grouped by category (Git accounts /
   Notification channels); a single "New connection" form with a **Type** toggle
