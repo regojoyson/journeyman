@@ -212,10 +212,23 @@ double-fire.
 - Per-agent token issued on trigger creation, shown once, stored hashed.
 
 ### 5.3 Webhook (universal "any app" trigger)
-- `POST /agents/:id/webhook/:webhookId` — a **dedicated endpoint + secret per agent**.
-- **Reuses `@journeyman/webhooks`**: HMAC signature verification on raw bytes, schema
-  lint/validate, payload field extraction, the preset library, and the existing
-  webhook-ingest pipeline (retargeted from workflow trigger-nodes to agents).
+- `POST /agents/:id/webhook/:webhookId` — a **dedicated endpoint + secret per agent**,
+  **auto-provisioned** when the webhook trigger is selected and **owned by the agent**
+  (configured inline in the agent's Webhook config tab, not the standalone webhooks page;
+  it may still appear in the webhooks list as owned-by-agent). Reusing the same underlying
+  webhook object means a "select an existing webhook" option can be added later.
+- **Reuses `@journeyman/webhooks`**: signature/auth verification, schema lint/validate,
+  payload field extraction, the preset library, and the existing webhook-ingest pipeline
+  (retargeted from workflow trigger-nodes to agents).
+- **Auth method (security type)** is a per-webhook setting
+  `{ type: "hmac" | "token" | "none", header?, algorithm?, secretRef? }`:
+  - **hmac** — sender signs the raw body (e.g. GitHub `X-Hub-Signature-256`); strongest.
+  - **token** — shared secret in a header (e.g. Jira "Send web request"); works everywhere.
+  - **none** — no secret check (only the unguessable URL + rate-limit + dedup); **off by
+    default**, opt-in with a warning, for internal tests only.
+  The **preset picks a safe default** (GitHub → hmac, Jira → token) and the user may
+  override. HMAC/token generate a secret revealed once (§6). An **org policy can forbid
+  `none`** so unauthenticated agent webhooks cannot be created.
 - **Presets (v1): Jira + GitHub.** Each preset supplies the available **events**, the
   **filterable fields**, and a default payload→inputs mapping. `custom` (no preset) leaves
   everything open. Linear / Monday presets are a fast follow.
