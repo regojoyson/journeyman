@@ -516,6 +516,30 @@ cap, and budget *before* compiling/submitting; the worker records token/cost usa
 so the tally stays current. All four checks fail safe (skip + log) rather than silently
 proceeding.
 
+### 15.2 Reliability (do it once, clean up, no duplicates)
+
+A run must execute once, clean up after itself, and avoid duplicate side effects even under
+retries, restarts, and crashes.
+
+1. **Idempotent ingestion (dedup).** Inbound events carry a unique delivery id
+   (`X-Atlassian-Webhook-Identifier`, GitHub delivery id). A **dedup store** keyed on
+   `(triggerId, deliveryId)` with a TTL records seen ids; a repeat delivery is acknowledged
+   and ignored. (Postgres table or Redis with expiry.)
+2. **Durable, single-fire scheduler.** Schedules live in `jm_agent_schedules`. A due
+   schedule is **claimed via a row lock / leader election** so exactly one worker fires it,
+   even with multiple workers; on restart the scheduler reads the DB and resumes (v1 policy:
+   skip missed, fire next due — §5.4).
+3. **Guaranteed sandbox teardown.** Teardown runs in a `finally`-style block so it executes
+   on success, failure, crash, or timeout. A periodic **janitor** sweeps orphaned sandboxes
+   (older than a threshold) as a backstop against leaks.
+4. **Idempotent PR/MR creation.** Use a deterministic per-ticket branch
+   (e.g. `claude/<ticketKey>`); before opening a PR/MR, check whether one already exists for
+   that branch and **update it instead of creating a duplicate**, so a retried run does not
+   produce a second PR.
+
+These make a run **safe to retry** — the core requirement for the retry policy (§14) and the
+at-least-once delivery model (§5) to be usable in production.
+
 ---
 
 ## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
