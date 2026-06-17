@@ -447,22 +447,34 @@ This appendix documents how spec-driven methodologies run **on top of** the agen
   non-cloning, "not for automation") and has no role/status model, so the Jira-status→role
   assembly line isn't native to it. BMAD is the closer fit for the polyrepo + status setup.
 
-### A.3 Delivering BMAD / OpenSpec via skill management (verified)
-- The `@journeyman/skills` registry accepts any **git URL**, but only discovers skills laid
-  out as `skills/<name>/SKILL.md` or `.claude-plugin/skills/<name>.md` (frontmatter:
-  name + description). The raw BMAD-METHOD / OpenSpec repos lack this layout, so adding them
-  directly yields **0 discovered skills**.
-- **Therefore:** ship thin **wrapper skill packages** — small git repos exposing
-  `skills/bmad-dev/SKILL.md`, `skills/bmad-qa/SKILL.md`, … (and an OpenSpec equivalent), each
-  carrying the role workflow and referencing the methodology assets (e.g. the docs repo's
-  `.bmad-core/`, or installing the `openspec` CLI in the sandbox). This is **content
-  authoring, not a platform change** — the skill system already supports it.
-- **Sandbox support is uniform:** local / docker / windows backends are all implemented;
-  skills are cloned on the host then delivered via the shared `materialize()` API (local =
-  host cache; docker = tar via `putArchive`; windows = tar via gRPC). No backend gaps.
+### A.3 How BMAD / OpenSpec are delivered (decision: NOT via skills)
+
+**Decision:** BMAD and OpenSpec are **not** delivered through `@journeyman/skills`. The
+skills system is left as-is for genuine `SKILL.md` packages (e.g. superpowers). The reason:
+the skill registry only discovers skills laid out as `skills/<name>/SKILL.md` (frontmatter:
+name + description); the raw BMAD-METHOD / OpenSpec repos lack that layout, so they would
+discover **0 skills**. Rather than author wrapper skill packages, we use the agent's
+existing settings:
+
+- **BMAD** = a playbook made of **files**. Commit BMAD (`.bmad-core/` + the PRD/architecture/
+  stories) into the **brain repo** (the docs repo, for polyrepo products — see A.1). Every
+  agent clones that repo, so the files travel with it. The agent's **Instructions** tell it
+  to follow the BMAD workflow. Upgrade BMAD by re-running its installer in the brain repo and
+  committing — all agents pick up the new version on the next run (optionally pin a version
+  or automate the upgrade with a scheduled agent).
+- **OpenSpec** = a **command-line tool**. Install it once in the sandbox **environment**
+  (baked into the image or a cached setup script) and drive it from **Instructions**.
+  Upgrade by bumping its version in the environment.
+
+Rule of thumb: **files → keep them in the repo; tool → install it in the sandbox; real skill
+→ pick it in the Skills tab.** Wrapping a methodology as a `SKILL.md` skill remains possible
+later but is explicitly **out of scope** for v1.
+
+Sandbox support is uniform across local / docker / windows for all of repos, tools, and
+skills (cloned on the host, delivered via the shared `materialize()` API). No backend gaps.
 
 ### A.4 Takeaway
 The agent platform is **methodology-agnostic**: BMAD, OpenSpec, Spec Kit, or a custom
-convention all run as process on top of the same agent (instructions + tools + multi-repo
-clone + git + connectors + wrapped skill packages). The v1 spec does not change for any of
-them; the only effort is authoring the wrapper skills.
+convention all run as process on top of the same agent, using settings the agent already has
+(**Instructions + Repositories + Environment**, plus optional Connectors/Tools/Skills). The
+v1 spec does not change for any of them, and the existing skills system is untouched.
