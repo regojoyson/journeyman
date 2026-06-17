@@ -36,14 +36,14 @@ agent — agents are a new front-end onto the engine that already exists.
 | Git credentials | Fine-grained **PAT**; GitHub + GitLab + self-hosted GitLab (instance URL) |
 | Notifications | A `notification` Connection (Slack / Console) + channel; structured notify on success/failure |
 | RAG / knowledge | **Path A** — exposed as an MCP connector (agentic retrieval); no new core infra |
-| Create UX | **Full page** (not a modal) |
+| Create UX | **Name-first draft → tabbed edit page** (top tabs, saved per section); **enabled = read-only** (disable to edit) |
 | Methodology (BMAD / OpenSpec) | **Process only** — no agent changes; documented as a usage appendix |
 | Conversational mode, guardrails catalog, versioning/aliases, cross-run memory, multi-agent | Deferred |
 
 ## 2. Goals & non-goals
 
 **Goals**
-- Let users create autonomous agents from a single full-page form (matching the reference UI).
+- Let users create autonomous agents via a name-first draft, then configure them on a tabbed edit page (not one giant form).
 - Trigger agents via Manual, Schedule (cron), API (POST), and Webhook (any external app) — any combination.
 - Make the webhook trigger a *universal* ingestion point so Jira, GitHub, and any other app can drive agents with zero vendor-specific code, with a usable filter + mapping layer.
 - Give each agent real, scoped, temporary access to selected git repositories inside a sandbox.
@@ -469,7 +469,7 @@ Journeyman's monochrome theme; reuses the MCP, sandbox, tools, and skills picker
     connection is healthy.
   - Each configured trigger is complete (webhook: preset + auth + mapping; schedule: cron +
     timezone; API: token issued). Zero automated triggers is allowed = a manual-only agent.
-  - Every **required** input is satisfiable by each enabled trigger (mapping or default) — see §5b / issue in §16.
+  - Every **required** input is satisfiable by each enabled trigger (mapping or default) — see §5b.
   - If notify-on-* is enabled → a valid notification connection + channel.
   - All referenced connections are healthy (not "needs attention").
 - **Enabled = read-only.** While an agent is enabled, its settings tabs are **locked**
@@ -501,7 +501,7 @@ library), per existing conventions.
 | `GitLabProvider` (base-URL aware) + `listRepos()` on IGitProvider + `/git/repos` route + repo picker | GitHub provider · git-provider REST (PR/MR) |
 | `SlackProvider` (post + `listChannels` + test) | `ConsoleProvider` · `INotificationProvider` interface |
 | Webhook **filter builder** UI (Jira/GitHub presets) | JSONLogic evaluator · webhook field-extract |
-| Per-tool permission grid · provider→model picker · full-page agents UI · post-create reveal | WorkflowInstance store · run-viewer · runs-list · access-grant/scope pattern |
+| Per-tool permission grid · provider→model picker · name-first + tabbed agents UI · reveal | WorkflowInstance store · run-viewer · runs-list · access-grant/scope pattern |
 
 ## 11. End-to-end flow (acceptance narrative)
 
@@ -538,8 +538,9 @@ This exercises every new piece end to end.
 
 1. **Agent core** — `@journeyman/agents` (types, store, fire-time compiler), the new
    **`agent-run` step** (clones repoSelections via the shared clone helper + runs the loop),
-   manual trigger + run-now, full-page agents UI (basics/workspace/provider→model/behavior/
-   permissions/notifications-shell), run history. **Includes the behavior wiring gaps (§14):
+   manual trigger + run-now (inputs form), name-first create + tabbed edit page
+   (instructions+inputs/workspace/provider→model/behavior/permissions/notifications-shell),
+   draft→enable gate + enabled=read-only, run history. **Includes the behavior wiring gaps (§14):
    `maxTurns` → SDK + configurable step cap; `timeoutSeconds` → worker AbortSignal
    enforcement; per-agent `retry` compiled onto the step node. Gate the provider picker to
    implemented providers (Claude, OpenCode) only.**
