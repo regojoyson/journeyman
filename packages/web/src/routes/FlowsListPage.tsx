@@ -133,7 +133,7 @@ export function FlowsListPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
+      <div className="w-full px-6 py-10 space-y-6">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Flows</h1>
@@ -174,7 +174,7 @@ export function FlowsListPage() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Status</th>
@@ -183,11 +183,11 @@ export function FlowsListPage() {
                   <th className="text-left font-medium px-6 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {flows.map(f => {
                   const editable = canEditFlow(f, ctx);
                   return (
-                    <tr key={f.id} className="hover:bg-slate-800/30">
+                    <tr key={f.id} className="hover:bg-surface-hover">
                       <td className="px-6 py-3 text-slate-100 font-medium">
                         {f.name}
                         {scopeBadge(f.scope)}

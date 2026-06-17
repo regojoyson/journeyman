@@ -84,11 +84,11 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
       onClick={props.onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[88vh] flex flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/40 overflow-hidden"
+        className="w-full max-w-lg max-h-[88vh] flex flex-col rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/40 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-slate-800">
+        <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-slate-700">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
               <span>Configure skills</span>
@@ -113,7 +113,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
 
         {/* Toolbar */}
         {available.length > 0 && (
-          <div className="px-6 py-3 border-b border-slate-800 flex items-center gap-3">
+          <div className="px-6 py-3 border-b border-slate-700 flex items-center gap-3">
             <div className="relative flex-1">
               <svg
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
@@ -181,7 +181,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
                         "group flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition " +
                         (checked
                           ? "bg-indigo-500/10 border-indigo-500/40 hover:border-indigo-400"
-                          : "bg-slate-800/30 border-slate-800 hover:border-slate-700 hover:bg-slate-800/60")
+                          : "bg-slate-800/30 border-slate-700 hover:border-slate-700 hover:bg-surface-hover")
                       }
                     >
                       <input
@@ -207,7 +207,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3">
+        <div className="px-6 py-3 border-t border-slate-700 bg-slate-900/80 flex items-center justify-between gap-3">
           <div className="min-w-0 text-xs">
             {error ? (
               <span className="text-danger truncate block">{error}</span>

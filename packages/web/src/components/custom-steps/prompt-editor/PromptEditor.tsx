@@ -39,7 +39,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
       {fullscreen && <div className="fixed inset-0 z-[65] bg-overlay" />}
       <div className={wrapperCls}>
         {/* Header: Edit/Preview toggle + fullscreen */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/70">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700 bg-slate-900/70">
           <div className="inline-flex rounded-md border border-slate-700 overflow-hidden text-xs">
             <button type="button" onClick={() => setMode("edit")} className={tabBtn(mode === "edit")}>
               <Pencil className="w-3.5 h-3.5" /> Edit
@@ -55,7 +55,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
           <button
             type="button"
             onClick={() => setFullscreen(f => !f)}
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800/60 transition"
+            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-surface-hover transition"
             title={fullscreen ? "Exit fullscreen" : "Expand to fullscreen"}
           >
             {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -102,7 +102,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
 
         {/* Footer: unknown-token summary */}
         {(refs.unknownInputs.length > 0 || refs.unknownSlots.length > 0) && (
-          <div className="flex items-start gap-2 border-t border-slate-800 bg-warning/10 text-warning text-xs px-3 py-2">
+          <div className="flex items-start gap-2 border-t border-slate-700 bg-warning/10 text-warning text-xs px-3 py-2">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <div className="space-y-0.5">
               {refs.unknownInputs.length > 0 && (

@@ -112,7 +112,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
       <div className={`${card} w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col`}>
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Test MCP</h2>
             <div className="text-sm text-slate-400">
@@ -139,7 +139,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
 
         {(stage === "list" || stage === "invoking" || stage === "result") && (
           <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-            <aside className="md:w-72 md:border-r md:border-slate-800 overflow-y-auto p-4 space-y-1">
+            <aside className="md:w-72 md:border-r md:border-slate-700 overflow-y-auto p-4 space-y-1">
               {onlyAuthenticate && (
                 <div className="rounded border border-amber-700/40 bg-warning/10 px-3 py-2 text-xs text-warning mb-2">
                   Server returned only an <code className={codePill}>authenticate</code> tool. This usually means auth is missing or invalid — check the bound secret and required env.
@@ -151,7 +151,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
                 <button
                   key={t.name}
                   onClick={() => selectTool(t)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${selected?.name === t.name ? "bg-slate-800 text-slate-100" : "text-slate-300 hover:bg-slate-800/50"}`}
+                  className={`w-full text-left px-3 py-2 rounded text-sm ${selected?.name === t.name ? "bg-slate-800 text-slate-100" : "text-slate-300 hover:bg-surface-hover"}`}
                 >
                   <div className="font-mono">{t.name}</div>
                   {t.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">{t.description}</div>}

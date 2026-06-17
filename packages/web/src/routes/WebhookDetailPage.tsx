@@ -54,7 +54,7 @@ export function WebhookDetailPage(props: { backTo: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+      <div className="w-full px-6 py-10 space-y-6">
         <header className="flex items-start justify-between">
           <div>
             <Link to={props.backTo} className="text-xs text-slate-500 hover:text-slate-300">← back</Link>

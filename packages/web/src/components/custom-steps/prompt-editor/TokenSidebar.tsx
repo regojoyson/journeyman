@@ -14,7 +14,7 @@ export function TokenSidebar({
   onInsert: (snippet: string) => void;
 }) {
   return (
-    <aside className="border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/40 overflow-y-auto p-3 text-xs space-y-4">
+    <aside className="border-t lg:border-t-0 lg:border-l border-slate-700 bg-surface-hover overflow-y-auto p-3 text-xs space-y-4">
       <section>
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400 mb-2">
           <Variable className="w-3.5 h-3.5 text-success" />
@@ -38,7 +38,7 @@ export function TokenSidebar({
                       "w-full text-left font-mono rounded px-2 py-1 transition flex items-center gap-2 " +
                       (isUsed
                         ? "text-success bg-success/10 hover:bg-success/20"
-                        : "text-slate-400 hover:text-success hover:bg-slate-800/60")
+                        : "text-slate-400 hover:text-success hover:bg-surface-hover")
                     }
                     title={f.description || `${f.type}${f.required ? " · required" : ""}`}
                   >
@@ -75,7 +75,7 @@ export function TokenSidebar({
                       "w-full text-left font-mono rounded px-2 py-1 transition flex items-center gap-2 " +
                       (isUsed
                         ? "text-accent bg-accent/10 hover:bg-accent/20"
-                        : "text-slate-400 hover:text-accent hover:bg-slate-800/60")
+                        : "text-slate-400 hover:text-accent hover:bg-surface-hover")
                     }
                     title={s.description}
                   >

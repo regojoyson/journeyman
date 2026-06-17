@@ -45,7 +45,7 @@ export function MySkillsPage(props: { orgId: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">My Skills</h1>
@@ -60,7 +60,7 @@ export function MySkillsPage(props: { orgId: string }) {
         </header>
 
         <section className={card}>
-          <div className="px-6 py-4 border-b border-slate-800">
+          <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-base font-medium text-slate-100">
               Your packages <span className="text-slate-500 font-normal">({rows.length})</span>
             </h2>
@@ -80,7 +80,7 @@ export function MySkillsPage(props: { orgId: string }) {
                 <col style={{ width: "150px" }} />
                 <col style={{ width: "290px" }} />
               </colgroup>
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Status</th>
@@ -89,9 +89,9 @@ export function MySkillsPage(props: { orgId: string }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
+                  <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3 align-middle">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 min-w-0">

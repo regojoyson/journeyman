@@ -39,7 +39,7 @@ export function WebhookPresetGallery({ onPick }: Props) {
             key={p.id}
             type="button"
             onClick={() => onPick(p)}
-            className="text-left p-4 rounded border border-slate-700 hover:border-slate-500 hover:bg-slate-800/40 transition"
+            className="text-left p-4 rounded border border-slate-700 hover:border-slate-500 hover:bg-surface-hover transition"
           >
             <div className="flex items-center justify-between mb-1">
               <div className="font-medium text-slate-100">{p.name}</div>

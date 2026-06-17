@@ -127,7 +127,7 @@ export function InlineEdit({
     <button
       type="button"
       onClick={start}
-      className={`group inline-flex items-start gap-2 text-left hover:bg-slate-800/40 rounded px-1 -mx-1 ${displayClassName}`}
+      className={`group inline-flex items-start gap-2 text-left hover:bg-surface-hover rounded px-1 -mx-1 ${displayClassName}`}
       aria-label={ariaLabel ? `Edit ${ariaLabel}` : "Edit"}
     >
       <span className={isEmpty ? "text-slate-500 italic" : ""}>

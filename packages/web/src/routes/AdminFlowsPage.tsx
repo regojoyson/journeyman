@@ -35,7 +35,7 @@ export function AdminFlowsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-full px-6 py-10 space-y-8">
         <header>
           <h1 className="text-2xl font-semibold text-slate-100">Flows</h1>
           <p className="mt-1 text-sm text-slate-400">
@@ -44,7 +44,7 @@ export function AdminFlowsPage() {
         </header>
 
         <section className={`${card} overflow-hidden`}>
-          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
             <h2 className="text-base font-medium text-slate-100">
               User flows in this org <span className="text-slate-500 font-normal">({userFlows.length})</span>
             </h2>
@@ -55,16 +55,16 @@ export function AdminFlowsPage() {
             <div className="p-10 text-center text-sm text-slate-500">No user flows.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Owner</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {userFlows.map(f => (
-                  <tr key={f.id} className="hover:bg-slate-800/30">
+                  <tr key={f.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3 text-slate-100 font-medium">{f.name}</td>
                     <td className="px-6 py-3 text-slate-300">{f.ownerUserId ?? "—"}</td>
                     <td className="px-6 py-3 text-right">
@@ -85,7 +85,7 @@ export function AdminFlowsPage() {
 
         {isPlatformAdmin && (
           <section className={`${card} overflow-hidden`}>
-            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
               <h2 className="text-base font-medium text-slate-100">
                 Org flows (all orgs) <span className="text-slate-500 font-normal">({orgFlows.length})</span>
               </h2>
@@ -96,16 +96,16 @@ export function AdminFlowsPage() {
               <div className="p-10 text-center text-sm text-slate-500">No org flows.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+                <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                   <tr>
                     <th className="text-left font-medium px-6 py-3">Name</th>
                     <th className="text-left font-medium px-6 py-3">Org</th>
                     <th className="px-6 py-3" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-slate-700">
                   {orgFlows.map(f => (
-                    <tr key={f.id} className="hover:bg-slate-800/30">
+                    <tr key={f.id} className="hover:bg-surface-hover">
                       <td className="px-6 py-3 text-slate-100 font-medium">{f.name}</td>
                       <td className="px-6 py-3 text-slate-300">{f.orgId ?? "—"}</td>
                       <td className="px-6 py-3 text-right">

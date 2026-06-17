@@ -39,7 +39,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Org MCPs</h1>
@@ -54,7 +54,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
         </header>
 
         <section className={`${card} overflow-hidden`}>
-          <div className="px-6 py-4 border-b border-slate-800">
+          <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-base font-medium text-slate-100">
               Org MCPs <span className="text-slate-500 font-normal">({orgRows.length})</span>
             </h2>
@@ -65,7 +65,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
             <div className="p-10 text-center text-sm text-slate-500">No org MCPs yet.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Transport</th>
@@ -74,9 +74,9 @@ export function AdminMcpsPage(props: { orgId: string }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {orgRows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
+                  <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
                     <td className="px-6 py-3 text-slate-300">{r.transport}</td>
                     <td className="px-6 py-3 text-slate-300">
@@ -98,7 +98,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
         </section>
 
         <section className={`${card} overflow-hidden`}>
-          <div className="px-6 py-4 border-b border-slate-800">
+          <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-base font-medium text-slate-100">
               Promotable from users <span className="text-slate-500 font-normal">({promotable.length})</span>
             </h2>
@@ -109,7 +109,7 @@ export function AdminMcpsPage(props: { orgId: string }) {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Owner</th>
                   <th className="text-left font-medium px-6 py-3">Name</th>
@@ -118,9 +118,9 @@ export function AdminMcpsPage(props: { orgId: string }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {promotable.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
+                  <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3 text-slate-300">{r.ownerEmail}</td>
                     <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
                     <td className="px-6 py-3 text-slate-300">{r.transport}</td>

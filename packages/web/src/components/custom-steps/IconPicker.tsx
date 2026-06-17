@@ -97,7 +97,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                     "h-8 w-8 flex items-center justify-center rounded border transition " +
                     (isSelected
                       ? "bg-indigo-500/20 border-indigo-400 text-accent"
-                      : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-600 hover:text-slate-100")
+                      : "bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600 hover:text-slate-100")
                   }
                 >
                   {resolveStepIcon(id, { size: 16 })}

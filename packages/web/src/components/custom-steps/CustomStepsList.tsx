@@ -81,7 +81,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
   return (
     <>
       <section className={`${card} overflow-hidden`}>
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <h2 className="text-base font-medium text-slate-100">
             {scope === "user" ? "Your steps" : "Org steps"}
             <span className="text-slate-500 font-normal ml-2">({items.length})</span>
@@ -130,7 +130,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+            <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left font-medium px-6 py-3">Name</th>
                 <th className="text-left font-medium px-6 py-3">Output</th>
@@ -139,9 +139,9 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-700">
               {items.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-900/40">
+                <tr key={p.id} className="hover:bg-surface-hover">
                   <td className="px-6 py-3">
                     <div className="text-slate-100 font-medium">{p.name}</div>
                     {p.description && (

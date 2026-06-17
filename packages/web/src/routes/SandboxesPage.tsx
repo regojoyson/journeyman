@@ -55,7 +55,7 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">{title}</h1>
@@ -65,7 +65,7 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
         </header>
 
         <section className={`${card} overflow-hidden`}>
-          <div className="px-6 py-4 border-b border-slate-800">
+          <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-base font-medium text-slate-100">
               Sandboxes <span className="text-slate-500 font-normal">({rows.length})</span>
             </h2>
@@ -76,7 +76,7 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
             <div className="p-10 text-center text-sm text-slate-500">No sandboxes yet. Use "New sandbox" above.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-medium px-6 py-3">Name</th>
                   <th className="text-left font-medium px-6 py-3">Type</th>
@@ -85,9 +85,9 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
+                  <tr key={r.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
                     <td className="px-6 py-3 text-slate-300">{r.type}</td>
                     <td className="px-6 py-3 text-slate-300">{r.executionMode}</td>

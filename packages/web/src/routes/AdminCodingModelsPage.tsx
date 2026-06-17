@@ -57,7 +57,7 @@ export function AdminCodingModelsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
+      <div className="w-full px-6 py-10 space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Coding Models</h1>
@@ -75,7 +75,7 @@ export function AdminCodingModelsPage() {
             <div className="px-6 py-8 text-slate-400">Loading…</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wide">
+              <thead className="bg-surface-hover text-slate-400 text-xs uppercase tracking-wide">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Provider</th>
                   <th className="px-4 py-3 text-left font-medium">Model ID</th>
@@ -87,9 +87,9 @@ export function AdminCodingModelsPage() {
                   <th className="px-4 py-3 text-right font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {(data ?? []).map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-900/40 text-slate-200">
+                  <tr key={m.id} className="hover:bg-surface-hover text-slate-200">
                     <td className="px-4 py-3">{m.provider}</td>
                     <td className="px-4 py-3 font-mono text-xs text-accent">{m.modelId}</td>
                     <td className="px-4 py-3">{m.label}</td>
@@ -367,7 +367,7 @@ function ModelForm(props: {
           />
         </section>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
           <button className={btnGhost} onClick={props.onCancel} disabled={props.submitting}>Cancel</button>
           <button className={btnPrimary} onClick={() => props.onSubmit(v)} disabled={props.submitting}>
             {props.submitting ? "Saving…" : "Save"}

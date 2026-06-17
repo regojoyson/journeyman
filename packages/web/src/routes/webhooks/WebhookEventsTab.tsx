@@ -86,7 +86,7 @@ export function WebhookEventsTab({ webhookId }: { webhookId: string }) {
               <Fragment key={ev.id}>
                 <tr
                   onClick={() => setExpandedId(expandedId === ev.id ? null : ev.id)}
-                  className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50"
+                  className="border-b border-slate-700 cursor-pointer hover:bg-surface-hover"
                 >
                   <td className="py-2 text-slate-200">{ev.eventType ?? "(no type)"}</td>
                   <td className="py-2"><StatusBadge status={ev.status} /></td>
@@ -94,7 +94,7 @@ export function WebhookEventsTab({ webhookId }: { webhookId: string }) {
                   <td className="py-2 text-xs text-slate-500">{new Date(ev.receivedAt).toLocaleString()}</td>
                 </tr>
                 {expandedId === ev.id && (
-                  <tr className="border-b border-slate-800 bg-slate-900/60">
+                  <tr className="border-b border-slate-700 bg-slate-900/60">
                     <td colSpan={4} className="py-3 px-2 space-y-3">
                       {ev.error && <p className="text-xs text-danger">error: {ev.error}</p>}
                       <div>

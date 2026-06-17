@@ -17,7 +17,7 @@ function ToolButton({ title, onClick, children }: { title: string; onClick: () =
       title={title}
       onMouseDown={e => e.preventDefault()} // keep editor focus/selection
       onClick={onClick}
-      className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800/70 transition"
+      className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-surface-hover transition"
     >
       {children}
     </button>
@@ -32,7 +32,7 @@ const ICON = "w-3.5 h-3.5";
 
 export function PromptToolbar({ onCommand }: { onCommand: (build: EditorCommand) => void }) {
   return (
-    <div className="flex items-center gap-0.5 flex-wrap px-2 py-1 border-b border-slate-800 bg-slate-900/50">
+    <div className="flex items-center gap-0.5 flex-wrap px-2 py-1 border-b border-slate-700 bg-slate-900/50">
       <ToolButton title="Bold (⌘B)" onClick={() => onCommand(s => wrapSelection(s, "**", "**"))}>
         <Bold className={ICON} />
       </ToolButton>

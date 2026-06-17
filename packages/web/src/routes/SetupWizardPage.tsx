@@ -32,7 +32,7 @@ export function SetupWizardPage(props: { onDone: () => void }) {
     <div className="min-h-screen flex items-center justify-center px-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-md bg-slate-900/60 backdrop-blur border border-slate-800 rounded-xl p-8 shadow-xl space-y-5"
+        className="w-full max-w-md bg-slate-900/60 backdrop-blur border border-slate-700 rounded-xl p-8 shadow-xl space-y-5"
       >
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-slate-100">First-time setup</h1>

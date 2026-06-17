@@ -11,7 +11,7 @@ export function SessionsSidebar(props: {
 }) {
   const { sessions, activeId, onNew, onResume, onDelete, onCollapse } = props;
   return (
-    <div className="flex w-56 flex-none flex-col border-r border-slate-800 pr-3">
+    <div className="flex w-56 flex-none flex-col border-r border-slate-700 pr-3">
       <div className="mb-3 flex items-center gap-2">
         <button
           className="flex-1 rounded-md bg-indigo-500/20 px-3 py-2 text-sm text-accent hover:bg-indigo-500/30"
@@ -31,7 +31,7 @@ export function SessionsSidebar(props: {
         {orderSessions(sessions).map((s) => (
           <div key={s.id}
             className={`group flex items-center justify-between rounded px-2 py-1.5 text-sm ${
-              s.id === activeId ? "bg-slate-800 text-slate-100" : "text-slate-300 hover:bg-slate-800/60"}`}>
+              s.id === activeId ? "bg-slate-800 text-slate-100" : "text-slate-300 hover:bg-surface-hover"}`}>
             <button className="min-w-0 flex-1 truncate text-left" onClick={() => onResume(s)} title={sessionLabel(s)}>
               <span className="truncate">{sessionLabel(s)}</span>
               <span className="ml-1 text-[10px] uppercase text-slate-500">{sessionStatusBadge(s)}</span>

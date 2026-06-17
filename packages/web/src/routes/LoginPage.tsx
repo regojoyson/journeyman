@@ -29,7 +29,7 @@ export function LoginPage(props: {
     <div className="min-h-screen flex items-center justify-center px-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-sm bg-slate-900/60 backdrop-blur border border-slate-800 rounded-xl p-8 shadow-xl space-y-5"
+        className="w-full max-w-sm bg-slate-900/60 backdrop-blur border border-slate-700 rounded-xl p-8 shadow-xl space-y-5"
       >
         <div className="flex justify-center text-slate-100">
           <Logo height={64} />

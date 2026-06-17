@@ -26,7 +26,7 @@ export function StepCard(props: {
   const tools = (binding.uses.tools ?? []) as CanonicalTool[];
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900/40 p-3">
+    <div className="rounded-md border border-slate-700 bg-surface-hover p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-100">
           <span className="rounded bg-slate-800 px-1.5 text-xs text-slate-400">{binding.stepKind}</span>

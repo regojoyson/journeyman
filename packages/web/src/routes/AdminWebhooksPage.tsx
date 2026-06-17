@@ -25,7 +25,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Org Webhooks</h1>
@@ -66,7 +66,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
               </thead>
               <tbody>
                 {rows.map((w) => (
-                  <tr key={w.id} className="border-b border-slate-800 hover:bg-slate-800/30">
+                  <tr key={w.id} className="border-b border-slate-700 hover:bg-surface-hover">
                     <td className="px-4 py-2">
                       <Link to={`/admin/webhooks/${w.id}`} className="text-success hover:underline">{w.name}</Link>
                       {w.description && <div className="text-xs text-slate-500">{w.description}</div>}

@@ -90,9 +90,9 @@ export function EditCustomStepModal(props: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4 md:p-6">
-      <div className="bg-bg border border-slate-800 rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-bg border border-slate-700 rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-start justify-between px-5 py-4 border-b border-slate-800">
+        <header className="flex items-start justify-between px-5 py-4 border-b border-slate-700">
           <div>
             <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-accent" />
@@ -117,7 +117,7 @@ export function EditCustomStepModal(props: {
         </header>
 
         {/* Tabs */}
-        <nav className="flex items-center gap-1 px-3 pt-3 border-b border-slate-800 bg-bg">
+        <nav className="flex items-center gap-1 px-3 pt-3 border-b border-slate-700 bg-bg">
           {TABS.map(t => {
             const Icon = t.icon;
             const active = activeTab === t.id;
@@ -152,8 +152,8 @@ export function EditCustomStepModal(props: {
         </nav>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto bg-slate-900/40 p-6">
-          <div className="max-w-4xl mx-auto">
+        <div className="flex-1 overflow-y-auto bg-surface-hover p-6">
+          <div className="w-full">
             {activeTab === "definition" && (
               <section className="space-y-4">
                 <SectionHeader title="Definition" hint="How this step identifies itself in the catalog." />
@@ -288,7 +288,7 @@ export function EditCustomStepModal(props: {
         </div>
 
         {/* Footer */}
-        <footer className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-bg">
+        <footer className="flex items-center justify-between px-5 py-3 border-t border-slate-700 bg-bg">
           <div className="text-xs">
             {error && (
               <div className="flex items-center gap-1.5 text-danger">
