@@ -419,7 +419,7 @@ function ImportPanel({
           onClick={handleImport}
           disabled={text.trim().length === 0}
           style={{
-            background: "rgb(var(--color-success) / 1)", border: "1px solid rgb(var(--color-success) / 1)", color: "#fff" /* theme-colors-allow: white-on-success */,
+            background: "rgb(var(--primary) / 1)", border: "1px solid rgb(var(--primary) / 1)", color: "rgb(var(--primary-foreground) / 1)",
             padding: "6px 12px", borderRadius: 5, fontSize: 12, fontWeight: 600,
             cursor: text.trim().length === 0 ? "not-allowed" : "pointer",
             opacity: text.trim().length === 0 ? 0.5 : 1,

@@ -31,15 +31,15 @@
   color: rgb(var(--color-text) / 1);
 }
 .je-editor__topbar button.primary {
-  background: rgb(var(--color-success) / 1);
-  border-color: rgb(var(--color-success) / 1);
-  color: #fff /* theme-colors-allow: white-on-color */;
+  background: rgb(var(--primary) / 1);
+  border-color: rgb(var(--primary) / 1);
+  color: rgb(var(--primary-foreground) / 1);
   font-weight: 600;
 }
 .je-editor__topbar button.primary:hover:not(:disabled) {
-  background: rgb(var(--color-success) / 1);
-  border-color: rgb(var(--color-success) / 1);
-  filter: brightness(1.04);
+  background: rgb(var(--primary) / 0.9);
+  border-color: rgb(var(--primary) / 0.9);
+  filter: none;
 }
 .je-editor__topbar button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 /* Utility actions: quiet neutral chips with a colored icon — not loud solid fills.
