@@ -6,7 +6,7 @@ import { aiSdkToolIds } from "../tool-mapping.ts";
 import { buildBuiltinTools } from "../tools/index.ts";
 import { buildMcpTools } from "../mcp.ts";
 import { buildSkillMenu, skillTool } from "../skills.ts";
-import { buildOutput, wrapForStructuredOutput } from "../structured.ts";
+import { buildOutput, wrapForStructuredOutput, extractJsonPayload } from "../structured.ts";
 import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 
@@ -15,6 +15,40 @@ const STEP_CAP = 40;
 
 function truncate(s: string, max = 2000): string {
   return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+/**
+ * The model's final assistant text. Prefer `result.text`; when that is empty
+ * (the last step was a tool call — see vercel/ai#11348) fall back to the newest
+ * non-empty step text. Provider-agnostic: works for Anthropic, OpenAI, and any
+ * OpenAI-compatible/Bedrock model.
+ */
+function finalAssistantText(result: { text?: unknown; steps?: unknown }): string {
+  if (typeof result.text === "string" && result.text.trim()) return result.text;
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const t = (steps[i] as { text?: unknown })?.text;
+    if (typeof t === "string" && t.trim()) return t;
+  }
+  return typeof result.text === "string" ? result.text : "";
+}
+
+/**
+ * Read the structured result. The AI SDK only resolves `result.output` when the
+ * final step's finishReason is "stop"; with tool-using steps it is often
+ * "tool-calls"/"unknown", so `result.output` throws NoOutputGeneratedError even
+ * though the model printed valid JSON (vercel/ai#10235, #11348 — both open). In
+ * that case we recover the JSON from the model's text ourselves.
+ */
+function readStructured(result: { output?: unknown; text?: unknown; steps?: unknown }): unknown {
+  try {
+    const out = result.output;
+    if (out !== undefined) return out;
+  } catch {
+    /* NoOutputGeneratedError — fall through to text recovery */
+  }
+  const text = finalAssistantText(result);
+  return JSON.parse(extractJsonPayload(text));
 }
 
 /**
@@ -87,7 +121,12 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
 
     if (opts.outputMode === "none") return { sessionId };
     if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "" };
-    return { sessionId, structured: result.output ?? result.experimental_output };
+    try {
+      return { sessionId, structured: readStructured(result) };
+    } catch {
+      const text = finalAssistantText(result);
+      return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}` };
+    }
   } catch (err) {
     const error = describeError(err);
     logFinal(false, error, opts.onLog, level);

@@ -34,6 +34,43 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(r.structured).toEqual({ ok: true });
   });
 
+  // The AI SDK throws NoOutputGeneratedError reading result.output when the
+  // final step's finishReason isn't "stop" (tool-using steps; vercel/ai#11348).
+  // We recover the JSON from the model's text. These mocks simulate that throw.
+  function resultWithThrowingOutput(fields: { text?: string; steps?: unknown[] }) {
+    const o: Record<string, unknown> = { text: fields.text ?? "", steps: fields.steps ?? [] };
+    Object.defineProperty(o, "output", { get() { throw new Error("No output generated."); } });
+    return o;
+  }
+  const structuredOpts = { prompt: "hi", outputMode: "structured", outputSchema: { type: "object" }, model: "x", modelConfig: {} } as any;
+
+  it("recovers structured output from result.text when result.output throws", async () => {
+    generateText.mockResolvedValue(resultWithThrowingOutput({ text: '{"branch":"b","status":"failed"}' }));
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ branch: "b", status: "failed" });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("recovers from the newest non-empty step when result.text is empty", async () => {
+    generateText.mockResolvedValue(resultWithThrowingOutput({ text: "", steps: [{ text: "" }, { text: '{"ok":1}' }] }));
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ ok: 1 });
+  });
+
+  it("recovers from <think>+fenced JSON when result.output throws", async () => {
+    const text = "<think>\nreport it\n</think>\n```json\n{\"ok\":true}\n```";
+    generateText.mockResolvedValue(resultWithThrowingOutput({ text }));
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ ok: true });
+  });
+
+  it("returns a clear error (does not throw) when no JSON is present", async () => {
+    generateText.mockResolvedValue(resultWithThrowingOutput({ text: "no json here" }));
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toMatch(/no parseable JSON/i);
+  });
+
   it("errors when structured mode has no schema", async () => {
     const r = await runCustomPrompt({ prompt: "hi", outputMode: "structured", model: "x", modelConfig: {} } as any);
     expect(r.error).toMatch(/outputSchema/);
