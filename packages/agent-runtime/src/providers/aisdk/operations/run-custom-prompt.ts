@@ -6,7 +6,7 @@ import { aiSdkToolIds } from "../tool-mapping.ts";
 import { buildBuiltinTools } from "../tools/index.ts";
 import { buildMcpTools } from "../mcp.ts";
 import { buildSkillMenu, skillTool } from "../skills.ts";
-import { buildOutput } from "../structured.ts";
+import { buildOutput, wrapForStructuredOutput } from "../structured.ts";
 import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 
@@ -52,7 +52,13 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
 
   let mcp: { tools: Record<string, unknown>; close: () => Promise<void> } = { tools: {}, close: async () => {} };
   try {
-    const model = await resolveModel({ modelId: opts.model, config: opts.modelConfig, env: opts.env });
+    const baseModel = await resolveModel({ modelId: opts.model, config: opts.modelConfig, env: opts.env });
+    // Reasoning models (e.g. MiniMax-M3) leak <think>…</think> and ```json fences
+    // into the content channel, which defeats Output.object's JSON.parse. Wrap the
+    // model so structured steps see clean JSON. No-op for already-clean output.
+    const model = opts.outputMode === "structured"
+      ? wrapForStructuredOutput(baseModel as Parameters<typeof wrapForStructuredOutput>[0])
+      : baseModel;
     const ctx = { cwd: opts.cwd, env: opts.env };
 
     const builtin = buildBuiltinTools(aiSdkToolIds(opts.tools ?? []), ctx);
@@ -70,8 +76,8 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
       prompt,
       ...(hasTools ? { tools } : {}),
       stopWhen: stepCountIs(STEP_CAP),
-      // AI SDK 6 accepts `experimental_output`; the result is on `result.experimental_output`.
-      ...(opts.outputMode === "structured" ? { experimental_output: buildOutput(opts.outputSchema) } : {}),
+      // AI SDK 6 stable option is `output` (was `experimental_output`); result is on `result.output`.
+      ...(opts.outputMode === "structured" ? { output: buildOutput(opts.outputSchema) } : {}),
       ...(opts.signal ? { abortSignal: opts.signal } : {}),
       onStepFinish: makeStepLogger(opts.onLog, level),
     } as any);
@@ -81,7 +87,7 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
 
     if (opts.outputMode === "none") return { sessionId };
     if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "" };
-    return { sessionId, structured: result.experimental_output ?? result.output };
+    return { sessionId, structured: result.output ?? result.experimental_output };
   } catch (err) {
     const error = describeError(err);
     logFinal(false, error, opts.onLog, level);

@@ -7,6 +7,8 @@ vi.mock("ai", () => ({
   Output: { object: (x: unknown) => x },
   jsonSchema: (x: unknown) => x,
   tool: (x: unknown) => x,
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
+  extractJsonMiddleware: () => ({}),
 }));
 vi.mock("../model.ts", () => ({
   resolveModel: vi.fn(async () => ({ fake: "model" })),
@@ -27,7 +29,7 @@ describe("runCustomPrompt (aisdk)", () => {
   });
 
   it("returns structured output for outputMode=structured", async () => {
-    generateText.mockResolvedValue({ text: "", experimental_output: { ok: true }, steps: [] });
+    generateText.mockResolvedValue({ text: "", output: { ok: true }, steps: [] });
     const r = await runCustomPrompt({ prompt: "hi", outputMode: "structured", outputSchema: { type: "object" }, model: "x", modelConfig: {} } as any);
     expect(r.structured).toEqual({ ok: true });
   });
