@@ -545,6 +545,27 @@ retries, restarts, and crashes.
 These make a run **safe to retry** — the core requirement for the retry policy (§14) and the
 at-least-once delivery model (§5) to be usable in production.
 
+### 15.3 Security (protect the keys and the public door)
+
+Scope is the credentials and the public endpoint — not prompt content (see §2 non-goal).
+
+1. **Secret redaction in logs.** Tokens flow through every run; a leaked log line exposes
+   them. Add a redaction filter at the single centralized logging point (`sdk-logger`) that
+   masks token-shaped values (`glpat-…`, `xoxb-…`, `github_pat_…`) and known resolved secret
+   values before any log is emitted.
+2. **Master key in a KMS.** The AES vault key must not live in a file/env on disk. Store it
+   in a managed KMS; the secrets service delegates encrypt/decrypt to the KMS so the key is
+   never resident on app disk. (Local dev key; KMS in production.)
+3. **Public-endpoint hardening.** On top of HMAC verification, the webhook endpoint enforces
+   a **per-webhook rate limit** (reject excess → `429`) and a **max body size** (reject
+   oversized → `413`) to prevent spam/DoS and oversized-payload abuse.
+4. **Credential health / expiry detection.** PATs expire or get revoked. On a `401` during a
+   run, mark the Connection **"needs attention"** and notify the owner; optionally a periodic
+   health check tests connections and flags dead credentials proactively ("reconnect").
+
+Tenant isolation (one org cannot read another's Connections/secrets) is already provided by
+the existing user/org access-grant scope model and is reused unchanged.
+
 ---
 
 ## Appendix A — Methodology usage (BMAD / OpenSpec) — process, not features
