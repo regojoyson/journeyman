@@ -32,6 +32,32 @@ const semantic = {
   overlay: "var(--color-overlay)",
 };
 
+const shadcn = {
+  background: withAlpha("--background"),
+  foreground: withAlpha("--foreground"),
+  card: withAlpha("--card"),
+  "card-foreground": withAlpha("--card-foreground"),
+  popover: withAlpha("--popover"),
+  "popover-foreground": withAlpha("--popover-foreground"),
+  primary: withAlpha("--primary"),
+  "primary-foreground": withAlpha("--primary-foreground"),
+  secondary: withAlpha("--secondary"),
+  "secondary-foreground": withAlpha("--secondary-foreground"),
+  muted: withAlpha("--muted"),
+  "muted-foreground": withAlpha("--muted-foreground"),
+  // `accent` is redefined here to shadcn's subtle-gray (--accent), OVERRIDING
+  // the earlier semantic `accent` (which was --color-accent -> primary). This is
+  // correct for shadcn (accent = subtle hover/active gray); standalone
+  // `text-accent` usages get migrated to `text-foreground` in a later task.
+  accent: withAlpha("--accent"),
+  "accent-foreground": withAlpha("--accent-foreground"),
+  destructive: withAlpha("--destructive"),
+  "destructive-foreground": withAlpha("--destructive-foreground"),
+  border: withAlpha("--border"),
+  input: withAlpha("--input"),
+  ring: withAlpha("--ring"),
+};
+
 const slateRemap = {
   100: withAlpha("--color-text"),
   200: withAlpha("--color-text"),
@@ -49,7 +75,14 @@ export default {
     extend: {
       colors: {
         ...semantic,
+        ...shadcn,
         slate: slateRemap,
+      },
+      borderRadius: {
+        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 2px)",
+        lg: "var(--radius)",
+        xl: "calc(var(--radius) + 4px)",
       },
       backgroundColor: {
         DEFAULT: withAlpha("--color-bg"),
