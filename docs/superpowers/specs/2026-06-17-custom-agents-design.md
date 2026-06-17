@@ -444,6 +444,16 @@ Journeyman's monochrome theme; reuses the MCP, sandbox, tools, and skills picker
   not fire** until it is **enabled**, and Enable runs a **readiness check** (required fields,
   ≥1 valid trigger, etc.). After enabling, the per-agent `enabled` flag is the on/off
   kill-switch (§15.1).
+- **Enable readiness gate.** Enabling runs a validation check; if any item fails, Enable is
+  blocked and the relevant tab shows `!` with the reason. Required to enable:
+  - Name set · Instructions non-empty · Provider + model chosen (implemented provider).
+  - If any workspace tool is enabled → a sandbox is set; if repos are attached → their git
+    connection is healthy.
+  - Each configured trigger is complete (webhook: preset + auth + mapping; schedule: cron +
+    timezone; API: token issued). Zero automated triggers is allowed = a manual-only agent.
+  - Every **required** input is satisfiable by each enabled trigger (mapping or default) — see §5b / issue in §16.
+  - If notify-on-* is enabled → a valid notification connection + channel.
+  - All referenced connections are healthy (not "needs attention").
 - **Enabled = read-only.** While an agent is enabled, its settings tabs are **locked**
   (read-only, Save hidden, a "disable to edit" banner). The user must **Disable** to make
   changes, then re-Enable. This prevents editing a live agent's behaviour mid-flight. **Run
