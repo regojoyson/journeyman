@@ -342,7 +342,7 @@
   box-shadow: 0 0 0 2px rgb(var(--color-danger) / 0.55), 0 0 28px -2px rgb(var(--color-danger) / 0.6);
 }
 .je-node__row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.je-node__icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: rgb(var(--color-accent) / 1); font-size: 14px; flex-shrink: 0; }
+.je-node__icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: rgb(var(--color-accent) / 1); color: rgb(var(--primary-foreground) / 1); font-size: 14px; flex-shrink: 0; }
 .je-node__text { min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .je-node__label { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .je-node__subtitle { font-size: 11px; color: rgb(var(--color-text-muted) / 1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

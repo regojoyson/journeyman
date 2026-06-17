@@ -15,6 +15,7 @@ export async function runReadinessChecks(opts: ReadinessOpts): Promise<Readiness
   push("bash", !!opts.bashPath, opts.bashPath ?? "not found — install Git for Windows");
   push("git", await opts.probe("git"), "git on PATH");
   push("node", await opts.probe("node"), "node on PATH");
+  push("curl", await opts.probe("curl"), "curl on PATH — ships with Windows 10 1803+");
   let writable = false;
   try { await access(opts.workspaceRoot, constants.W_OK); writable = true; } catch { /* not writable */ }
   push("workspace", writable, writable ? opts.workspaceRoot : `not writable: ${opts.workspaceRoot}`);

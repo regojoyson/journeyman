@@ -24,7 +24,7 @@ FROM node:22-slim AS runner-base
 # which --omit=dev correctly drops). Keeps stdout clean for the runner's result JSON.
 ENV NODE_ENV=production
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git openssh-client ca-certificates \
+ && apt-get install -y --no-install-recommends git openssh-client ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/journeyman
 COPY --from=build /app/node_modules ./node_modules

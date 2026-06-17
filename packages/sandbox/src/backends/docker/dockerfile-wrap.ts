@@ -14,7 +14,7 @@ export function wrapDockerfile(userContent: string, bundleRef: string): string {
     "# ── appended by Journeyman (runner bundle + baseline tools) ──",
     "USER root",
     "RUN (command -v apt-get >/dev/null 2>&1 && apt-get update && " +
-      "apt-get install -y --no-install-recommends git openssh-client ca-certificates && " +
+      "apt-get install -y --no-install-recommends git openssh-client ca-certificates curl && " +
       "rm -rf /var/lib/apt/lists/*) || true",
     `COPY --from=${bundleRef} /opt/journeyman /opt/journeyman`,
     "ENV PATH=/opt/journeyman/bin:$PATH",

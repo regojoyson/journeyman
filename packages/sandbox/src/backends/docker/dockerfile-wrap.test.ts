@@ -18,6 +18,10 @@ describe("wrapDockerfile", () => {
     expect(out).toContain("|| true");
   });
 
+  it("includes curl in the baseline-tools install", () => {
+    expect(out).toMatch(/apt-get install -y[^\n]*curl/);
+  });
+
   it("does not inject when the base is already the runner base", () => {
     const skipped = wrapDockerfile("FROM journeyman/runner-base:dev\nRUN x", "journeyman/runner-bundle:dev");
     expect(skipped).not.toContain("COPY --from=journeyman/runner-bundle");

@@ -13,6 +13,7 @@ See the design: [docs/superpowers/specs/2026-06-12-windows-sandbox-design.md](..
 **Required for the agent:**
 - **Node.js 22** (runs the agent + the runner; also puts `node` on PATH for the Claude SDK).
 - **Git for Windows** — provides `git` *and* the **Git Bash** the runner's shell tool needs. Ensure `git` is on the system PATH.
+- **curl** — ships with Windows 10 1803+ (`curl.exe`); ensure it's on the system PATH so steps/AI can reach HTTP endpoints. The readiness scorecard checks for it.
 - The **agent + runner bundle** copied onto the box (see Packaging, Plan D).
 - **mTLS certs** in `JM_AGENT_CERT_DIR`: `ca.pem`, `server.pem`, `server-key.pem`.
 - One **inbound firewall rule** for `JM_AGENT_PORT` (default 50051).
