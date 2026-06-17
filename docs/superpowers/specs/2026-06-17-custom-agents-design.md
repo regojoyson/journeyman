@@ -447,7 +447,22 @@ This appendix documents how spec-driven methodologies run **on top of** the agen
   non-cloning, "not for automation") and has no role/status model, so the Jira-status→role
   assembly line isn't native to it. BMAD is the closer fit for the polyrepo + status setup.
 
-### A.3 Takeaway
+### A.3 Delivering BMAD / OpenSpec via skill management (verified)
+- The `@journeyman/skills` registry accepts any **git URL**, but only discovers skills laid
+  out as `skills/<name>/SKILL.md` or `.claude-plugin/skills/<name>.md` (frontmatter:
+  name + description). The raw BMAD-METHOD / OpenSpec repos lack this layout, so adding them
+  directly yields **0 discovered skills**.
+- **Therefore:** ship thin **wrapper skill packages** — small git repos exposing
+  `skills/bmad-dev/SKILL.md`, `skills/bmad-qa/SKILL.md`, … (and an OpenSpec equivalent), each
+  carrying the role workflow and referencing the methodology assets (e.g. the docs repo's
+  `.bmad-core/`, or installing the `openspec` CLI in the sandbox). This is **content
+  authoring, not a platform change** — the skill system already supports it.
+- **Sandbox support is uniform:** local / docker / windows backends are all implemented;
+  skills are cloned on the host then delivered via the shared `materialize()` API (local =
+  host cache; docker = tar via `putArchive`; windows = tar via gRPC). No backend gaps.
+
+### A.4 Takeaway
 The agent platform is **methodology-agnostic**: BMAD, OpenSpec, Spec Kit, or a custom
 convention all run as process on top of the same agent (instructions + tools + multi-repo
-clone + git + connectors). The v1 spec does not change for any of them.
+clone + git + connectors + wrapped skill packages). The v1 spec does not change for any of
+them; the only effort is authoring the wrapper skills.
