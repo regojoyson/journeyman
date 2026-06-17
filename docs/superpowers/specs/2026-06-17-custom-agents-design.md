@@ -423,10 +423,16 @@ Journeyman's monochrome theme; reuses the MCP, sandbox, tools, and skills picker
   - **Skills** are picked like Connectors — from the `@journeyman/skills` registry (not a
     Connection). A private skill *repo* reuses a git Connection only to clone it. Reuses the
     existing flow-editor SkillsTab; resolved at run time by `skillsResolver`.
+- **One page = view + edit + run history.** The same agent page serves all three (run
+  history is a tab). No separate read-only viewer.
 - **Draft → Enable.** An agent stays `status: "draft"` while being configured; **triggers do
   not fire** until it is **enabled**, and Enable runs a **readiness check** (required fields,
   ≥1 valid trigger, etc.). After enabling, the per-agent `enabled` flag is the on/off
   kill-switch (§15.1).
+- **Enabled = read-only.** While an agent is enabled, its settings tabs are **locked**
+  (read-only, Save hidden, a "disable to edit" banner). The user must **Disable** to make
+  changes, then re-Enable. This prevents editing a live agent's behaviour mid-flight. **Run
+  history stays viewable** in either state.
 - **Reveal (shown once)** — when a webhook/API trigger is first configured, its URL + secret
   / token are revealed once (§6).
 - **Connections** page (`Settings → Connections`): grouped by category (Git accounts /
