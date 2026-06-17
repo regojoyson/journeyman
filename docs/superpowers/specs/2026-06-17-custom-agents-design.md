@@ -60,6 +60,11 @@ agent — agents are a new front-end onto the engine that already exists.
 - OAuth / GitHub App installation flows for git connections (PAT only in v1).
 - Journeyman-hosted vector knowledge bases (RAG is external-via-MCP in v1).
 - Linear / Monday webhook presets (Jira + GitHub only in v1).
+- **Prompt-injection sanitization / prompt-content control.** The platform does not police,
+  filter, or second-guess agent instructions — prompt quality is the author's
+  responsibility. The blast radius is bounded instead by the existing **permission grid**
+  (§4) and **sandbox isolation**, which constrain what any run can do regardless of how the
+  prompt is influenced. No prompt-control feature is built.
 
 ## 3. Architecture
 
