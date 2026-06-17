@@ -54,6 +54,7 @@
   --color-accent: var(--primary);
   --color-accent-hover: var(--primary);
   --color-danger: var(--destructive);
+  --color-bg-elev2: var(--secondary);
 
   /* elevation */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
@@ -106,6 +107,7 @@
   --color-accent: var(--primary);
   --color-accent-hover: var(--primary);
   --color-danger: var(--destructive);
+  --color-bg-elev2: var(--secondary);
 
   --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
   --shadow-md: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.06);
