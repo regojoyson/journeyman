@@ -142,6 +142,15 @@ export class WorkerHarness {
     const userId = (stepInput as { startedByUserId?: string | null }).startedByUserId ?? null;
     const orgId = (stepInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
     const abort = new AbortController();
+    // Per-step timeout: agents (and any step) may set `timeoutSeconds` in node config; auto-abort when it elapses.
+    const timeoutSeconds =
+      typeof (stepInput as { timeoutSeconds?: unknown }).timeoutSeconds === "number"
+        ? (stepInput as { timeoutSeconds: number }).timeoutSeconds
+        : undefined;
+    const timeoutHandle =
+      timeoutSeconds && timeoutSeconds > 0
+        ? setTimeout(() => abort.abort(new DOMException("Step timed out", "TimeoutError")), timeoutSeconds * 1000)
+        : undefined;
 
     const workflowId = (stepInput as { workflowId?: string | null }).workflowId ?? null;
     const declaredBindings =
@@ -425,6 +434,7 @@ export class WorkerHarness {
         reasonForIncompletion: String(err?.message ?? err),
       });
     } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
       stopHeartbeat();
     }
   }

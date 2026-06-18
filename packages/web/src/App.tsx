@@ -14,6 +14,8 @@ import { MySkillsPage } from "./routes/MySkillsPage.tsx";
 import { AdminSkillsPage } from "./routes/AdminSkillsPage.tsx";
 import { MyCustomStepsPage } from "./routes/MyCustomStepsPage.tsx";
 import { AdminCustomStepsPage } from "./routes/AdminCustomStepsPage.tsx";
+import { MyAgentsPage } from "./routes/MyAgentsPage.tsx";
+import { AdminAgentsPage } from "./routes/AdminAgentsPage.tsx";
 import { AdminCodingModelsPage } from "./routes/AdminCodingModelsPage.tsx";
 import { AdminUsersPage } from "./routes/AdminUsersPage.tsx";
 import { AdminFlowsPage } from "./routes/AdminFlowsPage.tsx";
@@ -44,6 +46,7 @@ export default function App() {
         <Route path="/me/sandboxes" element={<SandboxesPage orgId={activeOrgId} scope="user" />} />
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
         <Route path="/me/custom-steps" element={<MyCustomStepsPage orgId={activeOrgId} />} />
+        <Route path="/me/agents" element={<MyAgentsPage orgId={activeOrgId} />} />
         <Route path="/me/webhooks" element={<MyWebhooksPage />} />
         <Route path="/me/webhooks/:id" element={<WebhookDetailPage backTo="/me/webhooks" />} />
         <Route path="/me/password" element={<ChangePasswordPage />} />
@@ -52,6 +55,7 @@ export default function App() {
         <Route path="/admin/sandboxes" element={role === "admin" ? <SandboxesPage orgId={activeOrgId} scope="org" /> : <Navigate to="/" replace />} />
         <Route path="/admin/skills" element={role === "admin" ? <AdminSkillsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/custom-steps" element={role === "admin" ? <AdminCustomStepsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
+        <Route path="/admin/agents" element={role === "admin" ? <AdminAgentsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/webhooks" element={role === "admin" ? <AdminWebhooksPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/webhooks/:id" element={role === "admin" ? <WebhookDetailPage backTo="/admin/webhooks" /> : <Navigate to="/" replace />} />
         <Route path="/admin/coding-models" element={role === "admin" ? <AdminCodingModelsPage /> : <Navigate to="/" replace />} />

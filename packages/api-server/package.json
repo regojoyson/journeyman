@@ -23,6 +23,7 @@
     "@journeyman/sandbox": "*",
     "@journeyman/skills": "*",
     "@journeyman/coding-models": "*",
+    "@journeyman/agents": "*",
     "@journeyman/custom-steps": "*",
     "@journeyman/orchestrator": "*",
     "@journeyman/steps": "*",

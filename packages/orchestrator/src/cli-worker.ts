@@ -48,6 +48,7 @@ import { UpdateIssueFieldsStepHandler } from "./workers/steps/update-issue-field
 import { CommentOnIssueStepHandler } from "./workers/steps/comment-on-issue-step-handler.ts";
 import { SendMessageStepHandler } from "./workers/steps/send-message-step-handler.ts";
 import { CustomAiStepHandler } from "./workers/steps/custom-ai-step-handler.ts";
+import { AgentRunStepHandler } from "./workers/steps/agent-run-step-handler.ts";
 import { JoinFinalizeStepHandler } from "./workers/steps/join-finalize-step-handler.ts";
 
 const log = createLogger("worker:cli");
@@ -224,6 +225,9 @@ registry.register(new GetRepositoryStepHandler({ git }));
 registry.register(new OpenPullRequestStepHandler({ git }));
 registry.register(new ListPullRequestsStepHandler({ git }));
 registry.register(new ListPullRequestCommentsStepHandler({ git }));
+if (pool) {
+  registry.register(new AgentRunStepHandler({ coding, git, pool, bindingResolver: (input) => cliBindingResolver(input) }));
+}
 
 const issue: ProviderFactory<IIssueProvider> = (key, env) => {
   switch (key ?? "jira") {
