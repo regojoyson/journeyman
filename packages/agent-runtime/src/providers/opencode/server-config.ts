@@ -8,11 +8,15 @@ const BYPASS_PERMISSION = {
   bash: "allow", edit: "allow", webfetch: "allow", websearch: "allow", skill: "allow",
 } as const;
 
+/** Default agent step budget when the step doesn't specify maxSteps — matches the Claude/AISDK providers. */
+const DEFAULT_STEP_BUDGET = 80;
+
 export interface ServerConfigRuntime {
   mcps?: ResolvedMcpInstance[];
   model?: string;
   modelConfig?: CodingModelConfig;
   env?: Record<string, string>;
+  maxSteps?: number;
 }
 
 /**
@@ -29,8 +33,10 @@ export function buildServerConfig(
   const permission = { ...BYPASS_PERMISSION, ...config.permission };
   const mcp = { ...(config.mcp ?? {}), ...(runtime.mcps?.length ? toOpenCodeMcpConfigs(runtime.mcps) : {}) };
   const provider = buildProviderBlock(runtime.model, runtime.modelConfig, runtime.env);
+  const maxSteps = runtime.maxSteps && runtime.maxSteps > 0 ? runtime.maxSteps : DEFAULT_STEP_BUDGET;
   return {
     permission,
+    agent: { build: { maxSteps } },
     ...(Object.keys(mcp).length ? { mcp } : {}),
     ...(provider ? { provider } : {}),
   };
