@@ -613,6 +613,14 @@ behaviour:
    **org-level `paused` flag** (pause-all). The trigger ingestion checks both before
    starting any run; an admin toggles them in the UI.
 
+4. **Per-key concurrency lock** (dry-run #2) — optionally serialize runs that target the same
+   key (e.g. `ticketKey`): at most one run at a time per key, so a webhook and a schedule
+   firing for the same ticket don't push the same `claude/<ticketKey>` branch concurrently
+   and collide. Later same-key fires queue behind the running one.
+5. **Per-run cost ceiling** (dry-run #2) — `maxTurns` + `timeoutSeconds` bound a run's length,
+   but a per-run **token/cost cap** that aborts mid-run adds a hard money ceiling on a single
+   runaway loop (complements the per-agent/org budget, which is checked before a run starts).
+
 **Stop semantics (dry-test issue #5)** — two distinct actions:
 - **Disable agent / pause-all** — stops *new* fires and **drops queued (not-yet-started)
   runs**, but **lets in-flight runs finish gracefully** (cancelling mid-run can leave
