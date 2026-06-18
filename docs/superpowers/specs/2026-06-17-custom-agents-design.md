@@ -543,9 +543,8 @@ This exercises every new piece end to end.
    draft→enable gate + enabled=read-only, run history. **Includes the behavior wiring gaps (§14):
    `maxTurns` → SDK + configurable step cap; `timeoutSeconds` → worker AbortSignal
    enforcement; per-agent `retry` compiled onto the step node. Gate the provider picker to
-   implemented providers (Claude, OpenCode) only. Handle the §15b provider-parity gaps:
-   OpenCode AbortSignal (fix or wrap — maxSteps already done), and an Enable-gate warning for
-   skills-on-OpenCode.**
+   implemented providers (Claude, AI-SDK, OpenCode) — all three are full-fidelity (§15b);
+   just validate per-provider model format + web-search availability.**
 2. **Connections + repos** — `jm_connections`, Connections page, git provider Test/List,
    `GitLabProvider` (base-URL aware) + `listRepos` + repo picker; wire repoSelections into
    the run-time credential flow so the `agent-run` step clones them (§14, gap #1).
@@ -724,27 +723,24 @@ because some undermine the guardrails above.
 | Capability | Claude | AI-SDK | OpenCode |
 |---|---|---|---|
 | Structured output · MCP (stdio/http/sse) · tools + allow-list · model select | ✓ | ✓ | ✓ |
-| **maxTurns / step cap** | ✓ | ✓ | ✓ (fixed — `agent.build.maxSteps`) |
-| **Abort / timeout** | ✓ | ✓ | **✗ ignored** |
-| **Skills** | ✓ native | ~ tool wrapper (lower fidelity) | **✗ dropped silently** |
+| **maxTurns / step cap** | ✓ | ✓ | ✓ (`agent.build.maxSteps`) |
+| **Abort / timeout** | ✓ | ✓ | ✓ (`session.abort` on signal) |
+| **Skills** | ✓ native | ~ tool wrapper (lower fidelity) | ✓ native (`skills.paths`) |
 | web-search tool | ✓ | n/a | n/a (already flagged by `unsupportedTools()`) |
 
-**Required handling (build items):**
-- **OpenCode AbortSignal** — OpenCode does not honor `opts.signal`, so §14 timeout /
-  cancel-run can't gracefully stop it. Fix the OpenCode provider to honor the signal
-  (preferred), **or** the `agent-run` step wraps it with a `Promise.race` on `timeoutSeconds`.
-  *(maxSteps is already honored — `agent.build.maxSteps`, default 80 — so the §15.1 step cap
-  applies to OpenCode too.)*
-- **Skills on OpenCode** — skills are currently logged but not consumed; until supported, the
-  **Enable gate warns/blocks** when an agent has skills *and* provider = OpenCode (never a
-  silent drop).
-- **web-search** on AI-SDK/OpenCode — validate at design time via `unsupportedTools()`.
+All three providers now honor `maxSteps`, `AbortSignal`, structured output, MCP
+(stdio/http/sse), tools + allow-list, and skills — verified in code with tests. **Remaining
+minor handling (build items):**
+- **AI-SDK skill fidelity** — skills are exposed via a single `Skill` tool (the agent must
+  call it), lower-fidelity than the native Claude/OpenCode loading. Acceptable; document it.
+- **web-search** on AI-SDK/OpenCode — unsupported; validate at design time via
+  `unsupportedTools()`.
 - **Model string format** differs per provider (native id / `npm/id` / `provider/id`) —
   validate `model` against the chosen provider before the run.
 
-**Verdict:** Claude = full fidelity; AI-SDK = full; OpenCode now honors **maxSteps** and is
-fine for basic runs, but still needs **AbortSignal** + **skills** (or wrap + warn) before it
-is full-fidelity for agents. No architecture change — provider work + an Enable-gate check.
+**Verdict:** **all three providers are full-fidelity for agents** (Claude / AI-SDK / OpenCode
+honor steps, abort, MCP, skills, structured output). Only minor, non-blocking items remain
+(AI-SDK skill ergonomics, web-search availability, per-provider model-format validation).
 
 ## 16. Resolved edge cases (dry-test)
 
