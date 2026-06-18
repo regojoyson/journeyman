@@ -7,11 +7,12 @@ import {
   listAgents,
   updateAgent,
   deleteAgent,
-  compileAgentToGraph,
+  runAgent,
   checkReadiness,
   DuplicateAgentError,
 } from "@journeyman/agents";
 import type { AgentCreateInput } from "@journeyman/core";
+import { syncScheduleState, clearScheduleState } from "../services/agent-scheduler.ts";
 
 function ctxOf(req: FastifyRequest) {
   return req.runContext!;
@@ -148,7 +149,9 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       reply.code(422).send({ error: "not_ready", errors });
       return;
     }
-    return updateAgent(pool, id, { status: "active", enabled: true });
+    const updated = await updateAgent(pool, id, { status: "active", enabled: true });
+    if (updated) await syncScheduleState(pool, updated);
+    return updated;
   });
 
   // Disable
@@ -161,7 +164,9 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       reply.code(404).send({ error: "not_found" });
       return;
     }
-    return updateAgent(pool, id, { enabled: false });
+    const updated = await updateAgent(pool, id, { enabled: false });
+    await clearScheduleState(pool, id);
+    return updated;
   });
 
   // Delete
@@ -189,28 +194,17 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       return;
     }
     const body = req.body as { inputs?: Record<string, unknown> };
-    let compiled;
     try {
-      compiled = compileAgentToGraph(agent, body?.inputs ?? {});
+      const res = await runAgent({ orchestrator: c.orchestrator }, agent, body?.inputs ?? {}, "manual", {
+        userId: ctx.user.id,
+        orgId,
+      });
+      reply.code(202);
+      return res;
     } catch (err: any) {
       reply.code(422).send({ error: "invalid_inputs", message: err?.message ?? String(err) });
       return;
     }
-
-    const { workflowInstanceId, engineWorkflowId } = await c.orchestrator.submit({
-      workflowId: null,
-      workflowVersionId: null,
-      workflowNameSnapshot: agent.name,
-      workflowScopeSnapshot: agent.scope,
-      definitionSnapshot: compiled.graph,
-      inputs: { ...compiled.inputs, agentId: agent.id },
-      startedByUserId: ctx.user.id,
-      startedByOrgId: orgId,
-      triggerSource: "manual",
-      triggerNodeId: "trigger-1",
-    });
-    reply.code(202);
-    return { workflowInstanceId, engineWorkflowId };
   });
 
   // Run history — instances tagged with this agentId (isolated query; no shared-store change).

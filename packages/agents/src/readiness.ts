@@ -22,7 +22,17 @@ export function checkReadiness(agent: Agent): ReadinessError[] {
   );
   if (usesWorkspace && !agent.sandboxId) errs.push({ field: "sandbox", message: "Workspace tools require a sandbox" });
 
-  // Required-input satisfiability (Phase 1 only validates schedule, since only manual fires now).
+  // Trigger config completeness (Phase 3).
+  for (const t of agent.triggers) {
+    if (t.type === "schedule" && (!t.cron?.trim() || !t.timezone?.trim())) {
+      errs.push({ field: "triggers", message: "Schedule trigger needs a cron expression and timezone" });
+    }
+    if (t.type === "webhook" && !t.webhookId) {
+      errs.push({ field: "triggers", message: "Webhook trigger is not fully provisioned" });
+    }
+  }
+
+  // Required-input satisfiability (validates schedule, since it has no payload).
   const schedule = agent.triggers.find((t) => t.type === "schedule") as
     | Extract<Agent["triggers"][number], { type: "schedule" }>
     | undefined;

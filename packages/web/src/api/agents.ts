@@ -54,4 +54,16 @@ export const agentsApi = {
     }).then(jsonOrThrow<{ workflowInstanceId: string }>),
   runs: (orgId: string, id: string) =>
     fetch(`${orgBase(orgId)}/${id}/runs`, { credentials: "include" }).then(jsonOrThrow<AgentRunSummary[]>),
+  issueApiToken: (orgId: string, id: string) =>
+    fetch(`${orgBase(orgId)}/${id}/triggers/api-token`, { method: "POST", credentials: "include" }).then(
+      jsonOrThrow<{ id: string; token: string }>,
+    ),
+  listApiTokens: (orgId: string, id: string) =>
+    fetch(`${orgBase(orgId)}/${id}/triggers/api-token`, { credentials: "include" }).then(
+      jsonOrThrow<Array<{ id: string; name: string; last_used_at: string | null; created_at: string }>>,
+    ),
+  revokeApiToken: (orgId: string, id: string, tokenId: string) =>
+    fetch(`${orgBase(orgId)}/${id}/triggers/api-token/${tokenId}`, { method: "DELETE", credentials: "include" }).then(
+      jsonOrThrow<void>,
+    ),
 };

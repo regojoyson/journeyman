@@ -6,10 +6,11 @@ import { ToolsPicker } from "../custom-steps/ToolsPicker.tsx";
 import { CodingModelSelect } from "../CodingModelSelect.tsx";
 import { btnPrimary, btnGhost, inputCls } from "../../routes/admin-styles.ts";
 
-type TabId = "instructions" | "workspace" | "behavior" | "permissions" | "notifications" | "runs";
+type TabId = "instructions" | "workspace" | "triggers" | "behavior" | "permissions" | "notifications" | "runs";
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "instructions", label: "Instructions & Inputs" },
   { id: "workspace", label: "Workspace & Model" },
+  { id: "triggers", label: "Triggers" },
   { id: "behavior", label: "Behavior" },
   { id: "permissions", label: "Permissions" },
   { id: "notifications", label: "Notifications" },
@@ -132,6 +133,42 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     }
   };
 
+  // Triggers tab: schedule + API token
+  const existingSchedule = a.triggers.find((t) => t.type === "schedule") as
+    | { type: "schedule"; cron: string; timezone: string }
+    | undefined;
+  const [scheduleOn, setScheduleOn] = useState<boolean>(Boolean(existingSchedule));
+  const [cron, setCron] = useState<string>(existingSchedule?.cron ?? "0 2 * * *");
+  const [timezone, setTimezone] = useState<string>(existingSchedule?.timezone ?? "UTC");
+  const [apiTokens, setApiTokens] = useState<Array<{ id: string; created_at: string; last_used_at: string | null }>>([]);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  useEffect(() => {
+    agentsApi.listApiTokens(orgId, a.id).then(setApiTokens).catch(() => setApiTokens([]));
+  }, [orgId, a.id]);
+
+  const saveSchedule = () => {
+    const others = a.triggers.filter((t) => t.type !== "schedule");
+    const next = scheduleOn ? [...others, { type: "schedule" as const, cron, timezone }] : others;
+    return saveSection({ triggers: next });
+  };
+  const issueToken = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await agentsApi.issueApiToken(orgId, a.id);
+      setRevealedToken(r.token);
+      setApiTokens(await agentsApi.listApiTokens(orgId, a.id));
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const revokeToken = async (tokenId: string) => {
+    await agentsApi.revokeApiToken(orgId, a.id, tokenId);
+    setApiTokens(await agentsApi.listApiTokens(orgId, a.id));
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card text-card-foreground border rounded-lg shadow-card">
@@ -249,6 +286,49 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                   Save section
                 </button>
               )}
+            </div>
+          )}
+
+          {tab === "triggers" && (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="font-medium text-sm">⏱ Schedule</div>
+                <label className="flex gap-2 items-center text-sm">
+                  <input type="checkbox" disabled={locked} checked={scheduleOn} onChange={(e) => setScheduleOn(e.target.checked)} /> Run on a schedule
+                </label>
+                {scheduleOn && (
+                  <div className="flex gap-2">
+                    <input className={inputCls} disabled={locked} placeholder="cron (e.g. 0 2 * * *)" value={cron} onChange={(e) => setCron(e.target.value)} />
+                    <input className={inputCls} disabled={locked} placeholder="IANA timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+                  </div>
+                )}
+                {!locked && <button className={btnPrimary} disabled={busy} onClick={saveSchedule}>Save schedule</button>}
+              </div>
+
+              <div className="space-y-2 border-t pt-4">
+                <div className="font-medium text-sm">&lt;/&gt; API</div>
+                <div className="text-xs text-muted-foreground">
+                  Fire via <code>POST /api/agents/{a.id}/fire</code> with <code>Authorization: Bearer &lt;token&gt;</code>.
+                </div>
+                {revealedToken && (
+                  <div className="text-xs bg-muted rounded p-2 break-all">
+                    🔑 Copy now (shown once): <code>{revealedToken}</code>
+                  </div>
+                )}
+                <button className={btnGhost} disabled={busy} onClick={issueToken}>Issue token</button>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {apiTokens.map((t) => (
+                    <li key={t.id} className="flex gap-2 items-center">
+                      <span>token …{t.id.slice(0, 8)} · created {t.created_at}</span>
+                      <button className="text-destructive underline" onClick={() => revokeToken(t.id)}>revoke</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="text-xs text-muted-foreground border-t pt-4">
+                Webhook triggers (Jira/GitHub) arrive in the next phase.
+              </div>
             </div>
           )}
 

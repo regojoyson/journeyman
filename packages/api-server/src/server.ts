@@ -7,6 +7,8 @@ import { registerHealthRoutes } from "./routes/health.ts";
 import { registerWorkflowRoutes } from "./routes/flows.ts";
 import { registerAgentRoutes } from "./routes/agents.ts";
 import { registerConnectionRoutes } from "./routes/connections.ts";
+import { registerAgentTriggerRoutes } from "./routes/agent-triggers.ts";
+import { startAgentScheduler } from "./services/agent-scheduler.ts";
 import { registerStepsRoutes } from "./routes/steps.ts";
 import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
@@ -53,6 +55,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerCodingModelRoutes(app, c.pool);
     registerAgentRoutes(app, c);
     registerConnectionRoutes(app, c);
+    registerAgentTriggerRoutes(app, c);
   }
   registerStepsRoutes(app);
   registerWebhookRoutes(app, c);
@@ -75,5 +78,9 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     registerBuilderApplyRoute(s, c);
     registerBuilderChatRoute(s, c);
   }, { prefix: "/api" });
+
+  // Phase 3: fire scheduled agents from the api-server process (it holds the orchestrator).
+  if (c.pool) startAgentScheduler(c.pool, { orchestrator: c.orchestrator });
+
   return app;
 }
