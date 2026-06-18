@@ -166,10 +166,21 @@ First-run bootstrap (idempotent, gated by `jm_system_state`) creates: the first 
 
 ## 9. UI changes (high level)
 
-- **Workspace switcher** in the shell (parallels today's org switcher); the active workspace drives all resource pages.
+- **Workspace switcher** in the shell (replaces today's static org display in `packages/web/src/components/Sidebar.tsx`); the active workspace drives all resource pages and supplies `:wsId`. Lists the workspaces the user belongs to; org/platform admins see all workspaces in the org.
 - **Org admin screens**: create/delete workspaces; assign org users to workspaces and set their workspace role.
 - **Workspace member management** for maintainers (`/api/workspaces/:wsId/members`).
 - **Role-gated controls**: Observer = read-only; Contributor = no settings/member management; Maintainer/Org Admin = full. UI gating mirrors `WorkspacePermission`.
+
+### 9a. Sidebar restructure
+
+Today the sidebar duplicates resources across a user-scoped `NAV_ITEMS` ("My Secrets", "My MCPs", …) and an admin-only `ADMIN_ITEMS` ("Org Secrets", …) with no workspace concept, no org switcher, and an unused `isPlatformAdmin`. The redesign collapses this into one workspace-scoped set plus clean admin tiers:
+
+- **Workspace switcher** (top): dropdown over the caller's workspaces; sets the active `:wsId`.
+- **Workspace** section (active workspace, gated by `WorkspacePermission`): `Workflows`, `Workflow Instances`, `Secrets`, `Skills`, `MCPs`, `Custom Steps`, `Agents`, `Connections`, `Webhooks`. Plus `Members` and `Workspace Settings` for `members.manage`/`settings.manage` holders (Maintainer / Org Admin / Platform Admin). The old `My X` vs `Org X` split is removed — a single set, role-gated.
+- **Organization** section (Org Admin or Platform Admin): `Workspaces` (create/manage), `Members` (org users), `Org Secrets`, `Org Sandboxes`, `Coding Models`. Sandboxes live here (org/system tier; no workspace tier yet).
+- **Platform** section (Platform Admin only): `All Orgs`.
+
+Secrets appear in both the Workspace and Organization sections, matching their two tiers (§4). Routes move from `/me/<resource>` + `/admin/<resource>` to `/workspaces/:wsId/<resource>` (workspace) and `/orgs/:orgId/<resource>` (org), consistent with §7.
 
 ---
 
