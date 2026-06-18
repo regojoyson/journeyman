@@ -65,8 +65,11 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
   const [repoConnectionId, setRepoConnectionId] = useState<string>(a.repoSelections[0]?.connectionId ?? "");
   const [browsedRepos, setBrowsedRepos] = useState<RepoSummary[] | null>(null);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  // Phase 4: notification connections
+  const [notifyConnections, setNotifyConnections] = useState<Connection[]>([]);
   useEffect(() => {
     connectionsApi.listOrg(orgId, "git").then(setGitConnections).catch(() => setGitConnections([]));
+    connectionsApi.listOrg(orgId, "notification").then(setNotifyConnections).catch(() => setNotifyConnections([]));
   }, [orgId]);
 
   const patch = (p: AgentUpdateInput) => setA((prev) => ({ ...prev, ...p } as Agent));
@@ -417,7 +420,43 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
 
           {tab === "notifications" && (
             <div className="space-y-3 text-sm text-muted-foreground">
-              <p>Notification delivery (Slack) arrives in a later phase. You can pre-select when to notify:</p>
+              <p>Deliver a message when a run finishes. Pick a notification connection and when to notify.</p>
+
+              <label className="block text-foreground">
+                <span className="block mb-1">Notification connection</span>
+                <select
+                  className="border rounded px-2 py-1 w-full bg-background"
+                  disabled={locked}
+                  value={a.notifications.connectionId ?? ""}
+                  onChange={(e) =>
+                    patch({ notifications: { ...a.notifications, connectionId: e.target.value || undefined } })
+                  }
+                >
+                  <option value="">— none —</option>
+                  {notifyConnections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} ({c.provider})
+                    </option>
+                  ))}
+                </select>
+                {notifyConnections.length === 0 && (
+                  <span className="text-xs">No notification connections yet — add one under Connections.</span>
+                )}
+              </label>
+
+              <label className="block text-foreground">
+                <span className="block mb-1">Channel / target</span>
+                <input
+                  className="border rounded px-2 py-1 w-full bg-background"
+                  disabled={locked}
+                  placeholder="#alerts or a user id (ignored for incoming webhooks)"
+                  value={a.notifications.target ?? ""}
+                  onChange={(e) =>
+                    patch({ notifications: { ...a.notifications, target: e.target.value || undefined } })
+                  }
+                />
+              </label>
+
               <label className="flex gap-2 items-center text-foreground">
                 <input
                   type="checkbox"
@@ -426,6 +465,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                   onChange={(e) =>
                     patch({
                       notifications: {
+                        ...a.notifications,
                         on: e.target.checked
                           ? [...new Set([...a.notifications.on, "success" as const])]
                           : a.notifications.on.filter((x) => x !== "success"),
@@ -443,6 +483,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                   onChange={(e) =>
                     patch({
                       notifications: {
+                        ...a.notifications,
                         on: e.target.checked
                           ? [...new Set([...a.notifications.on, "failure" as const])]
                           : a.notifications.on.filter((x) => x !== "failure"),

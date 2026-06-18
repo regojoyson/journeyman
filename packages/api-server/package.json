@@ -26,6 +26,7 @@
     "@journeyman/agents": "*",
     "@journeyman/connections": "*",
     "@journeyman/git-provider": "*",
+    "@journeyman/notification-provider": "*",
     "@journeyman/custom-steps": "*",
     "@journeyman/orchestrator": "*",
     "@journeyman/steps": "*",

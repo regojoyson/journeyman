@@ -51,6 +51,7 @@ import {
 import { WebhookWaitSweeper } from "./services/webhook-wait-sweeper.ts";
 import { parseDurationMs } from "./services/parse-duration.ts";
 import { resolveHumanTask } from "./services/resolve-human-task.ts";
+import { makeNotifyOnTerminal } from "./services/notify-on-terminal.ts";
 
 export interface Composition {
   workflowGrants: IWorkflowGrantsStore;
@@ -194,6 +195,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     events,
     ...(sandboxProvisioner ? { sandboxProvisioner } : {}),
     ...(sandboxReaper ? { sandboxReaper } : {}),
+    ...(pool ? { notifyOnTerminal: makeNotifyOnTerminal({ pool, workflowInstances }) } : {}),
   });
 
   const registry = new InMemoryStepRegistry();

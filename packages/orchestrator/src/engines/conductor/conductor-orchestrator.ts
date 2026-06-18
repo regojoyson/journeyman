@@ -38,6 +38,8 @@ export interface ConductorOrchestratorDeps {
   }) => Promise<void>;
   /** Tears down a run's sandbox when it reaches a terminal state. */
   sandboxReaper?: (workflowInstanceId: string) => Promise<void>;
+  /** Fires agent notifications when a run reaches a terminal state (completed/failed). */
+  notifyOnTerminal?: (workflowInstanceId: string, status: WorkflowInstanceStatus) => Promise<void>;
 }
 
 export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEngine, IRetryableEngine {
@@ -288,6 +290,9 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       });
       if (isTerminalStatus(mapped) && this.deps.sandboxReaper) {
         await this.deps.sandboxReaper(workflowInstanceId).catch(() => undefined);
+      }
+      if (isTerminalStatus(mapped) && this.deps.notifyOnTerminal) {
+        await this.deps.notifyOnTerminal(workflowInstanceId, mapped).catch(() => undefined);
       }
     }
     return mapped;
