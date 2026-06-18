@@ -37,6 +37,7 @@ export class OpenCodeProvider implements ICodingCLI {
       model?: string;
       modelConfig?: CodingModelConfig;
       env?: Record<string, string>;
+      maxSteps?: number;
     },
     fn: (client: Awaited<ReturnType<typeof startServer>>["client"]) => Promise<T>,
   ): Promise<T> {
@@ -65,7 +66,7 @@ export class OpenCodeProvider implements ICodingCLI {
 
   async runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
     return this.#withServer(
-      { mcps: opts.mcps, model: opts.model, modelConfig: opts.modelConfig, env: opts.env },
+      { mcps: opts.mcps, model: opts.model, modelConfig: opts.modelConfig, env: opts.env, maxSteps: opts.maxSteps },
       (client) => runCustomPrompt(client, this.#config, opts),
     );
   }
