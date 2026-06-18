@@ -175,7 +175,7 @@ First-run bootstrap (idempotent, gated by `jm_system_state`) creates: the first 
 
 Today the sidebar duplicates resources across a user-scoped `NAV_ITEMS` ("My Secrets", "My MCPs", …) and an admin-only `ADMIN_ITEMS` ("Org Secrets", …) with no workspace concept, no org switcher, and an unused `isPlatformAdmin`. The redesign collapses this into one workspace-scoped set plus clean admin tiers:
 
-- **Workspace switcher** (top): dropdown over the caller's workspaces; sets the active `:wsId`.
+- **Workspace switcher** (top of the sidebar, above the nav sections — no new header region; fits the current headerless shell): dropdown over the caller's workspaces; sets the active `:wsId`. On login the client resolves a default active workspace (last-used, persisted client-side; else the user's first workspace) and navigates into it. Since the access token does not carry an active workspace (§6), the switcher is purely a client-side selection that determines which `/workspaces/:wsId/...` routes are loaded.
 - **Workspace** section (active workspace, gated by `WorkspacePermission`): `Workflows`, `Workflow Instances`, `Secrets`, `Skills`, `MCPs`, `Custom Steps`, `Agents`, `Connections`, `Webhooks`. Plus `Members` and `Workspace Settings` for `members.manage`/`settings.manage` holders (Maintainer / Org Admin / Platform Admin). The old `My X` vs `Org X` split is removed — a single set, role-gated.
 - **Organization** section (Org Admin or Platform Admin): `Workspaces` (create/manage), `Members` (org users), `Org Secrets`, `Org Sandboxes`, `Coding Models`. Sandboxes live here (org/system tier; no workspace tier yet).
 - **Platform** section (Platform Admin only): `All Orgs`.
