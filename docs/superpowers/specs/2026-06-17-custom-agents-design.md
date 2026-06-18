@@ -713,6 +713,35 @@ the §15.1 budget); (c) a **log retention policy** (agents run far more often th
 workflows, so set a keep-for-N-days + auto-clean). The §15.4 metrics/alerts/audit sit on top
 of these per-run logs as the aggregate/operational view.
 
+## 15b. Provider parity (Claude / AI-SDK / OpenCode)
+
+The `agent-run` step runs through `ICodingCLI.runCustomPrompt`, so it works on all three
+implemented providers — but a provider dry-run found capability gaps that must be handled,
+because some undermine the guardrails above.
+
+| Capability | Claude | AI-SDK | OpenCode |
+|---|---|---|---|
+| Structured output · MCP (stdio/http/sse) · tools + allow-list · model select | ✓ | ✓ | ✓ |
+| **maxTurns / step cap** | ✓ | ✓ (once §14 #2 wires the configurable cap) | **✗ ignored** |
+| **Abort / timeout** | ✓ | ✓ | **✗ ignored** |
+| **Skills** | ✓ native | ~ tool wrapper (lower fidelity) | **✗ dropped silently** |
+| web-search tool | ✓ | n/a | n/a (already flagged by `unsupportedTools()`) |
+
+**Required handling (build items):**
+- **OpenCode maxSteps + AbortSignal** — fix the OpenCode provider to honor both (preferred),
+  **or** the `agent-run` step wraps it: a `Promise.race` for `timeoutSeconds` and a
+  step-count guard. Without this, §15.1 step cap and §14 timeout don't apply to OpenCode →
+  unbounded/uncancellable runs.
+- **Skills on OpenCode** — until supported, the **Enable gate warns/blocks** when an agent
+  has skills *and* provider = OpenCode (never a silent drop).
+- **web-search** on AI-SDK/OpenCode — validate at design time via `unsupportedTools()`.
+- **Model string format** differs per provider (native id / `npm/id` / `provider/id`) —
+  validate `model` against the chosen provider before the run.
+
+**Verdict:** Claude = full fidelity now; AI-SDK = full once maxTurns is wired; OpenCode is
+fine for basic runs but needs maxSteps + abort + skills (or wrap + warn) before it is
+production-safe for agents. No architecture change — provider work + an Enable-gate check.
+
 ## 16. Resolved edge cases (dry-test)
 
 Smaller issues surfaced by the full-lifecycle dry test, resolved with these behaviors:
