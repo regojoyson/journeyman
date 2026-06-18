@@ -14,6 +14,7 @@ import {
   agentsUsingConnection,
   DuplicateConnectionError,
 } from "@journeyman/connections";
+import { audit } from "../services/audit.ts";
 
 function ctxOf(req: FastifyRequest) {
   return req.runContext!;
@@ -82,6 +83,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
         config: body.config ?? {},
         createdBy: ctx.user.id,
       });
+      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "connection.create", targetType: "connection", targetId: conn.id, detail: { category: body.category, provider: body.provider, label: conn.label } });
       reply.code(201);
       return conn;
     } catch (err) {
@@ -150,6 +152,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
       return;
     }
     await deleteConnection(pool, id);
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "connection.delete", targetType: "connection", targetId: id, detail: { label: conn.label } });
     reply.code(204);
   });
 

@@ -1,5 +1,6 @@
 import { AgentsList } from "../components/agents/AgentsList.tsx";
 import { OrgAgentSettingsPanel } from "../components/agents/OrgAgentSettingsPanel.tsx";
+import { AuditLogPanel } from "../components/agents/AuditLogPanel.tsx";
 
 export function AdminAgentsPage({ orgId }: { orgId: string }) {
   return (
@@ -11,6 +12,7 @@ export function AdminAgentsPage({ orgId }: { orgId: string }) {
         </header>
         <OrgAgentSettingsPanel orgId={orgId} />
         <AgentsList orgId={orgId} scope="org" />
+        <AuditLogPanel orgId={orgId} />
       </div>
     </div>
   );

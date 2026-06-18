@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Composition } from "../composition.ts";
 import { makeRequireAuth } from "@journeyman/identity";
 import { getAgent, runAgentGuarded, wasSkipped } from "@journeyman/agents";
+import { audit } from "../services/audit.ts";
 
 const TOKEN_PREFIX = "jm_agt_";
 
@@ -40,6 +41,7 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
       `INSERT INTO jm_agent_api_tokens (agent_id, org_id, token_hash) VALUES ($1,$2,$3) RETURNING id`,
       [id, orgId, hash],
     );
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.token.issue", targetType: "agent", targetId: id, detail: { tokenId: rows[0].id } });
     reply.code(201);
     return { id: rows[0].id, token: plaintext }; // shown once
   });
@@ -63,6 +65,7 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
     const ctx = ctxOf(req);
     if (wrongOrg(ctx, orgId, reply)) return;
     await pool.query(`UPDATE jm_agent_api_tokens SET revoked_at = now() WHERE id = $1 AND agent_id = $2`, [tokenId, id]);
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.token.revoke", targetType: "agent", targetId: id, detail: { tokenId } });
     reply.code(204);
   });
 

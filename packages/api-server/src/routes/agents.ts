@@ -17,6 +17,7 @@ import {
 } from "@journeyman/agents";
 import type { AgentCreateInput } from "@journeyman/core";
 import { syncScheduleState, clearScheduleState } from "../services/agent-scheduler.ts";
+import { audit, listAudit } from "../services/audit.ts";
 
 function ctxOf(req: FastifyRequest) {
   return req.runContext!;
@@ -86,6 +87,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
         createdBy: ctx.user.id,
         ...EMPTY_AGENT_DEFAULTS,
       } as AgentCreateInput & { orgId: string; userId: string | null; createdBy: string });
+      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.create", targetType: "agent", targetId: agent.id, detail: { name, scope } });
       reply.code(201);
       return agent;
     } catch (err) {
@@ -128,7 +130,9 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       return;
     }
     try {
-      return await updateAgent(pool, id, req.body as Record<string, unknown>);
+      const updated = await updateAgent(pool, id, req.body as Record<string, unknown>);
+      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.update", targetType: "agent", targetId: id });
+      return updated;
     } catch (err) {
       if (err instanceof DuplicateAgentError) {
         reply.code(409).send({ error: "duplicate_name" });
@@ -155,6 +159,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     }
     const updated = await updateAgent(pool, id, { status: "active", enabled: true });
     if (updated) await syncScheduleState(pool, updated);
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.enable", targetType: "agent", targetId: id });
     return updated;
   });
 
@@ -170,6 +175,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     }
     const updated = await updateAgent(pool, id, { enabled: false });
     await clearScheduleState(pool, id);
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.disable", targetType: "agent", targetId: id });
     return updated;
   });
 
@@ -184,6 +190,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       return;
     }
     await deleteAgent(pool, id);
+    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.delete", targetType: "agent", targetId: id, detail: { name: agent.name } });
     reply.code(204);
   });
 
@@ -207,6 +214,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
         reply.code(429).send({ error: "skipped", reason: res.skipped });
         return;
       }
+      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.run", targetType: "agent", targetId: id, detail: { workflowInstanceId: res.workflowInstanceId } });
       reply.code(202);
       return res;
     } catch (err: any) {
@@ -244,9 +252,30 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     const ctx = ctxOf(req);
     if (wrongOrg(ctx, orgId, reply)) return;
     const body = (req.body ?? {}) as OrgAgentSettingsPatch;
-    return upsertOrgAgentSettings(pool, orgId, {
+    const next = await upsertOrgAgentSettings(pool, orgId, {
       ...(typeof body.paused === "boolean" ? { paused: body.paused } : {}),
       ...(body.limits ? { limits: body.limits } : {}),
+    });
+    await audit(pool, {
+      orgId,
+      actorUserId: ctx.user.id,
+      action: "org_settings.update",
+      targetType: "org_settings",
+      targetId: null,
+      detail: { paused: next.paused },
+    });
+    return next;
+  });
+
+  // Audit log — recent sensitive actions for the org (paged via ?before=ISO&limit=N).
+  app.get("/api/orgs/:orgId/audit", { preHandler: requireAuth() }, async (req, reply) => {
+    const { orgId } = req.params as { orgId: string };
+    const ctx = ctxOf(req);
+    if (wrongOrg(ctx, orgId, reply)) return;
+    const q = req.query as { before?: string; limit?: string };
+    return listAudit(pool, orgId, {
+      before: q.before,
+      limit: q.limit ? Number(q.limit) : undefined,
     });
   });
 }

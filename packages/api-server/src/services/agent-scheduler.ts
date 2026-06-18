@@ -2,6 +2,7 @@ import parser from "cron-parser";
 import type { Pool } from "pg";
 import type { Agent } from "@journeyman/core";
 import { getAgent, runAgentGuarded, wasSkipped, type RunAgentDeps } from "@journeyman/agents";
+import { evaluateAlerts } from "./agent-alerts.ts";
 
 /** Next fire time for a cron expression in the given IANA timezone. */
 export function nextRun(cron: string, timezone: string, from: Date = new Date()): Date {
@@ -71,10 +72,11 @@ export async function tickOnce(pool: Pool, deps: RunAgentDeps): Promise<number> 
   return fired;
 }
 
-/** Start the periodic scheduler; returns a stop function. */
+/** Start the periodic scheduler; returns a stop function. Also evaluates alerts each tick. */
 export function startAgentScheduler(pool: Pool, deps: RunAgentDeps, intervalMs = 60_000): () => void {
   const handle = setInterval(() => {
     void tickOnce(pool, deps).catch(() => {});
+    void evaluateAlerts(pool).catch(() => {});
   }, intervalMs);
   return () => clearInterval(handle);
 }

@@ -75,4 +75,23 @@ export const agentsApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     }).then(jsonOrThrow<OrgAgentSettings>),
+  audit: (orgId: string, opts: { before?: string; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.before) q.set("before", opts.before);
+    if (opts.limit) q.set("limit", String(opts.limit));
+    const qs = q.toString();
+    return fetch(`/api/orgs/${orgId}/audit${qs ? `?${qs}` : ""}`, { credentials: "include" }).then(
+      jsonOrThrow<AuditEntry[]>,
+    );
+  },
 };
+
+export interface AuditEntry {
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}

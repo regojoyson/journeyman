@@ -20,6 +20,7 @@ import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
   IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
   IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore,
+  WorkflowInstanceStatus,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
 import {
@@ -52,6 +53,7 @@ import { WebhookWaitSweeper } from "./services/webhook-wait-sweeper.ts";
 import { parseDurationMs } from "./services/parse-duration.ts";
 import { resolveHumanTask } from "./services/resolve-human-task.ts";
 import { makeNotifyOnTerminal } from "./services/notify-on-terminal.ts";
+import { makeRecordTerminalMetrics } from "./services/agent-metrics.ts";
 
 export interface Composition {
   workflowGrants: IWorkflowGrantsStore;
@@ -195,7 +197,18 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     events,
     ...(sandboxProvisioner ? { sandboxProvisioner } : {}),
     ...(sandboxReaper ? { sandboxReaper } : {}),
-    ...(pool ? { notifyOnTerminal: makeNotifyOnTerminal({ pool, workflowInstances }) } : {}),
+    ...(pool
+      ? {
+          notifyOnTerminal: (() => {
+            const notify = makeNotifyOnTerminal({ pool, workflowInstances });
+            const metrics = makeRecordTerminalMetrics({ pool, workflowInstances });
+            return async (id: string, status: WorkflowInstanceStatus) => {
+              await metrics(id, status);
+              await notify(id, status);
+            };
+          })(),
+        }
+      : {}),
   });
 
   const registry = new InMemoryStepRegistry();
