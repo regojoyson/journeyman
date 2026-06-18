@@ -7,8 +7,12 @@ import {
   listAgents,
   updateAgent,
   deleteAgent,
-  runAgent,
+  runAgentGuarded,
+  wasSkipped,
   checkReadiness,
+  getOrgAgentSettings,
+  upsertOrgAgentSettings,
+  type OrgAgentSettingsPatch,
   DuplicateAgentError,
 } from "@journeyman/agents";
 import type { AgentCreateInput } from "@journeyman/core";
@@ -195,10 +199,14 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     }
     const body = req.body as { inputs?: Record<string, unknown> };
     try {
-      const res = await runAgent({ orchestrator: c.orchestrator }, agent, body?.inputs ?? {}, "manual", {
+      const res = await runAgentGuarded({ orchestrator: c.orchestrator, pool }, agent, body?.inputs ?? {}, "manual", {
         userId: ctx.user.id,
         orgId,
       });
+      if (wasSkipped(res)) {
+        reply.code(429).send({ error: "skipped", reason: res.skipped });
+        return;
+      }
       reply.code(202);
       return res;
     } catch (err: any) {
@@ -221,5 +229,24 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       [id],
     );
     return rows;
+  });
+
+  // Org agent settings — kill-switch (pause-all) + default safety limits (§15.1).
+  app.get("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
+    const { orgId } = req.params as { orgId: string };
+    const ctx = ctxOf(req);
+    if (wrongOrg(ctx, orgId, reply)) return;
+    return getOrgAgentSettings(pool, orgId);
+  });
+
+  app.put("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
+    const { orgId } = req.params as { orgId: string };
+    const ctx = ctxOf(req);
+    if (wrongOrg(ctx, orgId, reply)) return;
+    const body = (req.body ?? {}) as OrgAgentSettingsPatch;
+    return upsertOrgAgentSettings(pool, orgId, {
+      ...(typeof body.paused === "boolean" ? { paused: body.paused } : {}),
+      ...(body.limits ? { limits: body.limits } : {}),
+    });
   });
 }

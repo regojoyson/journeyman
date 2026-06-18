@@ -2,7 +2,7 @@ import { randomBytes, createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Composition } from "../composition.ts";
 import { makeRequireAuth } from "@journeyman/identity";
-import { getAgent, runAgent } from "@journeyman/agents";
+import { getAgent, runAgentGuarded, wasSkipped } from "@journeyman/agents";
 
 const TOKEN_PREFIX = "jm_agt_";
 
@@ -109,10 +109,17 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
     const inputs = (req.body as Record<string, unknown> | undefined) ?? {};
     let res;
     try {
-      res = await runAgent({ orchestrator: c.orchestrator }, agent, inputs, "api", { userId: null, orgId: agent.orgId });
+      res = await runAgentGuarded({ orchestrator: c.orchestrator, pool }, agent, inputs, "api", {
+        userId: null,
+        orgId: agent.orgId,
+      });
     } catch (err: any) {
       reply.code(422);
       return { error: "invalid_inputs", message: err?.message ?? String(err) };
+    }
+    if (wasSkipped(res)) {
+      reply.code(429);
+      return { status: "skipped", reason: res.skipped };
     }
     if (idemKey) {
       await pool.query(

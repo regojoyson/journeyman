@@ -38,6 +38,27 @@ export interface AgentBehavior {
   retry?: RetryPolicy;
 }
 
+/**
+ * Safety rails (§15.1). Carried per-agent (overrides) and on org settings
+ * (defaults). Each field is optional — undefined means "no limit at this level".
+ */
+export interface AgentSafetyLimits {
+  maxConcurrentRuns?: number;
+  dailyRunCap?: number;
+  budget?: { maxTokens?: number; maxCostUsd?: number };
+}
+
+/** Org-level agent settings: the global kill-switch plus default limits. */
+export interface OrgAgentSettings {
+  orgId: string;
+  paused: boolean;
+  limits: AgentSafetyLimits;
+  updatedAt: string;
+}
+
+/** Why a run was not submitted (safety rails). */
+export type AgentSkipReason = "paused" | "concurrency" | "daily_cap" | "budget";
+
 /** Phase 1 fires only "manual"; webhook/api/schedule modeled for later phases. */
 export type AgentTrigger =
   | { type: "schedule"; cron: string; timezone: string; fixedInputs?: Record<string, unknown> }
@@ -71,6 +92,8 @@ export interface Agent {
   outputMode: "none" | "text" | "structured";
   outputFields?: CustomStepOutputField[];
   behavior: AgentBehavior;
+  /** Per-agent safety overrides (§15.1); merged over org defaults. */
+  limits?: AgentSafetyLimits;
   triggers: AgentTrigger[];
   status: AgentStatus;
   enabled: boolean;

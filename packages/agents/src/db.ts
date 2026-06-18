@@ -52,6 +52,7 @@ export function rowToAgent(r: any): Agent {
     outputMode: d.outputMode ?? "text",
     outputFields: d.outputFields,
     behavior: d.behavior ?? {},
+    limits: d.limits,
     triggers: d.triggers ?? [],
     createdBy: r.created_by,
     createdAt: r.created_at,

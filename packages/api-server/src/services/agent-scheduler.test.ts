@@ -8,7 +8,8 @@ vi.mock("@journeyman/agents", () => ({
     enabled: true,
     triggers: [{ type: "schedule", cron: "0 2 * * *", timezone: "UTC", fixedInputs: { k: "v" } }],
   }),
-  runAgent: (...args: unknown[]) => runAgentMock(...args),
+  runAgentGuarded: (...args: unknown[]) => runAgentMock(...args),
+  wasSkipped: (r: any) => r != null && "skipped" in r,
 }));
 
 import { nextRun, tickOnce } from "./agent-scheduler.ts";

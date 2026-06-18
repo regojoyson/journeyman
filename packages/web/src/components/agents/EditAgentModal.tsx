@@ -398,8 +398,57 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                 <option value="structured">Structured</option>
                 <option value="none">None</option>
               </select>
+
+              <div className="pt-2 mt-2 border-t">
+                <p className="text-sm font-medium">Safety limits (override org defaults)</p>
+                <p className="text-xs text-muted-foreground mb-2">Leave blank to inherit the org default. Empty everywhere = no limit.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-muted-foreground">
+                    Max concurrent runs
+                    <input
+                      type="number"
+                      className={inputCls}
+                      disabled={locked}
+                      value={a.limits?.maxConcurrentRuns ?? ""}
+                      onChange={(e) => patch({ limits: { ...a.limits, maxConcurrentRuns: e.target.value ? Number(e.target.value) : undefined } })}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Daily run cap
+                    <input
+                      type="number"
+                      className={inputCls}
+                      disabled={locked}
+                      value={a.limits?.dailyRunCap ?? ""}
+                      onChange={(e) => patch({ limits: { ...a.limits, dailyRunCap: e.target.value ? Number(e.target.value) : undefined } })}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Budget: max tokens / day
+                    <input
+                      type="number"
+                      className={inputCls}
+                      disabled={locked}
+                      value={a.limits?.budget?.maxTokens ?? ""}
+                      onChange={(e) => patch({ limits: { ...a.limits, budget: { ...a.limits?.budget, maxTokens: e.target.value ? Number(e.target.value) : undefined } } })}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Budget: max $ / day
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={inputCls}
+                      disabled={locked}
+                      value={a.limits?.budget?.maxCostUsd ?? ""}
+                      onChange={(e) => patch({ limits: { ...a.limits, budget: { ...a.limits?.budget, maxCostUsd: e.target.value ? Number(e.target.value) : undefined } } })}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {!locked && (
-                <button className={btnPrimary} disabled={busy} onClick={() => saveSection({ behavior: a.behavior, outputMode: a.outputMode })}>
+                <button className={btnPrimary} disabled={busy} onClick={() => saveSection({ behavior: a.behavior, outputMode: a.outputMode, limits: a.limits })}>
                   Save section
                 </button>
               )}

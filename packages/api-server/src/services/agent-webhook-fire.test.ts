@@ -4,7 +4,8 @@ const runAgentMock = vi.fn().mockResolvedValue({ workflowInstanceId: "wi1", engi
 const findAgentMock = vi.fn();
 vi.mock("@journeyman/agents", () => ({
   findAgentByWebhookId: (...a: unknown[]) => findAgentMock(...a),
-  runAgent: (...a: unknown[]) => runAgentMock(...a),
+  runAgentGuarded: (...a: unknown[]) => runAgentMock(...a),
+  wasSkipped: (r: any) => r != null && "skipped" in r,
 }));
 
 import { fireAgentForWebhook } from "./agent-webhook-fire.ts";

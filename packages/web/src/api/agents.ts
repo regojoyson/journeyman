@@ -1,4 +1,4 @@
-import type { Agent, AgentUpdateInput } from "@journeyman/core";
+import type { Agent, AgentUpdateInput, OrgAgentSettings, AgentSafetyLimits } from "@journeyman/core";
 
 const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/agents`;
 const orgBase = (orgId: string) => `/api/orgs/${orgId}/agents`;
@@ -66,4 +66,13 @@ export const agentsApi = {
     fetch(`${orgBase(orgId)}/${id}/triggers/api-token/${tokenId}`, { method: "DELETE", credentials: "include" }).then(
       jsonOrThrow<void>,
     ),
+  getSettings: (orgId: string) =>
+    fetch(`/api/orgs/${orgId}/agent-settings`, { credentials: "include" }).then(jsonOrThrow<OrgAgentSettings>),
+  updateSettings: (orgId: string, patch: { paused?: boolean; limits?: AgentSafetyLimits }) =>
+    fetch(`/api/orgs/${orgId}/agent-settings`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(jsonOrThrow<OrgAgentSettings>),
 };

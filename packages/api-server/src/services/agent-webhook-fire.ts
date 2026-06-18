@@ -1,6 +1,7 @@
 import type { Composition } from "../composition.ts";
+import type { AgentSkipReason } from "@journeyman/core";
 import { readPath } from "@journeyman/webhooks";
-import { findAgentByWebhookId, runAgent } from "@journeyman/agents";
+import { findAgentByWebhookId, runAgentGuarded, wasSkipped } from "@journeyman/agents";
 
 export interface FireAgentInput {
   webhookId: string;
@@ -9,8 +10,8 @@ export interface FireAgentInput {
 
 export interface FireAgentResult {
   fired: number;
-  /** "filtered" → an agent matched but the event was filtered out (treat as ignored). */
-  skipped?: "filtered";
+  /** "filtered" → event filtered out; a safety reason → a rail tripped. Both = ignored. */
+  skipped?: "filtered" | AgentSkipReason;
   workflowInstanceId?: string;
 }
 
@@ -41,9 +42,10 @@ export async function fireAgentForWebhook(c: Composition, input: FireAgentInput)
     inputs[name] = readPath(input.rawPayload, path);
   }
 
-  const res = await runAgent({ orchestrator: c.orchestrator }, agent, inputs, "webhook", {
+  const res = await runAgentGuarded({ orchestrator: c.orchestrator, pool: c.pool }, agent, inputs, "webhook", {
     userId: null,
     orgId: agent.orgId,
   });
+  if (wasSkipped(res)) return { fired: 0, skipped: res.skipped };
   return { fired: 1, workflowInstanceId: res.workflowInstanceId };
 }

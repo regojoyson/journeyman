@@ -1,7 +1,7 @@
 import parser from "cron-parser";
 import type { Pool } from "pg";
 import type { Agent } from "@journeyman/core";
-import { getAgent, runAgent, type RunAgentDeps } from "@journeyman/agents";
+import { getAgent, runAgentGuarded, wasSkipped, type RunAgentDeps } from "@journeyman/agents";
 
 /** Next fire time for a cron expression in the given IANA timezone. */
 export function nextRun(cron: string, timezone: string, from: Date = new Date()): Date {
@@ -51,8 +51,11 @@ export async function tickOnce(pool: Pool, deps: RunAgentDeps): Promise<number> 
           | Extract<Agent["triggers"][number], { type: "schedule" }>
           | undefined;
         const inputs = (schedule?.fixedInputs ?? {}) as Record<string, unknown>;
-        await runAgent(deps, agent, inputs, "schedule", { userId: null, orgId: agent.orgId });
-        fired++;
+        const res = await runAgentGuarded({ ...deps, pool }, agent, inputs, "schedule", {
+          userId: null,
+          orgId: agent.orgId,
+        });
+        if (!wasSkipped(res)) fired++;
       }
     } catch {
       // swallow — a bad agent shouldn't stall the tick
