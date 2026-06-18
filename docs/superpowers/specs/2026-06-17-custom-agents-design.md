@@ -543,7 +543,9 @@ This exercises every new piece end to end.
    draft→enable gate + enabled=read-only, run history. **Includes the behavior wiring gaps (§14):
    `maxTurns` → SDK + configurable step cap; `timeoutSeconds` → worker AbortSignal
    enforcement; per-agent `retry` compiled onto the step node. Gate the provider picker to
-   implemented providers (Claude, OpenCode) only.**
+   implemented providers (Claude, OpenCode) only. Handle the §15b provider-parity gaps:
+   OpenCode maxSteps + AbortSignal (fix or wrap), and an Enable-gate warning for
+   skills-on-OpenCode.**
 2. **Connections + repos** — `jm_connections`, Connections page, git provider Test/List,
    `GitLabProvider` (base-URL aware) + `listRepos` + repo picker; wire repoSelections into
    the run-time credential flow so the `agent-run` step clones them (§14, gap #1).
