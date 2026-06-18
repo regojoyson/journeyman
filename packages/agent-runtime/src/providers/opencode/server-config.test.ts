@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildServerConfig, applyEnv, freePort } from "./server-config.ts";
 import type { OpenCodeProviderConfig } from "./types.ts";
-import type { ResolvedMcpInstance } from "@journeyman/core";
+import type { ResolvedMcpInstance, ResolvedSkillPackage } from "@journeyman/core";
 
 const cfg: OpenCodeProviderConfig = { mode: "managed", model: { providerID: "anthropic", modelID: "x" } };
 
@@ -58,6 +58,27 @@ describe("buildServerConfig", () => {
   it("applies the default step budget when maxSteps is non-positive", () => {
     expect((buildServerConfig(cfg, { maxSteps: 0 }).agent as any).build.maxSteps).toBe(80);
     expect((buildServerConfig(cfg, { maxSteps: -5 }).agent as any).build.maxSteps).toBe(80);
+  });
+  it("registers enabled skills as per-skill paths", () => {
+    const skills: ResolvedSkillPackage[] = [
+      { id: "1", name: "pkgA", localPath: "/ws/skills/pkgA", enabledSkills: ["alpha", "beta"], cliType: "opencode" },
+      { id: "2", name: "pkgB", localPath: "/ws/skills/pkgB", enabledSkills: ["gamma"], cliType: "opencode" },
+    ];
+    const c = buildServerConfig(cfg, { skills });
+    expect(c.skills).toEqual({ paths: ["/ws/skills/pkgA/alpha", "/ws/skills/pkgA/beta", "/ws/skills/pkgB/gamma"] });
+  });
+  it("omits the skills block when there are no skills", () => {
+    expect(buildServerConfig(cfg, {}).skills).toBeUndefined();
+    expect(buildServerConfig(cfg, { skills: [] }).skills).toBeUndefined();
+  });
+  it("emits skills alongside the permission/agent blocks", () => {
+    const skills: ResolvedSkillPackage[] = [
+      { id: "1", name: "p", localPath: "/ws/p", enabledSkills: ["s"], cliType: "opencode" },
+    ];
+    const c = buildServerConfig(cfg, { skills, maxSteps: 5 });
+    expect(c.permission).toMatchObject({ bash: "allow" });
+    expect((c.agent as any).build.maxSteps).toBe(5);
+    expect(c.skills).toEqual({ paths: ["/ws/p/s"] });
   });
   it("still emits permission/mcp/provider blocks alongside the agent block", () => {
     const mcps: ResolvedMcpInstance[] = [{ id: "1", name: "fs", transport: "stdio", command: "x", args: [], env: {}, systemPrompt: null }];
