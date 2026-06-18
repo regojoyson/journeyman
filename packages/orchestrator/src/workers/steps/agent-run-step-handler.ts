@@ -20,8 +20,10 @@ import {
   openCodeModelSlots,
 } from "@journeyman/core";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
-import { SandboxInstanceGitProvider } from "../../sandbox/sandbox-instance-git-provider.ts";
+import { SandboxInstanceGitProvider, type SandboxGitAuth } from "../../sandbox/sandbox-instance-git-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
+import { getConnection, getConnectionSealed } from "@journeyman/connections";
+import { open } from "@journeyman/secrets";
 
 const log = createLogger("worker:agent-run");
 
@@ -67,12 +69,30 @@ export class AgentRunStepHandler implements IStepHandler {
     const needsWorkspace = await this.needsWorkspaceFor(input);
     const cwd = needsWorkspace && ctx.workspaceDir ? ctx.workspaceDir : undefined;
 
-    // 1) Clone repos (if any) into the workspace, reusing the git provider's cloneRepos.
+    // 1) Clone repos (if any) into the workspace. When a git Connection is named,
+    //    resolve its token and authenticate the clone (works in-container via URL).
     const repos = parseRepoList(input.repos as string | string[] | undefined);
     if (repos.length > 0) {
+      const gitConnectionId = typeof input.gitConnectionId === "string" ? input.gitConnectionId : undefined;
+      let auth: SandboxGitAuth | undefined;
+      let gitProviderKey = provider;
+      let cloneEnv = ctx.env;
+      if (gitConnectionId) {
+        const conn = await getConnection(this.deps.pool, gitConnectionId);
+        const sealed = await getConnectionSealed(this.deps.pool, gitConnectionId);
+        if (conn && sealed) {
+          const token = open(sealed);
+          gitProviderKey = conn.provider;
+          auth = { provider: conn.provider, token, baseUrl: conn.baseUrl };
+          cloneEnv =
+            conn.provider === "gitlab"
+              ? { ...ctx.env, GITLAB_TOKEN: token, GITLAB_BASE_URL: conn.baseUrl ?? "" }
+              : { ...ctx.env, GITHUB_ACCESS_TOKEN: token };
+        }
+      }
       const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
-        ? new SandboxInstanceGitProvider(ctx.exec)
-        : this.deps.git(provider, ctx.env);
+        ? new SandboxInstanceGitProvider(ctx.exec, auth)
+        : this.deps.git(gitProviderKey, cloneEnv);
       const branch = typeof input.repoBranch === "string" ? input.repoBranch : undefined;
       for (const r of repos) ctx.log(`Cloning ${r}…`);
       const cloneRes = await git.cloneRepos({ repos, workspaceDir: ctx.workspaceDir, branch, signal: ctx.signal });

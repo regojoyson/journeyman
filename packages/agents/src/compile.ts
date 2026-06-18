@@ -51,6 +51,8 @@ export function compileAgentToGraph(
           skillPackageIds: agent.skillIds,
           repos: agent.repoSelections.map((r) => r.repo),
           repoBranch: agent.repoSelections[0]?.branch,
+          gitConnectionId: agent.repoSelections.find((r) => r.connectionId)?.connectionId,
+          allowWrites: agent.repoSelections.some((r) => r.allowWrites),
           outputMode: agent.outputMode,
           outputFields: agent.outputFields ?? [],
           maxSteps: agent.behavior.maxTurns,

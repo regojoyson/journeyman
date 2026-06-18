@@ -45,6 +45,13 @@ describe("compileAgentToGraph", () => {
     expect(graph.edges.some((e) => e.source === trigger.id && e.target === stepNode.id)).toBe(true);
   });
 
+  it("passes the repo's connectionId as gitConnectionId", () => {
+    const agent = { ...baseAgent, repoSelections: [{ repo: "acme/api", allowWrites: false, connectionId: "conn-1" }] };
+    const { graph } = compileAgentToGraph(agent, { ticketKey: "X" });
+    const step = graph.nodes.find((n) => n.stepType === "agent-run")!;
+    expect(step.config!.gitConnectionId).toBe("conn-1");
+  });
+
   it("renders required inputs and rejects missing ones", () => {
     expect(() => compileAgentToGraph(baseAgent, {})).toThrow(/ticketKey/);
     const { inputs } = compileAgentToGraph(baseAgent, { ticketKey: "PROJ-1" });

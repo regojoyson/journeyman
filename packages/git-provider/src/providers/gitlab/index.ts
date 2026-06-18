@@ -7,6 +7,8 @@ import type {
   ListPRCommentsOptions, ListPRCommentsResult,
   ListReposOptions, ListReposResult, RepoSummary,
 } from "@journeyman/core";
+import { cloneRepos as gitlabCloneRepos } from "./operations/clone-repos.ts";
+import { createPR as gitlabCreatePR } from "./operations/create-pr.ts";
 
 export type GitLabProviderOptions = {
   /** Personal access token (PRIVATE-TOKEN). */
@@ -36,9 +38,19 @@ export class GitLabProvider implements IGitProvider {
   }
 
   getRepo(_opts: GetRepoOptions): Promise<GetRepoResult> { throw new Error("GitLabProvider.getRepo not implemented"); }
-  createPR(_opts: CreatePROptions): Promise<CreatePRResult> { throw new Error("GitLabProvider.createPR not implemented"); }
+
+  async createPR(opts: CreatePROptions): Promise<CreatePRResult> {
+    if (!this.token) throw new Error("GitLabProvider: token is required");
+    return gitlabCreatePR(this.token, this.baseUrl, opts);
+  }
+
   async listPRs(_opts: ListPROptions): Promise<ListPRResult> { throw new Error("GitLabProvider.listPRs not implemented"); }
-  async cloneRepos(_opts: CloneReposOptions): Promise<CloneReposResult> { throw new Error("GitLabProvider.cloneRepos not implemented"); }
+
+  async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
+    if (!this.token) return { repos: [], error: "GitLabProvider: token is required" };
+    return gitlabCloneRepos(this.token, this.baseUrl, opts);
+  }
+
   async listPRComments(_opts: ListPRCommentsOptions): Promise<ListPRCommentsResult> { throw new Error("GitLabProvider.listPRComments not implemented"); }
 
   async listRepos(opts: ListReposOptions): Promise<ListReposResult> {

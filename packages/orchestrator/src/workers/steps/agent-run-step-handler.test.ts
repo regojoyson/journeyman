@@ -1,4 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@journeyman/connections", () => ({
+  getConnection: vi.fn().mockResolvedValue({ provider: "github", baseUrl: undefined }),
+  getConnectionSealed: vi
+    .fn()
+    .mockResolvedValue({ ciphertext: Buffer.from(""), iv: Buffer.from(""), authTag: Buffer.from("") }),
+}));
+vi.mock("@journeyman/secrets", () => ({ open: () => "tok_abc" }));
+
 import { AgentRunStepHandler } from "./agent-run-step-handler.ts";
 
 function ctx(over: Partial<any> = {}): any {
@@ -46,6 +55,30 @@ describe("AgentRunStepHandler", () => {
     expect(cloneRepos).toHaveBeenCalled();
     expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ prompt: "hi", maxSteps: 40 }));
     expect(res).toEqual({ kind: "success", output: { result: "done" } });
+  });
+
+  it("resolves a git connection token and injects it into the clone env", async () => {
+    const cloneRepos = vi.fn().mockResolvedValue({ repos: [{ folderName: "api" }] });
+    const runCustomPrompt = vi.fn().mockResolvedValue({ result: "done" });
+    const gitFactory = vi.fn().mockReturnValue({ cloneRepos });
+    const h = new AgentRunStepHandler({
+      coding: () => ({ runCustomPrompt }),
+      git: gitFactory,
+      pool: {} as any,
+      bindingResolver: vi.fn().mockResolvedValue({}),
+    } as any);
+    await h.run(
+      {
+        instructions: "hi",
+        provider: "claude",
+        repos: ["acme/api"],
+        tools: ["bash"],
+        outputMode: "text",
+        gitConnectionId: "conn-1",
+      } as any,
+      ctx(),
+    );
+    expect(gitFactory).toHaveBeenCalledWith("github", expect.objectContaining({ GITHUB_ACCESS_TOKEN: "tok_abc" }));
   });
 
   it("fails (not retryable) when instructions are missing", async () => {

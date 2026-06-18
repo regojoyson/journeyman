@@ -9,7 +9,7 @@ import { tmpdir, homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { createCodingProvider } from "@journeyman/agent-runtime";
-import { GitHubProvider } from "@journeyman/git-provider";
+import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
@@ -213,6 +213,8 @@ const git: ProviderFactory<IGitProvider> = (key, env) => {
   switch (key ?? "github") {
     case "github":
       return new GitHubProvider({ token: env.GITHUB_ACCESS_TOKEN });
+    case "gitlab":
+      return new GitLabProvider({ token: env.GITLAB_TOKEN, baseUrl: env.GITLAB_BASE_URL || undefined });
     default: {
       const err = new Error(`Unknown git provider: ${key}`) as Error & { name: string };
       err.name = "ConfigurationError";
