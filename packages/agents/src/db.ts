@@ -151,3 +151,17 @@ export async function deleteAgent(pool: Pool, id: string): Promise<boolean> {
   const { rowCount } = await pool.query(`DELETE FROM jm_agents WHERE id = $1`, [id]);
   return (rowCount ?? 0) > 0;
 }
+
+/**
+ * Find an enabled agent whose webhook trigger references this webhookId
+ * (Phase 3b webhook ingest). Returns null if no enabled agent uses the webhook.
+ */
+export async function findAgentByWebhookId(pool: Pool, webhookId: string): Promise<Agent | null> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_agents
+      WHERE enabled = true AND definition->'triggers' @> $1::jsonb
+      LIMIT 1`,
+    [JSON.stringify([{ type: "webhook", webhookId }])],
+  );
+  return rows[0] ? rowToAgent(rows[0]) : null;
+}

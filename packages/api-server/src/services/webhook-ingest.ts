@@ -10,6 +10,7 @@ import type { Composition } from "../composition.ts";
 import { matchAndResolveWebhookWaits, type WaitOutcome } from "./match-human-tasks.ts";
 import { resolveWebhookSecret, secretRefFromAuth } from "./webhook-secret-lookup.ts";
 import { fireWebhookTriggers, type TriggerOutcome } from "./webhook-trigger-fire.ts";
+import { fireAgentForWebhook } from "./agent-webhook-fire.ts";
 
 const BLOCKED_HEADERS = new Set([
   "authorization", "cookie",
@@ -142,6 +143,20 @@ export async function ingestForWebhook(
       const reason = waitResult.outcomes.find((o) => !o.ok)?.error ?? "webhook wait resolution failed";
       await c.webhookEvents.setStatus(event.id, "error", reason);
       return { status: "error", eventId: event.id, reason, waits: waitResult.outcomes };
+    }
+
+    // 6b. No waiters → an agent may own this webhook (Phase 3b). If so, it handles
+    //     the event (filter + map + run); otherwise fall through to workflow triggers.
+    const ar = await fireAgentForWebhook(c, { webhookId: webhook.id, rawPayload: input.rawPayload });
+    if (ar.fired > 0) {
+      void c.webhooks.touchLastEvent(webhook.id);
+      await c.webhookEvents.setStatus(event.id, "processed");
+      return { status: "resolved", matched: ar.fired, eventId: event.id };
+    }
+    if (ar.skipped === "filtered") {
+      await c.webhookEvents.setStatus(event.id, "ignored");
+      void c.webhooks.touchLastEvent(webhook.id);
+      return { status: "ignored", eventId: event.id };
     }
 
     // 7. No waiters → try start-of-flow triggers. Each trigger is isolated, so a

@@ -169,6 +169,31 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     setApiTokens(await agentsApi.listApiTokens(orgId, a.id));
   };
 
+  // Webhook trigger (references an existing webhook by id; create it on the Webhooks page).
+  const existingWebhook = a.triggers.find((t) => t.type === "webhook") as
+    | { type: "webhook"; webhookId: string; preset?: string; inputsMapping?: Record<string, string> }
+    | undefined;
+  const [webhookOn, setWebhookOn] = useState<boolean>(Boolean(existingWebhook));
+  const [webhookId, setWebhookId] = useState<string>(existingWebhook?.webhookId ?? "");
+  const [mappingText, setMappingText] = useState<string>(
+    Object.entries(existingWebhook?.inputsMapping ?? {})
+      .map(([k, v]) => `${k} = ${v}`)
+      .join("\n"),
+  );
+  const saveWebhook = () => {
+    const others = a.triggers.filter((t) => t.type !== "webhook");
+    const inputsMapping: Record<string, string> = {};
+    for (const line of mappingText.split("\n")) {
+      const [name, ...rest] = line.split("=");
+      if (name?.trim() && rest.length) inputsMapping[name.trim()] = rest.join("=").trim();
+    }
+    const triggers: Agent["triggers"] =
+      webhookOn && webhookId.trim()
+        ? [...others, { type: "webhook", webhookId: webhookId.trim(), inputsMapping }]
+        : others;
+    return saveSection({ triggers });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card text-card-foreground border rounded-lg shadow-card">
@@ -326,8 +351,22 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                 </ul>
               </div>
 
-              <div className="text-xs text-muted-foreground border-t pt-4">
-                Webhook triggers (Jira/GitHub) arrive in the next phase.
+              <div className="space-y-2 border-t pt-4">
+                <div className="font-medium text-sm">🪝 Webhook</div>
+                <div className="text-xs text-muted-foreground">
+                  Create a webhook on the Webhooks page, then paste its ID here. Inbound events fire this agent.
+                </div>
+                <label className="flex gap-2 items-center text-sm">
+                  <input type="checkbox" disabled={locked} checked={webhookOn} onChange={(e) => setWebhookOn(e.target.checked)} /> Fire from a webhook
+                </label>
+                {webhookOn && (
+                  <>
+                    <input className={inputCls} disabled={locked} placeholder="webhook id" value={webhookId} onChange={(e) => setWebhookId(e.target.value)} />
+                    <label className="text-xs text-muted-foreground">Map payload → inputs (one <code>name = $.json.path</code> per line)</label>
+                    <textarea className={inputCls} disabled={locked} placeholder="ticketKey = $.issue.key" value={mappingText} onChange={(e) => setMappingText(e.target.value)} />
+                  </>
+                )}
+                {!locked && <button className={btnPrimary} disabled={busy} onClick={saveWebhook}>Save webhook</button>}
               </div>
             </div>
           )}
