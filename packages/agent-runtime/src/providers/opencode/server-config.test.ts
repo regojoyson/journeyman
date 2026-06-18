@@ -47,6 +47,31 @@ describe("buildServerConfig", () => {
     });
     expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123" });
   });
+  it("caps the build agent at the requested maxSteps", () => {
+    const c = buildServerConfig(cfg, { maxSteps: 25 });
+    expect(c.agent).toEqual({ build: { maxSteps: 25 } });
+  });
+  it("applies the default step budget (80) when maxSteps is omitted", () => {
+    const c = buildServerConfig(cfg, {});
+    expect(c.agent).toEqual({ build: { maxSteps: 80 } });
+  });
+  it("applies the default step budget when maxSteps is non-positive", () => {
+    expect((buildServerConfig(cfg, { maxSteps: 0 }).agent as any).build.maxSteps).toBe(80);
+    expect((buildServerConfig(cfg, { maxSteps: -5 }).agent as any).build.maxSteps).toBe(80);
+  });
+  it("still emits permission/mcp/provider blocks alongside the agent block", () => {
+    const mcps: ResolvedMcpInstance[] = [{ id: "1", name: "fs", transport: "stdio", command: "x", args: [], env: {}, systemPrompt: null }];
+    const c = buildServerConfig(cfg, {
+      mcps,
+      model: "lmstudio/llama-3.1",
+      modelConfig: { baseUrl: "http://host:1234/v1" },
+      maxSteps: 10,
+    });
+    expect(c.permission).toMatchObject({ bash: "allow" });
+    expect(c.mcp).toHaveProperty("fs");
+    expect(c.provider).toHaveProperty("lmstudio");
+    expect(c.agent).toEqual({ build: { maxSteps: 10 } });
+  });
 });
 
 describe("applyEnv", () => {
