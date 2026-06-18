@@ -13,11 +13,12 @@ export interface AgentInputField {
   description?: string;
 }
 
-/** Phase 1: a repo is a plain owner/repo or URL string + optional branch (Connections come in Phase 2). */
 export interface AgentRepoSelection {
   repo: string; // "owner/name" or clone URL
   branch?: string;
   allowWrites: boolean; // false → claude/* branches only (enforced in later phases)
+  /** Phase 2: the git Connection whose credential authenticates this repo's clone/push. */
+  connectionId?: string;
 }
 
 export interface AgentPermissions {
@@ -26,7 +27,9 @@ export interface AgentPermissions {
 
 export interface AgentNotifications {
   on: Array<"success" | "failure">;
-  // Phase 1 shell: stored, not delivered. connectionId/target arrive in Phase 4.
+  /** Phase 2+: the notification Connection to deliver through (delivery lands in Phase 4). */
+  connectionId?: string;
+  target?: string;
 }
 
 export interface AgentBehavior {

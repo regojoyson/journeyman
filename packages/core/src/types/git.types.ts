@@ -162,3 +162,29 @@ export type ListPRCommentsResult = SessionResult & {
   comments: PRComment[];
   error?: string;
 };
+
+// ---------------------------------------------------------------------------
+// listRepos — enumerate repositories reachable by a connection's credential
+// (Phase 2 / Connections). For org/group listing, the provider derives scope
+// from its own credential; `search` narrows the result client- or server-side.
+// ---------------------------------------------------------------------------
+
+export type ListReposOptions = SessionOptions & {
+  /** Optional case-insensitive substring filter on fullName. */
+  search?: string;
+  /** Max results to return (provider clamps to its own page size). */
+  limit?: number;
+};
+
+export type RepoSummary = {
+  name: string;
+  fullName: string;      // "owner/name"
+  url: string;           // clone/https URL
+  defaultBranch: string;
+  isPrivate: boolean;
+};
+
+export type ListReposResult = SessionResult & {
+  repos: RepoSummary[];
+  error?: string;
+};

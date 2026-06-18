@@ -17,6 +17,7 @@ export {
 } from "./types/custom-steps.types.ts";
 export type * from "./types/builder.types.ts";
 export type * from "./types/agent.types.ts";
+export type * from "./types/connection.types.ts";
 export * from "./types/custom-step-icons.ts";
 export type * from "./types/skills.types.ts";
 export type * from "./types/issue.types.ts";

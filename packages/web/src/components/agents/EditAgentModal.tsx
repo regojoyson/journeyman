@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { Agent, AgentUpdateInput, CanonicalTool } from "@journeyman/core";
+import type { Agent, AgentUpdateInput, CanonicalTool, Connection, RepoSummary } from "@journeyman/core";
 import { agentsApi, type AgentRunSummary } from "../../api/agents.ts";
+import { connectionsApi } from "../../api/connections.ts";
 import { ToolsPicker } from "../custom-steps/ToolsPicker.tsx";
 import { CodingModelSelect } from "../CodingModelSelect.tsx";
 import { btnPrimary, btnGhost, inputCls } from "../../routes/admin-styles.ts";
@@ -58,7 +59,41 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
   const [busy, setBusy] = useState(false);
   const locked = a.enabled; // enabled = read-only
 
+  // Phase 2: git connections + repo browser
+  const [gitConnections, setGitConnections] = useState<Connection[]>([]);
+  const [repoConnectionId, setRepoConnectionId] = useState<string>(a.repoSelections[0]?.connectionId ?? "");
+  const [browsedRepos, setBrowsedRepos] = useState<RepoSummary[] | null>(null);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  useEffect(() => {
+    connectionsApi.listOrg(orgId, "git").then(setGitConnections).catch(() => setGitConnections([]));
+  }, [orgId]);
+
   const patch = (p: AgentUpdateInput) => setA((prev) => ({ ...prev, ...p } as Agent));
+
+  const addRepo = (fullName: string) => {
+    setA((prev) => {
+      if (prev.repoSelections.some((r) => r.repo === fullName)) return prev;
+      return {
+        ...prev,
+        repoSelections: [...prev.repoSelections, { repo: fullName, allowWrites: false, connectionId: repoConnectionId || undefined }],
+      } as Agent;
+    });
+  };
+
+  const browse = async () => {
+    setBrowseError(null);
+    if (!repoConnectionId) {
+      setBrowseError("Pick a git connection first");
+      return;
+    }
+    try {
+      const res = await connectionsApi.repos(orgId, repoConnectionId);
+      if (res.error) setBrowseError(res.error);
+      setBrowsedRepos(res.repos);
+    } catch (e: any) {
+      setBrowseError(e?.message ?? String(e));
+    }
+  };
 
   const saveSection = async (p: AgentUpdateInput) => {
     setBusy(true);
@@ -162,6 +197,28 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
               </select>
               <label className="text-sm font-medium">Model</label>
               <CodingModelSelect provider={a.provider} value={a.model} onChange={(m) => patch({ model: m })} disabled={locked} />
+
+              <label className="text-sm font-medium">Git connection</label>
+              <div className="flex gap-2">
+                <select className={inputCls} disabled={locked} value={repoConnectionId} onChange={(e) => setRepoConnectionId(e.target.value)}>
+                  <option value="">— none (paste repos below) —</option>
+                  {gitConnections.map((c) => (
+                    <option key={c.id} value={c.id}>{c.provider} · {c.label}</option>
+                  ))}
+                </select>
+                {!locked && <button className={btnGhost} disabled={!repoConnectionId} onClick={browse}>Browse repos</button>}
+              </div>
+              {browseError && <div className="text-xs text-destructive">{browseError}</div>}
+              {browsedRepos && (
+                <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-1">
+                  {browsedRepos.map((r) => (
+                    <button key={r.fullName} className="block text-left text-sm hover:underline" disabled={locked} onClick={() => addRepo(r.fullName)}>
+                      + {r.fullName}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <label className="text-sm font-medium">Repositories (one owner/repo or URL per line)</label>
               <textarea
                 className={inputCls}
@@ -173,12 +230,22 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
                       .split("\n")
                       .map((s) => s.trim())
                       .filter(Boolean)
-                      .map((repo) => ({ repo, allowWrites: false })),
+                      .map((repo) => ({ repo, allowWrites: false, connectionId: repoConnectionId || undefined })),
                   })
                 }
               />
               {!locked && (
-                <button className={btnPrimary} disabled={busy} onClick={() => saveSection({ provider: a.provider, model: a.model, repoSelections: a.repoSelections })}>
+                <button
+                  className={btnPrimary}
+                  disabled={busy}
+                  onClick={() =>
+                    saveSection({
+                      provider: a.provider,
+                      model: a.model,
+                      repoSelections: a.repoSelections.map((r) => ({ ...r, connectionId: repoConnectionId || r.connectionId })),
+                    })
+                  }
+                >
                   Save section
                 </button>
               )}

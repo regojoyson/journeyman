@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
   { to: "/me/custom-steps", icon: "🧩", label: "My Custom Steps" },
   { to: "/me/agents", icon: "🤖", label: "My Agents" },
+  { to: "/me/connections", icon: "🔗", label: "My Connections" },
   { to: "/me/webhooks", icon: "📡", label: "My Webhooks" },
 ];
 
@@ -24,6 +25,7 @@ const ADMIN_ITEMS = [
   { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
   { to: "/admin/custom-steps", icon: "🧩", label: "Org Custom Steps" },
   { to: "/admin/agents", icon: "🤖", label: "Org Agents" },
+  { to: "/admin/connections", icon: "🔗", label: "Org Connections" },
   { to: "/admin/webhooks", icon: "📡", label: "Org Webhooks" },
   { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
   { to: "/admin/workflows", icon: "📋", label: "Admin Workflows" },

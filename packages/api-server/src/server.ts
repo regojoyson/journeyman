@@ -6,6 +6,7 @@ import type { Composition } from "./composition.ts";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { registerWorkflowRoutes } from "./routes/flows.ts";
 import { registerAgentRoutes } from "./routes/agents.ts";
+import { registerConnectionRoutes } from "./routes/connections.ts";
 import { registerStepsRoutes } from "./routes/steps.ts";
 import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
@@ -51,6 +52,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerCustomStepRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);
     registerAgentRoutes(app, c);
+    registerConnectionRoutes(app, c);
   }
   registerStepsRoutes(app);
   registerWebhookRoutes(app, c);

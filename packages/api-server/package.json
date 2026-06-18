@@ -24,6 +24,8 @@
     "@journeyman/skills": "*",
     "@journeyman/coding-models": "*",
     "@journeyman/agents": "*",
+    "@journeyman/connections": "*",
+    "@journeyman/git-provider": "*",
     "@journeyman/custom-steps": "*",
     "@journeyman/orchestrator": "*",
     "@journeyman/steps": "*",

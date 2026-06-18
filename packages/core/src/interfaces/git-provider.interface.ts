@@ -4,6 +4,7 @@ import type {
   ListPROptions, ListPRResult,
   CloneReposOptions, CloneReposResult,
   ListPRCommentsOptions, ListPRCommentsResult,
+  ListReposOptions, ListReposResult,
 } from "../types/git.types.ts";
 
 /**
@@ -17,4 +18,6 @@ export interface IGitProvider {
   listPRs(opts: ListPROptions): Promise<ListPRResult>;
   cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult>;
   listPRComments(opts: ListPRCommentsOptions): Promise<ListPRCommentsResult>;
+  /** Enumerate repositories reachable by the provider's credential (Connections / Phase 2). Optional. */
+  listRepos?(opts: ListReposOptions): Promise<ListReposResult>;
 }
