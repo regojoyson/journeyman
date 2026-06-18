@@ -39,6 +39,11 @@ function buildSystem(opts: RunCustomPromptOptions): string | undefined {
   return parts.length ? parts.join("\n\n") : undefined;
 }
 
+/** A consistent abort error to throw, matching how Claude/AISDK surface cancellation. */
+function abortError(signal: AbortSignal | undefined): unknown {
+  return signal?.reason ?? new DOMException("Aborted", "AbortError");
+}
+
 /**
  * Run a custom prompt through OpenCode. `client` is an already-started server
  * client (index.ts owns start/close). Honors outputMode none|text|structured,
@@ -50,6 +55,8 @@ export async function runCustomPrompt(
   opts: RunCustomPromptOptions,
 ): Promise<RunCustomPromptResult> {
   const sessionId = opts.sessionId ?? crypto.randomUUID();
+
+  if (opts.signal?.aborted) throw abortError(opts.signal);
 
   const model = resolveOpenCodeModel(opts.model, config.model);
   if (!model) return { sessionId, error: "opencode: no model configured (set opts.model as 'providerID/modelID')" };
@@ -70,20 +77,33 @@ export async function runCustomPrompt(
   if (!session.data) {
     return { sessionId, error: `opencode session.create failed: ${describeSdkError((session as { error?: unknown }).error)}` };
   }
+  const sid = session.data.id;
 
   const promptText = [opts.cwd ? confinementSystemPrompt(opts.cwd) : "", opts.prompt].filter(Boolean).join("\n\n");
 
-  const res = await client.session.prompt({
-    sessionID: session.data.id,
-    parts: [{ type: "text", text: promptText }],
-    model,
-    tools,
-    ...(opts.cwd ? { directory: opts.cwd } : {}),
-    ...(system ? { system } : {}),
-    ...(opts.outputMode === "structured" && opts.outputSchema
-      ? { format: { type: "json_schema", schema: opts.outputSchema, retryCount: STRUCTURED_RETRY_COUNT } }
-      : {}),
-  });
+  // Best-effort server-side cancellation: when the run is aborted, tell OpenCode to
+  // stop the agent loop. Swallow abort's own errors so they never mask the cancellation.
+  const onAbort = () => { void Promise.resolve(client.session.abort({ sessionID: sid })).catch(() => {}); };
+  opts.signal?.addEventListener("abort", onAbort, { once: true });
+
+  let res: Awaited<ReturnType<typeof client.session.prompt>>;
+  try {
+    res = await client.session.prompt({
+      sessionID: sid,
+      parts: [{ type: "text", text: promptText }],
+      model,
+      tools,
+      ...(opts.cwd ? { directory: opts.cwd } : {}),
+      ...(system ? { system } : {}),
+      ...(opts.outputMode === "structured" && opts.outputSchema
+        ? { format: { type: "json_schema", schema: opts.outputSchema, retryCount: STRUCTURED_RETRY_COUNT } }
+        : {}),
+    });
+  } finally {
+    opts.signal?.removeEventListener("abort", onAbort);
+  }
+
+  if (opts.signal?.aborted) throw abortError(opts.signal);
 
   if (!res.data) {
     const error = `opencode session.prompt failed: ${describeSdkError((res as { error?: unknown }).error)}`;
@@ -98,6 +118,9 @@ export async function runCustomPrompt(
   logSessionEvent(log, sessionId, info as never, opts.onLog);
 
   if (info.error) {
+    if (info.error && typeof info.error === "object" && (info.error as { name?: string }).name === "MessageAbortedError") {
+      throw abortError(opts.signal);
+    }
     const error = typeof info.error === "string" ? info.error : JSON.stringify(info.error);
     log.error({ sessionId, error }, "runCustomPrompt failed");
     return { sessionId, error };
