@@ -4,7 +4,7 @@ import type {
   ScanReposOptions, ScanReposResult,
   CheckoutRepoOptions, CheckoutRepoResult,
   RunCustomPromptOptions, RunCustomPromptResult,
-  ResolvedMcpInstance, CodingModelConfig,
+  ResolvedMcpInstance, CodingModelConfig, ResolvedSkillPackage,
 } from "@journeyman/core";
 import { startServer } from "./client.ts";
 import type { OpenCodeProviderConfig } from "./types.ts";
@@ -38,11 +38,13 @@ export class OpenCodeProvider implements ICodingCLI {
       modelConfig?: CodingModelConfig;
       env?: Record<string, string>;
       maxSteps?: number;
+      skills?: ResolvedSkillPackage[];
+      signal?: AbortSignal;
     },
     fn: (client: Awaited<ReturnType<typeof startServer>>["client"]) => Promise<T>,
   ): Promise<T> {
     const serverConfig = buildServerConfig(this.#config, runtime);
-    const handle = await startServer(this.#config, serverConfig, runtime.env);
+    const handle = await startServer(this.#config, serverConfig, runtime.env, runtime.signal);
     try {
       return await fn(handle.client);
     } finally {
@@ -66,7 +68,7 @@ export class OpenCodeProvider implements ICodingCLI {
 
   async runCustomPrompt(opts: RunCustomPromptOptions): Promise<RunCustomPromptResult> {
     return this.#withServer(
-      { mcps: opts.mcps, model: opts.model, modelConfig: opts.modelConfig, env: opts.env, maxSteps: opts.maxSteps },
+      { mcps: opts.mcps, model: opts.model, modelConfig: opts.modelConfig, env: opts.env, maxSteps: opts.maxSteps, skills: opts.skills, signal: opts.signal },
       (client) => runCustomPrompt(client, this.#config, opts),
     );
   }

@@ -14,6 +14,19 @@ function fakeClient(promptImpl: (params: any) => any): OpenCodeClient {
   } as unknown as OpenCodeClient;
 }
 
+function fakeClientWithAbort(
+  promptImpl: (params: any) => any,
+  abort: ReturnType<typeof vi.fn>,
+): OpenCodeClient {
+  return {
+    session: {
+      create: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+      prompt: vi.fn().mockImplementation(async (p: any) => promptImpl(p)),
+      abort,
+    },
+  } as unknown as OpenCodeClient;
+}
+
 describe("opencode runCustomPrompt", () => {
   it("structured mode passes the schema and returns info.structured", async () => {
     let captured: any;
@@ -140,5 +153,31 @@ describe("runCustomPrompt structured reliability", () => {
     const onLog = vi.fn();
     await runCustomPrompt(client, cfg, { ...structuredOpts, onLog, agentLogLevel: "none" });
     expect(onLog.mock.calls.some((c: any[]) => String(c[0]).includes("secret"))).toBe(false);
+  });
+});
+
+describe("opencode runCustomPrompt abort", () => {
+  it("throws before creating a session when the signal is already aborted", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const create = vi.fn();
+    const client = { session: { create, prompt: vi.fn(), abort: vi.fn() } } as unknown as OpenCodeClient;
+    await expect(
+      runCustomPrompt(client, cfg, { prompt: "x", outputMode: "text", model: "openai/gpt-4o", signal: ac.signal }),
+    ).rejects.toThrow();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("aborts the session and throws when the signal fires mid-run", async () => {
+    const ac = new AbortController();
+    const abort = vi.fn().mockResolvedValue({ data: true });
+    const client = fakeClientWithAbort(() => {
+      ac.abort();
+      return { data: { info: { error: { name: "MessageAbortedError" } }, parts: [] } };
+    }, abort);
+    await expect(
+      runCustomPrompt(client, cfg, { prompt: "x", outputMode: "text", model: "openai/gpt-4o", signal: ac.signal }),
+    ).rejects.toThrow();
+    expect(abort).toHaveBeenCalledWith({ sessionID: "sess-1" });
   });
 });

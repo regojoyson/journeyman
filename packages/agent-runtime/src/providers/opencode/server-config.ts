@@ -1,5 +1,6 @@
 import { createServer } from "node:net";
-import type { CodingModelConfig, ResolvedMcpInstance } from "@journeyman/core";
+import { join } from "node:path";
+import type { CodingModelConfig, ResolvedMcpInstance, ResolvedSkillPackage } from "@journeyman/core";
 import type { OpenCodeProviderConfig } from "./types.ts";
 import { toOpenCodeMcpConfigs } from "./mcp-adapter.ts";
 import { parseOpenCodeModel } from "./model.ts";
@@ -17,6 +18,7 @@ export interface ServerConfigRuntime {
   modelConfig?: CodingModelConfig;
   env?: Record<string, string>;
   maxSteps?: number;
+  skills?: ResolvedSkillPackage[];
 }
 
 /**
@@ -34,11 +36,13 @@ export function buildServerConfig(
   const mcp = { ...(config.mcp ?? {}), ...(runtime.mcps?.length ? toOpenCodeMcpConfigs(runtime.mcps) : {}) };
   const provider = buildProviderBlock(runtime.model, runtime.modelConfig, runtime.env);
   const maxSteps = runtime.maxSteps && runtime.maxSteps > 0 ? runtime.maxSteps : DEFAULT_STEP_BUDGET;
+  const skillPaths = (runtime.skills ?? []).flatMap((pkg) => pkg.enabledSkills.map((name) => join(pkg.localPath, name)));
   return {
     permission,
     agent: { build: { maxSteps } },
     ...(Object.keys(mcp).length ? { mcp } : {}),
     ...(provider ? { provider } : {}),
+    ...(skillPaths.length ? { skills: { paths: skillPaths } } : {}),
   };
 }
 

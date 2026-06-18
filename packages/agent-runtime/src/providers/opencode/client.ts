@@ -34,6 +34,7 @@ export async function startServer(
   config: OpenCodeProviderConfig,
   serverConfig: Record<string, unknown>,
   env: Record<string, string> | undefined,
+  signal?: AbortSignal,
 ): Promise<OpenCodeServerHandle> {
   if (config.mode === "external") {
     return {
@@ -50,6 +51,7 @@ export async function startServer(
       port,
       timeout: resolveServerTimeout(config.timeout),
       config: serverConfig as never,
+      ...(signal ? { signal } : {}),
     });
     return {
       client,
