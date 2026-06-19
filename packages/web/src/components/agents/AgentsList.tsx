@@ -1,14 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { agentsApi } from "../../api/agents.ts";
 import type { Agent } from "@journeyman/core";
-import { EditAgentModal } from "./EditAgentModal.tsx";
 import { btnPrimary, btnGhost, btnDanger, card } from "../../routes/admin-styles.ts";
 
-// Phase 3: wire a real wsId from workspace context. For now accept as prop.
-export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
+export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: string }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Agent | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +32,7 @@ export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
       const a = await agentsApi.create(wsId, { name: newName.trim() });
       setCreating(false);
       setNewName("");
-      setEditing(a);
-      await refresh();
+      navigate(`/workspaces/${wsId}/agents/${a.id}`);
     } catch (e: any) {
       setError(e?.message ?? String(e));
     }
@@ -55,8 +53,11 @@ export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
             placeholder="Agent name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newName.trim()) void createDraft();
+            }}
           />
-          <button className={btnPrimary} disabled={!newName.trim()} onClick={createDraft}>Create draft</button>
+          <button className={btnPrimary} disabled={!newName.trim()} onClick={createDraft}>Create</button>
           <button className={btnGhost} onClick={() => setCreating(false)}>Cancel</button>
         </div>
       )}
@@ -88,7 +89,7 @@ export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
                 {a.triggers.map((t) => t.type).join(", ") || "manual"}
               </td>
               <td className="px-4 py-2 text-right">
-                <button className={btnGhost} onClick={() => setEditing(a)}>Open</button>
+                <button className={btnGhost} onClick={() => navigate(`/workspaces/${wsId}/agents/${a.id}`)}>Open</button>
                 <button
                   className={btnDanger}
                   onClick={async () => {
@@ -103,17 +104,6 @@ export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
           ))}
         </tbody>
       </table>
-      {editing && (
-        <EditAgentModal
-          orgId={orgId}
-          wsId={wsId}
-          agent={editing}
-          onClose={() => {
-            setEditing(null);
-            void refresh();
-          }}
-        />
-      )}
     </div>
   );
 }
