@@ -4,9 +4,8 @@ import {
   type RunContext,
   type SecretBinding,
 } from "@journeyman/core";
-import { validateName, fetchPinnedUserSecret, fetchPinnedOrgSecret } from "./db.ts";
+import { validateName, fetchPinnedWorkspaceSecret, fetchPinnedOrgSecret } from "./db.ts";
 import { resolveSecrets } from "./resolver.ts";
-import { readGlobalSecrets } from "./global.ts";
 
 export interface SecretSlotSpec {
   name: string;
@@ -43,12 +42,11 @@ export async function resolveBindings(input: ResolveBindingsInput): Promise<Reso
     if (binding.mode === "pinned") {
       validateName(binding.name);
       let v: string | null = null;
-      if (binding.scope === "user") {
-        v = await fetchPinnedUserSecret(pool, ctx.org.id, ctx.user.id, binding.name);
+      if (binding.scope === "workspace") {
+        const wsId = ctx.workspace?.id;
+        v = wsId ? await fetchPinnedWorkspaceSecret(pool, wsId, binding.name) : null;
       } else if (binding.scope === "org") {
         v = await fetchPinnedOrgSecret(pool, ctx.org.id, binding.name);
-      } else if (binding.scope === "global") {
-        v = readGlobalSecrets()[binding.name] ?? null;
       }
       if (v == null) { missing.push(slot.name); continue; }
       values[slot.name] = v;
