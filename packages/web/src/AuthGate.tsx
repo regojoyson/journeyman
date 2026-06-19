@@ -4,6 +4,7 @@ import { SetupWizardPage } from "./routes/SetupWizardPage.tsx";
 import { LoginPage } from "./routes/LoginPage.tsx";
 import { AuthContext, type AuthOrg, type AuthUser } from "./AuthContext.tsx";
 import { CookieAuthProvider } from "./auth/CookieAuthProvider.ts";
+import { WorkspaceProvider } from "./WorkspaceProvider.tsx";
 import { SessionManager, type SessionEvent, type SessionState } from "./auth/SessionManager.ts";
 import { setApiSessionManager } from "./api/client.ts";
 import { IdleWarningModal } from "./auth/modals/IdleWarningModal.tsx";
@@ -121,7 +122,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         extend: handleExtend,
       }}
     >
-      {children}
+      <WorkspaceProvider>{children}</WorkspaceProvider>
       {warning && (
         <IdleWarningModal
           secondsRemaining={warning.secondsRemaining}

@@ -2,32 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ThemeToggle } from "@journeyman/theme";
 import { useAuth } from "../AuthContext.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher.tsx";
 import { Logo, LogoMark } from "./Logo.tsx";
 
-const NAV_ITEMS = [
-  { to: "/workflows",          icon: "⚡", label: "Workflows"          },
-  { to: "/workflow-instances", icon: "▶",  label: "Workflow Instances" },
-  { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
-  { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
-  { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
-  { to: "/me/custom-steps", icon: "🧩", label: "My Custom Steps" },
-  { to: "/me/agents", icon: "🤖", label: "My Agents" },
-  { to: "/me/connections", icon: "🔗", label: "My Connections" },
-  { to: "/me/webhooks", icon: "📡", label: "My Webhooks" },
+const WORKSPACE_ITEMS = [
+  { slug: "workflows",          icon: "⚡", label: "Workflows"          },
+  { slug: "workflow-instances", icon: "▶",  label: "Workflow Instances" },
+  { slug: "secrets",       icon: "🔑", label: "Secrets" },
+  { slug: "skills",        icon: "🎓", label: "Skills"  },
+  { slug: "mcps",          icon: "🔌", label: "MCPs"    },
+  { slug: "custom-steps",  icon: "🧩", label: "Custom Steps" },
+  { slug: "agents",        icon: "🤖", label: "Agents" },
+  { slug: "connections",   icon: "🔗", label: "Connections" },
+  { slug: "webhooks",      icon: "📡", label: "Webhooks" },
 ];
 
-const ADMIN_ITEMS = [
-  { to: "/admin/users",   icon: "👥", label: "Users"       },
-  { to: "/admin/secrets", icon: "🔐", label: "Org Secrets" },
-  { to: "/admin/mcps",    icon: "🔌", label: "Org MCPs"    },
-  { to: "/admin/sandboxes", icon: "👷", label: "Org Sandboxes" },
-  { to: "/admin/skills",  icon: "📦", label: "Org Skills"  },
-  { to: "/admin/custom-steps", icon: "🧩", label: "Org Custom Steps" },
-  { to: "/admin/agents", icon: "🤖", label: "Org Agents" },
-  { to: "/admin/connections", icon: "🔗", label: "Org Connections" },
-  { to: "/admin/webhooks", icon: "📡", label: "Org Webhooks" },
-  { to: "/admin/coding-models", icon: "🧠", label: "Coding Models" },
-  { to: "/admin/workflows", icon: "📋", label: "Admin Workflows" },
+const ORG_ITEMS = [
+  { slug: "members",       icon: "👥", label: "Members"      },
+  { slug: "secrets",       icon: "🔐", label: "Org Secrets"  },
+  { slug: "sandboxes",     icon: "👷", label: "Org Sandboxes" },
+  { slug: "coding-models", icon: "🧠", label: "Coding Models" },
 ];
 
 function initials(label: string): string {
@@ -38,7 +33,9 @@ function initials(label: string): string {
 }
 
 export default function Sidebar() {
-  const { role, user, org, logout } = useAuth();
+  const { role, user, org, isPlatformAdmin, activeOrgId, logout } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const isAdmin = role === "admin" || isPlatformAdmin;
   const [pinned, setPinned] = useState(
     () => localStorage.getItem("sidebar-pinned") === "true"
   );
@@ -146,6 +143,9 @@ export default function Sidebar() {
         )}
       </div>
 
+      {/* Workspace switcher */}
+      <WorkspaceSwitcher expanded={expanded} />
+
       {/* Nav items */}
       <nav style={{
         display: "flex",
@@ -153,9 +153,10 @@ export default function Sidebar() {
         gap: 2,
         padding: expanded ? "0 6px" : "0 8px",
         flex: 1,
+        overflowY: "auto",
       }}>
-        {NAV_ITEMS.map(({ to, icon, label: itemLabel }) => (
-          <NavLink key={to} to={to} style={navStyle}>
+        {activeWorkspaceId && WORKSPACE_ITEMS.map(({ slug, icon, label: itemLabel }) => (
+          <NavLink key={slug} to={`/workspaces/${activeWorkspaceId}/${slug}`} style={navStyle}>
             <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
             {expanded && (
               <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{itemLabel}</span>
@@ -163,7 +164,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {role === "admin" && (
+        {isAdmin && activeOrgId && (
           <>
             <div style={{ borderTop: "1px solid rgb(var(--color-border) / 1)", margin: "6px 0" }} />
             {expanded && (
@@ -174,11 +175,11 @@ export default function Sidebar() {
                 textTransform: "uppercase",
                 letterSpacing: 1,
               }}>
-                Admin
+                Organization
               </div>
             )}
-            {ADMIN_ITEMS.map(({ to, icon, label: itemLabel }) => (
-              <NavLink key={to} to={to} style={navStyle}>
+            {ORG_ITEMS.map(({ slug, icon, label: itemLabel }) => (
+              <NavLink key={slug} to={`/orgs/${activeOrgId}/${slug}`} style={navStyle}>
                 <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
                 {expanded && (
                   <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{itemLabel}</span>
@@ -226,10 +227,6 @@ export default function Sidebar() {
               )}
             </div>
             {[
-              { to: "/me/secrets",  label: "My Secrets"      },
-              { to: "/me/mcps",     label: "My MCPs"         },
-              { to: "/me/skills",   label: "My Skills"       },
-              { to: "/me/custom-steps", label: "My Custom Steps" },
               { to: "/me/password", label: "Change password" },
             ].map(({ to, label: itemLabel }) => (
               <Link
