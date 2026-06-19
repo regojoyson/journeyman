@@ -1,3 +1,5 @@
+import type { WorkspaceContext } from "./workspace.types.ts";
+
 export type Role = "admin" | "member";
 
 export interface OrgRecord {
@@ -33,6 +35,8 @@ export interface RunContext {
   isPlatformAdmin: boolean;
   tokenKind: "access-jwt" | "api-token";
   apiTokenId?: string;
+  /** Set by requireWorkspacePermission when a :wsId route resolves. */
+  workspace?: WorkspaceContext;
 }
 
 export interface AccessTokenClaims {
