@@ -24,7 +24,7 @@ export async function resolveWebhookSecret(
     const r = await pool.query(
       `SELECT ciphertext, iv, auth_tag
          FROM jm_secrets
-        WHERE org_id = $1 AND user_id IS NULL AND name = $2`,
+        WHERE org_id = $1 AND workspace_id IS NULL AND name = $2`,
       [scope.orgId, secretName],
     );
     const row = r.rows[0];
@@ -32,18 +32,9 @@ export async function resolveWebhookSecret(
     return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
   }
 
-  // User-scope: any row keyed by this user. (org_id is also required in the
-  // schema for user-scope rows, so the user must have at least one org membership.)
-  const r = await pool.query(
-    `SELECT ciphertext, iv, auth_tag
-       FROM jm_secrets
-      WHERE user_id = $1 AND name = $2
-      LIMIT 1`,
-    [scope.userId, secretName],
-  );
-  const row = r.rows[0];
-  if (!row) return null;
-  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+  // TODO(webhooks cutover): user-scoped webhooks are migrated to workspace scope
+  // in the Webhooks cutover plan; until then there is no user secret tier to read.
+  return null;
 }
 
 /**
@@ -73,7 +64,7 @@ export async function secretExistsInOrgScope(
   const globals = readGlobalSecrets();
   if (name in globals) return true;
   const r = await pool.query(
-    `SELECT 1 FROM jm_secrets WHERE org_id = $1 AND user_id IS NULL AND name = $2 LIMIT 1`,
+    `SELECT 1 FROM jm_secrets WHERE org_id = $1 AND workspace_id IS NULL AND name = $2 LIMIT 1`,
     [orgId, name],
   );
   return r.rowCount !== null && r.rowCount > 0;

@@ -198,8 +198,8 @@ async function computeSaveWarnings(
 
 function isNarrowerScope(pinned: SecretScope, workflow: WorkflowScope): boolean {
   if (workflow === "user") return false;
-  if (workflow === "org") return pinned === "user";
-  /* global */ return pinned === "user" || pinned === "org";
+  if (workflow === "org") return pinned === "workspace";
+  /* global */ return pinned === "workspace" || pinned === "org";
 }
 
 export interface WorkflowValidationReport {

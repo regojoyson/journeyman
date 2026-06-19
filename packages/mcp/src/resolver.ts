@@ -9,6 +9,8 @@ import { fetchInstancesByIds } from "./db.ts";
 export interface ResolveCtx {
   orgId: string;
   userId: string;
+  /** Active workspace for secret resolution (workspace > org). Null/undefined => org tier. */
+  workspaceId?: string | null;
 }
 
 export async function resolveMcpInstances(
@@ -27,15 +29,16 @@ export async function resolveMcpInstances(
     new Set(found.flatMap((i) => i.bindings.map((b) => b.secretName))),
   );
 
+  const workspaceId = ctx.workspaceId ?? null;
   const secretRows = allSecretNames.length > 0
-    ? await fetchForResolve(pool, ctx.orgId, ctx.userId, allSecretNames)
+    ? await fetchForResolve(pool, ctx.orgId, workspaceId, allSecretNames)
     : [];
 
-  // user-scope wins over org-scope.
+  // workspace-scope wins over org-scope.
   const secretValues: Record<string, string> = {};
   for (const row of secretRows) {
-    const isUser = row.userId === ctx.userId;
-    if (isUser) secretValues[row.name] = row.value;
+    const isWorkspace = row.workspaceId !== null && row.workspaceId === workspaceId;
+    if (isWorkspace) secretValues[row.name] = row.value;
     else if (secretValues[row.name] === undefined) secretValues[row.name] = row.value;
   }
 

@@ -18,11 +18,10 @@ export interface RequiredSecretsTabProps {
 }
 
 const SCOPE_LABEL: Record<SecretScope, string> = {
-  user: "Your secrets",
+  workspace: "Workspace",
   org: "Organization",
-  global: "Global",
 };
-const SCOPE_ORDER: SecretScope[] = ["user", "org", "global"];
+const SCOPE_ORDER: SecretScope[] = ["workspace", "org"];
 
 function getBinding(node: WorkflowNode, slotName: string): SecretBinding {
   return node.secretBindings?.[slotName] ?? { mode: "auto" };
@@ -155,7 +154,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
   }, [orgId]);
 
   const grouped = useMemo(() => {
-    const out: Record<SecretScope, string[]> = { user: [], org: [], global: [] };
+    const out: Record<SecretScope, string[]> = { workspace: [], org: [] };
     for (const v of visible) {
       if (!out[v.scope].includes(v.name)) out[v.scope].push(v.name);
     }
@@ -322,8 +321,8 @@ function SlotRow({ slot, binding, visible, grouped, loaded, workflowScope, readO
 
 function isNarrower(pinned: SecretScope, flow: "user" | "org" | "global"): boolean {
   if (flow === "user") return false;
-  if (flow === "org") return pinned === "user";
-  /* global */ return pinned === "user" || pinned === "org";
+  if (flow === "org") return pinned === "workspace";
+  /* global */ return pinned === "workspace" || pinned === "org";
 }
 
 interface PreviewProps {
