@@ -58,7 +58,6 @@ describe("rowToSandbox", () => {
       id: "w1",
       scope: "org",
       orgId: "o1",
-      userId: null,
       name: "Java builder",
       type: "docker",
       executionMode: "per-instance",
