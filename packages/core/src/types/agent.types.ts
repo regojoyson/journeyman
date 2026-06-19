@@ -2,7 +2,6 @@ import type { CanonicalTool } from "./coding-tools.types.ts";
 import type { RetryPolicy } from "./flow.types.ts";
 import type { CustomStepOutputField } from "./custom-steps.types.ts";
 
-export type AgentScope = "user" | "org";
 export type AgentStatus = "draft" | "active";
 
 export interface AgentInputField {
@@ -74,8 +73,7 @@ export type AgentTrigger =
 
 export interface Agent {
   id: string;
-  scope: AgentScope;
-  userId?: string;
+  workspaceId: string;
   orgId: string;
   name: string;
   instructions: string; // mustache template using {{input}} vars
@@ -102,9 +100,9 @@ export interface Agent {
   updatedAt: string;
 }
 
-export type AgentCreateInput = Pick<Agent, "scope" | "name"> &
-  Partial<Omit<Agent, "id" | "scope" | "name" | "orgId" | "userId" | "createdBy" | "createdAt" | "updatedAt">>;
+export type AgentCreateInput = Pick<Agent, "name"> &
+  Partial<Omit<Agent, "id" | "name" | "orgId" | "workspaceId" | "createdBy" | "createdAt" | "updatedAt">>;
 
 export type AgentUpdateInput = Partial<
-  Omit<Agent, "id" | "scope" | "orgId" | "userId" | "createdBy" | "createdAt" | "updatedAt">
+  Omit<Agent, "id" | "orgId" | "workspaceId" | "createdBy" | "createdAt" | "updatedAt">
 >;

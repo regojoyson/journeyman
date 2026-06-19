@@ -10,8 +10,7 @@ export class DuplicateAgentError extends Error {
 
 const COLUMN_KEYS = new Set([
   "id",
-  "scope",
-  "userId",
+  "workspaceId",
   "orgId",
   "name",
   "status",
@@ -32,8 +31,7 @@ export function rowToAgent(r: any): Agent {
   const d = r.definition ?? {};
   return {
     id: r.id,
-    scope: r.scope,
-    userId: r.user_id ?? undefined,
+    workspaceId: r.workspace_id,
     orgId: r.org_id,
     name: r.name,
     status: r.status,
@@ -61,13 +59,12 @@ export function rowToAgent(r: any): Agent {
 }
 
 export function buildInsert(
-  input: AgentCreateInput & { orgId: string; userId: string | null; createdBy: string },
+  input: AgentCreateInput & { workspaceId: string; orgId: string; createdBy: string },
 ): { cols: string[]; vals: unknown[]; def: Record<string, unknown> } {
   const def = toDefinition(input as Record<string, unknown>);
-  const cols = ["scope", "user_id", "org_id", "name", "status", "enabled", "definition", "created_by"];
+  const cols = ["workspace_id", "org_id", "name", "status", "enabled", "definition", "created_by"];
   const vals = [
-    input.scope,
-    input.userId,
+    input.workspaceId,
     input.orgId,
     input.name,
     (input as any).status ?? "draft",
@@ -80,7 +77,7 @@ export function buildInsert(
 
 export async function insertAgent(
   pool: Pool,
-  input: AgentCreateInput & { orgId: string; userId: string | null; createdBy: string },
+  input: AgentCreateInput & { workspaceId: string; orgId: string; createdBy: string },
 ): Promise<Agent> {
   const { cols, vals } = buildInsert(input);
   const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
@@ -101,12 +98,10 @@ export async function getAgent(pool: Pool, id: string): Promise<Agent | null> {
   return rows[0] ? rowToAgent(rows[0]) : null;
 }
 
-export async function listAgents(pool: Pool, orgId: string, userId: string | null): Promise<Agent[]> {
+export async function listAgents(pool: Pool, workspaceId: string): Promise<Agent[]> {
   const { rows } = await pool.query(
-    `SELECT * FROM jm_agents
-     WHERE org_id = $1 AND COALESCE(user_id::text, '') = COALESCE($2::text, '')
-     ORDER BY name ASC`,
-    [orgId, userId],
+    `SELECT * FROM jm_agents WHERE workspace_id = $1 ORDER BY name ASC`,
+    [workspaceId],
   );
   return rows.map(rowToAgent);
 }

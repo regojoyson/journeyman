@@ -40,7 +40,7 @@ export async function runAgent(
     workflowId: null,
     workflowVersionId: null,
     workflowNameSnapshot: agent.name,
-    workspaceId: null, // TODO(agents cutover 2g): agents aren't workspace-scoped yet
+    workspaceId: agent.workspaceId,
     definitionSnapshot: compiled.graph,
     inputs: { ...compiled.inputs, agentId: agent.id },
     startedByUserId: startedBy.userId,

@@ -4,7 +4,8 @@ import type { Agent } from "@journeyman/core";
 import { EditAgentModal } from "./EditAgentModal.tsx";
 import { btnPrimary, btnGhost, btnDanger, card } from "../../routes/admin-styles.ts";
 
-export function AgentsList({ orgId, scope }: { orgId: string; scope: "user" | "org" }) {
+// Phase 3: wire a real wsId from workspace context. For now accept as prop.
+export function AgentsList({ orgId, wsId }: { orgId: string; wsId: string }) {
   const [items, setItems] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Agent | null>(null);
@@ -15,13 +16,13 @@ export function AgentsList({ orgId, scope }: { orgId: string; scope: "user" | "o
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(scope === "user" ? await agentsApi.listMine(orgId) : await agentsApi.listOrg(orgId));
+      setItems(await agentsApi.list(wsId));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
-  }, [orgId, scope]);
+  }, [wsId]);
 
   useEffect(() => {
     void refresh();
@@ -29,7 +30,7 @@ export function AgentsList({ orgId, scope }: { orgId: string; scope: "user" | "o
 
   const createDraft = async () => {
     try {
-      const a = await agentsApi.create(orgId, { scope, name: newName.trim() });
+      const a = await agentsApi.create(wsId, { name: newName.trim() });
       setCreating(false);
       setNewName("");
       setEditing(a);
@@ -91,7 +92,7 @@ export function AgentsList({ orgId, scope }: { orgId: string; scope: "user" | "o
                 <button
                   className={btnDanger}
                   onClick={async () => {
-                    await agentsApi.remove(orgId, a.id);
+                    await agentsApi.remove(wsId, a.id);
                     await refresh();
                   }}
                 >
@@ -105,6 +106,7 @@ export function AgentsList({ orgId, scope }: { orgId: string; scope: "user" | "o
       {editing && (
         <EditAgentModal
           orgId={orgId}
+          wsId={wsId}
           agent={editing}
           onClose={() => {
             setEditing(null);

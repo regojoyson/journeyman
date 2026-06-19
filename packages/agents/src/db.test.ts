@@ -5,8 +5,7 @@ describe("rowToAgent", () => {
   it("merges columns with the definition JSONB", () => {
     const row = {
       id: "a1",
-      scope: "org",
-      user_id: null,
+      workspace_id: "ws1",
       org_id: "o1",
       name: "Triage",
       status: "draft",
@@ -31,20 +30,19 @@ describe("rowToAgent", () => {
     };
     const a = rowToAgent(row);
     expect(a.id).toBe("a1");
+    expect(a.workspaceId).toBe("ws1");
     expect(a.name).toBe("Triage");
     expect(a.status).toBe("draft");
     expect(a.provider).toBe("claude");
     expect(a.tools).toEqual(["bash"]);
-    expect(a.userId).toBeUndefined();
   });
 });
 
 describe("buildInsert", () => {
   it("splits name/status/enabled out of the definition", () => {
     const { cols, vals, def } = buildInsert({
-      scope: "org",
+      workspaceId: "ws1",
       orgId: "o1",
-      userId: null,
       createdBy: "u1",
       name: "Triage",
       status: "draft",

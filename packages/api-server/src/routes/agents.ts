@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Composition } from "../composition.ts";
-import { makeRequireAuth } from "@journeyman/identity";
+import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import {
   insertAgent,
   getAgent,
@@ -42,7 +42,11 @@ const EMPTY_AGENT_DEFAULTS = {
 
 export function registerAgentRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
+  const requirePerm = makeRequireWorkspacePermission({ pool: c.pool! });
   const pool = c.pool!;
+
+  const read = { preHandler: [requireAuth(), requirePerm("resource.read")] };
+  const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
 
   const wrongOrg = (ctx: { org: { id: string } }, orgId: string, reply: FastifyReply) => {
     if (ctx.org.id !== orgId) {
@@ -52,42 +56,32 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     return false;
   };
 
-  // List (user-scoped)
-  app.get("/api/orgs/:orgId/users/me/agents", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId } = req.params as { orgId: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    return listAgents(pool, orgId, ctx.user.id);
+  // List agents — workspace-scoped
+  app.get("/api/workspaces/:wsId/agents", read, async (req) => {
+    const { wsId } = req.params as { wsId: string };
+    return listAgents(pool, wsId);
   });
 
-  // List (org-scoped)
-  app.get("/api/orgs/:orgId/agents", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId } = req.params as { orgId: string };
+  // Create agent — workspace-scoped
+  app.post("/api/workspaces/:wsId/agents", write, async (req, reply) => {
+    const { wsId } = req.params as { wsId: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    return listAgents(pool, orgId, null);
-  });
-
-  const createHandler = (scope: "user" | "org") => async (req: FastifyRequest, reply: FastifyReply) => {
-    const { orgId } = req.params as { orgId: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const body = req.body as { name?: unknown };
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     if (!name) {
       reply.code(400).send({ error: "name_required" });
       return;
     }
+    const orgId = ctx.workspace!.orgId;
     try {
       const agent = await insertAgent(pool, {
-        scope,
         name,
+        workspaceId: wsId,
         orgId,
-        userId: scope === "user" ? ctx.user.id : null,
         createdBy: ctx.user.id,
         ...EMPTY_AGENT_DEFAULTS,
-      } as AgentCreateInput & { orgId: string; userId: string | null; createdBy: string });
-      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.create", targetType: "agent", targetId: agent.id, detail: { name, scope } });
+      } as AgentCreateInput & { workspaceId: string; orgId: string; createdBy: string });
+      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.create", targetType: "agent", targetId: agent.id, detail: { name } });
       reply.code(201);
       return agent;
     } catch (err) {
@@ -97,18 +91,13 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       }
       throw err;
     }
-  };
-
-  app.post("/api/orgs/:orgId/users/me/agents", { preHandler: requireAuth() }, createHandler("user"));
-  app.post("/api/orgs/:orgId/agents", { preHandler: requireAuth() }, createHandler("org"));
+  });
 
   // Get
-  app.get("/api/orgs/:orgId/agents/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  app.get("/api/workspaces/:wsId/agents/:id", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
@@ -116,12 +105,10 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   });
 
   // Update (blocked while enabled — §9 enabled = read-only)
-  app.patch("/api/orgs/:orgId/agents/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  app.patch("/api/workspaces/:wsId/agents/:id", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const existing = await getAgent(pool, id);
-    if (!existing || existing.orgId !== orgId) {
+    if (!existing || existing.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
@@ -129,9 +116,10 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
       reply.code(409).send({ error: "agent_enabled_readonly" });
       return;
     }
+    const ctx = ctxOf(req);
     try {
       const updated = await updateAgent(pool, id, req.body as Record<string, unknown>);
-      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.update", targetType: "agent", targetId: id });
+      await audit(pool, { orgId: existing.orgId, actorUserId: ctx.user.id, action: "agent.update", targetType: "agent", targetId: id });
       return updated;
     } catch (err) {
       if (err instanceof DuplicateAgentError) {
@@ -143,12 +131,11 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   });
 
   // Enable — runs the readiness gate
-  app.post("/api/orgs/:orgId/agents/:id/enable", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
+  app.post("/api/workspaces/:wsId/agents/:id/enable", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
@@ -159,48 +146,45 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     }
     const updated = await updateAgent(pool, id, { status: "active", enabled: true });
     if (updated) await syncScheduleState(pool, updated);
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.enable", targetType: "agent", targetId: id });
+    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.enable", targetType: "agent", targetId: id });
     return updated;
   });
 
   // Disable
-  app.post("/api/orgs/:orgId/agents/:id/disable", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
+  app.post("/api/workspaces/:wsId/agents/:id/disable", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
     const updated = await updateAgent(pool, id, { enabled: false });
     await clearScheduleState(pool, id);
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.disable", targetType: "agent", targetId: id });
+    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.disable", targetType: "agent", targetId: id });
     return updated;
   });
 
   // Delete
-  app.delete("/api/orgs/:orgId/agents/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
+  app.delete("/api/workspaces/:wsId/agents/:id", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
     await deleteAgent(pool, id);
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.delete", targetType: "agent", targetId: id, detail: { name: agent.name } });
+    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.delete", targetType: "agent", targetId: id, detail: { name: agent.name } });
     reply.code(204);
   });
 
   // Run now (manual) — compile + submit. Allowed in draft (test run) and active.
-  app.post("/api/orgs/:orgId/agents/:id/runs", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
+  app.post("/api/workspaces/:wsId/agents/:id/runs", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
@@ -208,13 +192,13 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     try {
       const res = await runAgentGuarded({ orchestrator: c.orchestrator, pool }, agent, body?.inputs ?? {}, "manual", {
         userId: ctx.user.id,
-        orgId,
+        orgId: agent.orgId,
       });
       if (wasSkipped(res)) {
         reply.code(429).send({ error: "skipped", reason: res.skipped });
         return;
       }
-      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.run", targetType: "agent", targetId: id, detail: { workflowInstanceId: res.workflowInstanceId } });
+      await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.run", targetType: "agent", targetId: id, detail: { workflowInstanceId: res.workflowInstanceId } });
       reply.code(202);
       return res;
     } catch (err: any) {
@@ -223,11 +207,14 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
     }
   });
 
-  // Run history — instances tagged with this agentId (isolated query; no shared-store change).
-  app.get("/api/orgs/:orgId/agents/:id/runs", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  // Run history — instances tagged with this agentId
+  app.get("/api/workspaces/:wsId/agents/:id/runs", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const agent = await getAgent(pool, id);
+    if (!agent || agent.workspaceId !== wsId) {
+      reply.code(404).send({ error: "not_found" });
+      return;
+    }
     const { rows } = await pool.query(
       `SELECT id, status, started_at, completed_at
          FROM jm_workflow_instances
@@ -240,17 +227,24 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   });
 
   // Org agent settings — kill-switch (pause-all) + default safety limits (§15.1).
+  // These remain org-scoped (not per-agent).
   app.get("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+    if (ctx.org.id !== orgId) {
+      reply.code(403).send({ error: "wrong_org" });
+      return;
+    }
     return getOrgAgentSettings(pool, orgId);
   });
 
   app.put("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+    if (ctx.org.id !== orgId) {
+      reply.code(403).send({ error: "wrong_org" });
+      return;
+    }
     const body = (req.body ?? {}) as OrgAgentSettingsPatch;
     const next = await upsertOrgAgentSettings(pool, orgId, {
       ...(typeof body.paused === "boolean" ? { paused: body.paused } : {}),
@@ -271,7 +265,10 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   app.get("/api/orgs/:orgId/audit", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+    if (ctx.org.id !== orgId) {
+      reply.code(403).send({ error: "wrong_org" });
+      return;
+    }
     const q = req.query as { before?: string; limit?: string };
     return listAudit(pool, orgId, {
       before: q.before,

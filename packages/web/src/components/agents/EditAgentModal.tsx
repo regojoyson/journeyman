@@ -17,16 +17,16 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: "runs", label: "Run history" },
 ];
 
-function AgentRuns({ orgId, agentId }: { orgId: string; agentId: string }) {
+function AgentRuns({ wsId, agentId }: { wsId: string; agentId: string }) {
   const [runs, setRuns] = useState<AgentRunSummary[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     agentsApi
-      .runs(orgId, agentId)
+      .runs(wsId, agentId)
       .then(setRuns)
       .catch(() => setRuns([]))
       .finally(() => setLoading(false));
-  }, [orgId, agentId]);
+  }, [wsId, agentId]);
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   if (runs.length === 0) return <div className="text-sm text-muted-foreground">No runs yet.</div>;
   return (
@@ -53,7 +53,7 @@ function AgentRuns({ orgId, agentId }: { orgId: string; agentId: string }) {
   );
 }
 
-export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent: Agent; onClose: () => void }) {
+export function EditAgentModal({ orgId, wsId, agent, onClose }: { orgId: string; wsId: string; agent: Agent; onClose: () => void }) {
   const [tab, setTab] = useState<TabId>("instructions");
   const [a, setA] = useState<Agent>(agent);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     setBusy(true);
     setError(null);
     try {
-      setA(await agentsApi.update(orgId, a.id, p));
+      setA(await agentsApi.update(wsId, a.id, p));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -115,7 +115,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     setBusy(true);
     setError(null);
     try {
-      setA(a.enabled ? await agentsApi.disable(orgId, a.id) : await agentsApi.enable(orgId, a.id));
+      setA(a.enabled ? await agentsApi.disable(wsId, a.id) : await agentsApi.enable(wsId, a.id));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -127,7 +127,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     setBusy(true);
     setError(null);
     try {
-      await agentsApi.runNow(orgId, a.id, {});
+      await agentsApi.runNow(wsId, a.id, {});
       setTab("runs");
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -146,8 +146,8 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
   const [apiTokens, setApiTokens] = useState<Array<{ id: string; created_at: string; last_used_at: string | null }>>([]);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   useEffect(() => {
-    agentsApi.listApiTokens(orgId, a.id).then(setApiTokens).catch(() => setApiTokens([]));
-  }, [orgId, a.id]);
+    agentsApi.listApiTokens(wsId, a.id).then(setApiTokens).catch(() => setApiTokens([]));
+  }, [wsId, a.id]);
 
   const saveSchedule = () => {
     const others = a.triggers.filter((t) => t.type !== "schedule");
@@ -158,9 +158,9 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     setBusy(true);
     setError(null);
     try {
-      const r = await agentsApi.issueApiToken(orgId, a.id);
+      const r = await agentsApi.issueApiToken(wsId, a.id);
       setRevealedToken(r.token);
-      setApiTokens(await agentsApi.listApiTokens(orgId, a.id));
+      setApiTokens(await agentsApi.listApiTokens(wsId, a.id));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -168,8 +168,8 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
     }
   };
   const revokeToken = async (tokenId: string) => {
-    await agentsApi.revokeApiToken(orgId, a.id, tokenId);
-    setApiTokens(await agentsApi.listApiTokens(orgId, a.id));
+    await agentsApi.revokeApiToken(wsId, a.id, tokenId);
+    setApiTokens(await agentsApi.listApiTokens(wsId, a.id));
   };
 
   // Webhook trigger (references an existing webhook by id; create it on the Webhooks page).
@@ -550,7 +550,7 @@ export function EditAgentModal({ orgId, agent, onClose }: { orgId: string; agent
             </div>
           )}
 
-          {tab === "runs" && <AgentRuns orgId={orgId} agentId={a.id} />}
+          {tab === "runs" && <AgentRuns wsId={wsId} agentId={a.id} />}
         </div>
       </div>
     </div>

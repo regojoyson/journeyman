@@ -4,7 +4,7 @@ import type { Agent } from "@journeyman/core";
 
 const agent: Agent = {
   id: "ag1",
-  scope: "org",
+  workspaceId: "ws1",
   orgId: "o1",
   name: "Triage",
   instructions: "do {{k}}",
@@ -39,6 +39,7 @@ describe("runAgent", () => {
       expect.objectContaining({
         triggerSource: "api",
         workflowNameSnapshot: "Triage",
+        workspaceId: "ws1",
         inputs: expect.objectContaining({ k: "PROJ-1", agentId: "ag1" }),
         startedByOrgId: "o1",
       }),

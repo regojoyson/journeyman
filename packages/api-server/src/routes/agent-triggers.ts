@@ -1,7 +1,7 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Composition } from "../composition.ts";
-import { makeRequireAuth } from "@journeyman/identity";
+import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { getAgent, runAgentGuarded, wasSkipped } from "@journeyman/agents";
 import { audit } from "../services/audit.ts";
 
@@ -21,36 +21,38 @@ function ctxOf(req: FastifyRequest) {
 
 export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
+  const requirePerm = makeRequireWorkspacePermission({ pool: c.pool! });
   const pool = c.pool!;
 
-  const wrongOrg = (ctx: { org: { id: string } }, orgId: string, reply: FastifyReply) =>
-    ctx.org.id !== orgId ? (reply.code(403).send({ error: "wrong_org" }), true) : false;
+  const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
 
   // Issue a per-agent API token (reveal once).
-  app.post("/api/orgs/:orgId/agents/:id/triggers/api-token", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
+  app.post("/api/workspaces/:wsId/agents/:id/triggers/api-token", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
     const agent = await getAgent(pool, id);
-    if (!agent || agent.orgId !== orgId) {
+    if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
     const { plaintext, hash } = newAgentToken();
     const { rows } = await pool.query(
       `INSERT INTO jm_agent_api_tokens (agent_id, org_id, token_hash) VALUES ($1,$2,$3) RETURNING id`,
-      [id, orgId, hash],
+      [id, agent.orgId, hash],
     );
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.token.issue", targetType: "agent", targetId: id, detail: { tokenId: rows[0].id } });
+    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.token.issue", targetType: "agent", targetId: id, detail: { tokenId: rows[0].id } });
     reply.code(201);
     return { id: rows[0].id, token: plaintext }; // shown once
   });
 
   // List tokens (metadata only — never the plaintext).
-  app.get("/api/orgs/:orgId/agents/:id/triggers/api-token", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  app.get("/api/workspaces/:wsId/agents/:id/triggers/api-token", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const agent = await getAgent(pool, id);
+    if (!agent || agent.workspaceId !== wsId) {
+      reply.code(404).send({ error: "not_found" });
+      return;
+    }
     const { rows } = await pool.query(
       `SELECT id, name, last_used_at, created_at FROM jm_agent_api_tokens
         WHERE agent_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC`,
@@ -60,16 +62,20 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
   });
 
   // Revoke a token.
-  app.delete("/api/orgs/:orgId/agents/:id/triggers/api-token/:tokenId", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id, tokenId } = req.params as { orgId: string; id: string; tokenId: string };
+  app.delete("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", write, async (req, reply) => {
+    const { wsId, id, tokenId } = req.params as { wsId: string; id: string; tokenId: string };
     const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+    const agent = await getAgent(pool, id);
+    if (!agent || agent.workspaceId !== wsId) {
+      reply.code(404).send({ error: "not_found" });
+      return;
+    }
     await pool.query(`UPDATE jm_agent_api_tokens SET revoked_at = now() WHERE id = $1 AND agent_id = $2`, [tokenId, id]);
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "agent.token.revoke", targetType: "agent", targetId: id, detail: { tokenId } });
+    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.token.revoke", targetType: "agent", targetId: id, detail: { tokenId } });
     reply.code(204);
   });
 
-  // Fire — authenticated by the per-agent token (NOT the user session).
+  // Fire — authenticated by the per-agent token (NOT the user session). UNCHANGED.
   app.post("/api/agents/:id/fire", async (req, reply) => {
     const { id } = req.params as { id: string };
     const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim();

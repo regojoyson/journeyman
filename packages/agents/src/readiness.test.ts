@@ -4,7 +4,7 @@ import type { Agent } from "@journeyman/core";
 
 const ok: Agent = {
   id: "a",
-  scope: "org",
+  workspaceId: "ws1",
   orgId: "o",
   name: "A",
   instructions: "do it",
