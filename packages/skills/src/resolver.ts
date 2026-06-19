@@ -54,11 +54,10 @@ async function resolveOne(
 
 export async function resolveSkillPackages(
   pool: Pool,
-  orgId: string,
-  userId: string,
+  workspaceId: string,
   cliType: string,
 ): Promise<ResolvedSkillPackage[]> {
-  const packages = await listSkillPackagesForResolver(pool, orgId, userId, cliType);
+  const packages = await listSkillPackagesForResolver(pool, workspaceId, cliType);
   const out: ResolvedSkillPackage[] = [];
   for (const pkg of packages) {
     const r = await resolveOne(pool, pkg);
@@ -69,12 +68,12 @@ export async function resolveSkillPackages(
 
 export async function resolveSkillPackagesByIds(
   pool: Pool,
-  ctx: { orgId: string; userId: string },
+  ctx: { workspaceId: string },
   packageIds: string[],
   cliType: string,
 ): Promise<ResolvedSkillPackage[]> {
   if (packageIds.length === 0) return [];
-  const found = await fetchSkillPackagesByIds(pool, ctx.orgId, ctx.userId, packageIds);
+  const found = await fetchSkillPackagesByIds(pool, ctx.workspaceId, packageIds);
   const byId = new Map(found.map((p) => [p.id, p]));
   const missing = packageIds.filter((id) => !byId.has(id));
   if (missing.length > 0) throw new MissingSkillPackagesError(missing);
