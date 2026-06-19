@@ -1,9 +1,9 @@
-export type SecretScope = "user" | "org" | "global";
+export type SecretScope = "workspace" | "org";
 
 export interface SecretRecord {
   id: string;
   orgId: string;
-  userId: string | null;
+  workspaceId: string | null;
   name: string;
   description: string | null;
   createdBy: string;
