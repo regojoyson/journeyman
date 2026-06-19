@@ -182,6 +182,26 @@ Today the sidebar duplicates resources across a user-scoped `NAV_ITEMS` ("My Sec
 
 Secrets appear in both the Workspace and Organization sections, matching their two tiers (§4). Routes move from `/me/<resource>` + `/admin/<resource>` to `/workspaces/:wsId/<resource>` (workspace) and `/orgs/:orgId/<resource>` (org), consistent with §7.
 
+### 9b. Page consolidation (remove duplicate screens)
+
+Today most resources ship as **two near-identical page components** — a `My*` (user) page and an `Admin*` (org) page. With user-scoping removed, each pair collapses to a single component. `ConnectionsPage` and `SandboxesPage` are already single components parametrized by a `scope` prop — that is the target pattern for the rest.
+
+| Resource | Today (duplicate) | After | Routes |
+|---|---|---|---|
+| Secrets | `MySecretsPage` + `AdminSecretsPage` | one `SecretsPage`, `tier` prop (`workspace` \| `org`) | `/workspaces/:wsId/secrets`, `/orgs/:orgId/secrets` |
+| MCPs | `MyMcpsPage` + `AdminMcpsPage` | one `McpsPage` (workspace) | `/workspaces/:wsId/mcps` |
+| Skills | `MySkillsPage` + `AdminSkillsPage` | one `SkillsPage` (workspace) | `/workspaces/:wsId/skills` |
+| Custom steps | `MyCustomStepsPage` + `AdminCustomStepsPage` | one `CustomStepsPage` (workspace) | `/workspaces/:wsId/custom-steps` |
+| Agents | `MyAgentsPage` + `AdminAgentsPage` | one `AgentsPage` (workspace) | `/workspaces/:wsId/agents` |
+| Webhooks | `MyWebhooksPage` + `AdminWebhooksPage` | one `WebhooksPage` (workspace) | `/workspaces/:wsId/webhooks` |
+| Flows | `FlowsListPage` + `AdminFlowsPage` | one `FlowsListPage` (workspace) | `/workspaces/:wsId/workflows` |
+| Connections | `ConnectionsPage scope=user\|org` | `ConnectionsPage` (workspace, drop `scope`) | `/workspaces/:wsId/connections` |
+| Sandboxes | `SandboxesPage scope=user\|org` | `SandboxesPage` (org tier + read-only system; drop user) | `/orgs/:orgId/sandboxes` |
+| Coding models | `AdminCodingModelsPage` (no dup) | unchanged, org-admin | `/orgs/:orgId/coding-models` |
+| Users | `AdminUsersPage` (no dup) | becomes org **members** management | `/orgs/:orgId/members` |
+
+The `My*` components and their `/me/*` routes are deleted. Each surviving page reads the active workspace (or org) id from the route param and gates actions by `WorkspacePermission` (Observer hides create/edit/delete; Maintainer shows Members/Settings). Secrets keeps a workspace view and an org view because both tiers exist (§4) — but it is **one** component reused across two routes, not duplicated code.
+
 ---
 
 ## 10. Affected packages
