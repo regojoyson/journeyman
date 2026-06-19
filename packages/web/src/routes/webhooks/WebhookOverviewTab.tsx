@@ -91,7 +91,7 @@ export function WebhookOverviewTab({ webhook, onChange }: Props) {
                 <SecretPicker
                   authMode={webhook.auth.mode}
                   presetId={webhook.preset}
-                  scope={"orgId" in webhook.scope ? "org" : "user"}
+                  scope="org"
                   orgId={activeOrgId}
                   isAdmin={isAdmin}
                   value={secretDraft}

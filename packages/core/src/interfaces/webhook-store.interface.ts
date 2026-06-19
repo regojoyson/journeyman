@@ -2,12 +2,12 @@ import type {
   Webhook,
   WebhookAuthConfig,
   WebhookKind,
-  WebhookScope,
   PresetId,
 } from "../types/webhook.types.ts";
 
 export type CreateWebhookArgs = {
-  scope: WebhookScope;
+  workspaceId: string;
+  orgId: string;
   name: string;
   description?: string;
   preset: PresetId;
@@ -41,8 +41,8 @@ export interface IWebhookStore {
   /** Look up by the opaque token that appears in the ingest URL. Hot path. */
   getByTenantToken(token: string): Promise<Webhook | null>;
 
-  /** All webhooks owned by a scope, ordered by createdAt asc. */
-  listByScope(scope: WebhookScope): Promise<Webhook[]>;
+  /** All webhooks in a workspace, ordered by createdAt asc. */
+  listByWorkspace(workspaceId: string): Promise<Webhook[]>;
 
   /** Partial update. Returns null if no such id. */
   update(id: string, patch: UpdateWebhookArgs): Promise<Webhook | null>;

@@ -52,11 +52,10 @@ export type WebhookAuthConfig =
       expectedAudience?: string;
     };
 
-export type WebhookScope = { orgId: string } | { userId: string };
-
 export type Webhook = {
   id: string;
-  scope: WebhookScope;
+  workspaceId: string;
+  orgId: string;
   name: string;
   description?: string;
   preset: PresetId;

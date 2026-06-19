@@ -1,20 +1,18 @@
 import { useState } from "react";
 import type { Webhook } from "@journeyman/core";
 import type { WebhookPresetSummary } from "../../api/webhooks.ts";
-import { createMyWebhook, createOrgWebhook, getPresetDetail } from "../../api/webhooks.ts";
-import { useAuth } from "../../AuthContext.tsx";
+import { createWebhook, getPresetDetail } from "../../api/webhooks.ts";
 import { WebhookConfigForm, type ConfigFormValue } from "./WebhookConfigForm.tsx";
 import { WebhookPresetGallery } from "./WebhookPresetGallery.tsx";
 import { WebhookSecretReveal } from "./WebhookSecretReveal.tsx";
 
 interface Props {
-  scope: { orgId: string } | { userId: "me" };
+  wsId: string;
   onCreated: (w: Webhook) => void;
   onCancel: () => void;
 }
 
-export function WebhookCreateWizard({ scope, onCreated, onCancel }: Props) {
-  const { activeOrgId, role } = useAuth();
+export function WebhookCreateWizard({ wsId, onCreated, onCancel }: Props) {
   const [step, setStep] = useState<"pick" | "configure" | "reveal">("pick");
   const [preset, setPreset] = useState<WebhookPresetSummary | null>(null);
   const [presetSchema, setPresetSchema] = useState<unknown>(undefined);
@@ -57,9 +55,7 @@ export function WebhookCreateWizard({ scope, onCreated, onCancel }: Props) {
         eventTypePath: v.eventTypePath,
         deliveryIdHeader: v.deliveryIdHeader,
       };
-      const w = "orgId" in scope
-        ? await createOrgWebhook(scope.orgId, args)
-        : await createMyWebhook(args);
+      const w = await createWebhook(wsId, args);
       setCreated(w);
       setStep("reveal");
     } catch (e) {
@@ -103,9 +99,9 @@ export function WebhookCreateWizard({ scope, onCreated, onCancel }: Props) {
             initial={{ payloadSchema: presetSchema }}
             onSubmit={submit}
             busy={busy}
-            scope={"orgId" in scope ? "org" : "user"}
-            orgId={"orgId" in scope ? scope.orgId : activeOrgId}
-            isAdmin={role === "admin"}
+            scope="org"
+            orgId=""
+            isAdmin={false}
           />
         )}
       </div>

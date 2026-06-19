@@ -2,7 +2,9 @@ import type { FastifyInstance } from "fastify";
 import { makeRequireAuth } from "@journeyman/identity";
 
 import { listVisibleSandboxes } from "@journeyman/sandbox";
-import { PostgresWebhookStore } from "@journeyman/orchestrator";
+import { listCustomAiSteps } from "@journeyman/custom-steps";
+import { listMcpInstances } from "@journeyman/mcp";
+import { listSkillPackages } from "@journeyman/skills";
 import {
   PROVIDER_CATALOG, listSupportedNodeTypes, type BuildPlan,
 } from "@journeyman/core";
@@ -19,19 +21,28 @@ import { openSseStream } from "../sse/sse-stream.ts";
 
 const PING_MS = 15_000;
 
-async function loadInventory(c: Composition, orgId: string, userId: string): Promise<InventorySummary> {
+async function resolveDefaultWorkspaceId(pool: import("pg").Pool, orgId: string): Promise<string | null> {
+  const res = await pool.query<{ id: string }>(
+    "SELECT id FROM jm_workspaces WHERE org_id = $1 AND slug = 'default' LIMIT 1",
+    [orgId],
+  );
+  return res.rows[0]?.id ?? null;
+}
+
+async function loadInventory(c: Composition, orgId: string): Promise<InventorySummary> {
   const pool = c.pool!;
   const sandboxes = await listVisibleSandboxes(pool, orgId);
-  // TODO(builder cutover): skills are workspace-scoped now; the builder session's
-  // workspace wires this up in the Builder cutover. Empty until then.
-  const skills: { id: string; name: string }[] = [];
-  // TODO(builder cutover): mcp instances are workspace-scoped now.
-  const mcps: { id: string; name: string }[] = [];
-  // TODO(builder cutover): custom steps are workspace-scoped now.
-  const customSteps: { id: string; name: string; description: string }[] = [];
-  const webhooks = await new PostgresWebhookStore(pool).listByScope({ userId });
+  const workspaceId = await resolveDefaultWorkspaceId(pool, orgId);
+  const [skills, mcps, customSteps, webhooks] = workspaceId
+    ? await Promise.all([
+        listSkillPackages(pool, workspaceId),
+        listMcpInstances(pool, workspaceId),
+        listCustomAiSteps(pool, workspaceId),
+        c.webhooks.listByWorkspace(workspaceId),
+      ])
+    : [[], [], [], []];
   return {
-    customSteps,
+    customSteps: customSteps.map((s) => ({ id: s.id, name: s.name, description: s.description ?? "" })),
     mcps: mcps.map((m) => ({ id: m.id, name: m.name })),
     skills: skills.map((s) => ({ id: s.id, name: s.name })),
     sandboxes: sandboxes.map((s) => ({ id: s.id, name: s.name, type: s.type, tags: s.tags })),
@@ -77,7 +88,7 @@ export function registerBuilderChatRoute(app: FastifyInstance, c: Composition): 
         const messages: ChatMessage[] = [...history, { role: "user", content: body.message }];
 
         const model = await resolveBuilderModel(builderLlmEnvFromProcess());
-        const inventory = await loadInventory(c, orgId, ctx.user.id);
+        const inventory = await loadInventory(c, orgId);
         const system = `${buildSystemPrompt()}\n\n${buildContext(inventory)}`;
 
         const { assistantMessage, plan } = await runBuilderTurn(

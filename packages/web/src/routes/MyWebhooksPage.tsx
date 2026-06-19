@@ -2,22 +2,17 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Webhook } from "@journeyman/core";
 import { btnPrimary, card, codePill } from "./admin-styles.ts";
-import { deleteWebhook, listMyWebhooks } from "../api/webhooks.ts";
-import { useAuth } from "../AuthContext.tsx";
-import { PromoteWebhookDialog } from "./webhooks/PromoteWebhookDialog.tsx";
+import { deleteWebhook, listWebhooks } from "../api/webhooks.ts";
 import { WebhookCreateWizard } from "./webhooks/WebhookCreateWizard.tsx";
 
 export function MyWebhooksPage() {
-  const { role, activeOrgId } = useAuth();
-  const isAdmin = role === "admin";
   const [rows, setRows] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [promoting, setPromoting] = useState<Webhook | null>(null);
 
   async function refresh() {
     setLoading(true);
-    setRows(await listMyWebhooks().catch(() => []));
+    setRows(await listWebhooks("").catch(() => []));
     setLoading(false);
   }
   useEffect(() => { void refresh(); }, []);
@@ -46,7 +41,7 @@ export function MyWebhooksPage() {
         {creating && (
           <section className={`${card} p-6`}>
             <WebhookCreateWizard
-              scope={{ userId: "me" }}
+              wsId={""}
               onCancel={() => setCreating(false)}
               onCreated={() => { setCreating(false); void refresh(); }}
             />
@@ -83,14 +78,6 @@ export function MyWebhooksPage() {
                     </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex gap-3 justify-end">
-                        {isAdmin && (
-                          <button
-                            onClick={() => setPromoting(w)}
-                            className="text-xs text-success hover:text-success"
-                          >
-                            Promote to org →
-                          </button>
-                        )}
                         <button
                           onClick={() => remove(w)}
                           className="text-xs text-danger hover:text-danger"
@@ -106,14 +93,6 @@ export function MyWebhooksPage() {
           )}
         </section>
 
-        {promoting && (
-          <PromoteWebhookDialog
-            webhook={promoting}
-            orgId={activeOrgId}
-            onClose={() => setPromoting(null)}
-            onPromoted={() => { setPromoting(null); void refresh(); }}
-          />
-        )}
       </div>
     </div>
   );

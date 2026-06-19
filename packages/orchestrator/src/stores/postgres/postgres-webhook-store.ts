@@ -4,16 +4,13 @@ import type {
   IWebhookStore,
   UpdateWebhookArgs,
   Webhook,
-  WebhookScope,
 } from "@journeyman/core";
 
 function rowToWebhook(row: any): Webhook {
-  const scope: WebhookScope = row.org_id
-    ? { orgId: row.org_id }
-    : { userId: row.user_id };
   return {
     id: row.id,
-    scope,
+    workspaceId: row.workspace_id,
+    orgId: row.org_id,
     name: row.name,
     description: row.description ?? undefined,
     preset: row.preset,
@@ -37,11 +34,10 @@ export class PostgresWebhookStore implements IWebhookStore {
   constructor(private pool: Pool) {}
 
   async create(args: CreateWebhookArgs, tenantToken: string): Promise<Webhook> {
-    const orgId = "orgId" in args.scope ? args.scope.orgId : null;
-    const userId = "userId" in args.scope ? args.scope.userId : null;
+    const { workspaceId, orgId } = args;
     const { rows } = await this.pool.query(
       `INSERT INTO jm_webhooks
-         (org_id, user_id, name, description, preset, kind, tenant_token,
+         (workspace_id, org_id, name, description, preset, kind, tenant_token,
           auth, payload_schema, schema_validation, schema_inferred_from,
           event_type_path, delivery_id_header)
        VALUES ($1,$2,$3,$4,$5,$6,$7,
@@ -49,7 +45,7 @@ export class PostgresWebhookStore implements IWebhookStore {
                $12,$13)
        RETURNING *`,
       [
-        orgId, userId, args.name, args.description ?? null,
+        workspaceId, orgId, args.name, args.description ?? null,
         args.preset, args.kind, tenantToken,
         JSON.stringify(args.auth),
         args.payloadSchema == null ? null : JSON.stringify(args.payloadSchema),
@@ -75,15 +71,10 @@ export class PostgresWebhookStore implements IWebhookStore {
     return rows[0] ? rowToWebhook(rows[0]) : null;
   }
 
-  async listByScope(scope: WebhookScope): Promise<Webhook[]> {
-    const orgId = "orgId" in scope ? scope.orgId : null;
-    const userId = "userId" in scope ? scope.userId : null;
+  async listByWorkspace(workspaceId: string): Promise<Webhook[]> {
     const { rows } = await this.pool.query(
-      `SELECT * FROM jm_webhooks
-       WHERE ($1::uuid IS NOT NULL AND org_id  = $1::uuid)
-          OR ($2::uuid IS NOT NULL AND user_id = $2::uuid)
-       ORDER BY created_at ASC`,
-      [orgId, userId],
+      `SELECT * FROM jm_webhooks WHERE workspace_id = $1 ORDER BY created_at ASC`,
+      [workspaceId],
     );
     return rows.map(rowToWebhook);
   }

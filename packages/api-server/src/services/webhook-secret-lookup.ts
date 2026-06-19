@@ -1,40 +1,40 @@
 import type { Pool } from "pg";
-import type { WebhookAuthConfig, WebhookScope } from "@journeyman/core";
+import type { WebhookAuthConfig } from "@journeyman/core";
 import { open, readGlobalSecrets } from "@journeyman/secrets";
 
 const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 
 /**
- * Resolve a named secret for a webhook's scope. Returns null if the name is
- * empty/undefined/invalid, or no matching row is found. Decrypts the row's
- * ciphertext via the shared `open()` helper from @journeyman/secrets.
- *
- * Secret-name format: `^[A-Z][A-Z0-9_]*$`. Empty `valueRef`/`secretRef`/
- * `signingKeyRef` strings (preset defaults) short-circuit to null.
+ * Resolve a named secret for a webhook. Cascades: workspace secret first,
+ * then org secret. Returns null if the name is empty/invalid or no row found.
  */
 export async function resolveWebhookSecret(
   pool: Pool,
-  scope: WebhookScope,
+  orgId: string,
   secretName: string | undefined | null,
+  workspaceId?: string | null,
 ): Promise<string | null> {
   if (!secretName) return null;
   if (!NAME_RE.test(secretName)) return null;
 
-  if ("orgId" in scope) {
+  if (workspaceId) {
     const r = await pool.query(
-      `SELECT ciphertext, iv, auth_tag
-         FROM jm_secrets
-        WHERE org_id = $1 AND workspace_id IS NULL AND name = $2`,
-      [scope.orgId, secretName],
+      `SELECT ciphertext, iv, auth_tag FROM jm_secrets WHERE workspace_id = $1 AND name = $2`,
+      [workspaceId, secretName],
     );
-    const row = r.rows[0];
-    if (!row) return null;
-    return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+    if (r.rows[0]) {
+      const row = r.rows[0];
+      return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+    }
   }
 
-  // TODO(webhooks cutover): user-scoped webhooks are migrated to workspace scope
-  // in the Webhooks cutover plan; until then there is no user secret tier to read.
-  return null;
+  const r = await pool.query(
+    `SELECT ciphertext, iv, auth_tag FROM jm_secrets WHERE org_id = $1 AND workspace_id IS NULL AND name = $2`,
+    [orgId, secretName],
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
 }
 
 /**

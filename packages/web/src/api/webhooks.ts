@@ -26,23 +26,12 @@ export interface WebhookPresetDetail extends WebhookPresetSummary {
   samples?: Record<string, unknown>;
 }
 
-export function listOrgWebhooks(orgId: string): Promise<Webhook[]> {
-  return api<Webhook[]>(`/api/orgs/${encodeURIComponent(orgId)}/webhooks`);
+export function listWebhooks(wsId: string): Promise<Webhook[]> {
+  return api<Webhook[]>(`/api/workspaces/${encodeURIComponent(wsId)}/webhooks`);
 }
 
-export function listMyWebhooks(): Promise<Webhook[]> {
-  return api<Webhook[]>(`/api/users/me/webhooks`);
-}
-
-export function createOrgWebhook(orgId: string, body: Omit<CreateWebhookArgs, "scope">): Promise<Webhook> {
-  return api<Webhook>(`/api/orgs/${encodeURIComponent(orgId)}/webhooks`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-export function createMyWebhook(body: Omit<CreateWebhookArgs, "scope">): Promise<Webhook> {
-  return api<Webhook>(`/api/users/me/webhooks`, {
+export function createWebhook(wsId: string, body: Omit<CreateWebhookArgs, "workspaceId" | "orgId">): Promise<Webhook> {
+  return api<Webhook>(`/api/workspaces/${encodeURIComponent(wsId)}/webhooks`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -68,13 +57,6 @@ export function rotateWebhook(id: string): Promise<Webhook> {
     method: "POST",
     body: "{}",
   });
-}
-
-export function promoteWebhookToOrg(orgId: string, webhookId: string): Promise<Webhook> {
-  return api<Webhook>(
-    `/api/orgs/${encodeURIComponent(orgId)}/webhooks/${encodeURIComponent(webhookId)}/promote-from-user`,
-    { method: "POST", body: "{}" },
-  );
 }
 
 export interface TestDeliveryResult {

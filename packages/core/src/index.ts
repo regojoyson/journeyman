@@ -230,7 +230,6 @@ export type {
   Webhook,
   WebhookAuthConfig,
   WebhookKind,
-  WebhookScope,
   PresetId,
 } from "./types/webhook.types.ts";
 export type { IWebhookEventStore } from "./interfaces/webhook-event-store.interface.ts";

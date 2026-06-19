@@ -71,7 +71,7 @@ export async function ingestForWebhook(
   let resolvedSecret: string | null = null;
   if (pool) {
     const secretRef = secretRefFromAuth(webhook.auth);
-    resolvedSecret = await resolveWebhookSecret(pool, webhook.scope, secretRef);
+    resolvedSecret = await resolveWebhookSecret(pool, webhook.orgId, secretRef, webhook.workspaceId);
   }
   const verifyResult = await verifyWebhookRequest(verifyInput, webhook.auth, resolvedSecret);
   if (!verifyResult.ok) {

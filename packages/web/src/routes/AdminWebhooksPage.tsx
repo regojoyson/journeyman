@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Webhook } from "@journeyman/core";
 import { btnPrimary, card, codePill } from "./admin-styles.ts";
-import { deleteWebhook, listOrgWebhooks } from "../api/webhooks.ts";
+import { deleteWebhook, listWebhooks } from "../api/webhooks.ts";
 import { WebhookCreateWizard } from "./webhooks/WebhookCreateWizard.tsx";
 
 export function AdminWebhooksPage(props: { orgId: string }) {
@@ -12,7 +12,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
 
   async function refresh() {
     setLoading(true);
-    setRows(await listOrgWebhooks(props.orgId).catch(() => []));
+    setRows(await listWebhooks("").catch(() => []));
     setLoading(false);
   }
   useEffect(() => { void refresh(); }, [props.orgId]);
@@ -41,7 +41,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
         {creating && (
           <section className={`${card} p-6`}>
             <WebhookCreateWizard
-              scope={{ orgId: props.orgId }}
+              wsId={""}
               onCancel={() => setCreating(false)}
               onCreated={() => { setCreating(false); void refresh(); }}
             />
