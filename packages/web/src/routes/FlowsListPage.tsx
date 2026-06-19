@@ -1,37 +1,30 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { Workflow } from "@journeyman/core";
 import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
 import { deleteFlow } from "../api/flow-grants.ts";
-import { useAuth } from "../AuthContext.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import { Pagination } from "@journeyman/runs-list";
-import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
-
-function canEditFlow(
-  _flow: Workflow,
-  ctx: { userId: string; orgId: string; role: string; isPlatformAdmin: boolean },
-): boolean {
-  // TODO(phase 3): use workspace membership to determine editability
-  return ctx.isPlatformAdmin || ctx.role === "admin";
-}
+import { btnPrimary, card } from "./admin-styles.ts";
 
 export function FlowsListPage() {
-  const navigate = useNavigate();
-  const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
+  const { wsId = "" } = useParams<{ wsId: string }>();
+  const { can } = useWorkspace();
+  const editable = can("resource.write");
+  const canDelete = can("resource.delete");
 
   const [flows, setFlows] = useState<Workflow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scopeFilter, setScopeFilter] = useState<"all" | "user" | "org" | "global">("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  async function fetchFlows(_scope: typeof scopeFilter, p: number, ps: number) {
+  async function fetchFlows(p: number, ps: number) {
     setLoading(true);
     setError(null);
     try {
-      const data = await listFlowsPaged({ page: p, pageSize: ps });
+      const data = await listFlowsPaged(wsId, { page: p, pageSize: ps });
       setFlows(data.workflows);
       setTotal(data.total);
     } catch (e) {
@@ -42,23 +35,11 @@ export function FlowsListPage() {
   }
 
   useEffect(() => {
-    void fetchFlows(scopeFilter, page, pageSize);
-  }, [scopeFilter, page, pageSize]);
+    void fetchFlows(page, pageSize);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [wsId, page, pageSize]);
 
-  const handleScopeChange = (s: typeof scopeFilter) => { setScopeFilter(s); setPage(1); };
   const handlePageSizeChange = (n: number) => { setPageSize(n); setPage(1); };
-
-  const ctx = {
-    userId: user?.id ?? "",
-    orgId: activeOrgId,
-    role,
-    isPlatformAdmin,
-  };
-
-  async function handleClone(_flow: Workflow) {
-    // TODO(phase 3): re-expose clone via workspace copy UI
-    alert("Clone is not yet available in this view.");
-  }
 
   async function handleRename(flow: Workflow) {
     const next = window.prompt("Rename flow", flow.name);
@@ -66,8 +47,8 @@ export function FlowsListPage() {
     const trimmed = next.trim();
     if (!trimmed || trimmed === flow.name) return;
     try {
-      await updateFlowMeta(flow.id, { name: trimmed });
-      await fetchFlows(scopeFilter, page, pageSize);
+      await updateFlowMeta(wsId, flow.id, { name: trimmed });
+      await fetchFlows(page, pageSize);
     } catch (e) {
       alert(`Rename failed: ${(e as Error).message}`);
     }
@@ -77,14 +58,11 @@ export function FlowsListPage() {
     if (!window.confirm(`Delete flow "${flow.name}"? This cannot be undone.`)) return;
     try {
       await deleteFlow(flow.id);
-      await fetchFlows(scopeFilter, page, pageSize);
+      await fetchFlows(page, pageSize);
     } catch (e) {
       alert(`Delete failed: ${(e as Error).message}`);
     }
   }
-
-  const filterLabel = (s: typeof scopeFilter) =>
-    s === "user" ? "Mine" : s === "org" ? "Organization" : s === "global" ? "Global" : "All";
 
 
   const statusBadge = (status: Workflow["status"]) => {
@@ -105,29 +83,12 @@ export function FlowsListPage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Flows</h1>
-            <p className="mt-1 text-sm text-slate-400">Browse, edit, clone and promote flows.</p>
+            <p className="mt-1 text-sm text-slate-400">Browse and edit flows in this workspace.</p>
           </div>
-          <Link to="/workflows/new" className={btnPrimary}>+ New flow</Link>
+          {editable && (
+            <Link to={`/workspaces/${wsId}/workflows/new`} className={btnPrimary}>+ New flow</Link>
+          )}
         </header>
-
-        <div className="flex flex-wrap gap-2">
-          {(["all", "user", "org", "global"] as const).map(s => {
-            const active = scopeFilter === s;
-            return (
-              <button
-                key={s}
-                onClick={() => handleScopeChange(s)}
-                className={
-                  active
-                    ? "rounded-md border border-indigo-400/60 bg-primary/20 px-3 py-1.5 text-xs font-medium text-foreground transition"
-                    : btnGhost
-                }
-              >
-                {filterLabel(s)}
-              </button>
-            );
-          })}
-        </div>
 
         <section className={`${card} overflow-hidden`}>
           {loading ? (
@@ -152,54 +113,43 @@ export function FlowsListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700 border-t border-slate-700">
-                {flows.map(f => {
-                  const editable = canEditFlow(f, ctx);
-                  return (
-                    <tr key={f.id} className="hover:bg-surface-hover">
-                      <td className="px-6 py-3 text-slate-100 font-medium">
-                        {f.name}
-                      </td>
-                      <td className="px-6 py-3">{statusBadge(f.status)}</td>
-                      <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
-                      <td className="px-6 py-3 text-slate-500">
-                        {new Date(f.updatedAt).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          {editable ? (
-                            <>
-                              <Link to={`/workflows/${f.id}/edit`} className="text-foreground hover:text-foreground">
-                                Edit
-                              </Link>
-                              <button
-                                onClick={() => handleRename(f)}
-                                className="text-foreground hover:text-foreground"
-                              >Rename</button>
-                              <button
-                                onClick={() => handleClone(f)}
-                                className="text-foreground hover:text-foreground"
-                              >Clone</button>
+                {flows.map(f => (
+                  <tr key={f.id} className="hover:bg-surface-hover">
+                    <td className="px-6 py-3 text-slate-100 font-medium">
+                      {f.name}
+                    </td>
+                    <td className="px-6 py-3">{statusBadge(f.status)}</td>
+                    <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
+                    <td className="px-6 py-3 text-slate-500">
+                      {new Date(f.updatedAt).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        {editable ? (
+                          <>
+                            <Link to={`/workspaces/${wsId}/workflows/${f.id}/edit`} className="text-foreground hover:text-foreground">
+                              Edit
+                            </Link>
+                            <button
+                              onClick={() => handleRename(f)}
+                              className="text-foreground hover:text-foreground"
+                            >Rename</button>
+                            {canDelete && (
                               <button
                                 onClick={() => handleDelete(f)}
                                 className="text-danger hover:text-danger"
                               >Delete</button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleClone(f)}
-                                className="text-foreground hover:text-foreground"
-                              >Clone to my flows</button>
-                              <Link to={`/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
-                                Open (read-only)
-                              </Link>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            )}
+                          </>
+                        ) : (
+                          <Link to={`/workspaces/${wsId}/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">
+                            Open (read-only)
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}

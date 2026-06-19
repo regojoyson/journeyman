@@ -2,7 +2,9 @@ import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, Workfl
 import type { PendingHumanTask, HumanTaskHistoryEntry } from "@journeyman/run-viewer";
 import { api } from "./client.ts";
 
-export async function listRuns(filter: {
+const wsBase = (wsId: string) => `/api/workspaces/${encodeURIComponent(wsId)}/workflow-instances`;
+
+export async function listRuns(wsId: string, filter: {
   status?: WorkflowInstance["status"];
   workflowId?: string;
   provider?: string;
@@ -14,7 +16,7 @@ export async function listRuns(filter: {
   if (filter.provider)   qs.set("provider",     filter.provider);
   if (filter.limit)      qs.set("limit",        String(filter.limit));
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  const res = await api<{ workflowInstances: WorkflowInstance[] }>(`/api/workflow-instances${suffix}`);
+  const res = await api<{ workflowInstances: WorkflowInstance[] }>(`${wsBase(wsId)}${suffix}`);
   return res.workflowInstances;
 }
 
@@ -25,7 +27,7 @@ export interface PagedRuns {
   pageSize: number;
 }
 
-export async function listRunsPaged(args: {
+export async function listRunsPaged(wsId: string, args: {
   status?: WorkflowInstance["status"];
   workflowId?: string;
   provider?: string;
@@ -38,7 +40,7 @@ export async function listRunsPaged(args: {
   if (args.provider)   qs.set("provider",     args.provider);
   qs.set("page",       String(args.page));
   qs.set("page_size",  String(args.pageSize));
-  return await api<PagedRuns>(`/api/workflow-instances?${qs.toString()}`);
+  return await api<PagedRuns>(`${wsBase(wsId)}?${qs.toString()}`);
 }
 
 export type WebhookEventSummary = {
@@ -60,21 +62,22 @@ export interface WorkflowInstanceDetail {
   humanTaskHistory: HumanTaskHistoryEntry[];
 }
 
-export async function getRun(workflowInstanceId: string): Promise<WorkflowInstanceDetail> {
-  return await api<WorkflowInstanceDetail>(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}`);
+export async function getRun(wsId: string, workflowInstanceId: string): Promise<WorkflowInstanceDetail> {
+  return await api<WorkflowInstanceDetail>(`${wsBase(wsId)}/${encodeURIComponent(workflowInstanceId)}`);
 }
 
 // Same-origin default; localhost dev value lives in packages/web/.env.development.
 const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
 export function openWorkflowInstanceEventStream(args: {
+  wsId: string;
   runId: string;
   sinceId?: number;
   onEvent: (ev: WorkflowInstanceEvent) => void;
   onError?: (e: Event) => void;
   onOpen?: () => void;
 }): () => void {
-  const url = `${baseUrl}/api/workflow-instances/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
+  const url = `${baseUrl}${wsBase(args.wsId)}/${encodeURIComponent(args.runId)}/events${args.sinceId ? `?since=${args.sinceId}` : ""}`;
   const es = new EventSource(url, { withCredentials: true });
   es.onopen = () => args.onOpen?.();
   es.onerror = (e) => args.onError?.(e);
@@ -92,22 +95,22 @@ export function openWorkflowInstanceEventStream(args: {
   return () => es.close();
 }
 
-export async function cancelRun(runId: string, reason?: string): Promise<void> {
-  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/cancel`, {
+export async function cancelRun(wsId: string, runId: string, reason?: string): Promise<void> {
+  await api(`${wsBase(wsId)}/${encodeURIComponent(runId)}/cancel`, {
     method: "POST", body: JSON.stringify({ reason }),
   });
 }
 
-export async function pauseRun(runId: string): Promise<void> {
-  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
+export async function pauseRun(wsId: string, runId: string): Promise<void> {
+  await api(`${wsBase(wsId)}/${encodeURIComponent(runId)}/pause`, { method: "POST", body: "{}" });
 }
 
-export async function resumeRun(runId: string): Promise<void> {
-  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
+export async function resumeRun(wsId: string, runId: string): Promise<void> {
+  await api(`${wsBase(wsId)}/${encodeURIComponent(runId)}/resume`, { method: "POST", body: "{}" });
 }
 
-export async function retryStep(runId: string, nodeId: string): Promise<void> {
-  await api(`/api/workflow-instances/${encodeURIComponent(runId)}/retry-step`, {
+export async function retryStep(wsId: string, runId: string, nodeId: string): Promise<void> {
+  await api(`${wsBase(wsId)}/${encodeURIComponent(runId)}/retry-step`, {
     method: "POST", body: JSON.stringify({ node_id: nodeId }),
   });
 }
@@ -123,18 +126,18 @@ export async function resolveHumanTask(runId: string, nodeId: string, body: {
   );
 }
 
-export async function rerunRun(workflowInstanceId: string): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
-  return await api(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}/rerun`, {
+export async function rerunRun(wsId: string, workflowInstanceId: string): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+  return await api(`${wsBase(wsId)}/${encodeURIComponent(workflowInstanceId)}/rerun`, {
     method: "POST", body: "{}",
   });
 }
 
-export async function forkRun(workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-  return await api(`/api/workflow-instances/${encodeURIComponent(workflowInstanceId)}/fork`, {
+export async function forkRun(wsId: string, workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
+  return await api(`${wsBase(wsId)}/${encodeURIComponent(workflowInstanceId)}/fork`, {
     method: "POST", body: JSON.stringify({ name }),
   });
 }
 
-export function exportRunUrl(runId: string): string {
-  return `${baseUrl}/api/workflow-instances/${encodeURIComponent(runId)}/export`;
+export function exportRunUrl(wsId: string, runId: string): string {
+  return `${baseUrl}${wsBase(wsId)}/${encodeURIComponent(runId)}/export`;
 }

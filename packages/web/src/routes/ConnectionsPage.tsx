@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import type { Connection, ConnectionCategory } from "@journeyman/core";
 import { connectionsApi, type CreateConnectionInput } from "../api/connections.ts";
 import { btnPrimary, btnGhost, btnDanger, card, inputCls, selectCls } from "./admin-styles.ts";
@@ -8,7 +9,8 @@ const GIT_PROVIDERS = [
   { value: "gitlab", label: "GitLab" },
 ];
 
-export function ConnectionsPage({ wsId }: { wsId: string }) {
+export function ConnectionsPage() {
+  const { wsId = "" } = useParams<{ wsId: string }>();
   const [items, setItems] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

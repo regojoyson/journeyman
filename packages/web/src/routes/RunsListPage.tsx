@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
 import type { Workflow, WorkflowInstance, WorkflowInputDef } from "@journeyman/core";
@@ -11,24 +11,25 @@ import { useAuth } from "../AuthContext.tsx";
 
 
 interface NewRunDialogProps {
+  wsId: string;
   onClose: () => void;
   onSubmitted: (res: { workflowInstanceId: string; engineWorkflowId: string }) => void;
 }
 
-function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
+function NewRunDialog({ wsId, onClose, onSubmitted }: NewRunDialogProps) {
   const { isPlatformAdmin } = useAuth();
   const [flowId, setFlowId] = useState("");
   const [dynValues, setDynValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const flowsQ = useQuery({
-    queryKey: ["flows-all"],
-    queryFn: () => listFlows(),
+    queryKey: ["flows-all", wsId],
+    queryFn: () => listFlows(wsId),
   });
 
   const versionQ = useQuery({
     queryKey: ["flow-version-current", flowId],
-    queryFn: () => getCurrentWorkflowVersion(flowId),
+    queryFn: () => getCurrentWorkflowVersion(wsId, flowId),
     enabled: !!flowId,
   });
 
@@ -55,7 +56,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
           inputs[def.name] = raw;
         }
       }
-      return runFlow(flowId, inputs);
+      return runFlow(wsId, flowId, inputs);
     },
     onSuccess: onSubmitted,
     onError: (err: unknown) => setError(err instanceof Error ? err.message : "Failed to start run."),
@@ -151,6 +152,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 }
 
 export function RunsListPage() {
+  const { wsId = "" } = useParams<{ wsId: string }>();
   const [filter, setFilter] = useState<WorkflowInstanceFilter>({});
   const [scope, setScope] = useState<"mine" | "org" | "all">("mine");
   const [page, setPage] = useState(1);
@@ -166,8 +168,8 @@ export function RunsListPage() {
   const handlePageSizeChange = (n: number) => { setPageSize(n); setPage(1); };
 
   const q = useQuery({
-    queryKey: ["runs", filter, scope, page, pageSize],
-    queryFn: () => listRunsPaged({
+    queryKey: ["runs", wsId, filter, scope, page, pageSize],
+    queryFn: () => listRunsPaged(wsId, {
       status: filter.status, workflowId: filter.workflowId, provider: filter.provider,
       page, pageSize,
     }),
@@ -175,10 +177,10 @@ export function RunsListPage() {
   });
 
   const rerunM = useMutation({
-    mutationFn: (r: WorkflowInstance) => rerunRun(r.id),
+    mutationFn: (r: WorkflowInstance) => rerunRun(wsId, r.id),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/workflow-instances/${res.workflowInstanceId}`);
+      navigate(`/workspaces/${wsId}/workflow-instances/${res.workflowInstanceId}`);
     },
   });
 
@@ -189,7 +191,7 @@ export function RunsListPage() {
         isLoading={q.isLoading}
         filter={filter}
         onFilterChange={handleFilterChange}
-        onSelectWorkflowInstance={(id) => navigate(`/workflow-instances/${id}`)}
+        onSelectWorkflowInstance={(id) => navigate(`/workspaces/${wsId}/workflow-instances/${id}`)}
         onRerun={(r) => rerunM.mutate(r)}
         onNewWorkflowInstance={() => setShowDialog(true)}
         scope={scope}
@@ -206,6 +208,7 @@ export function RunsListPage() {
       />
       {showDialog && (
         <NewRunDialog
+          wsId={wsId}
           onClose={() => setShowDialog(false)}
           onSubmitted={(res) => {
             setShowDialog(false);
@@ -218,7 +221,7 @@ export function RunsListPage() {
         <RunSubmittedToast
           workflowInstanceId={runToast.workflowInstanceId}
           engineWorkflowId={runToast.engineWorkflowId}
-          onViewLive={() => { navigate(`/workflow-instances/${runToast.workflowInstanceId}`); setRunToast(null); }}
+          onViewLive={() => { navigate(`/workspaces/${wsId}/workflow-instances/${runToast.workflowInstanceId}`); setRunToast(null); }}
           onDismiss={() => setRunToast(null)}
         />
       )}

@@ -49,7 +49,7 @@ function FieldInput({
 }
 
 export function RunFormPage() {
-  const { id: workflowId } = useParams<{ id: string }>();
+  const { id: workflowId, wsId = "" } = useParams<{ id: string; wsId: string }>();
   const nav = useNavigate();
   const [schema, setSchema] = useState<FormSchema | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>({});
@@ -73,7 +73,7 @@ export function RunFormPage() {
     setError(null);
     try {
       const { workflowInstanceId } = await submitForm(workflowId, values);
-      nav(`/workflow-instances/${workflowInstanceId}`);
+      nav(`/workspaces/${wsId}/workflow-instances/${workflowInstanceId}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

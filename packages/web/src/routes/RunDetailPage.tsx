@@ -8,31 +8,33 @@ import type { WorkflowInstanceEvent } from "@journeyman/core";
 import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
 import { useRunActions } from "../hooks/useRunActions.ts";
 import { useAuth } from "../AuthContext.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 
 export function RunDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, wsId = "" } = useParams<{ id: string; wsId: string }>();
   const navigate = useNavigate();
   const { activeOrgId } = useAuth();
+  const { can } = useWorkspace();
   const [liveEvents, setLiveEvents] = useState<WorkflowInstanceEvent[]>([]);
-  const actions = useRunActions(id);
+  const actions = useRunActions(wsId, id);
 
   const detailQ = useQuery({
     queryKey: ["run-detail", id],
-    queryFn: () => getRun(id!),
+    queryFn: () => getRun(wsId, id!),
     enabled: !!id,
   });
 
-  const isViewer = false; // TODO(phase 3): derive from workspace membership
+  const isViewer = !can("resource.write");
 
   useEffect(() => {
     if (!id || !detailQ.data) return;
     const lastId = detailQ.data.events.at(-1)?.id ?? 0;
     const close = openWorkflowInstanceEventStream({
-      runId: id, sinceId: lastId,
+      wsId, runId: id, sinceId: lastId,
       onEvent: (ev) => setLiveEvents(prev => [...prev, ev]),
     });
     return close;
-  }, [id, detailQ.data]);
+  }, [id, wsId, detailQ.data]);
 
   // Dedupe by event id: detailQ refetches (or initial load after SSE has
   // already pushed events) can return events that are also in liveEvents,
@@ -45,7 +47,7 @@ export function RunDetailPage() {
     return Array.from(byId.values()).sort((a, b) => a.id - b.id);
   }, [detailQ.data?.events, liveEvents]);
 
-  if (!id) { navigate("/workflow-instances"); return null; }
+  if (!id) { navigate(`/workspaces/${wsId}/workflow-instances`); return null; }
   if (detailQ.isLoading) return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading run…</div>;
   if (detailQ.isError || !detailQ.data) return <div style={{ padding: 24, color: "rgb(var(--color-danger) / 1)" }}>Run not found.</div>;
 

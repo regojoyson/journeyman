@@ -1,7 +1,13 @@
+import { useParams } from "react-router-dom";
 import { AgentsList } from "../components/agents/AgentsList.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 
-// Phase 3: wire a real wsId from workspace context. Placeholder used for now.
-export function MyAgentsPage({ orgId, wsId }: { orgId: string; wsId: string }) {
+export function AgentsPage() {
+  const { wsId = "" } = useParams<{ wsId: string }>();
+  const { workspaces, activeWorkspace } = useWorkspace();
+  const orgId =
+    workspaces.find((w) => w.id === wsId)?.orgId ?? activeWorkspace?.orgId ?? "";
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full px-6 py-10 space-y-8">

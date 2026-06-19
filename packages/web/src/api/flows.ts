@@ -1,17 +1,20 @@
 import type { Workflow, WorkflowGraph, WorkflowSaveWarning, WorkflowVersion, PublishError } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
 
+const wsBase = (wsId: string) => `/api/workspaces/${encodeURIComponent(wsId)}/workflows`;
+
 export interface UnpublishWarning {
   inFlightRunCount: number;
   activeTriggers: { webhooks: number; schedules: number };
 }
 
 export async function publishFlow(
+  wsId: string,
   workflowId: string,
 ): Promise<{ ok: true; workflow: Workflow; warnings: PublishError[] } | { ok: false; errors: PublishError[] }> {
   try {
     const res = await api<{ workflow: Workflow; warnings?: PublishError[] }>(
-      `/api/workflows/${encodeURIComponent(workflowId)}/publish`,
+      `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/publish`,
       { method: "POST", body: "{}" },
     );
     return { ok: true, workflow: res.workflow, warnings: res.warnings ?? [] };
@@ -25,12 +28,13 @@ export async function publishFlow(
 }
 
 export async function unpublishFlow(
+  wsId: string,
   workflowId: string,
   confirm: boolean,
 ): Promise<{ ok: true; workflow: Workflow } | { ok: false; warning: UnpublishWarning }> {
   try {
     const res = await api<{ workflow: Workflow }>(
-      `/api/workflows/${encodeURIComponent(workflowId)}/unpublish`,
+      `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/unpublish`,
       { method: "POST", body: JSON.stringify({ confirm }) },
     );
     return { ok: true, workflow: res.workflow };
@@ -43,8 +47,8 @@ export async function unpublishFlow(
   }
 }
 
-export async function listFlows(): Promise<Workflow[]> {
-  const res = await api<{ workflows: Workflow[] }>("/api/workflows");
+export async function listFlows(wsId: string): Promise<Workflow[]> {
+  const res = await api<{ workflows: Workflow[] }>(wsBase(wsId));
   return res.workflows;
 }
 
@@ -55,19 +59,19 @@ export interface PagedFlows {
   pageSize: number;
 }
 
-export async function listFlowsPaged(args: {
+export async function listFlowsPaged(wsId: string, args: {
   page: number;
   pageSize: number;
 }): Promise<PagedFlows> {
   const params = new URLSearchParams();
   params.set("page", String(args.page));
   params.set("page_size", String(args.pageSize));
-  return await api<PagedFlows>(`/api/workflows?${params.toString()}`);
+  return await api<PagedFlows>(`${wsBase(wsId)}?${params.toString()}`);
 }
 
-export async function getFlow(id: string): Promise<Workflow | null> {
+export async function getFlow(wsId: string, id: string): Promise<Workflow | null> {
   try {
-    const res = await api<{ workflow: Workflow }>(`/api/workflows/${encodeURIComponent(id)}`);
+    const res = await api<{ workflow: Workflow }>(`${wsBase(wsId)}/${encodeURIComponent(id)}`);
     return res.workflow;
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
@@ -75,42 +79,43 @@ export async function getFlow(id: string): Promise<Workflow | null> {
   }
 }
 
-export async function createFlow(args: {
+export async function createFlow(wsId: string, args: {
   name: string;
   description?: string;
   definition: WorkflowGraph;
 }): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-  return await api<{ workflow: Workflow; version: WorkflowVersion }>("/api/workflows", {
+  return await api<{ workflow: Workflow; version: WorkflowVersion }>(wsBase(wsId), {
     method: "POST", body: JSON.stringify(args),
   });
 }
 
-export async function updateFlowDefinition(workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
+export async function updateFlowDefinition(wsId: string, workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
   return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
-    `/api/workflows/${encodeURIComponent(workflowId)}`,
+    `${wsBase(wsId)}/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify({ definition }) },
   );
 }
 
 export async function updateFlowMeta(
+  wsId: string,
   workflowId: string,
   meta: { name?: string; description?: string },
 ): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
   return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
-    `/api/workflows/${encodeURIComponent(workflowId)}`,
+    `${wsBase(wsId)}/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify(meta) },
   );
 }
 
-export async function runFlow(workflowId: string, inputs: Record<string, unknown>): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
+export async function runFlow(wsId: string, workflowId: string, inputs: Record<string, unknown>): Promise<{ workflowInstanceId: string; engineWorkflowId: string }> {
   return await api<{ workflowInstanceId: string; engineWorkflowId: string }>(
-    `/api/workflows/${encodeURIComponent(workflowId)}/workflow-instances`,
+    `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/workflow-instances`,
     { method: "POST", body: JSON.stringify({ inputs }) },
   );
 }
 
-export async function getCurrentWorkflowVersion(workflowId: string): Promise<WorkflowVersion> {
-  const res = await api<{ version: WorkflowVersion }>(`/api/workflows/${encodeURIComponent(workflowId)}/versions/current`);
+export async function getCurrentWorkflowVersion(wsId: string, workflowId: string): Promise<WorkflowVersion> {
+  const res = await api<{ version: WorkflowVersion }>(`${wsBase(wsId)}/${encodeURIComponent(workflowId)}/versions/current`);
   return res.version;
 }
 
@@ -122,9 +127,9 @@ export interface FlowValidationReport {
   secretWarnings: WorkflowSaveWarning[];
 }
 
-export async function validateFlowDefinition(definition: WorkflowGraph): Promise<FlowValidationReport> {
+export async function validateFlowDefinition(wsId: string, definition: WorkflowGraph): Promise<FlowValidationReport> {
   return await api<FlowValidationReport>(
-    "/api/workflows/validate",
+    `${wsBase(wsId)}/validate`,
     { method: "POST", body: JSON.stringify({ definition }) },
   );
 }

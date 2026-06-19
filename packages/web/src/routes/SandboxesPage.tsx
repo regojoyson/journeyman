@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "./admin-styles.ts";
 import { sandboxesApi, type Sandbox } from "../api/sandboxes.ts";
 import { SandboxFormModal } from "../components/sandboxes/SandboxFormModal.tsx";
@@ -22,7 +23,8 @@ function ImageStateBadge({ state, error }: { state?: string; error?: string | nu
   );
 }
 
-export function SandboxesPage(props: { orgId: string }) {
+export function SandboxesPage() {
+  const { orgId = "" } = useParams<{ orgId: string }>();
   const [rows, setRows] = useState<Sandbox[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -31,21 +33,21 @@ export function SandboxesPage(props: { orgId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      setRows(await sandboxesApi.listOrg(props.orgId));
+      setRows(await sandboxesApi.listOrg(orgId));
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { refresh(); }, [props.orgId]);
+  useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [orgId]);
 
   async function remove(row: Sandbox) {
     if (!confirm(`Delete sandbox "${row.name}"?`)) return;
-    await sandboxesApi.removeOrg(props.orgId, row.id);
+    await sandboxesApi.removeOrg(orgId, row.id);
     refresh();
   }
 
   async function rebuild(row: Sandbox) {
-    await sandboxesApi.rebuildOrg(props.orgId, row.id);
+    await sandboxesApi.rebuildOrg(orgId, row.id);
     refresh();
   }
 
@@ -112,10 +114,10 @@ export function SandboxesPage(props: { orgId: string }) {
       </div>
 
       {creating && (
-        <SandboxFormModal orgId={props.orgId} onClose={() => setCreating(false)} onSaved={refresh} />
+        <SandboxFormModal orgId={orgId} onClose={() => setCreating(false)} onSaved={refresh} />
       )}
       {editing && (
-        <SandboxFormModal orgId={props.orgId} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <SandboxFormModal orgId={orgId} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

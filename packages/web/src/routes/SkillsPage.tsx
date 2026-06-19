@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "./admin-styles.ts";
 import { skillsApi, type SkillPackageRow as SkillPackage } from "../api/skills.ts";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import { AddFromCatalogModal } from "../components/skills/AddFromCatalogModal.tsx";
 import { AddCustomModal } from "../components/skills/AddCustomModal.tsx";
 import { EditSkillsModal } from "../components/skills/EditSkillsModal.tsx";
 
-export function MySkillsPage(props: { orgId: string }) {
+export function SkillsPage() {
+  const { wsId = "" } = useParams<{ wsId: string }>();
+  const { can } = useWorkspace();
+  const canWrite = can("resource.write");
+  const canDelete = can("resource.delete");
+
   const [rows, setRows] = useState<SkillPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [pulling, setPulling] = useState<string | null>(null);
@@ -20,17 +27,17 @@ export function MySkillsPage(props: { orgId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      setRows(await skillsApi.list(""));
+      setRows(await skillsApi.list(wsId));
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { refresh(); }, [props.orgId]);
+  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [wsId]);
 
   async function pull(row: SkillPackage) {
     setPulling(row.id);
     try {
-      await skillsApi.pull("", row.id);
+      await skillsApi.pull(wsId, row.id);
       await refresh();
     } finally {
       setPulling(null);
@@ -39,8 +46,8 @@ export function MySkillsPage(props: { orgId: string }) {
 
   async function remove(row: SkillPackage) {
     if (!confirm(`Delete skill package "${row.name}"?`)) return;
-    await skillsApi.remove("", row.id);
-    refresh();
+    await skillsApi.remove(wsId, row.id);
+    void refresh();
   }
 
   return (
@@ -48,28 +55,30 @@ export function MySkillsPage(props: { orgId: string }) {
       <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-100">My Skills</h1>
+            <h1 className="text-2xl font-semibold text-slate-100">Skills</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Personal Claude Code skill packages available to your runs.
+              Claude Code skill packages available to runs in this workspace.
             </p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => setModal("catalog")} className={btnGhost}>+ From catalog</button>
-            <button onClick={() => setModal("custom")} className={btnPrimary}>+ Custom URL</button>
-          </div>
+          {canWrite && (
+            <div className="flex gap-2">
+              <button onClick={() => setModal("catalog")} className={btnGhost}>+ From catalog</button>
+              <button onClick={() => setModal("custom")} className={btnPrimary}>+ Custom URL</button>
+            </div>
+          )}
         </header>
 
         <section className={card}>
           <div className="px-6 py-4 border-b border-slate-700">
             <h2 className="text-base font-medium text-slate-100">
-              Your packages <span className="text-slate-500 font-normal">({rows.length})</span>
+              Packages <span className="text-slate-500 font-normal">({rows.length})</span>
             </h2>
           </div>
           {loading ? (
             <div className="p-10 text-center text-sm text-slate-500">Loading…</div>
           ) : rows.length === 0 ? (
             <div className="p-10 text-center text-sm text-slate-500">
-              No personal skill packages yet. Add from the catalog or provide a custom git URL.
+              No skill packages yet. Add from the catalog or provide a custom git URL.
             </div>
           ) : (
             <table className="w-full text-sm table-fixed">
@@ -140,15 +149,17 @@ export function MySkillsPage(props: { orgId: string }) {
                     <td className="px-6 py-3 text-slate-400 whitespace-nowrap text-xs">{new Date(r.updatedAt).toLocaleString()}</td>
                     <td className="px-6 py-3 text-right align-middle whitespace-nowrap">
                       <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => pull(r)}
-                          disabled={pulling === r.id}
-                          className={btnGhost}
-                        >
-                          {pulling === r.id ? "Pulling…" : "Pull latest"}
-                        </button>
-                        <button onClick={() => setEditing(r)} className={btnGhost}>Configure</button>
-                        <button onClick={() => remove(r)} className={btnDanger}>Delete</button>
+                        {canWrite && (
+                          <button
+                            onClick={() => pull(r)}
+                            disabled={pulling === r.id}
+                            className={btnGhost}
+                          >
+                            {pulling === r.id ? "Pulling…" : "Pull latest"}
+                          </button>
+                        )}
+                        {canWrite && <button onClick={() => setEditing(r)} className={btnGhost}>Configure</button>}
+                        {canDelete && <button onClick={() => remove(r)} className={btnDanger}>Delete</button>}
                       </div>
                     </td>
                   </tr>
@@ -160,13 +171,13 @@ export function MySkillsPage(props: { orgId: string }) {
       </div>
 
       {modal === "catalog" && (
-        <AddFromCatalogModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
+        <AddFromCatalogModal wsId={wsId} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {modal === "custom" && (
-        <AddCustomModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
+        <AddCustomModal wsId={wsId} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {editing && (
-        <EditSkillsModal wsId={""} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <EditSkillsModal wsId={wsId} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

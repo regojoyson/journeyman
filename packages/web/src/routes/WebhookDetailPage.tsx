@@ -11,8 +11,9 @@ import { WebhookTestPanel } from "./webhooks/WebhookTestPanel.tsx";
 
 type Tab = "overview" | "schema" | "events" | "test";
 
-export function WebhookDetailPage(props: { backTo: string }) {
-  const { id } = useParams<{ id: string }>();
+export function WebhookDetailPage() {
+  const { id, wsId = "" } = useParams<{ id: string; wsId: string }>();
+  const backTo = `/workspaces/${wsId}/webhooks`;
   const navigate = useNavigate();
   const [webhook, setWebhook] = useState<Webhook | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -27,7 +28,7 @@ export function WebhookDetailPage(props: { backTo: string }) {
     if (!webhook) return;
     if (!confirm(`Delete webhook "${webhook.name}"?`)) return;
     await deleteWebhook(webhook.id);
-    navigate(props.backTo);
+    navigate(backTo);
   }
 
   async function saveName(next: string | null) {
@@ -57,7 +58,7 @@ export function WebhookDetailPage(props: { backTo: string }) {
       <div className="w-full px-6 py-10 space-y-6">
         <header className="flex items-start justify-between">
           <div>
-            <Link to={props.backTo} className="text-xs text-slate-500 hover:text-slate-300">← back</Link>
+            <Link to={backTo} className="text-xs text-slate-500 hover:text-slate-300">← back</Link>
             <div className="mt-1">
               <InlineEdit
                 value={webhook.name}

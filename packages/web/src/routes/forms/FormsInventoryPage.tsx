@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listMyForms, type FormListItem } from "../../api/forms.ts";
+import { useWorkspace } from "../../WorkspaceContext.tsx";
 
 export function FormsInventoryPage() {
+  const { activeWorkspaceId } = useWorkspace();
   const [items, setItems] = useState<FormListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +24,7 @@ export function FormsInventoryPage() {
       <ul>
         {items.map((f) => (
           <li key={f.workflowId}>
-            <Link to={`/workflows/${f.workflowId}/form`}>{f.title}</Link>
+            <Link to={`/workspaces/${activeWorkspaceId}/workflows/${f.workflowId}/form`}>{f.title}</Link>
             <span> — {f.name}</span>
           </li>
         ))}

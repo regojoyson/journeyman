@@ -1,21 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { Webhook } from "@journeyman/core";
 import { btnPrimary, card, codePill } from "./admin-styles.ts";
 import { deleteWebhook, listWebhooks } from "../api/webhooks.ts";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import { WebhookCreateWizard } from "./webhooks/WebhookCreateWizard.tsx";
 
-export function AdminWebhooksPage(props: { orgId: string }) {
+export function WebhooksPage() {
+  const { wsId = "" } = useParams<{ wsId: string }>();
+  const { can } = useWorkspace();
+  const canWrite = can("resource.write");
+  const canDelete = can("resource.delete");
+
   const [rows, setRows] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
   async function refresh() {
     setLoading(true);
-    setRows(await listWebhooks("").catch(() => []));
+    setRows(await listWebhooks(wsId).catch(() => []));
     setLoading(false);
   }
-  useEffect(() => { void refresh(); }, [props.orgId]);
+  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [wsId]);
 
   async function remove(w: Webhook) {
     if (!confirm(`Delete webhook "${w.name}"?`)) return;
@@ -28,12 +34,12 @@ export function AdminWebhooksPage(props: { orgId: string }) {
       <div className="w-full px-6 py-10 space-y-8">
         <header className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-100">Org Webhooks</h1>
+            <h1 className="text-2xl font-semibold text-slate-100">Webhooks</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Webhook endpoints shared across this organization.
+              Webhook endpoints for this workspace. Flows can subscribe to these.
             </p>
           </div>
-          {!creating && (
+          {canWrite && !creating && (
             <button className={btnPrimary} onClick={() => setCreating(true)}>+ New webhook</button>
           )}
         </header>
@@ -41,7 +47,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
         {creating && (
           <section className={`${card} p-6`}>
             <WebhookCreateWizard
-              wsId={""}
+              wsId={wsId}
               onCancel={() => setCreating(false)}
               onCreated={() => { setCreating(false); void refresh(); }}
             />
@@ -52,7 +58,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
           {loading ? (
             <p className="p-6 text-sm text-slate-400">Loading…</p>
           ) : rows.length === 0 ? (
-            <p className="p-6 text-sm text-slate-400">No webhooks yet.</p>
+            <p className="p-6 text-sm text-slate-400">No webhooks yet. Create one to receive events.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-slate-500 border-b border-slate-700">
@@ -68,7 +74,7 @@ export function AdminWebhooksPage(props: { orgId: string }) {
                 {rows.map((w) => (
                   <tr key={w.id} className="border-b border-slate-700 hover:bg-surface-hover">
                     <td className="px-4 py-2">
-                      <Link to={`/admin/webhooks/${w.id}`} className="text-success hover:underline">{w.name}</Link>
+                      <Link to={`/workspaces/${wsId}/webhooks/${w.id}`} className="text-success hover:underline">{w.name}</Link>
                       {w.description && <div className="text-xs text-slate-500">{w.description}</div>}
                     </td>
                     <td className="px-4 py-2"><code className={codePill}>{w.preset}</code></td>
@@ -77,12 +83,14 @@ export function AdminWebhooksPage(props: { orgId: string }) {
                       {w.lastEventAt ? new Date(w.lastEventAt).toLocaleString() : "never"}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => remove(w)}
-                        className="text-xs text-danger hover:text-danger"
-                      >
-                        Delete
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => remove(w)}
+                          className="text-xs text-danger hover:text-danger"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

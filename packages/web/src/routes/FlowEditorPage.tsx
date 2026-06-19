@@ -11,24 +11,19 @@ import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
 import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
-
-function canEditFlow(
-  _flow: Workflow,
-  ctx: { userId: string | null; orgId: string; role: string; isPlatformAdmin: boolean },
-): boolean {
-  // TODO(phase 3): use workspace membership to determine editability
-  return ctx.isPlatformAdmin || ctx.role === "admin";
-}
+import { useWorkspace } from "../WorkspaceContext.tsx";
 
 export function FlowEditorPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, wsId = "" } = useParams<{ id: string; wsId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [graph, setGraph] = useState<WorkflowGraph | null>(null);
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
-  const { user, activeOrgId, role, isPlatformAdmin } = useAuth();
+  const { activeOrgId } = useAuth();
+  const { can } = useWorkspace();
+  const editable = can("resource.write");
   const customStepDefs = useCustomStepPaletteEntries(activeOrgId);
 
   const flowQ = useQuery({
@@ -36,7 +31,7 @@ export function FlowEditorPage() {
     queryFn: async () => {
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] fetching flow meta", { id });
-      const result = await getFlow(id!);
+      const result = await getFlow(wsId, id!);
       if (!result) throw new Error(`Flow ${id} not found`);
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] flow meta loaded", { id, name: result.name });
@@ -50,7 +45,7 @@ export function FlowEditorPage() {
     queryFn: async () => {
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] fetching current version", { id });
-      const result = await getCurrentWorkflowVersion(id!);
+      const result = await getCurrentWorkflowVersion(wsId, id!);
       // eslint-disable-next-line no-console
       console.log("[FlowEditorPage] current version loaded", {
         id,
@@ -92,7 +87,7 @@ export function FlowEditorPage() {
   }, [id]);
 
   const saveM = useMutation({
-    mutationFn: (next: WorkflowGraph) => updateFlowDefinition(id!, next),
+    mutationFn: (next: WorkflowGraph) => updateFlowDefinition(wsId, id!, next),
     onSuccess: (_, next) => {
       qc.setQueryData(["flow-graph", id], next);
       qc.invalidateQueries({ queryKey: ["flow-version-current", id] });
@@ -106,7 +101,7 @@ export function FlowEditorPage() {
   });
 
   const renameM = useMutation({
-    mutationFn: (name: string) => updateFlowMeta(id!, { name }),
+    mutationFn: (name: string) => updateFlowMeta(wsId, id!, { name }),
     onSuccess: ({ workflow: updated }) => {
       qc.setQueryData(["flow", id], updated);
       qc.invalidateQueries({ queryKey: ["flows"] });
@@ -118,7 +113,7 @@ export function FlowEditorPage() {
     },
   });
 
-  if (!id) { navigate("/flows"); return null; }
+  if (!id) { navigate(`/workspaces/${wsId}/workflows`); return null; }
   if (flowQ.isLoading || versionQ.isLoading || !graph) {
     // eslint-disable-next-line no-console
     console.log("[FlowEditorPage] still loading", {
@@ -133,20 +128,9 @@ export function FlowEditorPage() {
   }
 
   const flow = flowQ.data;
-  const editable = canEditFlow(flow, {
-    userId: user?.id ?? null,
-    orgId: activeOrgId,
-    role,
-    isPlatformAdmin,
-  });
-
-  const onClone = async () => {
-    // TODO(phase 3): re-expose clone via workspace copy UI
-    alert("Clone is not yet available in this view.");
-  };
 
   const onPublish = async () => {
-    const res = await publishFlow(flow.id);
+    const res = await publishFlow(wsId, flow.id);
     if (res.ok) {
       qc.setQueryData(["flow", id], res.workflow);
       qc.invalidateQueries({ queryKey: ["flows"] });
@@ -157,7 +141,7 @@ export function FlowEditorPage() {
   };
 
   const onUnpublish = async (confirm: boolean): Promise<UnpublishWarning | null> => {
-    const res = await unpublishFlow(flow.id, confirm);
+    const res = await unpublishFlow(wsId, flow.id, confirm);
     if (res.ok) {
       qc.setQueryData(["flow", id], res.workflow);
       qc.invalidateQueries({ queryKey: ["flows"] });
@@ -190,7 +174,7 @@ export function FlowEditorPage() {
             padding: "8px 12px", marginBottom: 12,
             background: "rgb(var(--color-warning) / 0.18)", border: "1px solid rgb(var(--color-warning) / 1)", borderRadius: 4,
           }}>
-            This flow is read-only. <button onClick={onClone}>Clone to my flows</button> to make changes.
+            This flow is read-only. You do not have edit access to this workspace.
           </div>
         )}
         <div style={{ flex: 1, minHeight: 0 }}>
@@ -208,7 +192,7 @@ export function FlowEditorPage() {
             mcpCatalog={defaultMcpCatalog}
             onChange={(next) => { setGraph(next); setDirty(true); }}
             onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
-            onValidate={async (next) => await validateFlowDefinition(next)}
+            onValidate={async (next) => await validateFlowDefinition(wsId, next)}
             busy={saveM.isPending}
             status={flow.status}
             onPublish={editable ? onPublish : undefined}

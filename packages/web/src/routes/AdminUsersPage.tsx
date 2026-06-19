@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { btnDanger, btnGhost, btnPrimary, card, inputCls, selectCls } from "./admin-styles.ts";
 
 interface UserRow {
@@ -6,7 +7,8 @@ interface UserRow {
   membership: { id: string; role: "admin" | "member"; createdAt: string };
 }
 
-export function AdminUsersPage(props: { orgId: string }) {
+export function AdminUsersPage() {
+  const { orgId = "" } = useParams<{ orgId: string }>();
   const [rows, setRows] = useState<UserRow[]>([]);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
@@ -15,7 +17,7 @@ export function AdminUsersPage(props: { orgId: string }) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const base = `/api/orgs/${props.orgId}`;
+  const base = `/api/orgs/${orgId}`;
 
   async function refresh() {
     setLoading(true);
@@ -23,7 +25,7 @@ export function AdminUsersPage(props: { orgId: string }) {
     if (r.ok) setRows(await r.json());
     setLoading(false);
   }
-  useEffect(() => { refresh(); }, [props.orgId]);
+  useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [orgId]);
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();

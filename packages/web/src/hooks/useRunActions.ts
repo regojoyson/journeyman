@@ -4,7 +4,7 @@ import {
   cancelRun, pauseRun, resumeRun, retryStep, rerunRun, forkRun, exportRunUrl, resolveHumanTask,
 } from "../api/runs.ts";
 
-export function useRunActions(runId: string | undefined) {
+export function useRunActions(wsId: string, runId: string | undefined) {
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -15,33 +15,33 @@ export function useRunActions(runId: string | undefined) {
   };
 
   const cancel = useMutation({
-    mutationFn: () => cancelRun(runId!),
+    mutationFn: () => cancelRun(wsId, runId!),
     onSuccess: invalidate,
   });
   const pause = useMutation({
-    mutationFn: () => pauseRun(runId!),
+    mutationFn: () => pauseRun(wsId, runId!),
     onSuccess: invalidate,
   });
   const resume = useMutation({
-    mutationFn: () => resumeRun(runId!),
+    mutationFn: () => resumeRun(wsId, runId!),
     onSuccess: invalidate,
   });
   const retry = useMutation({
-    mutationFn: (nodeId: string) => retryStep(runId!, nodeId),
+    mutationFn: (nodeId: string) => retryStep(wsId, runId!, nodeId),
     onSuccess: invalidate,
   });
   const rerun = useMutation({
-    mutationFn: () => rerunRun(runId!),
+    mutationFn: () => rerunRun(wsId, runId!),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/workflow-instances/${res.workflowInstanceId}`);
+      navigate(`/workspaces/${wsId}/workflow-instances/${res.workflowInstanceId}`);
     },
   });
   const fork = useMutation({
-    mutationFn: () => forkRun(runId!),
+    mutationFn: () => forkRun(wsId, runId!),
     onSuccess: ({ workflow }) => {
       qc.invalidateQueries({ queryKey: ["flows"] });
-      navigate(`/workflows/${workflow.id}/edit`);
+      navigate(`/workspaces/${wsId}/workflows/${workflow.id}/edit`);
     },
   });
 
@@ -54,7 +54,7 @@ export function useRunActions(runId: string | undefined) {
   const exportRun = () => {
     if (!runId) return;
     const a = document.createElement("a");
-    a.href = exportRunUrl(runId);
+    a.href = exportRunUrl(wsId, runId);
     a.download = `run-${runId}.json`;
     document.body.appendChild(a);
     a.click();

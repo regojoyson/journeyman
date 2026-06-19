@@ -42,7 +42,7 @@ function AgentRuns({ wsId, agentId }: { wsId: string; agentId: string }) {
         {runs.map((r) => (
           <tr key={r.id} className="border-t">
             <td className="py-1">
-              <a className="text-primary underline" href={`/workflow-instances/${r.id}`}>{r.id.slice(0, 8)}</a>
+              <a className="text-primary underline" href={`/workspaces/${wsId}/workflow-instances/${r.id}`}>{r.id.slice(0, 8)}</a>
             </td>
             <td className="py-1">{r.status}</td>
             <td className="py-1 text-muted-foreground">{r.started_at ?? "—"}</td>
