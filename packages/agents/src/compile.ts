@@ -39,12 +39,13 @@ export function compileAgentToGraph(
   const graph: WorkflowGraph = {
     schemaVersion: 2,
     nodes: [
-      { id: "trigger-1", type: "trigger-manual", displayName: "Start" },
+      { id: "trigger-1", type: "trigger-manual", displayName: "Start", position: { x: 80, y: 200 } },
       {
         id: "agent-run-1",
         type: "step",
         stepType: "agent-run",
         displayName: agent.name,
+        position: { x: 400, y: 200 },
         sandboxId: agent.sandboxId,
         model: agent.model ?? null,
         retry: agent.behavior.retry ?? null,
@@ -66,7 +67,7 @@ export function compileAgentToGraph(
           timeoutSeconds: agent.behavior.timeoutSeconds,
         },
       },
-      { id: "end-1", type: "end", displayName: "Done" },
+      { id: "end-1", type: "end", displayName: "Done", position: { x: 720, y: 200 } },
     ],
     edges: [
       { id: "e1", source: "trigger-1", target: "agent-run-1" },
