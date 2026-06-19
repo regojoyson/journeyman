@@ -66,6 +66,23 @@ export async function deleteWorkspace(db: Queryable, workspaceId: string, orgId:
   await db.query(`DELETE FROM jm_workspaces WHERE id = $1 AND org_id = $2`, [workspaceId, orgId]);
 }
 
+/** Workspaces the user belongs to within an org (member rows joined to workspaces). */
+export async function listWorkspacesForUser(
+  db: Queryable,
+  orgId: string,
+  userId: string,
+): Promise<Array<WorkspaceRecord & { role: WorkspaceRole }>> {
+  const r = await db.query(
+    `SELECT w.id, w.org_id, w.slug, w.name, w.created_at, w.updated_at, wm.role
+       FROM jm_workspaces w
+       JOIN jm_workspace_members wm ON wm.workspace_id = w.id AND wm.user_id = $2
+      WHERE w.org_id = $1
+      ORDER BY w.name ASC`,
+    [orgId, userId],
+  );
+  return r.rows.map((row) => ({ ...rowToWorkspace(row), role: row.role as WorkspaceRole }));
+}
+
 export async function upsertWorkspaceMember(
   db: Queryable,
   input: { workspaceId: string; userId: string; role: WorkspaceRole },

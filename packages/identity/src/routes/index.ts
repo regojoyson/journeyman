@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { registerAuthRoutes } from "./auth.ts";
 import { registerBootstrapRoutes } from "./bootstrap.ts";
 import { registerOrgRoutes } from "./orgs.ts";
+import { registerWorkspaceRoutes } from "./workspaces.ts";
 import { registerUserRoutes } from "./users.ts";
 import { registerApiTokenRoutes } from "./api-tokens.ts";
 import { registerUserManagementRoutes } from "./user-management.ts";
@@ -12,6 +13,7 @@ export async function registerIdentityRoutes(app: FastifyInstance, pool: Pool) {
   await registerBootstrapRoutes(app, pool);
   await registerAuthRoutes(app, pool);
   await registerOrgRoutes(app, pool);
+  await registerWorkspaceRoutes(app, pool);
   await registerUserRoutes(app, pool);
   await registerApiTokenRoutes(app, pool);
   await registerUserManagementRoutes(app, pool);
