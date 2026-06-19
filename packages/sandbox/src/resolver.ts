@@ -6,7 +6,6 @@ export class SandboxNotFoundError extends Error {}
 
 export interface ResolveSandboxCtx {
   orgId: string;
-  userId: string;
 }
 
 function toResolved(w: Sandbox): ResolvedSandbox {
@@ -35,7 +34,7 @@ export async function resolveSandbox(
   if (!workerId) {
     throw new SandboxNotFoundError("no sandbox selected for this workflow");
   }
-  const w = await fetchSandboxById(db, ctx.orgId, ctx.userId, workerId);
+  const w = await fetchSandboxById(db, ctx.orgId, workerId);
   if (!w) throw new SandboxNotFoundError(`sandbox '${workerId}' not found or not visible`);
   return toResolved(w);
 }

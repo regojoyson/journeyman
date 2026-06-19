@@ -20,7 +20,7 @@ function dbReturning(rows: any[]): Queryable {
 
 describe("resolveSandbox", () => {
   it("resolves an explicit workerId to a ResolvedSandbox", async () => {
-    const r = await resolveSandbox(dbReturning([dockerRow]), { orgId: "o1", userId: "u1" }, "w1");
+    const r = await resolveSandbox(dbReturning([dockerRow]), { orgId: "o1" }, "w1");
     expect(r).toEqual({
       id: "w1",
       type: "docker",
@@ -36,13 +36,13 @@ describe("resolveSandbox", () => {
 
   it("throws when no workerId is given (no default fallback)", async () => {
     await expect(
-      resolveSandbox(dbReturning([localDefault]), { orgId: "o1", userId: "u1" }, undefined),
+      resolveSandbox(dbReturning([localDefault]), { orgId: "o1" }, undefined),
     ).rejects.toBeInstanceOf(SandboxNotFoundError);
   });
 
   it("throws SandboxNotFoundError when an explicit workerId is missing", async () => {
     await expect(
-      resolveSandbox(dbReturning([]), { orgId: "o1", userId: "u1" }, "ghost"),
+      resolveSandbox(dbReturning([]), { orgId: "o1" }, "ghost"),
     ).rejects.toBeInstanceOf(SandboxNotFoundError);
   });
 });
