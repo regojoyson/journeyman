@@ -49,6 +49,17 @@ export async function bootstrap(
       "UPDATE jm_users SET is_platform_admin = TRUE WHERE id = $1",
       [userRes.rows[0].id],
     );
+    const wsRes = await client.query(
+      `INSERT INTO jm_workspaces (org_id, slug, name)
+       VALUES ($1, 'default', 'Default')
+       RETURNING id`,
+      [orgRes.rows[0].id],
+    );
+    await client.query(
+      `INSERT INTO jm_workspace_members (workspace_id, user_id, role)
+       VALUES ($1, $2, 'maintainer')`,
+      [wsRes.rows[0].id, userRes.rows[0].id],
+    );
     await client.query(
       "UPDATE jm_system_state SET bootstrapped_at = now() WHERE id = 1",
     );
