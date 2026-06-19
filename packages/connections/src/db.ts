@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { Connection, ConnectionCategory, ConnectionScope } from "@journeyman/core";
+import type { Connection, ConnectionCategory } from "@journeyman/core";
 
 export class DuplicateConnectionError extends Error {
   constructor(label: string) {
@@ -18,8 +18,7 @@ export interface SealedCredential {
 export function rowToConnection(r: any): Connection {
   return {
     id: r.id,
-    scope: r.scope,
-    userId: r.user_id ?? undefined,
+    workspaceId: r.workspace_id,
     orgId: r.org_id,
     category: r.category,
     provider: r.provider,
@@ -33,8 +32,7 @@ export function rowToConnection(r: any): Connection {
 }
 
 export interface InsertConnectionInput {
-  scope: ConnectionScope;
-  userId: string | null;
+  workspaceId: string;
   orgId: string;
   category: ConnectionCategory;
   provider: string;
@@ -49,11 +47,10 @@ export async function insertConnection(pool: Pool, input: InsertConnectionInput)
   try {
     const { rows } = await pool.query(
       `INSERT INTO jm_connections
-         (scope, user_id, org_id, category, provider, label, base_url, cred_ciphertext, cred_iv, cred_auth_tag, config, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+         (workspace_id, org_id, category, provider, label, base_url, cred_ciphertext, cred_iv, cred_auth_tag, config, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [
-        input.scope,
-        input.userId,
+        input.workspaceId,
         input.orgId,
         input.category,
         input.provider,
@@ -90,16 +87,14 @@ export async function getConnectionSealed(pool: Pool, id: string): Promise<Seale
 
 export async function listConnections(
   pool: Pool,
-  orgId: string,
-  userId: string | null,
+  workspaceId: string,
   category?: ConnectionCategory,
 ): Promise<Connection[]> {
-  const params: unknown[] = [orgId, userId];
-  let sql = `SELECT * FROM jm_connections
-             WHERE org_id = $1 AND COALESCE(user_id::text, '') = COALESCE($2::text, '')`;
+  const params: unknown[] = [workspaceId];
+  let sql = `SELECT * FROM jm_connections WHERE workspace_id = $1`;
   if (category) {
     params.push(category);
-    sql += ` AND category = $3`;
+    sql += ` AND category = $2`;
   }
   sql += ` ORDER BY label ASC`;
   const { rows } = await pool.query(sql, params);

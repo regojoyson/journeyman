@@ -68,9 +68,9 @@ export function EditAgentModal({ orgId, wsId, agent, onClose }: { orgId: string;
   // Phase 4: notification connections
   const [notifyConnections, setNotifyConnections] = useState<Connection[]>([]);
   useEffect(() => {
-    connectionsApi.listOrg(orgId, "git").then(setGitConnections).catch(() => setGitConnections([]));
-    connectionsApi.listOrg(orgId, "notification").then(setNotifyConnections).catch(() => setNotifyConnections([]));
-  }, [orgId]);
+    connectionsApi.list(wsId, "git").then(setGitConnections).catch(() => setGitConnections([]));
+    connectionsApi.list(wsId, "notification").then(setNotifyConnections).catch(() => setNotifyConnections([]));
+  }, [wsId]);
 
   const patch = (p: AgentUpdateInput) => setA((prev) => ({ ...prev, ...p } as Agent));
 
@@ -91,7 +91,7 @@ export function EditAgentModal({ orgId, wsId, agent, onClose }: { orgId: string;
       return;
     }
     try {
-      const res = await connectionsApi.repos(orgId, repoConnectionId);
+      const res = await connectionsApi.repos(wsId, repoConnectionId);
       if (res.error) setBrowseError(res.error);
       setBrowsedRepos(res.repos);
     } catch (e: any) {

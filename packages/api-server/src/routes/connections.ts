@@ -1,6 +1,6 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Composition } from "../composition.ts";
-import { makeRequireAuth } from "@journeyman/identity";
+import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { seal, open } from "@journeyman/secrets";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import type { IGitProvider, ConnectionCategory } from "@journeyman/core";
@@ -16,10 +16,6 @@ import {
 } from "@journeyman/connections";
 import { audit } from "../services/audit.ts";
 
-function ctxOf(req: FastifyRequest) {
-  return req.runContext!;
-}
-
 function gitProviderFor(provider: string, token: string, baseUrl?: string): IGitProvider {
   if (provider === "gitlab") return new GitLabProvider({ token, baseUrl });
   return new GitHubProvider({ token });
@@ -27,37 +23,27 @@ function gitProviderFor(provider: string, token: string, baseUrl?: string): IGit
 
 export function registerConnectionRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
+  const requirePerm = makeRequireWorkspacePermission({ pool: c.pool! });
+  const read = { preHandler: [requireAuth(), requirePerm("resource.read")] };
+  const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
   const pool = c.pool!;
 
-  const wrongOrg = (ctx: { org: { id: string } }, orgId: string, reply: FastifyReply) => {
-    if (ctx.org.id !== orgId) {
-      reply.code(403).send({ error: "wrong_org" });
-      return true;
-    }
-    return false;
-  };
+  /** Load a connection and 404 unless it belongs to the route's workspace. */
+  async function loadConn(id: string, wsId: string) {
+    const conn = await getConnection(pool, id);
+    if (!conn || conn.workspaceId !== wsId) return null;
+    return conn;
+  }
 
-  // List
-  app.get("/api/orgs/:orgId/users/me/connections", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId } = req.params as { orgId: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  app.get("/workspaces/:wsId/connections", read, async (req) => {
+    const { wsId } = req.params as { wsId: string };
     const category = (req.query as { category?: ConnectionCategory })?.category;
-    return listConnections(pool, orgId, ctx.user.id, category);
+    return listConnections(pool, wsId, category);
   });
 
-  app.get("/api/orgs/:orgId/connections", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId } = req.params as { orgId: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const category = (req.query as { category?: ConnectionCategory })?.category;
-    return listConnections(pool, orgId, null, category);
-  });
-
-  const createHandler = (scope: "user" | "org") => async (req: FastifyRequest, reply: FastifyReply) => {
-    const { orgId } = req.params as { orgId: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
+  app.post("/workspaces/:wsId/connections", write, async (req, reply) => {
+    const { wsId } = req.params as { wsId: string };
+    const ctx = req.runContext!;
     const body = req.body as {
       category?: ConnectionCategory;
       provider?: string;
@@ -72,9 +58,8 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     }
     try {
       const conn = await insertConnection(pool, {
-        scope,
-        userId: scope === "user" ? ctx.user.id : null,
-        orgId,
+        workspaceId: wsId,
+        orgId: ctx.workspace!.orgId,
         category: body.category,
         provider: body.provider,
         label: body.label.trim(),
@@ -83,7 +68,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
         config: body.config ?? {},
         createdBy: ctx.user.id,
       });
-      await audit(pool, { orgId, actorUserId: ctx.user.id, action: "connection.create", targetType: "connection", targetId: conn.id, detail: { category: body.category, provider: body.provider, label: conn.label } });
+      await audit(pool, { orgId: ctx.workspace!.orgId, actorUserId: ctx.user.id, action: "connection.create", targetType: "connection", targetId: conn.id, detail: { category: body.category, provider: body.provider, label: conn.label } });
       reply.code(201);
       return conn;
     } catch (err) {
@@ -93,32 +78,19 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
       }
       throw err;
     }
-  };
+  });
 
-  app.post("/api/orgs/:orgId/users/me/connections", { preHandler: requireAuth() }, createHandler("user"));
-  app.post("/api/orgs/:orgId/connections", { preHandler: requireAuth() }, createHandler("org"));
-
-  app.get("/api/orgs/:orgId/connections/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const conn = await getConnection(pool, id);
-    if (!conn || conn.orgId !== orgId) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+  app.get("/workspaces/:wsId/connections/:id", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const conn = await loadConn(id, wsId);
+    if (!conn) { reply.code(404); return { error: "not_found" }; }
     return conn;
   });
 
-  app.patch("/api/orgs/:orgId/connections/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const conn = await getConnection(pool, id);
-    if (!conn || conn.orgId !== orgId) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+  app.patch("/workspaces/:wsId/connections/:id", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const conn = await loadConn(id, wsId);
+    if (!conn) { reply.code(404); return { error: "not_found" }; }
     const body = req.body as { label?: string; baseUrl?: string; config?: Record<string, unknown>; credential?: string };
     try {
       return await updateConnection(pool, id, {
@@ -136,44 +108,30 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     }
   });
 
-  // Delete — §7.5 in-use guard
-  app.delete("/api/orgs/:orgId/connections/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const conn = await getConnection(pool, id);
-    if (!conn || conn.orgId !== orgId) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+  app.delete("/workspaces/:wsId/connections/:id", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const ctx = req.runContext!;
+    const conn = await loadConn(id, wsId);
+    if (!conn) { reply.code(404); return { error: "not_found" }; }
     const using = await agentsUsingConnection(pool, id);
     if (using.length > 0) {
       reply.code(409).send({ error: "connection_in_use", agents: using });
       return;
     }
     await deleteConnection(pool, id);
-    await audit(pool, { orgId, actorUserId: ctx.user.id, action: "connection.delete", targetType: "connection", targetId: id, detail: { label: conn.label } });
+    await audit(pool, { orgId: conn.orgId, actorUserId: ctx.user.id, action: "connection.delete", targetType: "connection", targetId: id, detail: { label: conn.label } });
     reply.code(204);
   });
 
-  // Test connection — git: whoami via listRepos; notification: stored-only ack (delivery in Phase 4).
-  app.post("/api/orgs/:orgId/connections/:id/test", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const conn = await getConnection(pool, id);
-    if (!conn || conn.orgId !== orgId) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+  app.post("/workspaces/:wsId/connections/:id/test", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const conn = await loadConn(id, wsId);
+    if (!conn) { reply.code(404); return { error: "not_found" }; }
     if (conn.category !== "git") {
       return { ok: true, note: "Notification delivery is verified in a later phase." };
     }
     const sealed = await getConnectionSealed(pool, id);
-    if (!sealed) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+    if (!sealed) { reply.code(404); return { error: "not_found" }; }
     const git = gitProviderFor(conn.provider, open(sealed), conn.baseUrl);
     if (!git.listRepos) return { ok: false, error: "provider does not support repo listing" };
     const res = await git.listRepos({ limit: 100 });
@@ -181,21 +139,12 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     return { ok: true, repoCount: res.repos.length };
   });
 
-  // List repos reachable by a git connection.
-  app.get("/api/orgs/:orgId/connections/:id/repos", { preHandler: requireAuth() }, async (req, reply) => {
-    const { orgId, id } = req.params as { orgId: string; id: string };
-    const ctx = ctxOf(req);
-    if (wrongOrg(ctx, orgId, reply)) return;
-    const conn = await getConnection(pool, id);
-    if (!conn || conn.orgId !== orgId || conn.category !== "git") {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+  app.get("/workspaces/:wsId/connections/:id/repos", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const conn = await loadConn(id, wsId);
+    if (!conn || conn.category !== "git") { reply.code(404); return { error: "not_found" }; }
     const sealed = await getConnectionSealed(pool, id);
-    if (!sealed) {
-      reply.code(404).send({ error: "not_found" });
-      return;
-    }
+    if (!sealed) { reply.code(404); return { error: "not_found" }; }
     const git = gitProviderFor(conn.provider, open(sealed), conn.baseUrl);
     if (!git.listRepos) return { repos: [], error: "provider does not support repo listing" };
     const search = (req.query as { search?: string })?.search;

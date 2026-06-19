@@ -1,5 +1,4 @@
 export type ConnectionCategory = "git" | "notification";
-export type ConnectionScope = "user" | "org";
 
 /**
  * A reusable, encrypted credential + config for an external service, classified
@@ -8,8 +7,7 @@ export type ConnectionScope = "user" | "org";
  */
 export interface Connection {
   id: string;
-  scope: ConnectionScope;
-  userId?: string;
+  workspaceId: string;
   orgId: string;
   category: ConnectionCategory;
   provider: string; // git: "github" | "gitlab" ; notification: "slack" | "console"
@@ -24,7 +22,7 @@ export interface Connection {
   updatedAt: string;
 }
 
-export type ConnectionCreateInput = Pick<Connection, "scope" | "category" | "provider" | "label"> &
+export type ConnectionCreateInput = Pick<Connection, "category" | "provider" | "label"> &
   Partial<Pick<Connection, "baseUrl" | "config">> & {
     /** Raw credential value; stored encrypted in the vault, referenced by secretRef. */
     credential: string;

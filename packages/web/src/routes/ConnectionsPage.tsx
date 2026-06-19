@@ -8,7 +8,7 @@ const GIT_PROVIDERS = [
   { value: "gitlab", label: "GitLab" },
 ];
 
-export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user" | "org" }) {
+export function ConnectionsPage({ wsId }: { wsId: string }) {
   const [items, setItems] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,13 +17,13 @@ export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user"
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(scope === "user" ? await connectionsApi.listMine(orgId) : await connectionsApi.listOrg(orgId));
+      setItems(await connectionsApi.list(wsId));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
-  }, [orgId, scope]);
+  }, [wsId]);
 
   useEffect(() => {
     void refresh();
@@ -31,7 +31,7 @@ export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user"
 
   const remove = async (id: string) => {
     try {
-      await connectionsApi.remove(orgId, id);
+      await connectionsApi.remove(wsId, id);
       await refresh();
     } catch (e: any) {
       const agents = (e?.body as any)?.agents as string[] | undefined;
@@ -46,7 +46,7 @@ export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user"
     <div className="h-full overflow-y-auto">
       <div className="w-full px-6 py-10 space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold">{scope === "user" ? "My Connections" : "Org Connections"}</h1>
+          <h1 className="text-2xl font-semibold">Connections</h1>
           <p className="mt-1 text-sm text-muted-foreground">Git accounts and notification channels agents can use.</p>
         </header>
         {error && <div className="text-sm text-destructive">{error}</div>}
@@ -56,14 +56,14 @@ export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user"
           items={git}
           onAdd={() => setAdding("git")}
           onRemove={remove}
-          onTest={async (id) => connectionsApi.test(orgId, id)}
+          onTest={async (id) => connectionsApi.test(wsId, id)}
         />
         <Section
           title="🔔 Notification channels"
           items={notif}
           onAdd={() => setAdding("notification")}
           onRemove={remove}
-          onTest={async (id) => connectionsApi.test(orgId, id)}
+          onTest={async (id) => connectionsApi.test(wsId, id)}
         />
 
         {adding && (
@@ -72,7 +72,7 @@ export function ConnectionsPage({ orgId, scope }: { orgId: string; scope: "user"
             onCancel={() => setAdding(null)}
             onCreate={async (body) => {
               try {
-                await connectionsApi.create(orgId, { ...body, scope });
+                await connectionsApi.create(wsId, body);
                 setAdding(null);
                 await refresh();
               } catch (e: any) {
@@ -158,7 +158,7 @@ function AddConnectionForm({
 }: {
   category: ConnectionCategory;
   onCancel: () => void;
-  onCreate: (body: Omit<CreateConnectionInput, "scope">) => void;
+  onCreate: (body: CreateConnectionInput) => void;
 }) {
   const [provider, setProvider] = useState(category === "git" ? "github" : "slack");
   const [label, setLabel] = useState("");

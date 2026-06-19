@@ -47,7 +47,7 @@ export default function App() {
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
         <Route path="/me/custom-steps" element={<MyCustomStepsPage orgId={activeOrgId} />} />
         <Route path="/me/agents" element={<MyAgentsPage orgId={activeOrgId} wsId={""} />} />
-        <Route path="/me/connections" element={<ConnectionsPage orgId={activeOrgId} scope="user" />} />
+        <Route path="/me/connections" element={<ConnectionsPage wsId={""} />} />
         <Route path="/me/webhooks" element={<MyWebhooksPage />} />
         <Route path="/me/webhooks/:id" element={<WebhookDetailPage backTo="/me/webhooks" />} />
         <Route path="/me/password" element={<ChangePasswordPage />} />
@@ -57,7 +57,7 @@ export default function App() {
         <Route path="/admin/skills" element={role === "admin" ? <AdminSkillsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/custom-steps" element={role === "admin" ? <AdminCustomStepsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/agents" element={role === "admin" ? <AdminAgentsPage orgId={activeOrgId} wsId={""} /> : <Navigate to="/" replace />} />
-        <Route path="/admin/connections" element={role === "admin" ? <ConnectionsPage orgId={activeOrgId} scope="org" /> : <Navigate to="/" replace />} />
+        <Route path="/admin/connections" element={role === "admin" ? <ConnectionsPage wsId={""} /> : <Navigate to="/" replace />} />
         <Route path="/admin/webhooks" element={role === "admin" ? <AdminWebhooksPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/webhooks/:id" element={role === "admin" ? <WebhookDetailPage backTo="/admin/webhooks" /> : <Navigate to="/" replace />} />
         <Route path="/admin/coding-models" element={role === "admin" ? <AdminCodingModelsPage /> : <Navigate to="/" replace />} />
