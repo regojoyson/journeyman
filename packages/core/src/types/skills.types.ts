@@ -3,9 +3,7 @@ export type SkillCliType = 'claude' | 'opencode' | 'codex';
 
 export interface SkillPackage {
   id: string;
-  scope: 'user' | 'org';
-  userId?: string;
-  orgId: string;
+  workspaceId: string;
   gitUrl: string;
   name: string;
   localPath?: string;
