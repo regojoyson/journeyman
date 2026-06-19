@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
 import { providersForKind, suggestedKeySlotName, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
+import { listOrgSecrets, createOrgSecret, type OrgSecretMeta } from "../api/secrets.ts";
 
 const CODING_PROVIDERS = providersForKind("coding-cli");
 import {
@@ -28,30 +30,32 @@ const EMPTY: CodingModelCreateInput = {
 
 export function AdminCodingModelsPage() {
   const qc = useQueryClient();
+  const { orgId = "" } = useParams<{ orgId: string }>();
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-coding-models"],
-    queryFn: codingModelsApi.adminList,
+    queryKey: ["org-coding-models", orgId],
+    queryFn: () => codingModelsApi.orgList(orgId),
+    enabled: !!orgId,
   });
 
   const [editing, setEditing] = useState<CodingModel | null>(null);
   const [creating, setCreating] = useState<CodingModelCreateInput | null>(null);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["admin-coding-models"] });
+    qc.invalidateQueries({ queryKey: ["org-coding-models", orgId] });
     qc.invalidateQueries({ queryKey: ["coding-models"] });
   };
 
   const createMut = useMutation({
-    mutationFn: (b: CodingModelCreateInput) => codingModelsApi.adminCreate(b),
+    mutationFn: (b: CodingModelCreateInput) => codingModelsApi.orgCreate(orgId, b),
     onSuccess: () => { setCreating(null); invalidate(); },
   });
   const updateMut = useMutation({
     mutationFn: (args: { id: string; patch: Partial<CodingModelCreateInput> }) =>
-      codingModelsApi.adminUpdate(args.id, args.patch),
+      codingModelsApi.orgUpdate(orgId, args.id, args.patch),
     onSuccess: () => { setEditing(null); invalidate(); },
   });
   const deleteMut = useMutation({
-    mutationFn: (id: string) => codingModelsApi.adminDelete(id),
+    mutationFn: (id: string) => codingModelsApi.orgDelete(orgId, id),
     onSuccess: invalidate,
   });
 
@@ -62,7 +66,7 @@ export function AdminCodingModelsPage() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">Coding Models</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Catalog of AI models available to all flows. Managed by platform admins.
+              Models available to this org's flows and agents.
             </p>
           </div>
           <button className={btnPrimary} onClick={() => setCreating({ ...EMPTY })}>
@@ -125,6 +129,7 @@ export function AdminCodingModelsPage() {
         {creating && (
           <ModelForm
             initial={creating}
+            orgId={orgId}
             title="New model"
             onCancel={() => setCreating(null)}
             onSubmit={(v) => createMut.mutate(v)}
@@ -134,6 +139,7 @@ export function AdminCodingModelsPage() {
         {editing && (
           <ModelForm
             initial={editing}
+            orgId={orgId}
             title={`Edit ${editing.provider}/${editing.modelId}`}
             onCancel={() => setEditing(null)}
             onSubmit={(v) => updateMut.mutate({ id: editing.id, patch: v })}
@@ -147,6 +153,7 @@ export function AdminCodingModelsPage() {
 
 function ModelForm(props: {
   initial: CodingModelCreateInput | CodingModel;
+  orgId: string;
   title: string;
   onCancel: () => void;
   onSubmit: (v: CodingModelCreateInput) => void;
@@ -157,15 +164,27 @@ function ModelForm(props: {
     setV((prev) => ({ ...prev, [k]: val }));
   const setConfig = (k: "baseUrl" | "npm" | "apiKeySlot", val: string) =>
     setV((prev) => ({ ...prev, config: { ...(prev.config ?? {}), [k]: val || undefined } }));
+  const setApiKeySecretId = (id: string | undefined) =>
+    setV((prev) => ({ ...prev, apiKeySecretId: id || undefined }));
   const requiresKey = Boolean(v.config?.apiKeySlot);
   const setRequiresKey = (b: boolean) =>
     setV((prev) => ({
       ...prev,
+      apiKeySecretId: b ? prev.apiKeySecretId : undefined,
       config: {
         ...(prev.config ?? {}),
-        apiKeySlot: b ? (prev.config?.apiKeySlot || suggestedKeySlotName(prev.modelId) || "API_KEY") : undefined,
+        apiKeySlot: b
+          ? (prev.config?.apiKeySlot
+              || (prev.provider === "claude" ? "ANTHROPIC_API_KEY" : suggestedKeySlotName(prev.modelId) || "API_KEY"))
+          : undefined,
       },
     }));
+
+  const { data: orgSecrets = [] } = useQuery({
+    queryKey: ["org-secrets", props.orgId],
+    queryFn: () => listOrgSecrets(props.orgId),
+    enabled: !!props.orgId,
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
@@ -285,27 +304,35 @@ function ModelForm(props: {
           </div>
         </section>
 
-        {(v.provider === "opencode" || v.provider === "aisdk") && (
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium text-slate-200">Authentication</h3>
-            <Toggle
-              label="Requires an API key"
-              hint="Workflows using this model will require a secret mapped to this key."
-              checked={requiresKey}
-              onChange={setRequiresKey}
-            />
-            {requiresKey && (
-              <Field label="Secret key name">
-                <input
-                  className={`${inputCls} font-mono text-sm`}
-                  value={v.config?.apiKeySlot ?? ""}
-                  onChange={(e) => setConfig("apiKeySlot", e.target.value)}
-                  placeholder="ANTHROPIC_API_KEY"
-                />
-              </Field>
-            )}
-          </section>
-        )}
+        <section className="space-y-3">
+          <h3 className="text-sm font-medium text-slate-200">Authentication</h3>
+          <Toggle
+            label="Requires an API key"
+            hint="Bind an org secret here; workflows and agents using this model will use it automatically."
+            checked={requiresKey}
+            onChange={setRequiresKey}
+          />
+          {requiresKey && (
+            <>
+              {(v.provider === "opencode" || v.provider === "aisdk") && (
+                <Field label="Env var name">
+                  <input
+                    className={`${inputCls} font-mono text-sm`}
+                    value={v.config?.apiKeySlot ?? ""}
+                    onChange={(e) => setConfig("apiKeySlot", e.target.value)}
+                    placeholder="ANTHROPIC_API_KEY"
+                  />
+                </Field>
+              )}
+              <SecretBindingField
+                orgId={props.orgId}
+                secrets={orgSecrets}
+                value={v.apiKeySecretId}
+                onChange={setApiKeySecretId}
+              />
+            </>
+          )}
+        </section>
 
         {(v.provider === "opencode" || v.provider === "aisdk") && (
           <section className="space-y-3">
@@ -369,12 +396,92 @@ function ModelForm(props: {
 
         <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
           <button className={btnGhost} onClick={props.onCancel} disabled={props.submitting}>Cancel</button>
-          <button className={btnPrimary} onClick={() => props.onSubmit(v)} disabled={props.submitting}>
+          <button
+            className={btnPrimary}
+            onClick={() => props.onSubmit(v)}
+            disabled={props.submitting || (requiresKey && !v.apiKeySecretId)}
+          >
             {props.submitting ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function SecretBindingField(props: {
+  orgId: string;
+  secrets: OrgSecretMeta[];
+  value: string | undefined;
+  onChange: (id: string | undefined) => void;
+}) {
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [secretValue, setSecretValue] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: () => createOrgSecret(props.orgId, name.trim(), secretValue),
+    onSuccess: async (rec) => {
+      await qc.invalidateQueries({ queryKey: ["org-secrets", props.orgId] });
+      props.onChange(rec.id);
+      setCreating(false);
+      setName(""); setSecretValue(""); setErr(null);
+    },
+    onError: (e: any) => setErr(e?.message ?? "Failed to create secret"),
+  });
+
+  return (
+    <Field label="Org secret">
+      {!creating ? (
+        <div className="flex gap-2">
+          <select
+            className={inputCls}
+            value={props.value ?? ""}
+            onChange={(e) => props.onChange(e.target.value || undefined)}
+          >
+            <option value="">Select a secret…</option>
+            {props.secrets.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <button type="button" className={btnGhost} onClick={() => setCreating(true)}>
+            + Create new
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-md border border-slate-700 p-3">
+          <input
+            className={`${inputCls} font-mono text-sm`}
+            placeholder="SECRET_NAME"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className={inputCls}
+            type="password"
+            placeholder="secret value"
+            value={secretValue}
+            onChange={(e) => setSecretValue(e.target.value)}
+          />
+          {err && <p className="text-xs text-danger">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className={btnGhost} onClick={() => { setCreating(false); setErr(null); }}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={!name.trim() || !secretValue || createMut.isPending}
+              onClick={() => createMut.mutate()}
+            >
+              {createMut.isPending ? "Saving…" : "Create & select"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Field>
   );
 }
 

@@ -164,7 +164,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
                     <code className={codePill}>{ev}</code>
                     <span className="text-slate-500">→</span>
                     <SecretPicker
-                      orgId=""
+                      wsId={props.wsId}
                       value={bindings[ev] ?? ""}
                       onChange={(secretName) => setBindings((prev) => ({ ...prev, [ev]: secretName }))}
                       scope="org-and-global"

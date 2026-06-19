@@ -15,13 +15,13 @@ const colors = ["#a29bfe", "#fd79a8", "#55efc4", "#ffeaa7", "#74b9ff", "#fab1a0"
  * baked into `defaultConfig` so the orchestrator can load the right
  * definition at run time.
  */
-export function useCustomStepPaletteEntries(orgId: string): StepDefinition<any>[] {
+export function useCustomStepPaletteEntries(wsId: string): StepDefinition<any>[] {
   const [defs, setDefs] = useState<StepDefinition<any>[]>([]);
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!wsId) return;
     let alive = true;
-    fetch(`/api/orgs/${orgId}/custom-steps/visible`, { credentials: "include" })
+    fetch(`/api/workspaces/${wsId}/custom-steps/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((rows: CustomAiStep[]) => {
         if (!alive) return;
@@ -29,7 +29,7 @@ export function useCustomStepPaletteEntries(orgId: string): StepDefinition<any>[
       })
       .catch(() => { if (alive) setDefs([]); });
     return () => { alive = false; };
-  }, [orgId]);
+  }, [wsId]);
 
   return defs;
 }

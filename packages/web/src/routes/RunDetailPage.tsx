@@ -75,7 +75,10 @@ export function RunDetailPage() {
         workflow={detailQ.data.workflowInstance.definitionSnapshot}
         workflowName={
           detailQ.data.workflowInstance.workflowNameSnapshot
-          + (detailQ.data.workflowInstance.workflowVersionId ? "" : " (workflow deleted)")
+          + (detailQ.data.workflowInstance.workflowVersionId
+            || detailQ.data.workflowInstance.inputs?.agentId
+            ? ""
+            : " (workflow deleted)")
         }
         workflowInstance={detailQ.data.workflowInstance}
         events={allEvents}

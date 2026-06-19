@@ -1,13 +1,12 @@
 // packages/flow-editor/src/properties-panel/RequiredSecretsTab.tsx
 import { useEffect, useState, useMemo } from "react";
-import { PROVIDER_CATALOG, openCodeModelSlots } from "@journeyman/core";
+import { PROVIDER_CATALOG } from "@journeyman/core";
 import type { WorkflowGraph, WorkflowNode, SecretBinding, SecretScope } from "@journeyman/core";
 import { fetchVisibleSecrets, type VisibleSecret } from "../api/secrets.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { defaultProviderFor } from "../executor-common-config.ts";
 import type { SecretSlotDef } from "../step-definition.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
-import { useCodingModels } from "../catalogs/use-coding-models.ts";
 
 export interface RequiredSecretsTabProps {
   flow: WorkflowGraph;
@@ -76,15 +75,8 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
     (kind ? defaultProviderFor(kind) : undefined);
   const providerSlots = PROVIDER_CATALOG.find(p => p.value === effectiveProvider)?.slots ?? [];
 
-  // OpenCode and aisdk models declare their key on the model config (catalog slots
-  // are empty). Resolve the effective model (node model or flow default) and derive its slot.
-  const modelKeyedProvider = effectiveProvider === "opencode" || effectiveProvider === "aisdk";
-  const codingModels = useCodingModels(modelKeyedProvider ? effectiveProvider : undefined);
-  const effectiveModelId = node.model ?? flow.defaults?.defaultModel ?? undefined;
-  const openCodeSlots: SecretSlotDef[] =
-    modelKeyedProvider
-      ? openCodeModelSlots(codingModels.find(m => m.modelId === effectiveModelId)?.config)
-      : [];
+  // The coding model's API key is model-owned (bound to an org secret on the model
+  // itself), so it is not surfaced as a per-step required secret here.
 
   // Kind-override slots: when the step declares `slotsFromKind`, look up the
   // slot list from the workflow's catalog entry for that kind (e.g. the
@@ -117,7 +109,7 @@ export function RequiredSecretsTab({ flow, node, orgId, onChange, readOnly }: Re
   // a provider-level default if the step author wants different metadata.
   const slots: SecretSlotDef[] = (() => {
     if (node.stepType === "custom-ai") {
-      const base = [...providerSlots, ...openCodeSlots, ...(stepDef?.slots ?? [])];
+      const base = [...providerSlots, ...(stepDef?.slots ?? [])];
       const overrides = new Map(customSlots.map(s => [s.name, s]));
       const merged: SecretSlotDef[] = base.map(s => overrides.get(s.name) ?? s);
       for (const s of customSlots) {

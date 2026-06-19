@@ -2,7 +2,7 @@ export { registerCodingModelRoutes } from "./routes/index.ts";
 export {
   insertCodingModel,
   getCodingModel,
-  listAllCodingModels,
+  listCodingModelsByOrg,
   listEnabledCodingModelsByProvider,
   findDefaultCodingModel,
   findCodingModel,

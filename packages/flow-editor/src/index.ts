@@ -27,7 +27,7 @@ export { defaultControlCatalog } from "./palette/built-in-categories.ts";
 export { defaultMcpCatalog } from "./catalogs/built-in-mcp-catalog.ts";
 export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
 export { StepRegistryProvider } from "./state/step-registry-context.tsx";
-export { OrgIdProvider, useOrgId } from "./state/org-context.tsx";
+export { OrgIdProvider, useOrgId, WsIdProvider, useWsId } from "./state/org-context.tsx";
 export { MentionInput } from "./properties-panel/MentionInput.tsx";
 export { InputValueEditor } from "./properties-panel/InputValueEditor.tsx";
 export { toMentionFields } from "./properties-panel/mention-fields.ts";

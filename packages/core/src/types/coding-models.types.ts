@@ -8,12 +8,13 @@ export interface CodingModelConfig {
   baseUrl?: string;
   /** AI-SDK npm package for the provider; defaults to "@ai-sdk/openai-compatible". */
   npm?: string;
-  /** Name of the secret slot holding the endpoint API key; blank = no key. */
+  /** Env-var name the provider expects the API key under (e.g. ANTHROPIC_API_KEY); blank = no key. */
   apiKeySlot?: string;
 }
 
 export type CodingModel = {
   id: string;
+  orgId: string;
   provider: string;
   modelId: string;
   label: string;
@@ -25,6 +26,8 @@ export type CodingModel = {
   supportsThinking: boolean;
   contextWindow?: number;
   config?: CodingModelConfig;
+  /** Org secret (jm_secrets.id, workspace_id IS NULL) that fills config.apiKeySlot at run time. */
+  apiKeySecretId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +44,7 @@ export type CodingModelCreateInput = {
   supportsThinking?: boolean;
   contextWindow?: number;
   config?: CodingModelConfig;
+  apiKeySecretId?: string;
 };
 
 export type CodingModelUpdateInput = Partial<CodingModelCreateInput>;

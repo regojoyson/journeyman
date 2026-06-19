@@ -15,6 +15,7 @@ export class DuplicateCodingModelError extends Error {
 function rowToModel(r: any): CodingModel {
   return {
     id: r.id,
+    orgId: r.org_id,
     provider: r.provider,
     modelId: r.model_id,
     label: r.label,
@@ -26,6 +27,7 @@ function rowToModel(r: any): CodingModel {
     supportsThinking: r.supports_thinking,
     contextWindow: r.context_window ?? undefined,
     config: r.config && Object.keys(r.config).length ? r.config : undefined,
+    apiKeySecretId: r.api_key_secret_id ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -37,6 +39,7 @@ function newId(): string {
 
 export async function insertCodingModel(
   pool: Pool,
+  orgId: string,
   input: CodingModelCreateInput,
 ): Promise<CodingModel> {
   const client = await pool.connect();
@@ -45,8 +48,8 @@ export async function insertCodingModel(
     if (input.isDefault) {
       await client.query(
         `UPDATE jm_coding_models SET is_default = false, updated_at = now()
-         WHERE provider = $1 AND is_default = true`,
-        [input.provider],
+         WHERE org_id = $1 AND provider = $2 AND is_default = true`,
+        [orgId, input.provider],
       );
     }
     const id = newId();
@@ -54,12 +57,13 @@ export async function insertCodingModel(
     try {
       ({ rows } = await client.query(
         `INSERT INTO jm_coding_models
-           (id, provider, model_id, label, description, sort_order, enabled,
-            deprecated, is_default, supports_thinking, context_window, config)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+           (id, org_id, provider, model_id, label, description, sort_order, enabled,
+            deprecated, is_default, supports_thinking, context_window, config, api_key_secret_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
          RETURNING *`,
         [
           id,
+          orgId,
           input.provider,
           input.modelId,
           input.label,
@@ -71,6 +75,7 @@ export async function insertCodingModel(
           input.supportsThinking ?? false,
           input.contextWindow ?? null,
           JSON.stringify(input.config ?? {}),
+          input.apiKeySecretId ?? null,
         ],
       ));
     } catch (err: any) {
@@ -89,58 +94,70 @@ export async function insertCodingModel(
   }
 }
 
-export async function getCodingModel(pool: Pool, id: string): Promise<CodingModel | null> {
-  const { rows } = await pool.query(`SELECT * FROM jm_coding_models WHERE id = $1`, [id]);
+export async function getCodingModel(
+  pool: Pool,
+  orgId: string,
+  id: string,
+): Promise<CodingModel | null> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_coding_models WHERE id = $1 AND org_id = $2`,
+    [id, orgId],
+  );
   return rows[0] ? rowToModel(rows[0]) : null;
 }
 
-export async function listAllCodingModels(pool: Pool): Promise<CodingModel[]> {
+export async function listCodingModelsByOrg(pool: Pool, orgId: string): Promise<CodingModel[]> {
   const { rows } = await pool.query(
-    `SELECT * FROM jm_coding_models ORDER BY provider, sort_order, label`,
+    `SELECT * FROM jm_coding_models WHERE org_id = $1 ORDER BY provider, sort_order, label`,
+    [orgId],
   );
   return rows.map(rowToModel);
 }
 
 export async function listEnabledCodingModelsByProvider(
   pool: Pool,
+  orgId: string,
   provider: string,
 ): Promise<CodingModel[]> {
   const { rows } = await pool.query(
     `SELECT * FROM jm_coding_models
-     WHERE provider = $1 AND enabled = true
+     WHERE org_id = $1 AND provider = $2 AND enabled = true
      ORDER BY sort_order, label`,
-    [provider],
+    [orgId, provider],
   );
   return rows.map(rowToModel);
 }
 
 export async function findDefaultCodingModel(
   pool: Pool,
+  orgId: string,
   provider: string,
 ): Promise<CodingModel | null> {
   const { rows } = await pool.query(
     `SELECT * FROM jm_coding_models
-     WHERE provider = $1 AND enabled = true AND is_default = true
+     WHERE org_id = $1 AND provider = $2 AND enabled = true AND is_default = true
      LIMIT 1`,
-    [provider],
+    [orgId, provider],
   );
   return rows[0] ? rowToModel(rows[0]) : null;
 }
 
 export async function findCodingModel(
   pool: Pool,
+  orgId: string,
   provider: string,
   modelId: string,
 ): Promise<CodingModel | null> {
   const { rows } = await pool.query(
-    `SELECT * FROM jm_coding_models WHERE provider = $1 AND model_id = $2 LIMIT 1`,
-    [provider, modelId],
+    `SELECT * FROM jm_coding_models WHERE org_id = $1 AND provider = $2 AND model_id = $3 LIMIT 1`,
+    [orgId, provider, modelId],
   );
   return rows[0] ? rowToModel(rows[0]) : null;
 }
 
 export async function updateCodingModel(
   pool: Pool,
+  orgId: string,
   id: string,
   patch: CodingModelUpdateInput,
 ): Promise<CodingModel | null> {
@@ -148,8 +165,8 @@ export async function updateCodingModel(
   try {
     await client.query("BEGIN");
     const { rows: existingRows } = await client.query(
-      `SELECT * FROM jm_coding_models WHERE id = $1 FOR UPDATE`,
-      [id],
+      `SELECT * FROM jm_coding_models WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+      [id, orgId],
     );
     if (existingRows.length === 0) {
       await client.query("ROLLBACK");
@@ -160,30 +177,32 @@ export async function updateCodingModel(
     if (patch.isDefault === true && !existing.isDefault) {
       await client.query(
         `UPDATE jm_coding_models SET is_default = false, updated_at = now()
-         WHERE provider = $1 AND is_default = true AND id <> $2`,
-        [next.provider, id],
+         WHERE org_id = $1 AND provider = $2 AND is_default = true AND id <> $3`,
+        [orgId, next.provider, id],
       );
     }
     let rows;
     try {
       ({ rows } = await client.query(
         `UPDATE jm_coding_models SET
-           provider = $2,
-           model_id = $3,
-           label = $4,
-           description = $5,
-           sort_order = $6,
-           enabled = $7,
-           deprecated = $8,
-           is_default = $9,
-           supports_thinking = $10,
-           context_window = $11,
-           config = $12,
+           provider = $3,
+           model_id = $4,
+           label = $5,
+           description = $6,
+           sort_order = $7,
+           enabled = $8,
+           deprecated = $9,
+           is_default = $10,
+           supports_thinking = $11,
+           context_window = $12,
+           config = $13,
+           api_key_secret_id = $14,
            updated_at = now()
-         WHERE id = $1
+         WHERE id = $1 AND org_id = $2
          RETURNING *`,
         [
           id,
+          orgId,
           next.provider,
           next.modelId,
           next.label,
@@ -195,6 +214,7 @@ export async function updateCodingModel(
           next.supportsThinking,
           next.contextWindow ?? null,
           JSON.stringify(next.config ?? {}),
+          next.apiKeySecretId ?? null,
         ],
       ));
     } catch (err: any) {
@@ -213,7 +233,14 @@ export async function updateCodingModel(
   }
 }
 
-export async function deleteCodingModel(pool: Pool, id: string): Promise<boolean> {
-  const { rowCount } = await pool.query(`DELETE FROM jm_coding_models WHERE id = $1`, [id]);
+export async function deleteCodingModel(
+  pool: Pool,
+  orgId: string,
+  id: string,
+): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM jm_coding_models WHERE id = $1 AND org_id = $2`,
+    [id, orgId],
+  );
   return (rowCount ?? 0) > 0;
 }

@@ -17,13 +17,13 @@ import {
   type CodingModelConfig,
   PROVIDER_CATALOG,
   defaultProviderForKind,
-  openCodeModelSlots,
 } from "@journeyman/core";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { SandboxInstanceGitProvider, type SandboxGitAuth } from "../../sandbox/sandbox-instance-git-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
-import { open } from "@journeyman/secrets";
+import { open, fetchSecretById } from "@journeyman/secrets";
+import { findCodingModel } from "@journeyman/coding-models";
 
 const log = createLogger("worker:agent-run");
 
@@ -114,7 +114,6 @@ export class AgentRunStepHandler implements IStepHandler {
     const providerSlots = PROVIDER_CATALOG.find((p) => p.kind === "coding-cli" && p.value === provider)?.slots ?? [];
     const slotsByName = new Map<string, { name: string; optional?: boolean }>();
     for (const s of providerSlots) slotsByName.set(s.name, s);
-    for (const s of openCodeModelSlots(modelConfig)) slotsByName.set(s.name, { name: s.name, optional: s.optional });
     const effectiveSlots = Array.from(slotsByName.values());
 
     let env: Record<string, string>;
@@ -131,13 +130,28 @@ export class AgentRunStepHandler implements IStepHandler {
       };
     }
 
+    // Inject the model-owned API key: the coding model binds an org secret directly,
+    // so the per-step binding no longer carries it. Resolve + merge into the env.
+    const model = typeof input.model === "string" && input.model ? input.model : undefined;
+    if (provider && model && orgId) {
+      try {
+        const cm = await findCodingModel(this.deps.pool, orgId, provider, model);
+        const slot = cm?.config?.apiKeySlot?.trim();
+        if (cm?.apiKeySecretId && slot) {
+          const value = await fetchSecretById(this.deps.pool, orgId, cm.apiKeySecretId);
+          if (value != null) env[slot] = value;
+        }
+      } catch (err: any) {
+        log.warn({ err: err?.message }, "model key resolution failed; continuing without model-owned key");
+      }
+    }
+
     // 3) Run the agentic loop.
     const coding = ctx.exec ? new SandboxInstanceCodingProvider(ctx.exec, provider) : this.deps.coding(provider, ctx.env);
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     let skills: ResolvedSkillPackage[] | undefined = Array.isArray(input.skills)
       ? (input.skills as ResolvedSkillPackage[])
       : undefined;
-    const model = typeof input.model === "string" && input.model ? input.model : undefined;
     const outputMode = (input.outputMode as "none" | "text" | "structured") ?? "text";
     const maxSteps = typeof input.maxSteps === "number" && input.maxSteps > 0 ? input.maxSteps : undefined;
 

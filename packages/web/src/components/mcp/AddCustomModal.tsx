@@ -78,7 +78,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
           <div>
             <div className="text-sm text-slate-300 mb-2">Bindings</div>
             <BindingsEditor
-              orgId=""
+              wsId={props.wsId}
               value={bindings}
               onChange={setBindings}
               scope="org-and-global"

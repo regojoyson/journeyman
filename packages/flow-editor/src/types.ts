@@ -35,6 +35,8 @@ export interface FlowEditorProps {
   flowName: string;
   /** Active org id of the caller — used to scope visible-secret lookups. */
   orgId: string;
+  /** Active workspace id of the caller — used to scope custom-step lookups. */
+  wsId: string;
   /** Built-in or extension step definitions, used to power the palette, properties panel, and canvas. */
   steps: StepDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;

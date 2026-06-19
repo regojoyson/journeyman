@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StepFormProps } from "@journeyman/flow-editor";
 import {
-  useOrgId,
+  useWsId,
   InputValueEditor,
   toMentionFields,
 } from "@journeyman/flow-editor";
@@ -26,24 +26,20 @@ interface CustomAiConfig {
 }
 
 export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs: nodeInputs, onInputsChange }: StepFormProps<CustomAiConfig>) {
-  const orgId = useOrgId();
+  const wsId = useWsId();
   const [step, setStep] = useState<CustomAiStep | null>(null);
   const [error, setError] = useState<string | null>(null);
   const mentionFields = useMemo(() => toMentionFields(sources ?? []), [sources]);
 
   useEffect(() => {
-    if (!config.customStepId || !orgId) return;
+    if (!config.customStepId || !wsId) return;
     let alive = true;
-    fetch(`/api/orgs/${orgId}/users/me/custom-steps/${config.customStepId}`, { credentials: "include" })
+    fetch(`/api/workspaces/${wsId}/custom-steps/${config.customStepId}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .catch(() =>
-        fetch(`/api/orgs/${orgId}/custom-steps/${config.customStepId}`, { credentials: "include" })
-          .then((r) => (r.ok ? r.json() : Promise.reject(r))),
-      )
       .then((p) => { if (alive) setStep(p as CustomAiStep); })
       .catch((err) => { if (alive) setError(String(err)); });
     return () => { alive = false; };
-  }, [orgId, config.customStepId]);
+  }, [wsId, config.customStepId]);
 
   const inputs = useMemo(() => (nodeInputs ?? {}) as Record<string, WorkflowInputValue>, [nodeInputs]);
   const setInputs = (next: Record<string, WorkflowInputValue>) => onInputsChange?.(next);

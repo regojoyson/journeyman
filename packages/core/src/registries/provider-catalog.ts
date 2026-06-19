@@ -23,9 +23,9 @@ export interface ProviderEntry {
 
 export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   // coding-cli
-  { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true, slots: [
-    { name: "ANTHROPIC_API_KEY", description: "Anthropic API key. Optional.", optional: true },
-  ]},
+  // Claude's API key is model-owned (each coding model binds an org secret directly),
+  // so there is no framework-level key slot.
+  { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true },
   // OpenCode has no framework-level key slot — each coding model declares its own
   // required secret (config.apiKeySlot), surfaced via openCodeModelSlots().
   { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [] },

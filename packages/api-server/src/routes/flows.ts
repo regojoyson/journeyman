@@ -19,9 +19,9 @@ import { getCustomAiStep } from "@journeyman/custom-steps";
 import { shapesFromProposedSteps } from "./proposed-custom-steps.ts";
 import { customStepToShape, type CustomStepShape } from "@journeyman/custom-steps/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
-import { listEnabledCodingModelsByProvider, findCodingModel } from "@journeyman/coding-models";
+import { listEnabledCodingModelsByProvider } from "@journeyman/coding-models";
 import type { WorkflowSaveWarning, SecretBinding, SecretSlotDef } from "@journeyman/core";
-import { PROVIDER_CATALOG, defaultProviderForKind, openCodeModelSlots } from "@journeyman/core";
+import { PROVIDER_CATALOG, defaultProviderForKind } from "@journeyman/core";
 import { assertWorkflowReady } from "../services/assert-flow-ready.ts";
 
 /**
@@ -69,21 +69,11 @@ async function computeSaveWarnings(
       const providerSlots = providerValue
         ? PROVIDER_CATALOG.find(p => p.kind === "coding-cli" && p.value === providerValue)?.slots ?? []
         : [];
-      let modelSlots: SecretSlotDef[] = [];
-      if (providerValue === "opencode" || providerValue === "aisdk") {
-        const effModel =
-          (node.model as string | null | undefined) ?? definition.defaults?.defaultModel ?? undefined;
-        if (effModel) {
-          const cm = await findCodingModel(c.pool, providerValue, effModel);
-          modelSlots = openCodeModelSlots(cm?.config);
-        }
-      }
       declaredSlotNames = new Set([
         ...dbSlots.map(s => s.name),
         ...providerSlots.map(s => s.name),
-        ...modelSlots.map(s => s.name),
       ]);
-      for (const slot of [...dbSlots, ...providerSlots, ...modelSlots]) {
+      for (const slot of [...dbSlots, ...providerSlots]) {
         if (slot.optional) continue;
         if (bindings[slot.name] === undefined && !visibleNames.has(slot.name)) {
           inaccessible.add(slot.name);
@@ -137,7 +127,7 @@ async function computeSaveWarnings(
       }
     }
     if (refs.length > 0) {
-      const models = await listEnabledCodingModelsByProvider(c.pool, codingProvider);
+      const models = await listEnabledCodingModelsByProvider(c.pool, ctx.org.id, codingProvider);
       const enabled = new Map(models.map(m => [m.modelId, m]));
       const unknownEntries = refs
         .filter(r => !enabled.has(r.modelId))

@@ -4,11 +4,12 @@ import { findDefaultCodingModel } from "@journeyman/coding-models";
 
 export async function resolveModelForStep(
   pool: Pool,
+  orgId: string,
   flow: FlowDefinition,
   step: FlowStepDefinition,
 ): Promise<string | undefined> {
   if (step.model) return step.model;
   if (flow.defaultModel) return flow.defaultModel;
-  const sysDefault = await findDefaultCodingModel(pool, flow.providers.coding);
+  const sysDefault = await findDefaultCodingModel(pool, orgId, flow.providers.coding);
   return sysDefault?.modelId;
 }

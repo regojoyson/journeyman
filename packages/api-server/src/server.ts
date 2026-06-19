@@ -53,7 +53,9 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
     await registerCustomStepRoutes(app, c.pool);
     await registerCodingModelRoutes(app, c.pool);
     registerAgentRoutes(app, c);
-    registerConnectionRoutes(app, c);
+    // connections routes use `/workspaces/:wsId/connections` paths (no inline /api),
+    // so they must be mounted under the /api prefix like the workflow routes below.
+    await app.register(async (s) => registerConnectionRoutes(s, c), { prefix: "/api" });
     registerAgentTriggerRoutes(app, c);
   }
   registerStepsRoutes(app);

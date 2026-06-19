@@ -18,28 +18,28 @@ export const codingModelsApi = {
     fetch(`/api/coding-models?provider=${encodeURIComponent(provider)}`, { credentials: "include" })
       .then(jsonOrThrow<CodingModel[]>),
 
-  adminList: () =>
-    fetch(`/api/admin/coding-models`, { credentials: "include" })
+  orgList: (orgId: string) =>
+    fetch(`/api/orgs/${encodeURIComponent(orgId)}/coding-models`, { credentials: "include" })
       .then(jsonOrThrow<CodingModel[]>),
 
-  adminCreate: (body: CodingModelCreateInput) =>
-    fetch(`/api/admin/coding-models`, {
+  orgCreate: (orgId: string, body: CodingModelCreateInput) =>
+    fetch(`/api/orgs/${encodeURIComponent(orgId)}/coding-models`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<CodingModel>),
 
-  adminUpdate: (id: string, body: CodingModelUpdateInput) =>
-    fetch(`/api/admin/coding-models/${id}`, {
+  orgUpdate: (orgId: string, id: string, body: CodingModelUpdateInput) =>
+    fetch(`/api/orgs/${encodeURIComponent(orgId)}/coding-models/${id}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<CodingModel>),
 
-  adminDelete: (id: string) =>
-    fetch(`/api/admin/coding-models/${id}`, {
+  orgDelete: (orgId: string, id: string) =>
+    fetch(`/api/orgs/${encodeURIComponent(orgId)}/coding-models/${id}`, {
       method: "DELETE",
       credentials: "include",
     }).then(jsonOrThrow<void>),

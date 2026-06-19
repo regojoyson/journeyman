@@ -12,7 +12,7 @@ import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { StepRegistryProvider } from "./state/step-registry-context.tsx";
-import { OrgIdProvider } from "./state/org-context.tsx";
+import { OrgIdProvider, WsIdProvider } from "./state/org-context.tsx";
 import { ValidationProvider } from "./state/validation-context.tsx";
 import { useValidationCatalog } from "./properties-panel/use-validation-catalog.ts";
 import { validateWorkflowInputs } from "@journeyman/core";
@@ -165,6 +165,7 @@ export function FlowEditor(props: FlowEditorProps) {
   return (
     <StepRegistryProvider steps={props.steps}>
      <OrgIdProvider orgId={props.orgId}>
+     <WsIdProvider wsId={props.wsId}>
       <ValidationProvider inputWarnings={inputWarnings} graphIssues={validity.issues}>
       <div className="je-editor">
         <Topbar
@@ -293,6 +294,7 @@ export function FlowEditor(props: FlowEditorProps) {
         )}
       </div>
       </ValidationProvider>
+     </WsIdProvider>
      </OrgIdProvider>
     </StepRegistryProvider>
   );

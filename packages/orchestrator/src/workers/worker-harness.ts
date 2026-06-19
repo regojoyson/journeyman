@@ -40,10 +40,17 @@ export interface WorkerHarnessDeps {
     packageIds: string[];
   }) => Promise<ResolvedSkillPackage[]>;
 
-  modelResolver?: (input: { provider: string }) => Promise<string | undefined>;
+  modelResolver?: (input: { provider: string; orgId: string | null }) => Promise<string | undefined>;
 
-  modelConfigResolver?: (input: { provider: string; modelId: string }) =>
+  modelConfigResolver?: (input: { provider: string; modelId: string; orgId: string | null }) =>
     Promise<import("@journeyman/core").CodingModelConfig | undefined>;
+
+  /**
+   * Resolve the model-owned API key: the coding model binds an org secret directly,
+   * so the per-step binding no longer carries it. Returns the env-var name + value.
+   */
+  modelKeyResolver?: (input: { provider: string; modelId: string; orgId: string | null }) =>
+    Promise<{ slot: string; value: string } | null>;
 
   /**
    * Provision (or reconnect to) the per-run workspace on demand.
@@ -278,7 +285,7 @@ export class WorkerHarness {
       const provider = (stepInput as { provider?: string }).provider;
       if (typeof provider === "string" && provider) {
         try {
-          const sysModel = await this.deps.modelResolver({ provider });
+          const sysModel = await this.deps.modelResolver({ provider, orgId });
           if (sysModel) {
             (stepInput as { model?: string }).model = sysModel;
           }
@@ -298,10 +305,25 @@ export class WorkerHarness {
       typeof cfgProvider === "string" && cfgProvider
     ) {
       try {
-        const mc = await this.deps.modelConfigResolver({ provider: cfgProvider, modelId: resolvedModel });
+        const mc = await this.deps.modelConfigResolver({ provider: cfgProvider, modelId: resolvedModel, orgId });
         if (mc) (stepInput as { modelConfig?: unknown }).modelConfig = mc;
       } catch (err: any) {
         rlog.warn({ err: err?.message }, "model config resolver failed; continuing without custom config");
+      }
+    }
+
+    // Inject the model-owned API key: the coding model binds an org secret directly,
+    // so the per-step binding no longer carries it. Resolve + merge into the env.
+    if (
+      this.deps.modelKeyResolver &&
+      typeof resolvedModel === "string" && resolvedModel &&
+      typeof cfgProvider === "string" && cfgProvider
+    ) {
+      try {
+        const mk = await this.deps.modelKeyResolver({ provider: cfgProvider, modelId: resolvedModel, orgId });
+        if (mk) resolvedEnv[mk.slot] = mk.value;
+      } catch (err: any) {
+        rlog.warn({ err: err?.message }, "model key resolver failed; continuing without model-owned key");
       }
     }
 

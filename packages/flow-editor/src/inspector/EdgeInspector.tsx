@@ -3,7 +3,7 @@ import type { WorkflowEdge, WorkflowGraph, JsonLogicExpr, CustomAiStep } from "@
 import { ConditionBuilder } from "./ConditionBuilder.tsx";
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useUpstreamSources } from "../properties-panel/use-upstream-sources.ts";
-import { useOrgId } from "../state/org-context.tsx";
+import { useWsId } from "../state/org-context.tsx";
 
 interface Props {
   flow: WorkflowGraph;
@@ -14,7 +14,7 @@ interface Props {
 
 export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
   const catalog = useStepCatalog();
-  const orgId = useOrgId();
+  const wsId = useWsId();
 
   const sourceNode = flow.nodes.find(n => n.id === edge.source);
   const isXor = sourceNode?.type === "gateway-xor" || sourceNode?.type === "if";
@@ -42,7 +42,7 @@ export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
   const [customErrored, setCustomErrored] = useState(false);
 
   useEffect(() => {
-    if (!isXor || !orgId || customStepIds.length === 0) {
+    if (!isXor || !wsId || customStepIds.length === 0) {
       setCustomStepDefs({});
       setLoadingCustom(false);
       setCustomErrored(false);
@@ -54,16 +54,10 @@ export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
 
     const fetches = customStepIds.map(async (id): Promise<[string, CustomAiStep | null]> => {
       try {
-        let res = await fetch(
-          `/api/orgs/${orgId}/users/me/custom-steps/${id}`,
+        const res = await fetch(
+          `/api/workspaces/${wsId}/custom-steps/${id}`,
           { credentials: "include" },
         );
-        if (!res.ok) {
-          res = await fetch(
-            `/api/orgs/${orgId}/custom-steps/${id}`,
-            { credentials: "include" },
-          );
-        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const step = (await res.json()) as CustomAiStep;
         return [id, step];
@@ -87,7 +81,7 @@ export function EdgeInspector({ flow, edge, onChange, onClose }: Props) {
     });
 
     return () => { alive = false; };
-  }, [customStepKey, orgId, isXor]);
+  }, [customStepKey, wsId, isXor]);
 
   const sources = useUpstreamSources(flow, edge.source, catalog, customStepDefs);
 

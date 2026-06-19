@@ -24,7 +24,7 @@ import {
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
 import { ConsoleProvider } from "@journeyman/notification-provider";
-import { resolveBindings } from "@journeyman/secrets";
+import { resolveBindings, fetchSecretById } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
 import { resolveSkillPackagesByIds } from "@journeyman/skills";
 import { findDefaultCodingModel, findCodingModel } from "@journeyman/coding-models";
@@ -410,15 +410,24 @@ const harness = new WorkerHarness({
       "claude",
     );
   },
-  modelResolver: async ({ provider }) => {
-    if (!pool) return undefined;
-    const m = await findDefaultCodingModel(pool, provider);
+  modelResolver: async ({ provider, orgId }) => {
+    if (!pool || !orgId) return undefined;
+    const m = await findDefaultCodingModel(pool, orgId, provider);
     return m?.modelId;
   },
-  modelConfigResolver: async ({ provider, modelId }) => {
-    if (!pool) return undefined;
-    const m = await findCodingModel(pool, provider, modelId);
+  modelConfigResolver: async ({ provider, modelId, orgId }) => {
+    if (!pool || !orgId) return undefined;
+    const m = await findCodingModel(pool, orgId, provider, modelId);
     return m?.config;
+  },
+  modelKeyResolver: async ({ provider, modelId, orgId }) => {
+    if (!pool || !orgId) return null;
+    const m = await findCodingModel(pool, orgId, provider, modelId);
+    const slot = m?.config?.apiKeySlot?.trim();
+    if (!m?.apiKeySecretId || !slot) return null;
+    const value = await fetchSecretById(pool, orgId, m.apiKeySecretId);
+    if (value == null) return null;
+    return { slot, value };
   },
   ensureWorkspace: ensureWs,
 });

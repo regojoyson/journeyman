@@ -3,7 +3,7 @@ import { selectCls } from "../../routes/admin-styles.ts";
 import { fetchVisibleSecrets, filterSecrets, type VisibleSecret } from "../../api/secrets.ts";
 
 export interface SecretPickerProps {
-  orgId: string;
+  wsId: string;
   value: string;
   onChange: (name: string) => void;
   scope: "all" | "org-and-global";
@@ -14,11 +14,11 @@ export function SecretPicker(props: SecretPickerProps) {
   const [secrets, setSecrets] = useState<VisibleSecret[]>([]);
   useEffect(() => {
     let alive = true;
-    fetchVisibleSecrets(props.orgId).then((list) => {
+    fetchVisibleSecrets(props.wsId).then((list) => {
       if (alive) setSecrets(filterSecrets(list, props.scope));
     });
     return () => { alive = false; };
-  }, [props.orgId, props.scope]);
+  }, [props.wsId, props.scope]);
 
   const order: Record<VisibleSecret["scope"], number> = { user: 0, org: 1, global: 2 };
   const byName = new Map<string, VisibleSecret>();

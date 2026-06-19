@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import type { WebhookAuthConfig } from "@journeyman/core";
 import {
   fetchVisibleSecrets,
@@ -24,6 +25,9 @@ type SecretScopeLocal = VisibleSecret["scope"];
 
 export function SecretPicker(props: SecretPickerProps) {
   const { authMode, presetId, scope, orgId, isAdmin, value, onChange } = props;
+  // Visible secrets are workspace-scoped; webhooks always render under /workspaces/:wsId.
+  // orgId is still used below for org-scoped promote/generate.
+  const { wsId = "" } = useParams<{ wsId: string }>();
 
   const [secrets, setSecrets] = useState<VisibleSecret[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,13 +38,13 @@ export function SecretPicker(props: SecretPickerProps) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void fetchVisibleSecrets(orgId).then((rows) => {
+    void fetchVisibleSecrets(wsId).then((rows) => {
       if (cancelled) return;
       setSecrets(rows);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [orgId]);
+  }, [wsId]);
 
   const orgVisible = useMemo(
     () => filterSecrets(secrets, "org-and-global"),

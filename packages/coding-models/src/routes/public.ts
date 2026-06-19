@@ -14,7 +14,9 @@ export async function registerPublicCodingModelRoutes(app: FastifyInstance, pool
       if (!provider || typeof provider !== "string") {
         return reply.code(400).send({ error: "provider query param required" });
       }
-      return listEnabledCodingModelsByProvider(pool, provider);
+      const orgId = req.runContext?.org.id;
+      if (!orgId) return reply.code(400).send({ error: "org context required" });
+      return listEnabledCodingModelsByProvider(pool, orgId, provider);
     },
   );
 }

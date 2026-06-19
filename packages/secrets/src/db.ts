@@ -189,3 +189,40 @@ export async function fetchPinnedOrgSecret(
   if (!row) return null;
   return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
 }
+
+/**
+ * Fetch + decrypt one org-scope secret (workspace_id IS NULL) by id, scoped to the org.
+ * Returns null when the id is not an org secret in this org.
+ */
+export async function fetchSecretById(
+  pool: Pool,
+  orgId: string,
+  secretId: string,
+): Promise<string | null> {
+  const r = await pool.query(
+    `SELECT ciphertext, iv, auth_tag
+       FROM jm_secrets
+      WHERE id = $1 AND org_id = $2 AND workspace_id IS NULL`,
+    [secretId, orgId],
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
+}
+
+/**
+ * Lightweight metadata lookup used to validate a bound secret id is an org secret
+ * (workspace_id IS NULL) in the given org. Returns { id, name } or null.
+ */
+export async function getOrgSecretMeta(
+  pool: Pool,
+  orgId: string,
+  secretId: string,
+): Promise<{ id: string; name: string } | null> {
+  const r = await pool.query(
+    `SELECT id, name FROM jm_secrets
+      WHERE id = $1 AND org_id = $2 AND workspace_id IS NULL`,
+    [secretId, orgId],
+  );
+  return r.rows[0] ? { id: r.rows[0].id, name: r.rows[0].name } : null;
+}

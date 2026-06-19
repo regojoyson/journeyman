@@ -24,7 +24,7 @@ export function FlowEditorPage() {
   const { activeOrgId } = useAuth();
   const { can } = useWorkspace();
   const editable = can("resource.write");
-  const customStepDefs = useCustomStepPaletteEntries(activeOrgId);
+  const customStepDefs = useCustomStepPaletteEntries(wsId);
 
   const flowQ = useQuery({
     queryKey: ["flow", id],
@@ -187,6 +187,7 @@ export function FlowEditorPage() {
               renameM.mutate(trimmed);
             } : undefined}
             orgId={activeOrgId}
+            wsId={wsId}
             steps={[...builtInSteps, ...customStepDefs]}
             controlCatalog={defaultControlCatalog}
             mcpCatalog={defaultMcpCatalog}

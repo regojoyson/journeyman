@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { WorkflowNode, CanonicalTool, CustomAiStep } from "@journeyman/core";
 import { CANONICAL_TOOLS } from "@journeyman/core";
+import { useWsId } from "../state/org-context.tsx";
 
 interface VisibleMcp {
   id: string;
@@ -47,6 +48,7 @@ function setToolsOverride(node: WorkflowNode, tools: CanonicalTool[] | undefined
 }
 
 export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProps) {
+  const wsId = useWsId();
   const [available, setAvailable] = useState<VisibleMcp[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<CustomAiStep | null>(null);
@@ -55,18 +57,14 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
   const customStepId = getCustomStepId(node);
 
   useEffect(() => {
-    if (!customStepId || !orgId) { setStep(null); return; }
+    if (!customStepId || !wsId) { setStep(null); return; }
     let alive = true;
-    fetch(`/api/orgs/${orgId}/users/me/custom-steps/${customStepId}`, { credentials: "include" })
+    fetch(`/api/workspaces/${wsId}/custom-steps/${customStepId}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .catch(() =>
-        fetch(`/api/orgs/${orgId}/custom-steps/${customStepId}`, { credentials: "include" })
-          .then((r) => (r.ok ? r.json() : Promise.reject(r))),
-      )
       .then((p) => { if (alive) setStep(p as CustomAiStep); })
       .catch(() => { if (alive) setStep(null); });
     return () => { alive = false; };
-  }, [orgId, customStepId]);
+  }, [wsId, customStepId]);
 
   useEffect(() => {
     let alive = true;

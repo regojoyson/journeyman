@@ -4,7 +4,7 @@ import { SecretPicker } from "./SecretPicker.tsx";
 export interface Binding { envVar: string; secretName: string }
 
 export interface BindingsEditorProps {
-  orgId: string;
+  wsId: string;
   value: Binding[];
   onChange: (next: Binding[]) => void;
   scope: "all" | "org-and-global";
@@ -31,7 +31,7 @@ export function BindingsEditor(props: BindingsEditorProps) {
           <span className="text-slate-500">→</span>
           <div className="flex-1">
             <SecretPicker
-              orgId={props.orgId}
+              wsId={props.wsId}
               value={b.secretName}
               onChange={(name) => update(i, { secretName: name })}
               scope={props.scope}

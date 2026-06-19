@@ -50,7 +50,7 @@ function typesCompatible(a: CustomStepInputField, b: CustomStepInputField): bool
 }
 
 export async function detectCustomStepBreaks(
-  orgId: string,
+  wsId: string,
   nodes: Array<{
     id: string;
     stepType: string;
@@ -64,7 +64,7 @@ export async function detectCustomStepBreaks(
   for (const n of nodes) {
     if (n.stepType !== "custom-ai" || !n.config.customStepId) continue;
     const r = await fetch(
-      `/api/orgs/${orgId}/custom-steps/${n.config.customStepId}`,
+      `/api/workspaces/${wsId}/custom-steps/${n.config.customStepId}`,
       { credentials: "include" },
     );
     if (!r.ok) continue;
