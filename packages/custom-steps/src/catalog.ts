@@ -1,11 +1,10 @@
 import type { Pool } from "pg";
 import type { CustomAiStep, CanonicalTool, SecretSlotDef } from "@journeyman/core";
-import { listVisibleCustomAiSteps } from "./db.ts";
+import { listCustomAiSteps } from "./db.ts";
 
 export interface CustomStepCatalogEntry {
   stepType: "custom-ai";
   customStepId: string;
-  scopeBadge: "user" | "org";
   category: "Custom";
   label: string;
   description: string;
@@ -22,13 +21,12 @@ export interface CustomStepCatalogEntry {
 
 export async function buildCustomStepCatalog(
   pool: Pool,
-  ctx: { orgId: string; userId: string },
+  workspaceId: string,
 ): Promise<CustomStepCatalogEntry[]> {
-  const steps = await listVisibleCustomAiSteps(pool, ctx.orgId, ctx.userId);
-  return steps.map((p) => ({
+  const steps = await listCustomAiSteps(pool, workspaceId);
+  return steps.map((p: CustomAiStep) => ({
     stepType: "custom-ai" as const,
     customStepId: p.id,
-    scopeBadge: p.scope,
     category: "Custom" as const,
     label: p.name,
     description: p.description,

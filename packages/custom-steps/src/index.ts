@@ -3,7 +3,6 @@ export {
   insertCustomAiStep,
   getCustomAiStep,
   listCustomAiSteps,
-  listVisibleCustomAiSteps,
   updateCustomAiStep,
   deleteCustomAiStep,
   DuplicateCustomStepError,
@@ -16,7 +15,4 @@ export type { CustomStepCatalogEntry } from "./catalog.ts";
 export { customStepToShape } from "./shape-adapter.ts";
 export type { CustomStepShape } from "./shape-adapter.ts";
 export { outputFieldsToJsonSchema } from "./output-schema.ts";
-export { assertScopeSafeDefaults, ScopeViolationError } from "./scope-guard.ts";
-export type { ScopeLookup, ScopeOffender, ResourceScope, StepScope } from "./scope-guard.ts";
-export { buildScopeLookup } from "./scope-lookup.ts";
 export { toExportV1, fromExportV1, CustomStepImportError } from "./export.ts";

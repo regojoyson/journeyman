@@ -22,7 +22,7 @@ function isObject(x: unknown): x is Record<string, unknown> {
  * create-input shaped object. Caller supplies `scope` and ownership.
  * Detailed field validation happens in the existing route handler.
  */
-export function fromExportV1(raw: unknown): Omit<CustomAiStepCreateInput, "scope"> {
+export function fromExportV1(raw: unknown): CustomAiStepCreateInput {
   if (!isObject(raw)) {
     throw new CustomStepImportError("Import body must be a JSON object");
   }

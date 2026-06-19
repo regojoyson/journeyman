@@ -8,9 +8,7 @@ import { CustomStepImportError, fromExportV1, toExportV1 } from "./export.ts";
 
 const sampleStep: CustomAiStep = {
   id: "step-123",
-  scope: "user",
-  userId: "user-1",
-  orgId: "org-1",
+  workspaceId: "ws-1",
   name: "Analyze Repo",
   description: "Look at the repo",
   icon: "lucide:Sparkles",
@@ -110,7 +108,7 @@ describe("fromExportV1", () => {
     expect(out.slots).toEqual([]);
     expect(out.inputFields).toEqual([]);
     expect(out.icon).toBeNull();
-    expect((out as Record<string, unknown>).scope).toBeUndefined();
+    expect((out as unknown as Record<string, unknown>).scope).toBeUndefined();
   });
 
   it("strips defaultMcpIds / defaultSkillIds even if they were non-empty", () => {

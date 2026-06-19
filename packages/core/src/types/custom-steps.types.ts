@@ -1,7 +1,6 @@
 import type { CanonicalTool } from "./coding-tools.types.ts";
 import type { SecretSlotDef } from "./secret-slot.types.ts";
 
-export type CustomStepScope = "user" | "org";
 export type CustomStepOutputMode = "none" | "text" | "structured";
 
 export type CustomStepInputType =
@@ -34,9 +33,7 @@ export type CustomStepJsonSchema = Record<string, unknown>;
 
 export interface CustomAiStep {
   id: string;
-  scope: CustomStepScope;
-  userId?: string;
-  orgId: string;
+  workspaceId: string;
   name: string;
   description: string;
   /**
@@ -65,7 +62,6 @@ export interface CustomAiStep {
 }
 
 export interface CustomAiStepCreateInput {
-  scope: CustomStepScope;
   name: string;
   description?: string;
   icon?: string | null;
@@ -81,7 +77,7 @@ export interface CustomAiStepCreateInput {
   slots?: SecretSlotDef[];
 }
 
-export type CustomAiStepUpdateInput = Partial<Omit<CustomAiStepCreateInput, "scope">>;
+export type CustomAiStepUpdateInput = Partial<CustomAiStepCreateInput>;
 
 export const CUSTOM_STEP_EXPORT_KIND = "journeyman.customStep" as const;
 export const CUSTOM_STEP_EXPORT_VERSION = 1 as const;

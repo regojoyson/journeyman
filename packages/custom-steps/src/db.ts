@@ -15,9 +15,7 @@ export class DuplicateCustomStepError extends Error {
 function rowToStep(r: any): CustomAiStep {
   return {
     id: r.id,
-    scope: r.scope,
-    userId: r.user_id ?? undefined,
-    orgId: r.org_id,
+    workspaceId: r.workspace_id,
     name: r.name,
     description: r.description ?? "",
     icon: r.icon ?? null,
@@ -39,12 +37,12 @@ function rowToStep(r: any): CustomAiStep {
 
 export async function insertCustomAiStep(
   pool: Pool,
-  input: CustomAiStepCreateInput & { orgId: string; userId: string | null; createdBy: string },
+  input: CustomAiStepCreateInput & { workspaceId: string; createdBy: string },
 ): Promise<CustomAiStep> {
   try {
     const { rows } = await pool.query(
       `INSERT INTO jm_custom_ai_steps
-         (scope, user_id, org_id, name, description, icon,
+         (workspace_id, name, description, icon,
           input_fields, output_mode, output_schema,
           prompt_template, default_tools,
           default_mcp_ids, default_skill_ids,
@@ -52,12 +50,10 @@ export async function insertCustomAiStep(
           requires_skills,
           requires_mcp,
           created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
-        input.scope,
-        input.userId,
-        input.orgId,
+        input.workspaceId,
         input.name,
         input.description ?? "",
         input.icon ?? null,
@@ -94,30 +90,11 @@ export async function getCustomAiStep(
 
 export async function listCustomAiSteps(
   pool: Pool,
-  orgId: string,
-  userId: string | null,
+  workspaceId: string,
 ): Promise<CustomAiStep[]> {
   const { rows } = await pool.query(
-    `SELECT * FROM jm_custom_ai_steps
-     WHERE org_id = $1
-       AND COALESCE(user_id::text, '') = COALESCE($2::text, '')
-     ORDER BY name ASC`,
-    [orgId, userId],
-  );
-  return rows.map(rowToStep);
-}
-
-export async function listVisibleCustomAiSteps(
-  pool: Pool,
-  orgId: string,
-  userId: string,
-): Promise<CustomAiStep[]> {
-  const { rows } = await pool.query(
-    `SELECT * FROM jm_custom_ai_steps
-     WHERE org_id = $1
-       AND (user_id IS NULL OR user_id = $2)
-     ORDER BY name ASC`,
-    [orgId, userId],
+    `SELECT * FROM jm_custom_ai_steps WHERE workspace_id = $1 ORDER BY name`,
+    [workspaceId],
   );
   return rows.map(rowToStep);
 }
@@ -156,21 +133,6 @@ export async function updateCustomAiStep(
     if (err.code === "23505" && patch.name) throw new DuplicateCustomStepError(patch.name);
     throw err;
   }
-}
-
-export async function promoteCustomAiStepToOrg(
-  pool: Pool,
-  id: string,
-  ownerUserId: string,
-): Promise<CustomAiStep | null> {
-  const { rows } = await pool.query(
-    `UPDATE jm_custom_ai_steps
-     SET scope = 'org', user_id = NULL, updated_at = now()
-     WHERE id = $1 AND user_id = $2
-     RETURNING *`,
-    [id, ownerUserId],
-  );
-  return rows[0] ? rowToStep(rows[0]) : null;
 }
 
 export async function deleteCustomAiStep(pool: Pool, id: string): Promise<boolean> {
