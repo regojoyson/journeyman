@@ -9,3 +9,5 @@ export {
 } from "./db.ts";
 export { makePlatformAdminService } from "./platform-admin.ts";
 export type { PlatformAdminService } from "./platform-admin.ts";
+export * from "./db-workspaces.ts";
+export * from "./authz.ts";
