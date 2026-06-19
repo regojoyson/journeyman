@@ -119,6 +119,34 @@ export async function listWorkspaceMembers(db: Queryable, workspaceId: string): 
   return r.rows.map(rowToMember);
 }
 
+/** Members of a workspace joined to their user record (for the members admin UI). */
+export async function listWorkspaceMembersWithUsers(
+  db: Queryable,
+  workspaceId: string,
+): Promise<Array<{ userId: string; username: string; displayName: string | null; role: WorkspaceRole; createdAt: Date }>> {
+  const r = await db.query(
+    `SELECT wm.user_id, wm.role, wm.created_at, u.username, u.display_name
+       FROM jm_workspace_members wm
+       JOIN jm_users u ON u.id = wm.user_id
+      WHERE wm.workspace_id = $1
+      ORDER BY u.username ASC`,
+    [workspaceId],
+  );
+  return r.rows.map((row) => ({
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name ?? null,
+    role: row.role as WorkspaceRole,
+    createdAt: new Date(row.created_at),
+  }));
+}
+
+/** Derive a kebab-case slug from a workspace name; falls back to "workspace". */
+export function slugifyWorkspaceName(name: string): string {
+  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
+  return s || "workspace";
+}
+
 export async function removeWorkspaceMember(db: Queryable, workspaceId: string, userId: string): Promise<void> {
   await db.query(`DELETE FROM jm_workspace_members WHERE workspace_id = $1 AND user_id = $2`, [workspaceId, userId]);
 }
