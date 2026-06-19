@@ -10,7 +10,7 @@ export function validateName(name: string): void {
 
 function rowToRecord(r: any): SecretRecord {
   return {
-    id: r.id, orgId: r.org_id, userId: r.user_id,
+    id: r.id, orgId: r.org_id, workspaceId: r.workspace_id,
     name: r.name, description: r.description,
     createdBy: r.created_by, createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -22,7 +22,7 @@ export class DuplicateSecretError extends Error {
 
 export interface InsertInput {
   orgId: string;
-  userId: string | null;
+  workspaceId: string | null;
   name: string;
   value: string;
   description?: string | null;
@@ -34,10 +34,10 @@ async function insertSecret(pool: Pool, input: InsertInput): Promise<SecretRecor
   const sealed = seal(input.value);
   try {
     const r = await pool.query(
-      `INSERT INTO jm_secrets (org_id, user_id, name, description, ciphertext, iv, auth_tag, created_by)
+      `INSERT INTO jm_secrets (org_id, workspace_id, name, description, ciphertext, iv, auth_tag, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, org_id, user_id, name, description, created_by, created_at, updated_at`,
-      [input.orgId, input.userId, input.name, input.description ?? null,
+       RETURNING id, org_id, workspace_id, name, description, created_by, created_at, updated_at`,
+      [input.orgId, input.workspaceId, input.name, input.description ?? null,
        sealed.ciphertext, sealed.iv, sealed.authTag, input.createdBy],
     );
     return rowToRecord(r.rows[0]);
@@ -49,30 +49,32 @@ async function insertSecret(pool: Pool, input: InsertInput): Promise<SecretRecor
 
 // --- Org-scope ---
 
-export function insertOrgSecret(pool: Pool, input: Omit<InsertInput, "userId">): Promise<SecretRecord> {
-  return insertSecret(pool, { ...input, userId: null });
+export function insertOrgSecret(pool: Pool, input: Omit<InsertInput, "workspaceId">): Promise<SecretRecord> {
+  return insertSecret(pool, { ...input, workspaceId: null });
 }
 
 export async function listOrgSecrets(pool: Pool, orgId: string): Promise<SecretRecord[]> {
   const r = await pool.query(
-    `SELECT id, org_id, user_id, name, description, created_by, created_at, updated_at
-       FROM jm_secrets WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
+    `SELECT id, org_id, workspace_id, name, description, created_by, created_at, updated_at
+       FROM jm_secrets WHERE org_id = $1 AND workspace_id IS NULL ORDER BY name`,
     [orgId],
   );
   return r.rows.map(rowToRecord);
 }
 
-// --- User-scope ---
+// --- Workspace-scope ---
 
-export function insertUserSecret(pool: Pool, input: InsertInput & { userId: string }): Promise<SecretRecord> {
+export function insertWorkspaceSecret(
+  pool: Pool, input: Omit<InsertInput, "workspaceId"> & { workspaceId: string },
+): Promise<SecretRecord> {
   return insertSecret(pool, input);
 }
 
-export async function listUserSecrets(pool: Pool, orgId: string, userId: string): Promise<SecretRecord[]> {
+export async function listWorkspaceSecrets(pool: Pool, workspaceId: string): Promise<SecretRecord[]> {
   const r = await pool.query(
-    `SELECT id, org_id, user_id, name, description, created_by, created_at, updated_at
-       FROM jm_secrets WHERE org_id = $1 AND user_id = $2 ORDER BY name`,
-    [orgId, userId],
+    `SELECT id, org_id, workspace_id, name, description, created_by, created_at, updated_at
+       FROM jm_secrets WHERE workspace_id = $1 ORDER BY name`,
+    [workspaceId],
   );
   return r.rows.map(rowToRecord);
 }
@@ -82,7 +84,7 @@ export async function listUserSecrets(pool: Pool, orgId: string, userId: string)
 export interface UpdateInput {
   id: string;
   orgId: string;
-  userId: string | null;
+  workspaceId: string | null;
   value?: string;
   description?: string | null;
 }
@@ -90,8 +92,8 @@ export interface UpdateInput {
 export async function updateSecret(pool: Pool, input: UpdateInput): Promise<boolean> {
   const sets: string[] = [];
   const params: any[] = [input.id, input.orgId];
-  const userClause = input.userId === null ? "AND user_id IS NULL" : "AND user_id = $3";
-  if (input.userId !== null) params.push(input.userId);
+  const wsClause = input.workspaceId === null ? "AND workspace_id IS NULL" : "AND workspace_id = $3";
+  if (input.workspaceId !== null) params.push(input.workspaceId);
 
   if (input.value !== undefined) {
     const sealed = seal(input.value);
@@ -107,19 +109,19 @@ export async function updateSecret(pool: Pool, input: UpdateInput): Promise<bool
 
   const r = await pool.query(
     `UPDATE jm_secrets SET ${sets.join(", ")}
-      WHERE id = $1 AND org_id = $2 ${userClause}`,
+      WHERE id = $1 AND org_id = $2 ${wsClause}`,
     params,
   );
   return (r.rowCount ?? 0) > 0;
 }
 
 export async function deleteSecret(
-  pool: Pool, id: string, orgId: string, userId: string | null,
+  pool: Pool, id: string, orgId: string, workspaceId: string | null,
 ): Promise<boolean> {
-  const userClause = userId === null ? "AND user_id IS NULL" : "AND user_id = $3";
-  const params: any[] = userId === null ? [id, orgId] : [id, orgId, userId];
+  const wsClause = workspaceId === null ? "AND workspace_id IS NULL" : "AND workspace_id = $3";
+  const params: any[] = workspaceId === null ? [id, orgId] : [id, orgId, workspaceId];
   const r = await pool.query(
-    `DELETE FROM jm_secrets WHERE id = $1 AND org_id = $2 ${userClause}`,
+    `DELETE FROM jm_secrets WHERE id = $1 AND org_id = $2 ${wsClause}`,
     params,
   );
   return (r.rowCount ?? 0) > 0;
@@ -127,46 +129,43 @@ export async function deleteSecret(
 
 // --- Resolver helper ---
 
-export interface ResolverRow { name: string; userId: string | null; value: string; }
+export interface ResolverRow { name: string; workspaceId: string | null; value: string; }
 
 export async function fetchForResolve(
-  pool: Pool, orgId: string | null, userId: string | null, names: string[],
+  pool: Pool, orgId: string | null, workspaceId: string | null, names: string[],
 ): Promise<ResolverRow[]> {
   if (names.length === 0) return [];
-  // No org context (e.g. a global-scoped run) → no org/user secrets apply;
-  // the caller falls back to global secrets. Avoids passing "" into a UUID column.
+  // No org context → no secrets apply. Avoids passing "" into a UUID column.
   if (!orgId) return [];
-  // No user context (e.g. an org-scoped webhook run) → match org-scope rows only,
-  // rather than comparing user_id against an empty string (invalid UUID).
-  const hasUser = !!userId;
+  // No workspace context → match org-scope rows only.
+  const hasWs = !!workspaceId;
   const r = await pool.query(
-    `SELECT name, user_id, ciphertext, iv, auth_tag
+    `SELECT name, workspace_id, ciphertext, iv, auth_tag
        FROM jm_secrets
       WHERE org_id = $1
         AND name = ANY($2::text[])
-        AND ${hasUser ? "(user_id = $3 OR user_id IS NULL)" : "user_id IS NULL"}`,
-    hasUser ? [orgId, names, userId] : [orgId, names],
+        AND ${hasWs ? "(workspace_id = $3 OR workspace_id IS NULL)" : "workspace_id IS NULL"}`,
+    hasWs ? [orgId, names, workspaceId] : [orgId, names],
   );
   return r.rows.map((row: any) => ({
     name: row.name,
-    userId: row.user_id,
+    workspaceId: row.workspace_id,
     value: open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag }),
   }));
 }
 
-/** Fetch and decrypt one user-scope secret by exact (orgId, userId, name). */
-export async function fetchPinnedUserSecret(
+/** Fetch and decrypt one workspace-scope secret by exact (workspaceId, name). */
+export async function fetchPinnedWorkspaceSecret(
   pool: Pool,
-  orgId: string,
-  userId: string,
+  workspaceId: string,
   name: string,
 ): Promise<string | null> {
   validateName(name);
   const r = await pool.query(
     `SELECT ciphertext, iv, auth_tag
        FROM jm_secrets
-      WHERE org_id = $1 AND user_id = $2 AND name = $3`,
-    [orgId, userId, name],
+      WHERE workspace_id = $1 AND name = $2`,
+    [workspaceId, name],
   );
   const row = r.rows[0];
   if (!row) return null;
@@ -183,32 +182,8 @@ export async function fetchPinnedOrgSecret(
   const r = await pool.query(
     `SELECT ciphertext, iv, auth_tag
        FROM jm_secrets
-      WHERE org_id = $1 AND user_id IS NULL AND name = $2`,
+      WHERE org_id = $1 AND workspace_id IS NULL AND name = $2`,
     [orgId, name],
-  );
-  const row = r.rows[0];
-  if (!row) return null;
-  return open({ ciphertext: row.ciphertext, iv: row.iv, authTag: row.auth_tag });
-}
-
-/**
- * Fetch and decrypt the caller's user-scope secret by (userId, name). Does
- * not constrain by org_id — used by the promote-to-org route where the
- * caller's active org may differ from the org under which the user-scope
- * row was originally created.
- */
-export async function fetchOwnUserSecret(
-  pool: Pool,
-  userId: string,
-  name: string,
-): Promise<string | null> {
-  validateName(name);
-  const r = await pool.query(
-    `SELECT ciphertext, iv, auth_tag
-       FROM jm_secrets
-      WHERE user_id = $1 AND name = $2
-      LIMIT 1`,
-    [userId, name],
   );
   const row = r.rows[0];
   if (!row) return null;
