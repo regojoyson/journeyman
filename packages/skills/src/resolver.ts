@@ -68,11 +68,13 @@ export async function resolveSkillPackages(
 
 export async function resolveSkillPackagesByIds(
   pool: Pool,
-  ctx: { workspaceId: string },
+  ctx: { workspaceId?: string | null },
   packageIds: string[],
   cliType: string,
 ): Promise<ResolvedSkillPackage[]> {
-  if (packageIds.length === 0) return [];
+  // No workspace in context (e.g. runtime before the Flows cutover wires it) →
+  // skills are workspace-only, so nothing resolves.
+  if (packageIds.length === 0 || !ctx.workspaceId) return [];
   const found = await fetchSkillPackagesByIds(pool, ctx.workspaceId, packageIds);
   const byId = new Map(found.map((p) => [p.id, p]));
   const missing = packageIds.filter((id) => !byId.has(id));

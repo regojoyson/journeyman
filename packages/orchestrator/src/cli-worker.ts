@@ -400,7 +400,12 @@ const harness = new WorkerHarness({
   },
   skillsResolver: ({ ctx, packageIds }) => {
     if (!pool) return Promise.resolve([]);
-    return resolveSkillPackagesByIds(pool, ctx, packageIds, "claude");
+    return resolveSkillPackagesByIds(
+      pool,
+      { workspaceId: (ctx as { workspaceId?: string | null }).workspaceId ?? null },
+      packageIds,
+      "claude",
+    );
   },
   modelResolver: async ({ provider }) => {
     if (!pool) return undefined;
