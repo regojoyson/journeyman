@@ -19,6 +19,7 @@ const WORKSPACE_ITEMS = [
 ];
 
 const ORG_ITEMS = [
+  { slug: "workspaces",    icon: "🗂", label: "Workspaces"   },
   { slug: "members",       icon: "👥", label: "Members"      },
   { slug: "secrets",       icon: "🔐", label: "Org Secrets"  },
   { slug: "sandboxes",     icon: "👷", label: "Org Sandboxes" },
@@ -34,7 +35,7 @@ function initials(label: string): string {
 
 export default function Sidebar() {
   const { role, user, org, isPlatformAdmin, activeOrgId, logout } = useAuth();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, can } = useWorkspace();
   const isAdmin = role === "admin" || isPlatformAdmin;
   const [pinned, setPinned] = useState(
     () => localStorage.getItem("sidebar-pinned") === "true"
@@ -163,6 +164,15 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {activeWorkspaceId && can("members.manage") && (
+          <NavLink to={`/workspaces/${activeWorkspaceId}/members`} style={navStyle}>
+            <span style={{ fontSize: 14, flexShrink: 0 }}>👤</span>
+            {expanded && (
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>Members</span>
+            )}
+          </NavLink>
+        )}
 
         {isAdmin && activeOrgId && (
           <>

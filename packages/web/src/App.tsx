@@ -16,6 +16,8 @@ import { WebhookDetailPage } from "./routes/WebhookDetailPage.tsx";
 import { SandboxesPage } from "./routes/SandboxesPage.tsx";
 import { AdminCodingModelsPage } from "./routes/AdminCodingModelsPage.tsx";
 import { AdminUsersPage } from "./routes/AdminUsersPage.tsx";
+import { WorkspaceMembersPage } from "./routes/WorkspaceMembersPage.tsx";
+import { OrgWorkspacesPage } from "./routes/OrgWorkspacesPage.tsx";
 import { ChangePasswordPage } from "./routes/ChangePasswordPage.tsx";
 import { FormsInventoryPage } from "./routes/forms/FormsInventoryPage.tsx";
 import { RunFormPage } from "./routes/forms/RunFormPage.tsx";
@@ -58,11 +60,13 @@ export default function App() {
         <Route path="/workspaces/:wsId/connections" element={<ConnectionsPage />} />
         <Route path="/workspaces/:wsId/webhooks" element={<WebhooksPage />} />
         <Route path="/workspaces/:wsId/webhooks/:id" element={<WebhookDetailPage />} />
+        <Route path="/workspaces/:wsId/members" element={<WorkspaceMembersPage />} />
 
         <Route path="/orgs/:orgId/secrets" element={isAdmin ? <SecretsPage tier="org" /> : <Navigate to="/" replace />} />
         <Route path="/orgs/:orgId/sandboxes" element={isAdmin ? <SandboxesPage /> : <Navigate to="/" replace />} />
         <Route path="/orgs/:orgId/coding-models" element={isAdmin ? <AdminCodingModelsPage /> : <Navigate to="/" replace />} />
         <Route path="/orgs/:orgId/members" element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />} />
+        <Route path="/orgs/:orgId/workspaces" element={isAdmin ? <OrgWorkspacesPage /> : <Navigate to="/" replace />} />
 
         <Route path="/me/password" element={<ChangePasswordPage />} />
         <Route path="/forms" element={<FormsInventoryPage />} />
