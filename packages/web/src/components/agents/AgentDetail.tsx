@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { Agent, AgentUpdateInput } from "@journeyman/core";
 import { agentsApi } from "../../api/agents.ts";
-import { btnPrimary, btnGhost, card } from "../../routes/admin-styles.ts";
+import { btnPrimary, btnGhost, card, inputCls } from "../../routes/admin-styles.ts";
 import { buildUpdateInput, isAgentDirty, agentSummary, statusLabel } from "./agent-form.ts";
 import { SectionNav, SECTIONS, type SectionId } from "./sections/SectionNav.tsx";
 import { InstructionsSection } from "./sections/InstructionsSection.tsx";
@@ -23,6 +23,8 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
   const [a, setA] = useState<Agent>(initial);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showRunForm, setShowRunForm] = useState(false);
+  const [runInputs, setRunInputs] = useState<Record<string, string>>({});
 
   const locked = a.enabled;
   const dirty = isAgentDirty(original, a);
@@ -64,11 +66,21 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
     }
   };
 
-  const runNow = async () => {
+  const openRun = () => {
+    if (a.inputs.length === 0) {
+      void runNow({});
+      return;
+    }
+    setRunInputs(Object.fromEntries(a.inputs.map((i) => [i.name, ""])));
+    setShowRunForm(true);
+  };
+
+  const runNow = async (inputs: Record<string, unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      await agentsApi.runNow(wsId, a.id, {});
+      await agentsApi.runNow(wsId, a.id, inputs);
+      setShowRunForm(false);
       selectSection("runs");
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -97,7 +109,7 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
                 <input type="checkbox" checked={a.enabled} disabled={busy} onChange={toggleEnable} />
                 Enabled
               </label>
-              <button className={btnGhost} disabled={busy} onClick={runNow}>Run now</button>
+              <button className={btnGhost} disabled={busy} onClick={openRun}>Run now</button>
               <button className={btnPrimary} disabled={busy || locked || !dirty} onClick={save}>
                 {dirty ? "Save changes" : "Saved"}
               </button>
@@ -108,6 +120,25 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
         {locked && (
           <div className="rounded-md bg-muted text-muted-foreground text-sm px-4 py-2">
             🔒 Enabled — disable to edit.
+          </div>
+        )}
+        {showRunForm && (
+          <div className={`${card} p-4 space-y-3`}>
+            <div className="font-medium text-sm">Run now — provide inputs</div>
+            {a.inputs.map((inp) => (
+              <div key={inp.name} className="flex items-center gap-2">
+                <span className="text-sm w-32 truncate" title={inp.name}>{inp.name}</span>
+                <input
+                  className={inputCls}
+                  value={runInputs[inp.name] ?? ""}
+                  onChange={(e) => setRunInputs((prev) => ({ ...prev, [inp.name]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <button className={btnPrimary} disabled={busy} onClick={() => runNow(runInputs)}>Run</button>
+              <button className={btnGhost} disabled={busy} onClick={() => setShowRunForm(false)}>Cancel</button>
+            </div>
           </div>
         )}
         {error && <div className="text-sm text-destructive">{error}</div>}

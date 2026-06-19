@@ -1,4 +1,5 @@
 import type { Agent, WorkflowGraph } from "@journeyman/core";
+import { renderInstructions } from "./render.ts";
 
 export class MissingRequiredInputError extends Error {
   constructor(name: string) {
@@ -26,8 +27,14 @@ export function resolveInputs(agent: Agent, supplied: Record<string, unknown> = 
 export function compileAgentToGraph(
   agent: Agent,
   suppliedInputs: Record<string, unknown> = {},
+  ctx: { payload?: unknown; triggerType?: string } = {},
 ): { graph: WorkflowGraph; inputs: Record<string, unknown> } {
   const inputs = resolveInputs(agent, suppliedInputs);
+  const instructions = renderInstructions(agent.instructions, {
+    inputs,
+    payload: ctx.payload,
+    triggerType: ctx.triggerType ?? "manual",
+  });
 
   const graph: WorkflowGraph = {
     schemaVersion: 2,
@@ -44,7 +51,7 @@ export function compileAgentToGraph(
         executorConfig: { provider: agent.provider },
         config: {
           agentId: agent.id,
-          instructions: agent.instructions,
+          instructions,
           provider: agent.provider,
           tools: agent.permissions.allowedTools.length ? agent.permissions.allowedTools : agent.tools,
           mcpInstanceIds: agent.connectorMcpIds,

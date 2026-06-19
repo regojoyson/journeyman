@@ -42,10 +42,15 @@ export async function fireAgentForWebhook(c: Composition, input: FireAgentInput)
     inputs[name] = readPath(input.rawPayload, path);
   }
 
-  const res = await runAgentGuarded({ orchestrator: c.orchestrator, pool: c.pool }, agent, inputs, "webhook", {
-    userId: null,
-    orgId: agent.orgId,
-  });
+  const res = await runAgentGuarded(
+    { orchestrator: c.orchestrator, pool: c.pool },
+    agent,
+    inputs,
+    "webhook",
+    { userId: null, orgId: agent.orgId },
+    "trigger-1",
+    { payload: input.rawPayload },
+  );
   if (wasSkipped(res)) return { fired: 0, skipped: res.skipped };
   return { fired: 1, workflowInstanceId: res.workflowInstanceId };
 }

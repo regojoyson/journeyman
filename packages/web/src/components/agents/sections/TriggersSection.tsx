@@ -11,15 +11,22 @@ export interface SectionProps {
   wsId: string;
 }
 
+/** Drop empty-string values from a name→value record. */
+function pruneEmpty(rec: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rec)) if (v.trim()) out[k] = v.trim();
+  return out;
+}
+
 export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
   const schedule = a.triggers.find((t) => t.type === "schedule") as
-    | { type: "schedule"; cron: string; timezone: string }
+    | { type: "schedule"; cron: string; timezone: string; fixedInputs?: Record<string, unknown> }
     | undefined;
   const webhook = a.triggers.find((t) => t.type === "webhook") as
     | { type: "webhook"; webhookId: string; inputsMapping?: Record<string, string> }
     | undefined;
 
-  const setSchedule = (next: { cron: string; timezone: string } | null) => {
+  const setSchedule = (next: { cron: string; timezone: string; fixedInputs: Record<string, string> } | null) => {
     const others = a.triggers.filter((t) => t.type !== "schedule");
     patch({ triggers: next ? [...others, { type: "schedule", ...next }] : others });
   };
@@ -28,19 +35,8 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
     patch({ triggers: next ? [...others, { type: "webhook", ...next }] : others });
   };
 
-  const [mappingText, setMappingText] = useState<string>(
-    Object.entries(webhook?.inputsMapping ?? {})
-      .map(([k, v]) => `${k} = ${v}`)
-      .join("\n"),
-  );
-  const parseMapping = (text: string): Record<string, string> => {
-    const out: Record<string, string> = {};
-    for (const line of text.split("\n")) {
-      const [name, ...rest] = line.split("=");
-      if (name?.trim() && rest.length) out[name.trim()] = rest.join("=").trim();
-    }
-    return out;
-  };
+  const webhookPaths = (webhook?.inputsMapping ?? {}) as Record<string, string>;
+  const scheduleValues = (schedule?.fixedInputs ?? {}) as Record<string, string>;
 
   // API tokens (immediate, independent of Save)
   const [apiTokens, setApiTokens] = useState<Array<{ id: string; created_at: string }>>([]);
@@ -58,6 +54,8 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
     setApiTokens(await agentsApi.listApiTokens(wsId, a.id));
   };
 
+  const noInputs = a.inputs.length === 0;
+
   return (
     <SectionShell title="Triggers" description="How runs are started — on a schedule, via the API, or from a webhook.">
       {/* Schedule */}
@@ -68,27 +66,58 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
             type="checkbox"
             disabled={locked}
             checked={Boolean(schedule)}
-            onChange={(e) => setSchedule(e.target.checked ? { cron: "0 2 * * *", timezone: "UTC" } : null)}
+            onChange={(e) =>
+              setSchedule(e.target.checked ? { cron: "0 2 * * *", timezone: "UTC", fixedInputs: scheduleValues } : null)
+            }
           />{" "}
           Run on a schedule
         </label>
         {schedule && (
-          <div className="flex gap-2">
-            <input
-              className={inputCls}
-              disabled={locked}
-              placeholder="cron (e.g. 0 2 * * *)"
-              value={schedule.cron}
-              onChange={(e) => setSchedule({ cron: e.target.value, timezone: schedule.timezone })}
-            />
-            <input
-              className={inputCls}
-              disabled={locked}
-              placeholder="IANA timezone"
-              value={schedule.timezone}
-              onChange={(e) => setSchedule({ cron: schedule.cron, timezone: e.target.value })}
-            />
-          </div>
+          <>
+            <div className="flex gap-2">
+              <input
+                className={inputCls}
+                disabled={locked}
+                placeholder="cron (e.g. 0 2 * * *)"
+                value={schedule.cron}
+                onChange={(e) =>
+                  setSchedule({ cron: e.target.value, timezone: schedule.timezone, fixedInputs: scheduleValues })
+                }
+              />
+              <input
+                className={inputCls}
+                disabled={locked}
+                placeholder="IANA timezone"
+                value={schedule.timezone}
+                onChange={(e) =>
+                  setSchedule({ cron: schedule.cron, timezone: e.target.value, fixedInputs: scheduleValues })
+                }
+              />
+            </div>
+            {noInputs ? (
+              <div className="text-xs text-muted-foreground">Add {"{{inputs}}"} to the prompt to set values here.</div>
+            ) : (
+              a.inputs.map((inp) => (
+                <div key={inp.name} className="flex items-center gap-2">
+                  <span className="text-sm w-32 truncate" title={inp.name}>{inp.name}</span>
+                  <span className="text-muted-foreground">=</span>
+                  <input
+                    className={inputCls}
+                    disabled={locked}
+                    placeholder="fixed value"
+                    value={scheduleValues[inp.name] ?? ""}
+                    onChange={(e) =>
+                      setSchedule({
+                        cron: schedule.cron,
+                        timezone: schedule.timezone,
+                        fixedInputs: pruneEmpty({ ...scheduleValues, [inp.name]: e.target.value }),
+                      })
+                    }
+                  />
+                </div>
+              ))
+            )}
+          </>
         )}
       </div>
 
@@ -126,9 +155,7 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
             type="checkbox"
             disabled={locked}
             checked={Boolean(webhook)}
-            onChange={(e) =>
-              setWebhook(e.target.checked ? { webhookId: "", inputsMapping: parseMapping(mappingText) } : null)
-            }
+            onChange={(e) => setWebhook(e.target.checked ? { webhookId: "", inputsMapping: webhookPaths } : null)}
           />{" "}
           Fire from a webhook
         </label>
@@ -139,21 +166,33 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
               disabled={locked}
               placeholder="webhook id"
               value={webhook.webhookId}
-              onChange={(e) => setWebhook({ webhookId: e.target.value, inputsMapping: parseMapping(mappingText) })}
+              onChange={(e) => setWebhook({ webhookId: e.target.value, inputsMapping: webhookPaths })}
             />
-            <label className="text-xs text-muted-foreground">
-              Map payload → inputs (one <code className={codePill}>name = $.json.path</code> per line)
-            </label>
-            <textarea
-              className={inputCls}
-              disabled={locked}
-              placeholder="ticketKey = $.issue.key"
-              value={mappingText}
-              onChange={(e) => {
-                setMappingText(e.target.value);
-                setWebhook({ webhookId: webhook.webhookId, inputsMapping: parseMapping(e.target.value) });
-              }}
-            />
+            {noInputs ? (
+              <div className="text-xs text-muted-foreground">Add {"{{inputs}}"} to the prompt to map them.</div>
+            ) : (
+              <>
+                <div className="text-xs text-muted-foreground">Map each input from the payload (a JSON path):</div>
+                {a.inputs.map((inp) => (
+                  <div key={inp.name} className="flex items-center gap-2">
+                    <span className="text-sm w-32 truncate" title={inp.name}>{inp.name}</span>
+                    <span className="text-muted-foreground">←</span>
+                    <input
+                      className={inputCls}
+                      disabled={locked}
+                      placeholder="$.issue.key"
+                      value={webhookPaths[inp.name] ?? ""}
+                      onChange={(e) =>
+                        setWebhook({
+                          webhookId: webhook.webhookId,
+                          inputsMapping: pruneEmpty({ ...webhookPaths, [inp.name]: e.target.value }),
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </>
+            )}
           </>
         )}
       </div>

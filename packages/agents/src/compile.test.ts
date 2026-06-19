@@ -35,7 +35,7 @@ describe("compileAgentToGraph", () => {
     const stepNode = graph.nodes.find((n) => n.stepType === "agent-run")!;
     expect(stepNode).toBeTruthy();
     expect(stepNode.config!.agentId).toBe("ag1");
-    expect(stepNode.config!.instructions).toBe("Fix {{ticketKey}}");
+    expect(stepNode.config!.instructions).toBe("Fix PROJ-1");
     expect(stepNode.config!.repos).toEqual(["acme/api"]);
     expect(stepNode.config!.maxSteps).toBe(40);
     expect(stepNode.config!.timeoutSeconds).toBe(1800);
@@ -43,6 +43,13 @@ describe("compileAgentToGraph", () => {
     expect(stepNode.model).toBe("claude-opus-4-8");
     const trigger = graph.nodes.find((n) => n.type === "trigger-manual")!;
     expect(graph.edges.some((e) => e.source === trigger.id && e.target === stepNode.id)).toBe(true);
+  });
+
+  it("renders {{trigger.type}} from the supplied context", () => {
+    const agent = { ...baseAgent, instructions: "src={{trigger.type}}" };
+    const { graph } = compileAgentToGraph(agent, { ticketKey: "X" }, { triggerType: "webhook" });
+    const step = graph.nodes.find((n) => n.stepType === "agent-run")!;
+    expect(step.config!.instructions).toBe("src=webhook");
   });
 
   it("passes the repo's connectionId as gitConnectionId", () => {

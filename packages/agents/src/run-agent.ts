@@ -34,8 +34,9 @@ export async function runAgent(
   triggerSource: AgentTriggerSource,
   startedBy: { userId: string | null; orgId: string },
   triggerNodeId = "trigger-1",
+  renderCtx: { payload?: unknown } = {},
 ): Promise<{ workflowInstanceId: string; engineWorkflowId: string | null }> {
-  const compiled = compileAgentToGraph(agent, inputs);
+  const compiled = compileAgentToGraph(agent, inputs, { payload: renderCtx.payload, triggerType: triggerSource });
   return deps.orchestrator.submit({
     workflowId: null,
     workflowVersionId: null,
@@ -71,10 +72,11 @@ export async function runAgentGuarded(
   triggerSource: AgentTriggerSource,
   startedBy: { userId: string | null; orgId: string },
   triggerNodeId = "trigger-1",
+  renderCtx: { payload?: unknown } = {},
 ): Promise<GuardedRunResult> {
   const verdict = await enforceSafetyRails(deps.pool, agent);
   if (!verdict.ok) return { skipped: verdict.reason };
-  const res = await runAgent(deps, agent, inputs, triggerSource, startedBy, triggerNodeId);
+  const res = await runAgent(deps, agent, inputs, triggerSource, startedBy, triggerNodeId, renderCtx);
   await incrementRunCounter(deps.pool, startedBy.orgId, agent.id).catch(() => undefined);
   return res;
 }

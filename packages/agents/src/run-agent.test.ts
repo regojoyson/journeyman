@@ -46,6 +46,14 @@ describe("runAgent", () => {
     );
   });
 
+  it("renders the instructions into the submitted graph", async () => {
+    const submit = vi.fn().mockResolvedValue({ workflowInstanceId: "wi2", engineWorkflowId: null });
+    await runAgent({ orchestrator: { submit } }, agent, { k: "PROJ-9" }, "api", { userId: null, orgId: "o1" });
+    const arg = submit.mock.calls[0][0];
+    const step = arg.definitionSnapshot.nodes.find((n: any) => n.stepType === "agent-run");
+    expect(step.config.instructions).toBe("do PROJ-9");
+  });
+
   it("throws when a required input is missing", async () => {
     const submit = vi.fn();
     await expect(runAgent({ orchestrator: { submit } }, agent, {}, "schedule", { userId: null, orgId: "o1" })).rejects.toThrow(/k/);
