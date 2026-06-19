@@ -18,8 +18,8 @@ import {
 import { isTerminalStatus } from "@journeyman/core";
 import type {
   IAuthProvider, IConditionEvaluator, IEventBus,
-  IWorkflowGrantsStore, IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
-  IStepRegistry, IWorkflowInstanceGrantsStore, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore,
+  IWorkflowStore, IWorkflowVersionStore, INodeExecutionStore, IOrchestratorEngine,
+  IStepRegistry, IWorkflowInstanceStore, IWebhookEventStore, IWebhookStore, IWorkflowTriggerStore,
   WorkflowInstanceStatus,
 } from "@journeyman/core";
 import type { FastifyRequest } from "fastify";
@@ -27,8 +27,6 @@ import {
   ConductorClient,
   ConductorOrchestrator,
   ConductorJsonConverter,
-  PostgresWorkflowGrantsStore,
-  PostgresWorkflowInstanceGrantsStore,
   PostgresWorkflowStore,
   PostgresWorkflowVersionStore,
   PostgresWorkflowInstanceStore,
@@ -56,8 +54,6 @@ import { makeNotifyOnTerminal } from "./services/notify-on-terminal.ts";
 import { makeRecordTerminalMetrics } from "./services/agent-metrics.ts";
 
 export interface Composition {
-  workflowGrants: IWorkflowGrantsStore;
-  workflowInstanceGrants: IWorkflowInstanceGrantsStore;
   workflows: IWorkflowStore;
   workflowVersions: IWorkflowVersionStore;
   workflowInstances: IWorkflowInstanceStore;
@@ -94,9 +90,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const pool: Pool | null = createPool({ connectionString: cfg.databaseUrl });
   const v = new PostgresWorkflowVersionStore(pool);
   const workflowVersions: IWorkflowVersionStore = v;
-  const workflowGrants: IWorkflowGrantsStore = new PostgresWorkflowGrantsStore(pool);
-  const workflowInstanceGrants: IWorkflowInstanceGrantsStore = new PostgresWorkflowInstanceGrantsStore(pool);
-  const workflows: IWorkflowStore = new PostgresWorkflowStore(pool, v, workflowGrants);
+  const workflows: IWorkflowStore = new PostgresWorkflowStore(pool, v);
   const workflowInstances: IWorkflowInstanceStore = new PostgresWorkflowInstanceStore(pool);
   const nodeExecutions: INodeExecutionStore = new PostgresNodeExecutionStore(pool);
   const events: IEventBus = new PostgresEventBus(pool);
@@ -193,7 +187,6 @@ export function buildComposition(cfg: CompositionConfig): Composition {
     client: conductorClient,
     converter: new ConductorJsonConverter(),
     workflowInstances,
-    workflowInstanceGrants,
     events,
     ...(sandboxProvisioner ? { sandboxProvisioner } : {}),
     ...(sandboxReaper ? { sandboxReaper } : {}),
@@ -220,7 +213,7 @@ export function buildComposition(cfg: CompositionConfig): Composition {
   const conditions = new JsonLogicEvaluator();
 
   const composition: Composition = {
-    workflowGrants, workflowInstanceGrants, workflows, workflowVersions, workflowInstances,
+    workflows, workflowVersions, workflowInstances,
     nodeExecutions, events, webhookEvents, webhooks, workflowTriggers,
     humanTaskResolutions, humanTaskTimeouts, conductorClient,
     orchestrator, registry, auth, conditions,

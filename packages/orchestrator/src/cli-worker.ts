@@ -316,7 +316,7 @@ async function registerTaskDefs(): Promise<void> {
 }
 
 const cliBindingResolver = async (input: {
-  ctx: { userId: string | null; orgId: string | null; workflowId: string | null };
+  ctx: { userId: string | null; orgId: string | null; workflowId: string | null; workspaceId?: string | null };
   slots: Array<{ name: string; optional?: boolean }>;
   bindings: Record<string, SecretBinding>;
 }): Promise<Record<string, string>> => {
@@ -343,6 +343,9 @@ const cliBindingResolver = async (input: {
       role: "member" as const,
       isPlatformAdmin: false,
       tokenKind: "access-jwt" as const,
+      workspace: ctx.workspaceId
+        ? { id: ctx.workspaceId, orgId: ctx.orgId ?? "", role: null, permissions: [] }
+        : undefined,
     };
     const result = await resolveBindings({ pool, ctx: runCtx, bindings, slots });
     return result.values;
@@ -396,13 +399,13 @@ const harness = new WorkerHarness({
   bindingResolver: cliBindingResolver,
   mcpResolver: ({ ctx, instanceIds }) => {
     if (!pool) return Promise.resolve([]);
-    return resolveMcpInstances(pool, { workspaceId: (ctx as { workspaceId?: string | null }).workspaceId ?? null }, instanceIds);
+    return resolveMcpInstances(pool, { workspaceId: ctx.workspaceId ?? null }, instanceIds);
   },
   skillsResolver: ({ ctx, packageIds }) => {
     if (!pool) return Promise.resolve([]);
     return resolveSkillPackagesByIds(
       pool,
-      { workspaceId: (ctx as { workspaceId?: string | null }).workspaceId ?? null },
+      { workspaceId: ctx.workspaceId ?? null },
       packageIds,
       "claude",
     );

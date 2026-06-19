@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import type {
-  ActorContext, CreateWorkflowInstanceArgs, INodeExecutionStore, IWorkflowInstanceStore,
-  NodeExecution, WorkflowInstance, WorkflowInstanceListScope, WorkflowInstanceStatus,
+  CreateWorkflowInstanceArgs, INodeExecutionStore, IWorkflowInstanceStore,
+  NodeExecution, WorkflowInstance, WorkflowInstanceStatus,
 } from "@journeyman/core";
 
 function rowToWorkflowInstance(row: any): WorkflowInstance {
@@ -10,7 +10,7 @@ function rowToWorkflowInstance(row: any): WorkflowInstance {
     workflowId: row.workflow_id,
     workflowVersionId: row.workflow_version_id,
     workflowNameSnapshot: row.workflow_name_snapshot,
-    workflowScopeSnapshot: row.workflow_scope_snapshot,
+    workspaceId: row.workspace_id ?? null,
     definitionSnapshot: row.definition_snapshot,
     status: row.status,
     triggerSource: row.trigger_source,
@@ -29,58 +29,20 @@ function rowToWorkflowInstance(row: any): WorkflowInstance {
   };
 }
 
-function grantMatchSql(
-  actor: ActorContext,
-  scope: WorkflowInstanceListScope | undefined,
-  params: any[],
-  nextIdx: () => number,
-): string {
-  const clauses: string[] = [];
-
-  if (scope === "mine") {
-    if (actor.userId) {
-      clauses.push(`(g.principal_type = 'user' AND g.principal_id = $${nextIdx()} AND g.role = 'owner')`);
-      params.push(actor.userId);
-    }
-    if (actor.role === "admin" && actor.orgId) {
-      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
-      params.push(actor.orgId);
-    }
-  } else if (scope === "org") {
-    if (actor.orgId) {
-      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
-      params.push(actor.orgId);
-    }
-  } else {
-    // default scope (no filter): everything actor can see
-    if (actor.userId) {
-      clauses.push(`(g.principal_type = 'user' AND g.principal_id = $${nextIdx()})`);
-      params.push(actor.userId);
-    }
-    if (actor.orgId) {
-      clauses.push(`(g.principal_type = 'org' AND g.principal_id = $${nextIdx()})`);
-      params.push(actor.orgId);
-    }
-    clauses.push(`(g.principal_type = 'global')`);
-  }
-
-  return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
-}
-
 export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
   constructor(private pool: Pool) {}
 
   async create(args: CreateWorkflowInstanceArgs): Promise<WorkflowInstance> {
     const { rows } = await this.pool.query(
       `INSERT INTO jm_workflow_instances
-         (workflow_id, workflow_version_id, workflow_name_snapshot, workflow_scope_snapshot, definition_snapshot,
+         (workflow_id, workflow_version_id, workflow_name_snapshot, workspace_id, definition_snapshot,
           status, trigger_source, started_by_user_id, inputs, webhook_event_id,
           trigger_node_id, form_submission_id)
        VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8::jsonb, $9, $10, $11)
        RETURNING *`,
       [
         args.workflowId, args.workflowVersionId,
-        args.workflowNameSnapshot, args.workflowScopeSnapshot,
+        args.workflowNameSnapshot, args.workspaceId,
         JSON.stringify(args.definitionSnapshot),
         args.triggerSource, args.startedByUserId,
         JSON.stringify(args.inputs),
@@ -136,12 +98,11 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
   }
 
   async list(opts: {
+    workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     limit?: number;
     offset?: number;
-    actor?: ActorContext;
-    scope?: WorkflowInstanceListScope;
     provider?: string;
   } = {}): Promise<WorkflowInstance[]> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
@@ -155,10 +116,9 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
   }
 
   async count(opts: {
+    workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
-    actor?: ActorContext;
-    scope?: WorkflowInstanceListScope;
     provider?: string;
   } = {}): Promise<number> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
@@ -168,10 +128,9 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
   }
 
   private buildListQuery(opts: {
+    workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
-    actor?: ActorContext;
-    scope?: WorkflowInstanceListScope;
     provider?: string;
   }): { sql: string; params: any[] } {
     const conds: string[] = [];
@@ -179,31 +138,19 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     let i = 1;
     const nextIdx = () => i++;
 
-    if (opts.workflowId) { conds.push(`r.workflow_id = $${nextIdx()}`);   params.push(opts.workflowId); }
-    if (opts.status)     { conds.push(`r.status = $${nextIdx()}`);         params.push(opts.status); }
-    if (opts.provider)   { conds.push(`w.provider = $${nextIdx()}`);       params.push(opts.provider); }
+    if (opts.workspaceId) { conds.push(`r.workspace_id = $${nextIdx()}`); params.push(opts.workspaceId); }
+    if (opts.workflowId)  { conds.push(`r.workflow_id = $${nextIdx()}`);  params.push(opts.workflowId); }
+    if (opts.status)      { conds.push(`r.status = $${nextIdx()}`);       params.push(opts.status); }
+    if (opts.provider)    { conds.push(`w.provider = $${nextIdx()}`);     params.push(opts.provider); }
 
     const webhookJoin = opts.provider
       ? "LEFT JOIN jm_webhook_events w ON r.webhook_event_id = w.id"
       : "";
 
-    let joinClause = "";
-    if (opts.actor && !(opts.actor.isPlatformAdmin && opts.scope === "all")) {
-      joinClause = `
-      JOIN LATERAL (
-        SELECT 1 FROM jm_workflow_instance_grants g
-        WHERE g.workflow_instance_id = r.id
-          AND ${grantMatchSql(opts.actor, opts.scope, params, nextIdx)}
-        LIMIT 1
-      ) gm ON TRUE
-    `;
-    }
-
     const whereSql = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     const sql = `
     SELECT DISTINCT r.* FROM jm_workflow_instances r
     ${webhookJoin}
-    ${joinClause}
     ${whereSql}
   `;
     return { sql, params };

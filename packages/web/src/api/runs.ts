@@ -1,4 +1,4 @@
-import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceListScope } from "@journeyman/core";
+import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, HumanTaskHistoryEntry } from "@journeyman/run-viewer";
 import { api } from "./client.ts";
 
@@ -7,14 +7,12 @@ export async function listRuns(filter: {
   workflowId?: string;
   provider?: string;
   limit?: number;
-  scope?: WorkflowInstanceListScope;
 } = {}): Promise<WorkflowInstance[]> {
   const qs = new URLSearchParams();
   if (filter.status)     qs.set("status",       filter.status);
   if (filter.workflowId) qs.set("workflow_id",  filter.workflowId);
   if (filter.provider)   qs.set("provider",     filter.provider);
   if (filter.limit)      qs.set("limit",        String(filter.limit));
-  if (filter.scope)      qs.set("scope",        filter.scope);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await api<{ workflowInstances: WorkflowInstance[] }>(`/api/workflow-instances${suffix}`);
   return res.workflowInstances;
@@ -31,7 +29,6 @@ export async function listRunsPaged(args: {
   status?: WorkflowInstance["status"];
   workflowId?: string;
   provider?: string;
-  scope?: WorkflowInstanceListScope;
   page: number;
   pageSize: number;
 }): Promise<PagedRuns> {
@@ -39,7 +36,6 @@ export async function listRunsPaged(args: {
   if (args.status)     qs.set("status",       args.status);
   if (args.workflowId) qs.set("workflow_id",  args.workflowId);
   if (args.provider)   qs.set("provider",     args.provider);
-  if (args.scope)      qs.set("scope",        args.scope);
   qs.set("page",       String(args.page));
   qs.set("page_size",  String(args.pageSize));
   return await api<PagedRuns>(`/api/workflow-instances?${qs.toString()}`);

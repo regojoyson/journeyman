@@ -31,7 +31,7 @@ export async function rerunFromExisting(
     workflowId: original.workflowId,
     workflowVersionId: original.workflowVersionId,
     workflowNameSnapshot: original.workflowNameSnapshot,
-    workflowScopeSnapshot: original.workflowScopeSnapshot,
+    workspaceId: original.workspaceId,
     definitionSnapshot,
     inputs: original.inputs ?? {},
     startedByUserId: opts.startedByUserId ?? original.startedByUserId,

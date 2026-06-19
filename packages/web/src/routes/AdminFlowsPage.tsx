@@ -15,8 +15,10 @@ export function AdminFlowsPage() {
   async function refresh() {
     setLoading(true);
     try {
-      setUserFlows(await listFlows({ scope: "user", orgId: activeOrgId }));
-      if (isPlatformAdmin) setOrgFlows(await listFlows({ scope: "org" }));
+      // TODO(phase 3): filter by workspace membership scope
+      const all = await listFlows();
+      setUserFlows(all);
+      if (isPlatformAdmin) setOrgFlows(all);
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export function AdminFlowsPage() {
                 {userFlows.map(f => (
                   <tr key={f.id} className="hover:bg-surface-hover">
                     <td className="px-6 py-3 text-slate-100 font-medium">{f.name}</td>
-                    <td className="px-6 py-3 text-slate-300">{f.ownerUserId ?? "—"}</td>
+                    <td className="px-6 py-3 text-slate-300">{f.createdByUserId ?? "—"}</td>
                     <td className="px-6 py-3 text-right">
                       <button
                         className={btnPrimary}
@@ -107,7 +109,7 @@ export function AdminFlowsPage() {
                   {orgFlows.map(f => (
                     <tr key={f.id} className="hover:bg-surface-hover">
                       <td className="px-6 py-3 text-slate-100 font-medium">{f.name}</td>
-                      <td className="px-6 py-3 text-slate-300">{f.orgId ?? "—"}</td>
+                      <td className="px-6 py-3 text-slate-300">{f.workspaceId ?? "—"}</td>
                       <td className="px-6 py-3 text-right">
                         <button
                           className={btnGhost}

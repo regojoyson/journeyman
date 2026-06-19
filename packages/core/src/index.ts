@@ -74,13 +74,12 @@ export {
   isPauseableEngine, isRetryableEngine,
 } from "./interfaces/orchestrator-capabilities.interface.ts";
 export type {
-  IWorkflowStore, IWorkflowVersionStore, IWorkflowGrantsStore,
-  CreateWorkflowArgs, WorkflowListFilter, CreateWorkflowGrantArgs,
+  IWorkflowStore, IWorkflowVersionStore,
+  CreateWorkflowArgs, WorkflowListFilter,
 } from "./interfaces/workflow-store.interface.ts";
 export type {
   IWorkflowInstanceStore, INodeExecutionStore, CreateWorkflowInstanceArgs,
 } from "./interfaces/workflow-instance-store.interface.ts";
-export type { IWorkflowInstanceGrantsStore } from "./interfaces/workflow-instance-grants-store.interface.ts";
 export type {
   IWorkflowTriggerStore,
   WorkflowTriggerIndexRow,
@@ -166,7 +165,7 @@ export {
   isJsonLogicExpr,
 } from "./types/flow-condition.types.ts";
 export type {
-  WorkflowScope, WorkflowGrantPrincipalType, WorkflowGrantRole, WorkflowGrant, WorkflowStatus,
+  WorkflowStatus,
 } from "./types/flow.types.ts";
 export {
   validateForPublish,
@@ -179,16 +178,10 @@ export type {
   StepConfigIssue, StepConfigValidator,
 } from "./validation/validate-for-publish.ts";
 export type {
-  WorkflowInstanceGrant, WorkflowInstanceGrantPrincipalType, WorkflowInstanceGrantRole,
-  CreateWorkflowInstanceGrantArgs, ActorContext, WorkflowInstanceListScope,
-} from "./types/workflow-instance-grants.types.ts";
-export type {
   WorkflowInstance, WorkflowInstanceEvent, WorkflowInstanceEventType, WorkflowInstanceStatus, TriggerSource,
   NodeExecution, NodeExecutionStatus,
 } from "./types/workflow-instance.types.ts";
 export { isTerminalStatus, TERMINAL_STATUSES } from "./types/workflow-instance.types.ts";
-export { effectiveRole, hasAtLeast } from "./auth/grant-matcher.ts";
-export type { GrantLike } from "./auth/grant-matcher.ts";
 export type {
   StepContext, StepFailure, StepInput, StepOutput,
   OutputSchema,

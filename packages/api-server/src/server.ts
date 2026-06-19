@@ -10,7 +10,6 @@ import { registerConnectionRoutes } from "./routes/connections.ts";
 import { registerAgentTriggerRoutes } from "./routes/agent-triggers.ts";
 import { startAgentScheduler } from "./services/agent-scheduler.ts";
 import { registerStepsRoutes } from "./routes/steps.ts";
-import { registerWorkflowGrantsRoutes } from "./routes/flow-grants.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerWebhookManagementRoutes } from "./routes/webhooks-management.ts";
@@ -70,7 +69,6 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   // encapsulation does not change auth/role/ownership behavior.
   await app.register(async (s) => {
     registerWorkflowRoutes(s, c);
-    registerWorkflowGrantsRoutes(s, c);
     registerWorkflowInstanceRoutes(s, c);
     registerHumanTaskRoutes(s, c);
     registerFormRoutes(s, c);

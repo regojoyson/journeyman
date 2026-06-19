@@ -1,5 +1,4 @@
 import type { WorkflowGraph } from "./flow.types.ts";
-import type { WorkflowInstanceGrantRole } from "./workflow-instance-grants.types.ts";
 
 export type WorkflowInstanceStatus =
   | "pending"
@@ -24,7 +23,8 @@ export interface WorkflowInstance {
   workflowId: string | null;
   workflowVersionId: string | null;
   workflowNameSnapshot: string;
-  workflowScopeSnapshot: "user" | "org" | "global";
+  /** The workspace this instance ran under. Null for instances whose workspace was deleted. */
+  workspaceId: string | null;
   definitionSnapshot: WorkflowGraph;
   status: WorkflowInstanceStatus;
   triggerSource: TriggerSource;
@@ -43,8 +43,6 @@ export interface WorkflowInstance {
   triggerNodeId: string | null;
   /** When started via trigger-human, the submission id; null otherwise. */
   formSubmissionId: string | null;
-  /** Hydrated by the API layer for the calling actor. */
-  effectiveRole?: WorkflowInstanceGrantRole;
 }
 
 export type WorkflowInstanceEventType =

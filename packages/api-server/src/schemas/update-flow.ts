@@ -12,7 +12,7 @@ const secretBindingSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("auto") }),
   z.object({
     mode: z.literal("pinned"),
-    scope: z.enum(["user", "org", "global"]),
+    scope: z.enum(["workspace", "org"]),
     name: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
   }),
 ]);

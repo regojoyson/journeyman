@@ -20,7 +20,7 @@ function session(over: Partial<BuilderSessionRecord> = {}): BuilderSessionRecord
 describe("buildApplyArgs", () => {
   it("maps a user-scoped session to user-scope ApplyArgs", () => {
     const args = buildApplyArgs(session(), { orgId: "o1", userId: "u1", workspaceId: "w1" });
-    expect(args).toMatchObject({ workflowName: "PR review", scope: "user", orgId: "o1", userId: "u1", createdBy: "u1", workspaceId: "w1" });
+    expect(args).toMatchObject({ workflowName: "PR review", createdBy: "u1", workspaceId: "w1" });
     expect(args.plan).toBe(plan);
   });
 });

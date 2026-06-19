@@ -2,17 +2,14 @@ import type { WorkflowGraph } from "../types/flow.types.ts";
 import type {
   WorkflowInstance, NodeExecution, WorkflowInstanceStatus, TriggerSource,
 } from "../types/workflow-instance.types.ts";
-import type { ActorContext, WorkflowInstanceListScope } from "../types/workflow-instance-grants.types.ts";
-
 export interface CreateWorkflowInstanceArgs {
   workflowId: string | null;
   workflowVersionId: string | null;
   workflowNameSnapshot: string;
-  workflowScopeSnapshot: "user" | "org" | "global";
+  workspaceId: string | null;
   definitionSnapshot: WorkflowGraph;
   triggerSource: TriggerSource;
   startedByUserId: string | null;
-  startedByOrgId: string | null;
   inputs: Record<string, unknown>;
   webhookEventId?: string | null;
   /** Id of the trigger node that started this instance. */
@@ -33,19 +30,17 @@ export interface IWorkflowInstanceStore {
   }): Promise<void>;
   setAttemptNumber(workflowInstanceId: string, attemptNumber: number): Promise<void>;
   list(opts?: {
+    workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     limit?: number;
     offset?: number;
-    actor?: ActorContext;
-    scope?: WorkflowInstanceListScope;
     provider?: string;
   }): Promise<WorkflowInstance[]>;
   count(opts?: {
+    workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
-    actor?: ActorContext;
-    scope?: WorkflowInstanceListScope;
     provider?: string;
   }): Promise<number>;
 }

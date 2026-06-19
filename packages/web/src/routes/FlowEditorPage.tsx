@@ -14,13 +14,11 @@ import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
 function canEditFlow(
-  flow: Workflow,
+  _flow: Workflow,
   ctx: { userId: string | null; orgId: string; role: string; isPlatformAdmin: boolean },
 ): boolean {
-  if (ctx.isPlatformAdmin) return true;
-  if (flow.scope === "global") return false;
-  if (flow.scope === "org") return ctx.role === "admin" && flow.orgId === ctx.orgId;
-  return flow.ownerUserId === ctx.userId;
+  // TODO(phase 3): use workspace membership to determine editability
+  return ctx.isPlatformAdmin || ctx.role === "admin";
 }
 
 export function FlowEditorPage() {
@@ -193,7 +191,7 @@ export function FlowEditorPage() {
             padding: "8px 12px", marginBottom: 12,
             background: "rgb(var(--color-warning) / 0.18)", border: "1px solid rgb(var(--color-warning) / 1)", borderRadius: 4,
           }}>
-            This is a {flow.scope} template. <button onClick={onClone}>Clone to my flows</button> to make changes.
+            This flow is read-only. <button onClick={onClone}>Clone to my flows</button> to make changes.
           </div>
         )}
         <div style={{ flex: 1, minHeight: 0 }}>

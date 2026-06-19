@@ -22,7 +22,7 @@ export function RunDetailPage() {
     enabled: !!id,
   });
 
-  const isViewer = detailQ.data?.workflowInstance.effectiveRole === "viewer";
+  const isViewer = false; // TODO(phase 3): derive from workspace membership
 
   useEffect(() => {
     if (!id || !detailQ.data) return;

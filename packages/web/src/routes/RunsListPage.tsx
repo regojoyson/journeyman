@@ -2,20 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WorkflowInstancesList, type WorkflowInstanceFilter } from "@journeyman/runs-list";
-import type { Workflow, WorkflowInstance, WorkflowInputDef, WorkflowInstanceListScope } from "@journeyman/core";
+import type { Workflow, WorkflowInstance, WorkflowInputDef } from "@journeyman/core";
 import { getStartWorkflowInputs } from "@journeyman/core";
 import { listRunsPaged, rerunRun } from "../api/runs.ts";
 import { getCurrentWorkflowVersion, listFlows, runFlow } from "../api/flows.ts";
 import { RunSubmittedToast } from "../components/RunSubmittedToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 
-const SCOPE_LABELS: Record<string, string> = { user: "Personal", org: "Org", global: "Global" };
-
-function scopeBadgeStyle(scope: string): React.CSSProperties {
-  if (scope === "org") return { background: "rgba(37,99,235,0.18)", color: "rgb(var(--color-info) / 1)", border: "1px solid rgba(37,99,235,0.4)" };
-  if (scope === "global") return { background: "rgba(124,58,237,0.18)", color: "rgb(var(--color-accent) / 1)", border: "1px solid rgba(124,58,237,0.4)" };
-  return { background: "rgba(107,114,128,0.18)", color: "rgb(var(--color-text) / 1)", border: "1px solid rgba(107,114,128,0.4)" };
-}
 
 interface NewRunDialogProps {
   onClose: () => void;
@@ -68,15 +61,8 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
     onError: (err: unknown) => setError(err instanceof Error ? err.message : "Failed to start run."),
   });
 
-  const flows: Workflow[] = (flowsQ.data ?? []).filter(
-    f => f.status === "ready" && (isPlatformAdmin || f.scope !== "global"),
-  );
-
-  const grouped = {
-    user: flows.filter(f => f.scope === "user"),
-    org: flows.filter(f => f.scope === "org"),
-    global: flows.filter(f => f.scope === "global"),
-  };
+  const flows: Workflow[] = (flowsQ.data ?? []).filter(f => f.status === "ready");
+  void isPlatformAdmin; // TODO(phase 3): filter by workspace access
 
   const missingRequired = dynamicDefs
     .filter(d => d.required && !dynValues[d.name]?.trim())
@@ -104,26 +90,10 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
             style={{ width: "100%", background: "rgb(var(--color-bg) / 1)", border: "1px solid rgb(var(--color-border) / 1)", color: "rgb(var(--color-text) / 1)", padding: "8px 10px", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }}
           >
             <option value="">— select a workflow —</option>
-            {(["user", "org", "global"] as const).map(scope =>
-              grouped[scope].length > 0 && (
-                <optgroup key={scope} label={SCOPE_LABELS[scope]}>
-                  {grouped[scope].map(f => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </optgroup>
-              ),
-            )}
+            {flows.map(f => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
           </select>
-          {flowId && (() => {
-            const f = flows.find(x => x.id === flowId);
-            return f ? (
-              <span style={{
-                display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 600,
-                padding: "2px 7px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.04em",
-                ...scopeBadgeStyle(f.scope),
-              }}>{SCOPE_LABELS[f.scope]}</span>
-            ) : null;
-          })()}
         </label>
 
         {/* Dynamic inputs from flow definition */}
@@ -182,7 +152,7 @@ function NewRunDialog({ onClose, onSubmitted }: NewRunDialogProps) {
 
 export function RunsListPage() {
   const [filter, setFilter] = useState<WorkflowInstanceFilter>({});
-  const [scope, setScope] = useState<WorkflowInstanceListScope>("mine");
+  const [scope, setScope] = useState<"mine" | "org" | "all">("mine");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [showDialog, setShowDialog] = useState(false);
@@ -192,14 +162,14 @@ export function RunsListPage() {
   const auth = useAuth();
 
   const handleFilterChange = (next: WorkflowInstanceFilter) => { setFilter(next); setPage(1); };
-  const handleScopeChange = (s: WorkflowInstanceListScope) => { setScope(s); setPage(1); };
+  const handleScopeChange = (s: "mine" | "org" | "all") => { setScope(s); setPage(1); };
   const handlePageSizeChange = (n: number) => { setPageSize(n); setPage(1); };
 
   const q = useQuery({
     queryKey: ["runs", filter, scope, page, pageSize],
     queryFn: () => listRunsPaged({
       status: filter.status, workflowId: filter.workflowId, provider: filter.provider,
-      scope, page, pageSize,
+      page, pageSize,
     }),
     refetchInterval: 4000,
   });

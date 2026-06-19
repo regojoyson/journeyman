@@ -8,13 +8,11 @@ import { Pagination } from "@journeyman/runs-list";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
 function canEditFlow(
-  flow: Workflow,
+  _flow: Workflow,
   ctx: { userId: string; orgId: string; role: string; isPlatformAdmin: boolean },
 ): boolean {
-  if (ctx.isPlatformAdmin) return true;
-  if (flow.scope === "global") return false;
-  if (flow.scope === "org") return ctx.role === "admin" && flow.orgId === ctx.orgId;
-  /* user */ return flow.ownerUserId === ctx.userId;
+  // TODO(phase 3): use workspace membership to determine editability
+  return ctx.isPlatformAdmin || ctx.role === "admin";
 }
 
 export function FlowsListPage() {
@@ -29,15 +27,11 @@ export function FlowsListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  async function fetchFlows(scope: typeof scopeFilter, p: number, ps: number) {
+  async function fetchFlows(_scope: typeof scopeFilter, p: number, ps: number) {
     setLoading(true);
     setError(null);
     try {
-      const data = await listFlowsPaged({
-        scope: scope === "all" ? undefined : scope,
-        page: p,
-        pageSize: ps,
-      });
+      const data = await listFlowsPaged({ page: p, pageSize: ps });
       setFlows(data.workflows);
       setTotal(data.total);
     } catch (e) {
@@ -105,19 +99,6 @@ export function FlowsListPage() {
   const filterLabel = (s: typeof scopeFilter) =>
     s === "user" ? "Mine" : s === "org" ? "Organization" : s === "global" ? "Global" : "All";
 
-  const scopeBadge = (scope: Workflow["scope"]) => {
-    const cls =
-      scope === "global"
-        ? "bg-accent/10 text-foreground border-violet-800/60"
-        : scope === "org"
-        ? "bg-info/10 text-info border-blue-800/60"
-        : "bg-slate-800/60 text-slate-300 border-slate-700";
-    return (
-      <span className={`ml-2 inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
-        {scope}
-      </span>
-    );
-  };
 
   const statusBadge = (status: Workflow["status"]) => {
     const cls = status === "ready"
@@ -190,7 +171,6 @@ export function FlowsListPage() {
                     <tr key={f.id} className="hover:bg-surface-hover">
                       <td className="px-6 py-3 text-slate-100 font-medium">
                         {f.name}
-                        {scopeBadge(f.scope)}
                       </td>
                       <td className="px-6 py-3">{statusBadge(f.status)}</td>
                       <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
@@ -216,18 +196,6 @@ export function FlowsListPage() {
                                 onClick={() => handleDelete(f)}
                                 className="text-danger hover:text-danger"
                               >Delete</button>
-                              {f.scope === "user" && (
-                                <button
-                                  onClick={() => handlePromote(f, "org")}
-                                  className="text-warning hover:text-warning"
-                                >Promote → Org</button>
-                              )}
-                              {(f.scope === "org" || f.scope === "user") && (
-                                <button
-                                  onClick={() => handlePromote(f, "global")}
-                                  className="text-foreground hover:text-foreground"
-                                >Promote → Global</button>
-                              )}
                             </>
                           ) : (
                             <>

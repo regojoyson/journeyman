@@ -57,8 +57,6 @@ export { rerunFromExisting } from "./actions/rerun.ts";
 export { forkFromWorkflowInstance } from "./actions/fork.ts";
 export type { RerunDeps, RerunResult } from "./actions/rerun.ts";
 export type { ForkDeps } from "./actions/fork.ts";
-export { PostgresWorkflowGrantsStore } from "./stores/postgres/postgres-flow-grants-store.ts";
-export { PostgresWorkflowInstanceGrantsStore } from "./stores/postgres/postgres-workflow-instance-grants-store.ts";
 export { PostgresWebhookEventStore } from "./stores/postgres/postgres-webhook-event-store.ts";
 export { PostgresWebhookStore } from "./stores/postgres/postgres-webhook-store.ts";
 export { PostgresWorkflowTriggerStore } from "./stores/postgres/postgres-workflow-trigger-store.ts";

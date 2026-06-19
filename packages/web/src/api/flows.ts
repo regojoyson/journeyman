@@ -43,14 +43,8 @@ export async function unpublishFlow(
   }
 }
 
-export async function listFlows(
-  filter?: { scope?: "user" | "org" | "global"; orgId?: string },
-): Promise<Workflow[]> {
-  const params = new URLSearchParams();
-  if (filter?.scope) params.set("scope", filter.scope);
-  if (filter?.orgId) params.set("orgId", filter.orgId);
-  const qs = params.toString();
-  const res = await api<{ workflows: Workflow[] }>(`/api/workflows${qs ? `?${qs}` : ""}`);
+export async function listFlows(): Promise<Workflow[]> {
+  const res = await api<{ workflows: Workflow[] }>("/api/workflows");
   return res.workflows;
 }
 
@@ -62,14 +56,10 @@ export interface PagedFlows {
 }
 
 export async function listFlowsPaged(args: {
-  scope?: "user" | "org" | "global";
-  orgId?: string;
   page: number;
   pageSize: number;
 }): Promise<PagedFlows> {
   const params = new URLSearchParams();
-  if (args.scope) params.set("scope", args.scope);
-  if (args.orgId) params.set("orgId", args.orgId);
   params.set("page", String(args.page));
   params.set("page_size", String(args.pageSize));
   return await api<PagedFlows>(`/api/workflows?${params.toString()}`);
@@ -86,8 +76,6 @@ export async function getFlow(id: string): Promise<Workflow | null> {
 }
 
 export async function createFlow(args: {
-  scope: "user" | "org" | "global";
-  orgId?: string;
   name: string;
   description?: string;
   definition: WorkflowGraph;

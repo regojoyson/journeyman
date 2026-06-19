@@ -257,7 +257,7 @@ export function FlowEditor(props: FlowEditorProps) {
           <CreateFlowWizard
             mode="edit"
             initialGraph={heal.healed}
-            initialMeta={{ name: props.flowName, description: "", scope: "user" }}
+            initialMeta={{ name: props.flowName, description: "" }}
             orgId={props.orgId}
             readOnly={effectiveReadOnly}
             onSave={(graph) => { props.onChange(graph); setSetupOpen(false); }}

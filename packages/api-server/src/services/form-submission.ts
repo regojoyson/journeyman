@@ -137,7 +137,7 @@ export async function submitForm(
     workflowId: args.workflow.id,
     workflowVersionId: args.version.id,
     workflowNameSnapshot: args.workflow.name,
-    workflowScopeSnapshot: args.workflow.scope,
+    workspaceId: args.workflow.workspaceId,
     definitionSnapshot: args.version.definition,
     inputs: coerced,
     startedByUserId: args.submittedByUserId,

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agent-cage vs Journeyman — Competitive Analysis</title>
+<style>
+  :root{
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --line:#2a2f3a;
+    --txt:#e7e9ee; --muted:#a2a8b4; --faint:#727a88;
+    --accent:#7f77dd; --teal:#1d9e75; --amber:#ba7517; --red:#e24b4a; --blue:#378add;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.65;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 80px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:15px;margin:0 0 4px}
+  .date{color:var(--faint);font-size:13px;margin:0 0 36px;font-family:var(--mono)}
+  h2{font-size:20px;font-weight:600;margin:48px 0 14px;letter-spacing:-.01em;
+    padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;font-weight:600;margin:24px 0 8px;color:var(--txt)}
+  p{margin:0 0 14px;color:var(--txt)}
+  .muted{color:var(--muted)}
+  code{font-family:var(--mono);font-size:.86em;background:var(--surface2);padding:2px 6px;
+    border-radius:5px;color:#cfd3dc}
+  pre{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;
+    overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;color:#cfd3dc;margin:0 0 16px}
+  .verdict{background:linear-gradient(180deg,var(--surface),var(--surface));
+    border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;
+    padding:20px 22px;margin:0 0 8px}
+  .verdict .label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);
+    font-weight:600;margin-bottom:6px}
+  .verdict strong{color:#fff}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0 18px;display:block;overflow-x:auto}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--faint);font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  td:first-child{color:var(--muted);white-space:nowrap}
+  .j{color:#b3aef0;font-weight:500}
+  .c{color:#8fd9bf;font-weight:500}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 18px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .axis{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+  .axis h4{margin:0 0 4px;font-size:15px}
+  .axis .who{font-size:12px;font-family:var(--mono);margin-bottom:10px}
+  .tag{display:inline-block;font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:20px;
+    border:1px solid var(--line);margin:0 4px 4px 0}
+  .tag.win{color:#8fd9bf;border-color:#1d9e7555;background:#1d9e7515}
+  .tag.gap{color:#f0a3a2;border-color:#e24b4a55;background:#e24b4a15}
+  ul{margin:0 0 16px;padding-left:22px}
+  li{margin:0 0 7px}
+  .pill{font-size:11px;font-family:var(--mono);padding:1px 7px;border-radius:5px}
+  .pill.good{background:#1d9e7520;color:#8fd9bf}
+  .pill.bad{background:#e24b4a20;color:#f0a3a2}
+  .step{display:flex;gap:14px;margin:0 0 14px}
+  .step .n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--surface2);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+  .step .body{flex:1}
+  .step .body b{font-weight:600}
+  .src{font-size:13px;color:var(--muted)}
+  .src a{color:var(--blue);text-decoration:none}
+  .src a:hover{text-decoration:underline}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>agent-cage vs Journeyman</h1>
+  <p class="sub">Competitive analysis — what to build better, why Journeyman wins, and the recommended path</p>
+  <p class="date">2026-06-19 · pnnl/agent-cage vs @journeyman/sandbox</p>
+
+  <div class="verdict">
+    <div class="label">Bottom line</div>
+    <p style="margin:0">They aren't competitors on the same axis. Journeyman owns <strong>compute isolation + orchestration</strong>; agent-cage owns the one thing we lack — <strong>network egress governance</strong>. Don't adopt their prototype. <strong>Build a native egress layer</strong> into our Docker backend, borrowing their proven proxy + allowlist + audit pattern.</p>
+  </div>
+
+  <h2>The two axes that matter</h2>
+  <p class="muted">Every agent-sandbox product sits on two independent axes. We win one; agent-cage wins the other — and the other is our gap.</p>
+  <div class="grid2">
+    <div class="axis">
+      <h4>1 · Compute isolation</h4>
+      <div class="who muted">where the agent runs</div>
+      <span class="tag win">Journeyman — strong</span>
+      <span class="tag">agent-cage — basic</span>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">Per-run containers, named volumes, CPU/mem limits, pluggable backends, managed image builds.</p>
+    </div>
+    <div class="axis">
+      <h4>2 · Egress governance</h4>
+      <div class="who muted">what the agent can reach</div>
+      <span class="tag gap">Journeyman — missing</span>
+      <span class="tag win">agent-cage — strong</span>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">Domain allow/deny, HTTP-method filter, TLS inspection, per-request audit log.</p>
+    </div>
+  </div>
+
+  <h2>The gap, proven from our code</h2>
+  <p>Our entire network model is one line in <code>docker-execution-environment.ts:52</code>:</p>
+  <pre>const network = config["network"] === "none"
+  ? ("none")
+  : (spec.network ?? ("full"));   // default = full</pre>
+  <p>When <code>"full"</code>, no <code>NetworkMode</code> is set, so the container joins the default bridge with <strong>unrestricted outbound internet</strong>. The model is binary, and the default is the open end:</p>
+  <table>
+    <tr><th>Setting</th><th>Behavior</th><th>Consequence</th></tr>
+    <tr><td><code>"full"</code> <span class="pill bad">default</span></td><td>Unrestricted egress to the whole internet</td><td>Agent can exfiltrate code/secrets anywhere. No record of what it contacted.</td></tr>
+    <tr><td><code>"none"</code></td><td>Loopback only</td><td>Breaks pip / npm / apt / git — box becomes useless.</td></tr>
+  </table>
+  <p class="muted">A full grep for <code>HTTP_PROXY</code> / proxy / CoreDNS / allowlist across sandbox, agent-runtime and core returns nothing. There is no middle ground — exactly the gap agent-cage exists to fill.</p>
+
+  <h2>Head-to-head</h2>
+  <table>
+    <tr><th>Dimension</th><th class="j">Journeyman</th><th class="c">agent-cage</th></tr>
+    <tr><td>Primary strength</td><td>Compute isolation + orchestration</td><td>Network egress governance</td></tr>
+    <tr><td>Backends</td><td>local, docker, windows (+planned ecs/k8s)</td><td>single Docker container</td></tr>
+    <tr><td>Per-run isolation</td><td>container + named volume per run</td><td>one shared container</td></tr>
+    <tr><td>Resource limits</td><td>CPU + memory</td><td>none documented</td></tr>
+    <tr><td>Network model</td><td><span class="pill bad">binary on/off</span></td><td><span class="pill good">allowlist + method filter</span></td></tr>
+    <tr><td>Egress audit</td><td>none</td><td>full per-request log</td></tr>
+    <tr><td>Image lifecycle</td><td>build loop, fingerprint, lease concurrency</td><td>none</td></tr>
+    <tr><td>Multi-tenancy</td><td>org/system scope, many concurrent runs</td><td>single-operator</td></tr>
+    <tr><td>Durable execution</td><td>Conductor, retries, pause/resume</td><td>none</td></tr>
+    <tr><td>Maturity</td><td>production-pattern</td><td>self-declared research prototype</td></tr>
+  </table>
+
+  <h2>Why Journeyman is better</h2>
+  <ul>
+    <li><b>It's a platform, not a demo.</b> Multi-backend, multi-tenant orchestration with durable execution vs one container + a dashboard.</li>
+    <li><b>Real per-run isolation.</b> Each run gets its own container + volume + limits + a reaper for orphans.</li>
+    <li><b>Managed image lifecycle.</b> Fingerprinting, lease-based concurrency, crash recovery, registry pull/push — agent-cage has none.</li>
+    <li><b>Pluggable by design.</b> <code>IExecutionEnvironment</code> lets us add ecs/k8s/firecracker without touching callers.</li>
+    <li><b>Native coding-agent protocol.</b> The runner ships into the box and speaks structured JSON — typed results, not scraped terminal output.</li>
+  </ul>
+
+  <h2>What we can implement better</h2>
+  <p class="muted">Their idea is right; their execution is a prototype. We can do it better because we already own the orchestration spine.</p>
+  <ul>
+    <li><b>Egress policy as first-class config</b> — extend <code>network</code> to accept <code>{ mode:"allowlist", allow:[...], denyByDefault:true }</code>, per-sandbox / per-org.</li>
+    <li><b>Per-run proxy sidecar</b> (not one shared proxy) on a private network; inject <code>HTTP_PROXY</code> into the runner. Policy isolated per tenant.</li>
+    <li><b>DNS lockdown by default</b> — controlled resolver answers only allowlisted names; closes the IP-literal bypass.</li>
+    <li><b>Audit against the run model</b> — every blocked/allowed request keyed to <code>runId</code>, surfaced through existing admin routes (agent-cage can't — it has no run model).</li>
+    <li><b>Ship the hardening they only recommend</b> — non-root runner, dropped caps, seccomp, path to gVisor/Kata/Firecracker.</li>
+  </ul>
+
+  <h2>Field context</h2>
+  <table>
+    <tr><th>Product</th><th>Isolation</th><th>Egress governance</th></tr>
+    <tr><td>E2B</td><td>Firecracker microVM (own kernel, GPU)</td><td><span class="pill bad">none built-in</span></td></tr>
+    <tr><td>Daytona</td><td>Docker + gVisor</td><td><span class="pill bad">none built-in</span></td></tr>
+    <tr><td>agent-infra/sandbox</td><td>single container (seccomp off)</td><td><span class="pill bad">none</span></td></tr>
+    <tr><td>agent-cage</td><td>single container</td><td><span class="pill good">strong</span></td></tr>
+    <tr><td class="j">Journeyman</td><td>per-run container + limits, pluggable</td><td><span class="pill bad">gap</span></td></tr>
+  </table>
+  <p class="muted">The whole field competes on compute isolation. Almost nobody ships egress governance — agent-cage is the outlier. Add a native egress layer and we'd pair orchestration leadership with a security capability E2B and Daytona lack out of the box.</p>
+
+  <h2>Recommendation — which one to go with</h2>
+  <div class="verdict" style="border-left-color:var(--teal)">
+    <div class="label" style="color:#8fd9bf">Go with</div>
+    <p style="margin:0">Build the <strong>native egress-governance layer</strong>. Do <strong>not</strong> adopt or wrap agent-cage in production — it's a single-container prototype with no multi-tenancy, durable execution, or image lifecycle. Borrow its pattern; own the implementation.</p>
+  </div>
+  <div style="margin-top:22px">
+    <div class="step"><div class="n">1</div><div class="body"><b>Spike</b> — stand up agent-cage for an afternoon, study its <code>coding-agent</code> preset + mitmproxy rules. Keep the allowlist shape, discard the rest.</div></div>
+    <div class="step"><div class="n">2</div><div class="body"><b>MVP</b> — per-run egress-proxy sidecar + <code>HTTP_PROXY</code> injection + allowlist config; default allow = package registries + configured git host.</div></div>
+    <div class="step"><div class="n">3</div><div class="body"><b>Harden</b> — DNS lockdown, non-root runner, capability drops, seccomp.</div></div>
+    <div class="step"><div class="n">4</div><div class="body"><b>Audit</b> — egress log keyed to <code>runId</code>, surfaced via existing admin routes.</div></div>
+    <div class="step"><div class="n">5</div><div class="body"><b>Future</b> — Firecracker/gVisor backend for kernel-level isolation to match E2B/Daytona on the compute axis.</div></div>
+  </div>
+
+  <hr>
+  <p class="src"><b>Sources:</b>
+    <a href="https://github.com/pnnl/agent-cage">pnnl/agent-cage</a> ·
+    <a href="https://github.com/agent-infra/sandbox">agent-infra/sandbox</a> ·
+    <a href="https://northflank.com/blog/daytona-vs-e2b-ai-code-execution-sandboxes">Daytona vs E2B (Northflank)</a> ·
+    <a href="https://www.spheron.network/blog/ai-agent-code-execution-sandbox-e2b-daytona-firecracker/">E2B/Daytona/Firecracker (Spheron)</a> ·
+    Journeyman source: <code>packages/sandbox/src/backends/docker/</code>
+  </p>
+
+</div>
+</body>
+</html>

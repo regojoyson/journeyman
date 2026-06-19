@@ -4,7 +4,6 @@ import type {
   WorkflowInputDef,
   WorkflowAttributeDef,
   WorkflowDefaults,
-  WorkflowScope,
 } from "@journeyman/core";
 import {
   type WizardMode,
@@ -30,8 +29,6 @@ export interface CreateFlowWizardProps {
   initialGraph?: WorkflowGraph;
   /** edit mode: meta to seed (only `name` is shown anywhere in edit mode). */
   initialMeta?: WizardMeta;
-  /** create mode: scopes the user may choose. Defaults to ["user"]. */
-  allowedScopes?: WorkflowScope[];
   /** Active org id — required for the sandbox picker to load options. */
   orgId?: string;
   readOnly?: boolean;
@@ -53,11 +50,10 @@ const STEP_TITLES: Record<WizardStepId, string> = {
 
 export function CreateFlowWizard(props: CreateFlowWizardProps): JSX.Element {
   const { mode, readOnly, busy } = props;
-  const allowedScopes = props.allowedScopes ?? ["user"];
 
   const [draft, setDraft] = useState<WizardDraft>(() =>
     mode === "edit" && props.initialGraph
-      ? draftFromGraph(props.initialGraph, props.initialMeta ?? { name: "", description: "", scope: "user" })
+      ? draftFromGraph(props.initialGraph, props.initialMeta ?? { name: "", description: "" })
       : createDraft(),
   );
 
@@ -102,7 +98,6 @@ export function CreateFlowWizard(props: CreateFlowWizardProps): JSX.Element {
           {step === "basics" && (
             <BasicDetailsStep
               meta={draft.meta}
-              allowedScopes={allowedScopes}
               onChange={setMeta}
               onReplaceGraph={replaceGraph}
             />

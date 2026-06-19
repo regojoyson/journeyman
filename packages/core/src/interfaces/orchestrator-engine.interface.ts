@@ -5,11 +5,12 @@ export interface SubmitWorkflowInstanceArgs {
   workflowId: string | null;
   workflowVersionId: string | null;
   workflowNameSnapshot: string;
-  workflowScopeSnapshot: "user" | "org" | "global";
+  /** Workspace this instance runs under (snapshotted on the instance). */
+  workspaceId: string | null;
   definitionSnapshot: WorkflowGraph;
   inputs: Record<string, unknown>;
   startedByUserId: string | null;
-  /** Caller's org at instance-start. Null when the caller has no org context. */
+  /** Caller's org at instance-start; threaded to workers for org-tier resolution. Null when no org context. */
   startedByOrgId: string | null;
   /** How this instance was started; defaults to "manual" if omitted by the caller. */
   triggerSource?: "manual" | "webhook" | "schedule" | "api" | "human";

@@ -22,7 +22,7 @@ describe("seedDefaults", () => {
 describe("createDraft", () => {
   it("starts from a blank graph (start + end) with seeded defaults and default meta", () => {
     const draft = createDraft();
-    expect(draft.meta).toEqual({ name: "New flow", description: "", scope: "user" });
+    expect(draft.meta).toEqual({ name: "New flow", description: "" });
     expect(draft.graph.nodes.map(n => n.type).sort()).toEqual(["end", "trigger-manual"]);
     expect(draft.graph.defaults?.executorConfig?.["coding-cli"]?.provider).toBe("claude");
   });
@@ -36,7 +36,7 @@ describe("draftFromGraph", () => {
       edges: [],
       inputDefs: [{ name: "a", type: "string", required: true }],
     } as unknown as WorkflowGraph;
-    const draft = draftFromGraph(source, { name: "Existing", description: "", scope: "org" });
+    const draft = draftFromGraph(source, { name: "Existing", description: "" });
     draft.graph.inputDefs!.push({ name: "b", type: "string" });
     expect(source.inputDefs).toHaveLength(1);
     expect(draft.meta.name).toBe("Existing");
@@ -93,7 +93,6 @@ describe("buildCreateArgs", () => {
     const args = buildCreateArgs(draft);
     expect(args.name).toBe("Ship it");
     expect(args.description).toBeUndefined();
-    expect(args.scope).toBe("user");
     expect(args.definition).toBe(draft.graph);
   });
 });

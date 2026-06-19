@@ -26,13 +26,14 @@ export async function forkFromWorkflowInstance(
     ? ((await deps.workflowVersions.getById(instance.workflowVersionId))?.definition ?? instance.definitionSnapshot)
     : instance.definitionSnapshot;
 
+  if (!instance.workspaceId) {
+    throw new Error(`Cannot fork instance ${originalWorkflowInstanceId}: no workspace`);
+  }
   const name = opts.name ?? `Fork of instance ${originalWorkflowInstanceId.slice(0, 8)}`;
   return await deps.workflows.create({
-    scope: instance.workflowScopeSnapshot,
-    orgId: null,
+    workspaceId: instance.workspaceId,
     name,
     description: `Forked from workflow instance ${originalWorkflowInstanceId}.`,
-    ownerUserId: opts.ownerUserId ?? instance.startedByUserId ?? null,
     initialDefinition: definition,
     createdByUserId: opts.createdByUserId ?? instance.startedByUserId ?? null,
   });

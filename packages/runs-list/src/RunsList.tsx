@@ -99,7 +99,7 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                         || r.workflowNameSnapshot
                         || (r.workflowVersionId ? r.workflowVersionId.slice(0, 8) : "—")}
                     </td>
-                    <td><span className={`je-badge je-badge--scope-${r.workflowScopeSnapshot}`}>{r.workflowScopeSnapshot}</span></td>
+                    <td></td>
                     {scope !== "mine" && (
                       <td style={{ color: "rgb(var(--color-text-muted) / 1)", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
                         {r.startedByUserId ? r.startedByUserId.slice(0, 8) : "—"}

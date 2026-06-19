@@ -16,7 +16,6 @@ export function ReviewStep({ mode, meta, graph }: ReviewStepProps): JSX.Element 
       {mode === "create" && (
         <dl className="je-wizard__summary">
           <dt>Name</dt><dd>{meta.name || "—"}</dd>
-          <dt>Scope</dt><dd>{meta.scope}</dd>
         </dl>
       )}
       <dl className="je-wizard__summary">

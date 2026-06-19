@@ -1,5 +1,5 @@
 import type {
-  BuildPlan, CustomAiStepCreateInput, WorkflowScope, CreateWorkflowArgs,
+  BuildPlan, CustomAiStepCreateInput, CreateWorkflowArgs,
 } from "@journeyman/core";
 import { rewriteCustomStepIds } from "./rewrite.ts";
 
@@ -18,9 +18,6 @@ export interface ApplyDeps {
 export interface ApplyArgs {
   plan: BuildPlan;
   workflowName: string;
-  scope: WorkflowScope;          // "user" | "org" | "global"
-  orgId: string | null;
-  userId: string | null;
   createdBy: string | null;
   workspaceId: string;
 }
@@ -59,13 +56,9 @@ export async function applyBuildPlan(deps: ApplyDeps, args: ApplyArgs): Promise<
     const definition = rewriteCustomStepIds(plan.workflow, placeholderToRealId);
 
     // 3. Create the draft workflow (draft is the DB default — never publish).
-    const ownerUserId = args.scope === "user" ? args.userId : null;
-    const orgId = args.scope === "global" ? null : args.orgId;
     const { workflowId, versionId } = await deps.createWorkflow({
-      scope: args.scope,
+      workspaceId: args.workspaceId,
       name: args.workflowName,
-      orgId,
-      ownerUserId,
       initialDefinition: definition,
       createdByUserId: args.createdBy,
     });

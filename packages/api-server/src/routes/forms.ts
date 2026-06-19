@@ -7,14 +7,14 @@ export function registerFormRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
 
   // Inventory: every published, visible workflow with a trigger-human node.
+  // TODO(forms phase 3): accept ?workspace_id= query param to list forms across
+  // workspace. For now, requires a workspace context from requireWorkspacePermission.
   app.get("/me/forms", { preHandler: requireAuth() }, async (req) => {
     const ctx = req.runContext!;
-    const workflows = await c.workflows.list({
-      callerUserId: ctx.user.id,
-      callerOrgId: ctx.org.id,
-      callerIsPlatformAdmin: ctx.isPlatformAdmin,
-      callerIsOrgAdmin: ctx.role === "admin",
-    });
+    const workspaceId = ctx.workspace?.id;
+    if (!workspaceId) return { forms: [] };
+
+    const workflows = await c.workflows.list({ workspaceId });
 
     const out: Array<{ workflowId: string; name: string; title: string }> = [];
     for (const wf of workflows) {

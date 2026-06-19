@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { WorkflowGraph, WorkflowScope } from "@journeyman/core";
+import type { WorkflowGraph } from "@journeyman/core";
 import type { WizardMeta } from "../wizard-state.ts";
 
 export interface BasicDetailsStepProps {
   meta: WizardMeta;
-  allowedScopes: WorkflowScope[];
   onChange: (next: WizardMeta) => void;
   /** Replace the draft graph from an uploaded definition (Blank keeps the seeded one). */
   onReplaceGraph: (graph: WorkflowGraph) => void;
@@ -27,10 +26,7 @@ function parseFlowJson(text: string): WorkflowGraph {
   return obj as unknown as WorkflowGraph;
 }
 
-const scopeLabel = (s: WorkflowScope): string =>
-  s === "user" ? "Personal (only me)" : s === "org" ? "Organization" : "Global (all orgs)";
-
-export function BasicDetailsStep({ meta, allowedScopes, onChange, onReplaceGraph }: BasicDetailsStepProps): JSX.Element {
+export function BasicDetailsStep({ meta, onChange, onReplaceGraph }: BasicDetailsStepProps): JSX.Element {
   const [source, setSource] = useState<"blank" | "upload">("blank");
   const [uploadName, setUploadName] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -61,15 +57,6 @@ export function BasicDetailsStep({ meta, allowedScopes, onChange, onReplaceGraph
         value={meta.description}
         onChange={e => onChange({ ...meta, description: e.target.value })}
       />
-
-      <label className="je-wizard__label">Scope</label>
-      <select
-        className="je-wizard__input"
-        value={meta.scope}
-        onChange={e => onChange({ ...meta, scope: e.target.value as WorkflowScope })}
-      >
-        {allowedScopes.map(s => <option key={s} value={s}>{scopeLabel(s)}</option>)}
-      </select>
 
       <label className="je-wizard__label">Start from</label>
       <div className="je-wizard__source">

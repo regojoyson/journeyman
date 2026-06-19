@@ -7,13 +7,7 @@ import { useAuth } from "../AuthContext.tsx";
 export function NewFlowPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { role, isPlatformAdmin, activeOrgId } = useAuth();
-
-  const allowedScopes: ("user" | "org" | "global")[] = [
-    "user",
-    ...(role === "admin" || isPlatformAdmin ? (["org"] as const) : []),
-    ...(isPlatformAdmin ? (["global"] as const) : []),
-  ];
+  const { activeOrgId } = useAuth();
 
   const m = useMutation({
     mutationFn: (args: CreateFlowArgs) => createFlow(args),
@@ -27,7 +21,6 @@ export function NewFlowPage() {
   return (
     <CreateFlowWizard
       mode="create"
-      allowedScopes={allowedScopes}
       orgId={activeOrgId || undefined}
       busy={m.isPending}
       error={m.isError ? (m.error as Error).message : null}

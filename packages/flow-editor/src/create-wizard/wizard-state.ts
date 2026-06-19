@@ -1,7 +1,6 @@
 import type {
   WorkflowGraph,
   WorkflowDefaults,
-  WorkflowScope,
 } from "@journeyman/core";
 import { createBlankFlow } from "../state/flow-graph.ts";
 
@@ -11,7 +10,6 @@ export type WizardStepId = "basics" | "config" | "inputs" | "review";
 export interface WizardMeta {
   name: string;
   description: string;
-  scope: WorkflowScope;
 }
 
 export interface WizardDraft {
@@ -20,7 +18,6 @@ export interface WizardDraft {
 }
 
 export interface CreateFlowArgs {
-  scope: WorkflowScope;
   name: string;
   description?: string;
   definition: WorkflowGraph;
@@ -38,7 +35,7 @@ export function seedDefaults(): WorkflowDefaults {
 export function createDraft(): WizardDraft {
   const graph = createBlankFlow();
   return {
-    meta: { name: "New flow", description: "", scope: "user" },
+    meta: { name: "New flow", description: "" },
     graph: { ...graph, defaults: { ...seedDefaults(), ...(graph.defaults ?? {}) } },
   };
 }
@@ -82,7 +79,6 @@ export function inputNameWarnings(graph: WorkflowGraph): string[] {
 /** Build the argument object for the web `createFlow` API from a finished draft. */
 export function buildCreateArgs(draft: WizardDraft): CreateFlowArgs {
   return {
-    scope: draft.meta.scope,
     name: draft.meta.name.trim(),
     description: draft.meta.description.trim() || undefined,
     definition: draft.graph,

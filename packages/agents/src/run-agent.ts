@@ -11,7 +11,7 @@ export interface RunAgentDeps {
       workflowId: string | null;
       workflowVersionId: string | null;
       workflowNameSnapshot: string;
-      workflowScopeSnapshot: "user" | "org" | "global";
+      workspaceId: string | null;
       definitionSnapshot: ReturnType<typeof compileAgentToGraph>["graph"];
       inputs: Record<string, unknown>;
       startedByUserId: string | null;
@@ -40,7 +40,7 @@ export async function runAgent(
     workflowId: null,
     workflowVersionId: null,
     workflowNameSnapshot: agent.name,
-    workflowScopeSnapshot: agent.scope,
+    workspaceId: null, // TODO(agents cutover 2g): agents aren't workspace-scoped yet
     definitionSnapshot: compiled.graph,
     inputs: { ...compiled.inputs, agentId: agent.id },
     startedByUserId: startedBy.userId,

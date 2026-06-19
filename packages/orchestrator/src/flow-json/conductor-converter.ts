@@ -387,6 +387,7 @@ class ConvertCtx {
           workflowInstanceId: "${workflow.input.workflowInstanceId}",
           startedByUserId: "${workflow.input.startedByUserId}",
           startedByOrgId: "${workflow.input.startedByOrgId}",
+          workspaceId: "${workflow.input.workspaceId}",
           workflowId: "${workflow.input.workflowId}",
         };
       })(),
@@ -663,6 +664,7 @@ class ConvertCtx {
         workflowInstanceId: "${workflow.input.workflowInstanceId}",
         startedByUserId: "${workflow.input.startedByUserId}",
         startedByOrgId: "${workflow.input.startedByOrgId}",
+        workspaceId: "${workflow.input.workspaceId}",
         workflowId: "${workflow.input.workflowId}",
       },
     };

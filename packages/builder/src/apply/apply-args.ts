@@ -2,7 +2,7 @@ import type { BuildPlan } from "@journeyman/core";
 import type { BuilderSessionRecord } from "../types.ts";
 import type { ApplyArgs } from "./apply.ts";
 
-/** Derive executor ApplyArgs from a (user-scoped) builder session + auth context. */
+/** Derive executor ApplyArgs from a builder session + auth context. */
 export function buildApplyArgs(
   session: BuilderSessionRecord,
   ctx: { orgId: string; userId: string; workspaceId: string },
@@ -10,9 +10,6 @@ export function buildApplyArgs(
   return {
     plan: session.buildPlan as BuildPlan,
     workflowName: session.name,
-    scope: "user",
-    orgId: ctx.orgId,
-    userId: ctx.userId,
     createdBy: ctx.userId,
     workspaceId: ctx.workspaceId,
   };

@@ -4,8 +4,7 @@ import { createFlowBody } from "../schemas/flow.ts";
 import { createRunBody } from "../schemas/run.ts";
 import { updateFlowBody } from "../schemas/update-flow.ts";
 import { cloneFlowBody } from "../schemas/clone-flow.ts";
-import { promoteFlowBody } from "../schemas/promote-flow.ts";
-import type { WorkflowGraph, WorkflowScope, WorkflowInputValue, PublishError, ProposedCustomStep } from "@journeyman/core";
+import type { WorkflowGraph, PublishError, ProposedCustomStep } from "@journeyman/core";
 import { findManualTriggerNode } from "@journeyman/core";
 import {
   refreshTriggerIndexOnPublish,
@@ -15,28 +14,23 @@ import {
 import { ConductorJsonConverter, WorkflowValidationError } from "@journeyman/orchestrator";
 import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
 import { validateWorkflowInputs, type ValidationCatalog, validateForPublish } from "@journeyman/core";
-import { makeRequireAuth } from "@journeyman/identity";
+import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { getCustomAiStep } from "@journeyman/custom-steps";
 import { shapesFromProposedSteps } from "./proposed-custom-steps.ts";
 import { customStepToShape, type CustomStepShape } from "@journeyman/custom-steps/shape-adapter";
 import { listVisibleSecrets } from "@journeyman/secrets";
 import { listEnabledCodingModelsByProvider, findCodingModel } from "@journeyman/coding-models";
-import type { WorkflowSaveWarning, SecretBinding, SecretScope, SecretSlotDef } from "@journeyman/core";
+import type { WorkflowSaveWarning, SecretBinding, SecretSlotDef } from "@journeyman/core";
 import { PROVIDER_CATALOG, defaultProviderForKind, openCodeModelSlots } from "@journeyman/core";
 import { assertWorkflowReady } from "../services/assert-flow-ready.ts";
 
 /**
  * Compute non-blocking warnings about secret references in a flow definition.
  * Save proceeds regardless; warnings are attached to the response.
- *
- * Two warning shapes:
- *   - inaccessible_secrets: caller can't reach the referenced secret
- *   - cross_scope_pin: a slot is pinned to a narrower scope than the flow itself
  */
 async function computeSaveWarnings(
   c: Composition,
   ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>,
-  workflowScope: WorkflowScope,
   definition: WorkflowGraph,
 ): Promise<WorkflowSaveWarning[]> {
   if (!c.pool) return [];
@@ -45,7 +39,6 @@ async function computeSaveWarnings(
   const visibleNames = new Set(visible.map(v => v.name));
 
   const inaccessible = new Set<string>();
-  const crossScope: Array<{ nodeId: string; slot: string; pinnedScope: SecretScope; workflowScope: WorkflowScope }> = [];
   const orphans: Array<{ nodeId: string; slot: string }> = [];
 
   // Pre-load slot definitions for any custom-ai steps referenced by the workflow.
@@ -65,10 +58,6 @@ async function computeSaveWarnings(
   for (const node of definition.nodes) {
     const bindings = (node.secretBindings ?? {}) as Record<string, SecretBinding>;
 
-    // Build the declared-slot name set for orphan detection on custom-ai nodes.
-    // Union of:
-    //   1. DB custom step slots (per-definition, e.g. user-declared)
-    //   2. Provider catalog slots (executor-level, e.g. ANTHROPIC_API_KEY for coding-cli/claude)
     let declaredSlotNames: Set<string> | null = null;
     if (node.stepType === "custom-ai") {
       const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
@@ -80,9 +69,6 @@ async function computeSaveWarnings(
       const providerSlots = providerValue
         ? PROVIDER_CATALOG.find(p => p.kind === "coding-cli" && p.value === providerValue)?.slots ?? []
         : [];
-      // OpenCode models carry their required key on the model config (not the
-      // catalog). Resolve the effective model and include its slot so the mapped
-      // key isn't flagged as an orphan and the required key is enforced.
       let modelSlots: SecretSlotDef[] = [];
       if (providerValue === "opencode" || providerValue === "aisdk") {
         const effModel =
@@ -97,7 +83,6 @@ async function computeSaveWarnings(
         ...providerSlots.map(s => s.name),
         ...modelSlots.map(s => s.name),
       ]);
-      // Required-slot accessibility check for declared slots with NO binding entry yet.
       for (const slot of [...dbSlots, ...providerSlots, ...modelSlots]) {
         if (slot.optional) continue;
         if (bindings[slot.name] === undefined && !visibleNames.has(slot.name)) {
@@ -107,8 +92,6 @@ async function computeSaveWarnings(
     }
 
     for (const [slotName, binding] of Object.entries(bindings)) {
-      // Orphan binding (custom-ai only): slot exists in node config but
-      // is no longer declared on the step definition.
       if (declaredSlotNames && !declaredSlotNames.has(slotName)) {
         orphans.push({ nodeId: node.id, slot: slotName });
         continue;
@@ -121,30 +104,16 @@ async function computeSaveWarnings(
       if (!visibleByScopeName.has(`${binding.scope}:${binding.name}`)) {
         inaccessible.add(binding.name);
       }
-      if (isNarrowerScope(binding.scope, workflowScope)) {
-        crossScope.push({ nodeId: node.id, slot: slotName, pinnedScope: binding.scope, workflowScope });
-      }
     }
   }
 
   const warnings: WorkflowSaveWarning[] = [];
   if (inaccessible.size > 0) {
-    // Resolver lookup order at runtime: user scope → org scope → process-level globals
-    // (see packages/secrets/src/resolver.ts). These names aren't visible to the caller now,
-    // but a workflow instance can still succeed if any of those scopes provides them. If none does,
-    // the workflow instance fails with MissingSecretsError.
     warnings.push({
       code: "inaccessible_secrets",
       message:
-        "Workflow references secrets you can't see. At runtime they're resolved from your user scope, then the org scope, then global env. If none provides them, the workflow instance fails with MissingSecretsError.",
+        "Workflow references secrets you can't see. At runtime they're resolved from the workspace, then the org. If none provides them, the workflow instance fails with MissingSecretsError.",
       names: [...inaccessible].sort(),
-    });
-  }
-  if (crossScope.length > 0) {
-    warnings.push({
-      code: "cross_scope_pin",
-      message: "Some slots are pinned to a narrower scope than the workflow itself. Other runners won't see them.",
-      entries: crossScope,
     });
   }
   if (orphans.length > 0) {
@@ -196,25 +165,15 @@ async function computeSaveWarnings(
   return warnings;
 }
 
-function isNarrowerScope(pinned: SecretScope, workflow: WorkflowScope): boolean {
-  if (workflow === "user") return false;
-  if (workflow === "org") return pinned === "workspace";
-  /* global */ return pinned === "workspace" || pinned === "org";
-}
-
 export interface WorkflowValidationReport {
   ok: boolean;
-  errors: string[];                              // hard failures (graph structure, ref reachability)
-  missing: string[];                             // required inputs without a typed value or binding
-  warnings: string[];                            // refs to undeclared fields — non-blocking
-  secretWarnings: WorkflowSaveWarning[];         // inaccessible secret references — non-blocking
-  diagnostics: PublishError[];                   // structured diagnostics (code/summary/why/fixes) — rendered as cards; superset channel for richer errors
+  errors: string[];
+  missing: string[];
+  warnings: string[];
+  secretWarnings: WorkflowSaveWarning[];
+  diagnostics: PublishError[];
 }
 
-/** Pure function — does not mutate any reply. Returns the full report.
- *  `customStepShapes` maps a customStepId to its declared inputFields and
- *  outputSchema, so custom-ai nodes get per-instance validation on both
- *  consumer side (required fields) and source side (ref output resolution). */
 export function computeValidationReport(
   definition: WorkflowGraph,
   customStepShapes: Map<string, CustomStepShape> = new Map(),
@@ -247,7 +206,6 @@ export function computeValidationReport(
     return inputsByStep.get(node.stepType ?? "") ?? {};
   }
 
-  // Check 1: required input fields are satisfied (typed value or binding) on every step node.
   for (const node of definition.nodes) {
     if (node.type !== "step" || !node.stepType) continue;
     const declared = declaredInputsFor(node);
@@ -265,7 +223,6 @@ export function computeValidationReport(
     }
   }
 
-  // Check 1b: webhook triggers must map every required workflow input.
   for (const node of definition.nodes) {
     if (node.type !== "trigger-webhook") continue;
     const mapping = ((node.config ?? {}) as { inputsMapping?: Record<string, { fromPath?: string }> }).inputsMapping ?? {};
@@ -278,11 +235,6 @@ export function computeValidationReport(
     }
   }
 
-  // Check 2: shape-aware ref + binding validation (delegates to @journeyman/core).
-  // Walks every step node, validates each input against its catalog declaration:
-  // shape-mismatch, dangling-ref-node, dangling-ref-path, missing-input-shape.
-  // missing-required is already handled by Check 1 above (which produces a
-  // hard-blocking `missing[]` signal — keep that contract intact).
   const validationCatalog: ValidationCatalog = {};
   for (const entry of stepCatalog) {
     validationCatalog[entry.stepType] = {
@@ -290,10 +242,6 @@ export function computeValidationReport(
       outputSchema: entry.outputSchema,
     };
   }
-  // Per-customStepId overlay on the "custom-ai" entry. The core validator
-  // resolves a node's effective inputFields/outputSchema by checking
-  // customSteps[customStepId] on both the consumer side and source side
-  // (refs into a custom-ai node's output). No stepType rewrite needed.
   if (customStepShapes.size > 0) {
     const existing = validationCatalog["custom-ai"] ?? {};
     const customSteps: NonNullable<ValidationCatalog[string]["customSteps"]> = { ...(existing.customSteps ?? {}) };
@@ -313,7 +261,7 @@ export function computeValidationReport(
   }
   const inputWarnings = validateWorkflowInputs(definition, validationCatalog);
   for (const w of inputWarnings) {
-    if (w.code === "missing-required") continue; // already in `missing[]` via Check 1
+    if (w.code === "missing-required") continue;
     warnings.push(w.message);
   }
 
@@ -343,15 +291,9 @@ async function loadCustomStepShapes(
       if (step) map.set(id, customStepToShape(step));
     }
   }
-  // Merge not-yet-persisted proposed steps (no DB write); they fill their placeholder ids.
   for (const [id, shape] of shapesFromProposedSteps(proposed)) map.set(id, shape);
   return map;
 }
-
-import {
-  canCreateAtScope, canDelete, canEdit, canPromoteTo, canRead,
-  type Caller,
-} from "../services/flow-access.ts";
 
 function hasWorkflowTrigger(workflow: WorkflowGraph): boolean {
   return workflow.nodes.some(n =>
@@ -359,20 +301,22 @@ function hasWorkflowTrigger(workflow: WorkflowGraph): boolean {
   );
 }
 
-function callerFromCtx(ctx: NonNullable<import("fastify").FastifyRequest["runContext"]>): Caller {
-  return {
-    userId: ctx.user.id,
-    orgId: ctx.org.id,
-    role: ctx.role,
-    isPlatformAdmin: ctx.isPlatformAdmin,
-  };
-}
-
 export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
+  const requirePerm = makeRequireWorkspacePermission({ pool: c.pool! });
+  const read = { preHandler: [requireAuth(), requirePerm("resource.read")] };
+  const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
+  const del = { preHandler: [requireAuth(), requirePerm("resource.delete")] };
+
+  /** Load a workflow and 404 unless it belongs to the route's workspace. */
+  async function loadInWorkspace(id: string, wsId: string) {
+    const workflow = await c.workflows.getById(id);
+    if (!workflow || workflow.workspaceId !== wsId) return null;
+    return workflow;
+  }
 
   // Non-destructive validation — caller passes a definition, we return the full report.
-  app.post("/workflows/validate", { preHandler: requireAuth() }, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/validate", read, async (req, reply) => {
     const ctx = req.runContext!;
     const body = req.body as { definition?: WorkflowGraph; proposedCustomSteps?: ProposedCustomStep[] };
     if (!body?.definition || typeof body.definition !== "object") {
@@ -381,12 +325,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     }
     const customStepShapes = await loadCustomStepShapes(c, body.definition, body.proposedCustomSteps);
     const report = computeValidationReport(body.definition, customStepShapes);
-    const callerScope: WorkflowScope = "user";
-    const secretWarnings = await computeSaveWarnings(c, ctx, callerScope, body.definition);
+    const secretWarnings = await computeSaveWarnings(c, ctx, body.definition);
 
-    // Run the same node-level checks publish runs, so the Validate button
-    // surfaces unresolved-binding / missing-config / orphan / gate errors
-    // without the user having to attempt a publish to see them.
     const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
     const visibleSecretNames = new Set(visible.map((v) => v.name));
     const customAiStepDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
@@ -414,8 +354,6 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const seenWarnings = new Set(report.warnings);
     for (const e of publishResult.errors) {
       const label = e.nodeLabel ?? (e.nodeId ? "Unknown step" : "Flow");
-      // Include the bare node ID in parens so the flow-editor's IssueMessage
-      // component can linkify it (jump-to-node from the validation banner).
       const msg = e.nodeId
         ? `[${label}] (${e.nodeId}) ${e.message}`
         : `[${label}] ${e.message}`;
@@ -453,54 +391,27 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { ...report, secretWarnings };
   });
 
-  app.post("/workflows", { preHandler: requireAuth() }, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows", write, async (req, reply) => {
     const ctx = req.runContext!;
-    const caller = callerFromCtx(ctx);
+    const { wsId } = req.params as { wsId: string };
     const body = createFlowBody.parse(req.body);
 
-    if (!canCreateAtScope(body.scope as WorkflowScope, caller)) {
-      reply.code(403); return { error: "forbidden" };
-    }
-
-    const orgId =
-      body.scope === "user"   ? caller.orgId :
-      body.scope === "org"    ? (body.orgId ?? caller.orgId) :
-      /* global */              null;
-
-    if (body.scope === "org" && orgId !== caller.orgId) {
-      reply.code(403); return { error: "cannot_create_workflow_in_other_org" };
-    }
-
-    const ownerUserId = body.scope === "user" ? caller.userId : null;
-
-    // Save accepts any graph that passes the Zod envelope check. Semantic
-    // validation (refs, dominators, shape) runs on Validate and Publish.
-    const warnings = await computeSaveWarnings(c, ctx, body.scope as WorkflowScope, body.definition as WorkflowGraph);
+    const warnings = await computeSaveWarnings(c, ctx, body.definition as WorkflowGraph);
 
     const { workflow, version } = await c.workflows.create({
-      scope: body.scope as WorkflowScope,
+      workspaceId: wsId,
       name: body.name,
       description: body.description,
-      orgId,
-      ownerUserId,
       initialDefinition: body.definition as WorkflowGraph,
-      createdByUserId: caller.userId,
+      createdByUserId: ctx.user.id,
     });
     reply.code(201);
     return warnings.length ? { workflow, version, warnings } : { workflow, version };
   });
 
-  app.get("/workflows", { preHandler: requireAuth() }, async (req) => {
-    const ctx = req.runContext!;
-    const q = req.query as { scope?: string; orgId?: string; limit?: string; page?: string; page_size?: string };
-    const baseFilter = {
-      callerUserId: ctx.user.id,
-      callerOrgId: ctx.org.id,
-      callerIsPlatformAdmin: ctx.isPlatformAdmin,
-      callerIsOrgAdmin: ctx.role === "admin",
-      scope: q.scope as WorkflowScope | undefined,
-      orgId: q.orgId,
-    };
+  app.get("/workspaces/:wsId/workflows", read, async (req) => {
+    const { wsId } = req.params as { wsId: string };
+    const q = req.query as { limit?: string; page?: string; page_size?: string };
 
     const paginated = q.page !== undefined || q.page_size !== undefined;
     if (paginated) {
@@ -509,36 +420,33 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       const pageSize = Math.min(100, Math.max(1, requestedSize));
       const offset = (page - 1) * pageSize;
       const [workflows, total] = await Promise.all([
-        c.workflows.list({ ...baseFilter, limit: pageSize, offset }),
-        c.workflows.count(baseFilter),
+        c.workflows.list({ workspaceId: wsId, limit: pageSize, offset }),
+        c.workflows.count({ workspaceId: wsId }),
       ]);
       return { workflows, total, page, pageSize };
     }
 
     const workflows = await c.workflows.list({
-      ...baseFilter,
+      workspaceId: wsId,
       limit: q.limit ? Number(q.limit) : undefined,
     });
     return { workflows };
   });
 
-  app.get("/workflows/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
-    const workflow = await c.workflows.getById(id);
+  app.get("/workspaces/:wsId/workflows/:id", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canRead(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     return { workflow };
   });
 
-  app.put("/workflows/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
+  app.put("/workspaces/:wsId/workflows/:id", write, async (req, reply) => {
+    const ctx = req.runContext!;
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const body = updateFlowBody.parse(req.body);
 
-    const workflow = await c.workflows.getById(id);
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canEdit(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     if (workflow.status === "ready") { reply.code(409); return { error: "workflow_is_ready" }; }
 
     if (body.name !== undefined || body.description !== undefined) {
@@ -547,14 +455,10 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     let newVersion = null;
     let warnings: WorkflowSaveWarning[] = [];
     if (body.definition) {
-      // Save accepts any graph that passes the Zod envelope check. Semantic
-      // validation (refs, dominators, shape) runs on Validate and Publish.
-      warnings = await computeSaveWarnings(c, ctx, workflow.scope, body.definition as WorkflowGraph);
+      warnings = await computeSaveWarnings(c, ctx, body.definition as WorkflowGraph);
       newVersion = await c.workflowVersions.appendVersion({
-        workflowId: id, definition: body.definition as WorkflowGraph, createdByUserId: caller.userId,
+        workflowId: id, definition: body.definition as WorkflowGraph, createdByUserId: ctx.user.id,
       });
-      // Pre-compute trigger index rows for the new version. They are inactive
-      // until the workflow is published (publish path activates them).
       await refreshTriggerIndexOnVersionCreated(c.workflowTriggers, {
         workflowId: id,
         workflowVersionId: newVersion.id,
@@ -565,42 +469,37 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return warnings.length ? { workflow: updated, version: newVersion, warnings } : { workflow: updated, version: newVersion };
   });
 
-  app.delete("/workflows/:id", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
-    const workflow = await c.workflows.getById(id);
+  app.delete("/workspaces/:wsId/workflows/:id", del, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canDelete(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     await c.workflows.delete(id);
     reply.code(204).send();
   });
 
-  app.get("/workflows/:id/versions/current", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
-    const workflow = await c.workflows.getById(id);
+  app.get("/workspaces/:wsId/workflows/:id/versions/current", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canRead(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
     const version = await c.workflowVersions.getById(workflow.currentVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }
     return { version };
   });
 
-  app.get("/workflow_versions/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.get("/workspaces/:wsId/workflow_versions/:id", read, async (req, reply) => {
     const { id } = req.params as { id: string };
     const version = await c.workflowVersions.getById(id);
     if (!version) { reply.code(404); return { error: "not_found" }; }
     return { version };
   });
 
-  app.post("/workflows/:id/publish", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
+  app.post("/workspaces/:wsId/workflows/:id/publish", write, async (req, reply) => {
+    const ctx = req.runContext!;
+    const { wsId, id } = req.params as { wsId: string; id: string };
 
-    const workflow = await c.workflows.getById(id);
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canEdit(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
 
     const version = await c.workflowVersions.getById(workflow.currentVersionId);
@@ -614,13 +513,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       const customStepIds = new Set<string>();
       for (const node of version.definition.nodes) {
         if (node.type === "step" && node.stepType === "custom-ai") {
-          const id = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
-          if (typeof id === "string" && id) customStepIds.add(id);
+          const id2 = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+          if (typeof id2 === "string" && id2) customStepIds.add(id2);
         }
       }
-      for (const id of customStepIds) {
-        const step = await getCustomAiStep(c.pool, id);
-        if (step) customAiStepDefaults.set(id, { defaultTools: step.defaultTools });
+      for (const cid of customStepIds) {
+        const step = await getCustomAiStep(c.pool, cid);
+        if (step) customAiStepDefaults.set(cid, { defaultTools: step.defaultTools });
       }
     }
 
@@ -660,14 +559,12 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { workflow: updated, warnings };
   });
 
-  app.post("/workflows/:id/unpublish", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
+  app.post("/workspaces/:wsId/workflows/:id/unpublish", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const body = (req.body ?? {}) as { confirm?: boolean };
 
-    const workflow = await c.workflows.getById(id);
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canEdit(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
 
     const inFlightCount = 0;
     const activeTriggers = { webhooks: 0, schedules: 0 };
@@ -683,14 +580,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { workflow: updated };
   });
 
-  app.post("/workflows/:id/workflow-instances", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
+  app.post("/workspaces/:wsId/workflows/:id/workflow-instances", write, async (req, reply) => {
+    const ctx = req.runContext!;
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const body = createRunBody.parse(req.body);
 
-    const workflow = await c.workflows.getById(id);
+    const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!canRead(workflow, caller)) { reply.code(403); return { error: "forbidden" }; }
     if (!assertWorkflowReady(workflow, reply)) return;
     if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
     const version = await c.workflowVersions.getById(workflow.currentVersionId);
@@ -706,11 +602,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       workflowId: workflow.id,
       workflowVersionId: version.id,
       workflowNameSnapshot: workflow.name,
-      workflowScopeSnapshot: workflow.scope,
+      workspaceId: workflow.workspaceId,
       definitionSnapshot: version.definition,
       inputs: body.inputs,
-      startedByUserId: caller.userId,
-      startedByOrgId: ctx.org.id,
+      startedByUserId: ctx.user.id,
+      startedByOrgId: ctx.workspace?.orgId ?? ctx.org.id,
       triggerSource: "manual",
       triggerNodeId: manualTrigger.id,
     });
@@ -721,59 +617,22 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
   // ----- Snapshot actions -----
 
-  app.post("/workflows/:id/clone", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
+  app.post("/workspaces/:wsId/workflows/:id/clone", write, async (req, reply) => {
+    const ctx = req.runContext!;
+    const { wsId, id } = req.params as { wsId: string; id: string };
     const body = cloneFlowBody.parse(req.body ?? {});
-    const src = await c.workflows.getById(id);
+    const src = await loadInWorkspace(id, wsId);
     if (!src) { reply.code(404); return { error: "not_found" }; }
-    if (!canRead(src, caller)) { reply.code(403); return { error: "forbidden" }; }
     if (!src.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
     const ver = await c.workflowVersions.getById(src.currentVersionId);
     if (!ver) { reply.code(500); return { error: "version_missing" }; }
 
     const { workflow } = await c.workflows.create({
-      scope: "user",
+      workspaceId: wsId,
       name: body.name ?? `${src.name} (copy)`,
       description: src.description ?? undefined,
-      orgId: caller.orgId,
-      ownerUserId: caller.userId,
       initialDefinition: ver.definition,
-      createdByUserId: caller.userId,
-    });
-    reply.code(201);
-    return { id: workflow.id };
-  });
-
-  app.post("/workflows/:id/promote", { preHandler: requireAuth() }, async (req, reply) => {
-    const ctx = req.runContext!; const caller = callerFromCtx(ctx);
-    const { id } = req.params as { id: string };
-    const body = promoteFlowBody.parse(req.body);
-    const src = await c.workflows.getById(id);
-    if (!src) { reply.code(404); return { error: "not_found" }; }
-    if (!canRead(src, caller)) { reply.code(403); return { error: "forbidden" }; }
-    if (!canPromoteTo(body.targetScope, caller)) { reply.code(403); return { error: "forbidden" }; }
-    if (!src.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
-    const ver = await c.workflowVersions.getById(src.currentVersionId);
-    if (!ver) { reply.code(500); return { error: "version_missing" }; }
-
-    const orgId =
-      body.targetScope === "org"
-        ? (body.orgId ?? src.orgId ?? caller.orgId)
-        : null;
-
-    if (body.targetScope === "org" && !caller.isPlatformAdmin && orgId !== caller.orgId) {
-      reply.code(403); return { error: "cannot_promote_to_other_org" };
-    }
-
-    const { workflow } = await c.workflows.create({
-      scope: body.targetScope,
-      name: body.name ?? src.name,
-      description: src.description ?? undefined,
-      orgId,
-      ownerUserId: null,
-      initialDefinition: ver.definition,
-      createdByUserId: caller.userId,
+      createdByUserId: ctx.user.id,
     });
     reply.code(201);
     return { id: workflow.id };

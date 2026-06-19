@@ -25,18 +25,18 @@ export interface WorkerHarnessDeps {
   pollIntervalMs?: number;
 
   bindingResolver: (input: {
-    ctx: { userId: string | null; orgId: string | null; workflowId: string | null };
+    ctx: { userId: string | null; orgId: string | null; workflowId: string | null; workspaceId: string | null };
     slots: Array<{ name: string; optional?: boolean }>;
     bindings: Record<string, SecretBinding>;
   }) => Promise<Record<string, string>>;
 
   mcpResolver: (input: {
-    ctx: { userId: string; orgId: string };
+    ctx: { userId: string; orgId: string; workspaceId: string | null };
     instanceIds: string[];
   }) => Promise<ResolvedMcpInstance[]>;
 
   skillsResolver: (input: {
-    ctx: { userId: string; orgId: string };
+    ctx: { userId: string; orgId: string; workspaceId: string | null };
     packageIds: string[];
   }) => Promise<ResolvedSkillPackage[]>;
 
@@ -141,6 +141,7 @@ export class WorkerHarness {
 
     const userId = (stepInput as { startedByUserId?: string | null }).startedByUserId ?? null;
     const orgId = (stepInput as { startedByOrgId?: string | null }).startedByOrgId ?? null;
+    const workspaceId = (stepInput as { workspaceId?: string | null }).workspaceId ?? null;
     const abort = new AbortController();
     // Per-step timeout: agents (and any step) may set `timeoutSeconds` in node config; auto-abort when it elapses.
     const timeoutSeconds =
@@ -188,7 +189,7 @@ export class WorkerHarness {
       }, "resolving secrets");
 
       resolvedEnv = await this.deps.bindingResolver({
-        ctx: { userId, orgId, workflowId },
+        ctx: { userId, orgId, workflowId, workspaceId },
         slots,
         bindings: declaredBindings,
       });
@@ -223,7 +224,7 @@ export class WorkerHarness {
     if (mcpInstanceIds.length > 0 && userId && orgId) {
       try {
         mcps = await this.deps.mcpResolver({
-          ctx: { userId, orgId },
+          ctx: { userId: userId ?? "", orgId: orgId ?? "", workspaceId },
           instanceIds: mcpInstanceIds,
         });
         rlog.info({ count: mcps.length }, "MCPs resolved");
@@ -252,7 +253,7 @@ export class WorkerHarness {
     if (skillPackageIds.length > 0 && userId && orgId) {
       try {
         skills = await this.deps.skillsResolver({
-          ctx: { userId, orgId },
+          ctx: { userId: userId ?? "", orgId: orgId ?? "", workspaceId },
           packageIds: skillPackageIds,
         });
         rlog.info({ count: skills.length }, "skills resolved");
@@ -444,7 +445,7 @@ function redactStepInputForEvent(stepInput: Record<string, unknown>): Record<str
   const REDACT = new Set([
     "mcps", "skills", "secretBindings",
     "__workflowInput", "_flowDefaultSources",
-    "startedByUserId", "startedByOrgId",
+    "startedByUserId", "startedByOrgId", "workspaceId",
   ]);
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(stepInput)) {

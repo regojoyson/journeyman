@@ -2,7 +2,7 @@ import type {
   WorkflowGraph,
   IEventBus,
   IOrchestratorEngine, IPauseableEngine, IRetryableEngine,
-  IWorkflowInstanceStore, IWorkflowInstanceGrantsStore, WorkflowInstance, WorkflowInstanceStatus,
+  IWorkflowInstanceStore, WorkflowInstance, WorkflowInstanceStatus,
   SubmitWorkflowInstanceArgs,
 } from "@journeyman/core";
 import { createLogger, findManualTriggerNode, isTriggerNode, isTerminalStatus } from "@journeyman/core";
@@ -27,7 +27,6 @@ export interface ConductorOrchestratorDeps {
   client: ConductorClient;
   converter: IWorkflowJsonConverter<ConductorWorkflowDef>;
   workflowInstances: IWorkflowInstanceStore;
-  workflowInstanceGrants: IWorkflowInstanceGrantsStore;
   events: IEventBus;
   /** Provisions a sandbox for a run at start; absent/no-op for local-only deployments. */
   sandboxProvisioner?: (args: {
@@ -71,11 +70,10 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
       workflowId: args.workflowId,
       workflowVersionId: args.workflowVersionId,
       workflowNameSnapshot: args.workflowNameSnapshot,
-      workflowScopeSnapshot: args.workflowScopeSnapshot,
+      workspaceId: args.workspaceId,
       definitionSnapshot: args.definitionSnapshot,
       triggerSource: args.triggerSource ?? "api",
       startedByUserId: args.startedByUserId,
-      startedByOrgId: args.startedByOrgId,
       inputs: args.inputs,
       triggerNodeId: args.triggerNodeId ?? null,
       webhookEventId: args.webhookEventId ?? null,
@@ -84,26 +82,6 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
 
     // Mark the run "provisioning" so the UI shows the phase while the sandbox builds.
     await this.deps.workflowInstances.setStatus(instance.id, "provisioning");
-
-    const grantsToWrite: Array<{
-      principalType: "user" | "org" | "global";
-      principalId: string | null;
-      role: "owner" | "editor" | "viewer";
-      createdBy: string | null;
-    }> = [];
-    if (args.startedByUserId) {
-      grantsToWrite.push({
-        principalType: "user", principalId: args.startedByUserId,
-        role: "owner", createdBy: args.startedByUserId,
-      });
-    }
-    if (args.startedByOrgId) {
-      grantsToWrite.push({
-        principalType: "org", principalId: args.startedByOrgId,
-        role: "viewer", createdBy: args.startedByUserId,
-      });
-    }
-    if (grantsToWrite.length > 0) await this.deps.workflowInstanceGrants.createForInstance(instance.id, grantsToWrite);
 
     // Provision + start happen OFF the request path. Ordering (provision BEFORE
     // startWorkflow) is preserved inside runStart, so the "sandbox ready before the
@@ -143,6 +121,7 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
           workflowInstanceId,
           startedByUserId: args.startedByUserId ?? null,
           startedByOrgId: args.startedByOrgId ?? null,
+          workspaceId: args.workspaceId ?? null,
           workflowId: args.workflowId,
         },
       });

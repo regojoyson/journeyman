@@ -92,15 +92,11 @@ export async function fireWebhookTriggers(
         workflowId: workflow.id,
         workflowVersionId: version.id,
         workflowNameSnapshot: workflow.name,
-        workflowScopeSnapshot: workflow.scope,
+        workspaceId: workflow.workspaceId,
         definitionSnapshot: version.definition,
         inputs,
-        // No interactive caller on a webhook, so run as the workflow's owner.
-        // `workflow.orgId` is the org for org-scoped flows and the owner's primary
-        // org for user-scoped flows; `ownerUserId` is set only for user scope.
-        // This gives secret resolution a valid org (+ user) instead of blanks.
-        startedByUserId: workflow.ownerUserId,
-        startedByOrgId: workflow.orgId,
+        startedByUserId: null,
+        startedByOrgId: null, // TODO(workspace cutover): resolve org from workspace
         triggerSource: "webhook",
         triggerNodeId: node.id,
         webhookEventId: input.eventId,

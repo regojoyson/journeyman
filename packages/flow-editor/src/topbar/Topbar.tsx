@@ -633,21 +633,6 @@ function SecretWarningsBody({
             </div>
           );
         }
-        if (w.code === "cross_scope_pin") {
-          return (
-            <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ marginBottom: 4 }}>{renderMessage(w.message)}</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "rgb(var(--color-text) / 1)" }}>
-                {w.entries.map((e, j) => (
-                  <li key={j}>
-                    <code>{e.slot}</code> on node {renderNodeIdChip(e.nodeId)} pinned to{" "}
-                    <b>{e.pinnedScope}</b> in a <b>{e.workflowScope}</b>-scope flow
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        }
         if (w.code === "orphan_secret_binding") {
           return (
             <div key={i} style={{ marginBottom: 8 }}>

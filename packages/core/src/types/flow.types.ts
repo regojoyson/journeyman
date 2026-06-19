@@ -178,26 +178,8 @@ export interface Workflow {
   createdAt: Date;
   updatedAt: Date;
   status: WorkflowStatus;
-
-  // Hydrated from owner grant by the API/store layer:
-  scope: WorkflowScope;
-  orgId: string | null;
-  ownerUserId: string | null;
-  grants?: WorkflowGrant[];
-}
-
-export type WorkflowScope = "user" | "org" | "global";
-export type WorkflowGrantPrincipalType = WorkflowScope;
-export type WorkflowGrantRole = "owner" | "editor" | "viewer";
-
-export interface WorkflowGrant {
-  id: string;
-  workflowId: string;
-  principalType: WorkflowGrantPrincipalType;
-  principalId: string | null;
-  role: WorkflowGrantRole;
-  createdAt: Date;
-  createdBy: string | null;
+  /** The workspace this flow belongs to. */
+  workspaceId: string;
 }
 
 // === Phase 5 additions ===
@@ -264,16 +246,6 @@ export type WorkflowSaveWarning =
       code: "inaccessible_secrets";
       message: string;
       names: string[];
-    }
-  | {
-      code: "cross_scope_pin";
-      message: string;
-      entries: Array<{
-        nodeId: string;
-        slot: string;
-        pinnedScope: SecretScope;
-        workflowScope: WorkflowScope;
-      }>;
     }
   | {
       code: "orphan_secret_binding";
