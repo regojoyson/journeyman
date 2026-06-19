@@ -1,6 +1,6 @@
 import type { SandboxType, ExecutionMode, Connectivity } from "./execution-environment.types.ts";
 
-export type SandboxScope = "user" | "org" | "system";
+export type SandboxScope = "org" | "system";
 
 export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
 
@@ -8,10 +8,8 @@ export type ImageState = "none" | "pending" | "building" | "ready" | "failed";
 export interface Sandbox {
   id: string;
   scope: SandboxScope;
-  /** Set for org/user scope; null for system. */
+  /** Set for org scope; null for system. */
   orgId: string | null;
-  /** Set for user scope; null for org/system. */
-  userId: string | null;
   name: string;
   type: SandboxType;
   executionMode: ExecutionMode;
@@ -33,7 +31,6 @@ export interface Sandbox {
 export interface CreateSandboxArgs {
   scope: SandboxScope;
   orgId: string | null;
-  userId: string | null;
   name: string;
   type: SandboxType;
   executionMode: ExecutionMode;
@@ -47,7 +44,6 @@ export interface CreateSandboxArgs {
 export interface UpdateSandboxArgs {
   id: string;
   orgId: string | null;
-  userId: string | null;
   name?: string;
   executionMode?: ExecutionMode;
   connectivity?: Connectivity | null;
