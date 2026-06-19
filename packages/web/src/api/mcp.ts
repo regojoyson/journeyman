@@ -30,17 +30,6 @@ export interface CatalogEntry {
   category?: string;
 }
 
-export interface PromotableRow {
-  id: string;
-  name: string;
-  transport: McpTransport;
-  ownerId: string;
-  ownerEmail: string;
-  /** Env-var names that need to be re-bound to org/global secrets on promote. */
-  bindingEnvVars: string[];
-  updatedAt: string;
-}
-
 export interface UpsertBody {
   name: string;
   description?: string;
@@ -53,90 +42,11 @@ export interface UpsertBody {
   enabled?: boolean;
 }
 
-const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/mcp-instances`;
-const orgBase = (orgId: string) => `/api/orgs/${orgId}/mcp-instances`;
-
 async function jsonOrThrow<T>(r: Response): Promise<T> {
   if (r.ok) return r.json() as Promise<T>;
   const body = await r.json().catch(() => ({}));
-  throw new Error(body?.error ?? `HTTP ${r.status}`);
+  throw new Error((body as any)?.error ?? `HTTP ${r.status}`);
 }
-
-export const mcpApi = {
-  listMy: (orgId: string) =>
-    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<McpInstance[]>),
-
-  listOrg: (orgId: string) =>
-    fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<McpInstance[]>),
-
-  listPromotable: (orgId: string) =>
-    fetch(`${orgBase(orgId)}/promotable`, { credentials: "include" }).then(jsonOrThrow<PromotableRow[]>),
-
-  catalog: () =>
-    fetch("/api/mcp-catalog", { credentials: "include" }).then(jsonOrThrow<CatalogEntry[]>),
-
-  createMy: (orgId: string, body: UpsertBody) =>
-    fetch(userBase(orgId), {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<McpInstance>),
-
-  createOrg: (orgId: string, body: UpsertBody) =>
-    fetch(orgBase(orgId), {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<McpInstance>),
-
-  updateMy: (orgId: string, id: string, body: Partial<UpsertBody>) =>
-    fetch(`${userBase(orgId)}/${id}`, {
-      method: "PATCH", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<{ ok: true }>),
-
-  updateOrg: (orgId: string, id: string, body: Partial<UpsertBody>) =>
-    fetch(`${orgBase(orgId)}/${id}`, {
-      method: "PATCH", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<{ ok: true }>),
-
-  removeMy: (orgId: string, id: string) =>
-    fetch(`${userBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" })
-      .then(jsonOrThrow<{ ok: true }>),
-
-  removeOrg: (orgId: string, id: string) =>
-    fetch(`${orgBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" })
-      .then(jsonOrThrow<{ ok: true }>),
-
-  promote: (orgId: string, userInstanceId: string, body: {
-    name?: string; description?: string; systemPrompt?: string;
-    bindings: McpBinding[]; enabled?: boolean;
-  }) =>
-    fetch(`${orgBase(orgId)}/${userInstanceId}/promote`, {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(jsonOrThrow<McpInstance>),
-
-  testList: (orgId: string, scope: "user" | "org", id: string) =>
-    fetch(testBase(orgId, scope, id), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "list" }),
-    }).then(jsonOrThrow<TestOutcome>),
-
-  testInvoke: (orgId: string, scope: "user" | "org", id: string, tool: string, args: Record<string, unknown>) =>
-    fetch(testBase(orgId, scope, id), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "invoke", tool, args }),
-    }).then(jsonOrThrow<TestOutcome>),
-};
 
 // --- testing ---
 
@@ -151,7 +61,55 @@ export type TestOutcome =
   | { ok: true; result: unknown }
   | { ok: false; error: string; phase: "resolve" | "connect" | "list" | "invoke" };
 
-const testBase = (orgId: string, scope: "user" | "org", id: string) =>
-  scope === "user"
-    ? `${userBase(orgId)}/${id}/test`
-    : `${orgBase(orgId)}/${id}/test`;
+const wsBase = (wsId: string) => `/api/workspaces/${wsId}/mcp-instances`;
+
+export const mcpApi = {
+  list: (wsId: string) =>
+    fetch(wsBase(wsId), { credentials: "include" }).then(jsonOrThrow<McpInstance[]>),
+
+  create: (wsId: string, body: UpsertBody) =>
+    fetch(wsBase(wsId), {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(jsonOrThrow<McpInstance>),
+
+  update: (wsId: string, id: string, body: Partial<UpsertBody>) =>
+    fetch(`${wsBase(wsId)}/${id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(jsonOrThrow<McpInstance>),
+
+  remove: (wsId: string, id: string) =>
+    fetch(`${wsBase(wsId)}/${id}`, { method: "DELETE", credentials: "include" })
+      .then(jsonOrThrow<void>),
+
+  test: (wsId: string, id: string, body: { action: "list" } | { action: "invoke"; tool: string; args: Record<string, unknown> }) =>
+    fetch(`${wsBase(wsId)}/${id}/test`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(jsonOrThrow<TestOutcome>),
+
+  listCatalog: () =>
+    fetch("/api/mcp-catalog", { credentials: "include" }).then(jsonOrThrow<CatalogEntry[]>),
+
+  // Aliases used by some components that expect testList/testInvoke shape
+  testList: (wsId: string, _scope: string, id: string) =>
+    fetch(`${wsBase(wsId)}/${id}/test`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list" }),
+    }).then(jsonOrThrow<TestOutcome>),
+
+  testInvoke: (wsId: string, _scope: string, id: string, tool: string, args: Record<string, unknown>) =>
+    fetch(`${wsBase(wsId)}/${id}/test`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "invoke", tool, args }),
+    }).then(jsonOrThrow<TestOutcome>),
+
+  catalog: () =>
+    fetch("/api/mcp-catalog", { credentials: "include" }).then(jsonOrThrow<CatalogEntry[]>),
+};

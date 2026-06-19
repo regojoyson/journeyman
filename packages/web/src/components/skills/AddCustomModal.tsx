@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/admin-styles.ts";
-import { skillsApi, type SkillPackage } from "../../api/skills.ts";
+import { skillsApi, type SkillPackageRow } from "../../api/skills.ts";
 
 export interface AddCustomModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -12,7 +11,7 @@ export interface AddCustomModalProps {
 export function AddCustomModal(props: AddCustomModalProps) {
   const [gitUrl, setGitUrl] = useState("");
   const [name, setName] = useState("");
-  const [shareable, setShareable] = useState<SkillPackage | null>(null);
+  const [shareable, setShareable] = useState<SkillPackageRow | null>(null);
   const [mode, setMode] = useState<"share" | "independent">("independent");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +23,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
     }
     const handle = setTimeout(async () => {
       try {
-        const found =
-          props.scope === "user"
-            ? await skillsApi.findByUrlMy(props.orgId, gitUrl.trim())
-            : await skillsApi.findByUrlOrg(props.orgId, gitUrl.trim());
+        const found = await skillsApi.findByUrl(props.wsId, gitUrl.trim());
         setShareable(found);
         if (found) setMode("share");
       } catch {
@@ -35,7 +31,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
       }
     }, 400);
     return () => clearTimeout(handle);
-  }, [gitUrl, props.orgId, props.scope]);
+  }, [gitUrl, props.wsId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,8 +43,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
         name,
         ...(shareable && mode === "share" ? { shareCloneWith: shareable.id } : {}),
       };
-      if (props.scope === "user") await skillsApi.createMy(props.orgId, body);
-      else await skillsApi.createOrg(props.orgId, body);
+      await skillsApi.create(props.wsId, body);
       props.onCreated();
       props.onClose();
     } catch (e: any) {
@@ -74,7 +69,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Display name (must be unique in this scope)</label>
+            <label className="text-xs text-slate-400 mb-1 block">Display name (must be unique in this workspace)</label>
             <input
               className={inputCls}
               placeholder="e.g. superpowers-tdd"

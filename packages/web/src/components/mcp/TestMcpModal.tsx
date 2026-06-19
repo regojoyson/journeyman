@@ -3,8 +3,7 @@ import { btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/adm
 import { mcpApi, type McpInstance, type TestOutcome, type ToolSummary } from "../../api/mcp.ts";
 
 export interface TestMcpModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   mcp: McpInstance;
   onClose: () => void;
 }
@@ -26,7 +25,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
     setStage("loading");
     setLastError(null);
     try {
-      const out: TestOutcome = await mcpApi.testList(props.orgId, props.scope, props.mcp.id);
+      const out: TestOutcome = await mcpApi.testList(props.wsId, "", props.mcp.id);
       if (out.ok && "tools" in out) {
         setTools(out.tools);
         setStage("list");
@@ -66,7 +65,7 @@ export function TestMcpModal(props: TestMcpModalProps) {
     setParseError(null);
     setStage("invoking");
     try {
-      const out: TestOutcome = await mcpApi.testInvoke(props.orgId, props.scope, props.mcp.id, selected.name, parsedArgs);
+      const out: TestOutcome = await mcpApi.testInvoke(props.wsId, "", props.mcp.id, selected.name, parsedArgs);
       if (out.ok && "result" in out) {
         setLastResult(out.result);
         setLastError(null);

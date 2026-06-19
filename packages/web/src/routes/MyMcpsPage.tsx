@@ -15,13 +15,13 @@ export function MyMcpsPage(props: { orgId: string }) {
 
   async function refresh() {
     setLoading(true);
-    try { setRows(await mcpApi.listMy(props.orgId)); } finally { setLoading(false); }
+    try { setRows(await mcpApi.list("")); } finally { setLoading(false); }
   }
-  useEffect(() => { refresh(); }, [props.orgId]);
+  useEffect(() => { refresh(); }, []);
 
   async function remove(row: McpInstance) {
     if (!confirm(`Delete MCP "${row.name}"?`)) return;
-    await mcpApi.removeMy(props.orgId, row.id);
+    await mcpApi.remove("", row.id);
     refresh();
   }
 
@@ -89,16 +89,16 @@ export function MyMcpsPage(props: { orgId: string }) {
       </div>
 
       {modal === "catalog" && (
-        <AddFromCatalogModal orgId={props.orgId} scope="user" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddFromCatalogModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {modal === "custom" && (
-        <AddCustomModal orgId={props.orgId} scope="user" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddCustomModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {editing && (
-        <EditMcpModal orgId={props.orgId} scope="user" mcp={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <EditMcpModal wsId={""} mcp={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
       {testing && (
-        <TestMcpModal orgId={props.orgId} scope="user" mcp={testing} onClose={() => setTesting(null)} />
+        <TestMcpModal wsId={""} mcp={testing} onClose={() => setTesting(null)} />
       )}
     </div>
   );

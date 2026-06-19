@@ -10,7 +10,7 @@ export function AdminCustomStepsPage(props: { orgId: string }) {
             AI steps shared with everyone in this org.
           </p>
         </header>
-        <CustomStepsList orgId={props.orgId} scope="org" />
+        <CustomStepsList wsId={""} />
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ export function MyCustomStepsPage(props: { orgId: string }) {
             Personal AI steps — drop them into any flow.
           </p>
         </header>
-        <CustomStepsList orgId={props.orgId} scope="user" />
+        <CustomStepsList wsId={""} />
       </div>
     </div>
   );

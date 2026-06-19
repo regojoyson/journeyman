@@ -4,8 +4,7 @@ import { mcpApi, type McpTransport, type UpsertBody } from "../../api/mcp.ts";
 import { BindingsEditor, type Binding } from "./BindingsEditor.tsx";
 
 export interface AddCustomModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -39,8 +38,7 @@ export function AddCustomModal(props: AddCustomModalProps) {
       body.url = url;
     }
     try {
-      if (props.scope === "user") await mcpApi.createMy(props.orgId, body);
-      else await mcpApi.createOrg(props.orgId, body);
+      await mcpApi.create(props.wsId, body);
       props.onCreated();
       props.onClose();
     } catch (e: any) {
@@ -80,10 +78,10 @@ export function AddCustomModal(props: AddCustomModalProps) {
           <div>
             <div className="text-sm text-slate-300 mb-2">Bindings</div>
             <BindingsEditor
-              orgId={props.orgId}
+              orgId=""
               value={bindings}
               onChange={setBindings}
-              scope={props.scope === "org" ? "org-and-global" : "all"}
+              scope="org-and-global"
             />
           </div>
 

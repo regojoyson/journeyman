@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { btnGhost, btnPrimary } from "../../routes/admin-styles.ts";
-import { skillsApi, type SkillPackage } from "../../api/skills.ts";
+import { skillsApi, type SkillPackageRow as SkillPackage } from "../../api/skills.ts";
 
 export interface EditSkillsModalProps {
-  orgId: string;
+  wsId: string;
   pkg: SkillPackage;
   onClose: () => void;
   onSaved: () => void;
@@ -19,11 +19,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
 
   useEffect(() => {
     setLoading(true);
-    const fetch =
-      props.pkg.scope === "user"
-        ? skillsApi.discoverSkillsMy(props.orgId, props.pkg.id)
-        : skillsApi.discoverSkillsOrg(props.orgId, props.pkg.id);
-    fetch
+    skillsApi.discoverSkills(props.wsId, props.pkg.id)
       .then((rows) => setAvailable(rows.slice().sort((a, b) => a.localeCompare(b))))
       .catch(() => setAvailable([]))
       .finally(() => setLoading(false));
@@ -64,11 +60,7 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
     setBusy(true);
     setError(null);
     try {
-      if (props.pkg.scope === "user") {
-        await skillsApi.updateEnabledSkillsMy(props.orgId, props.pkg.id, [...enabled]);
-      } else {
-        await skillsApi.updateEnabledSkillsOrg(props.orgId, props.pkg.id, [...enabled]);
-      }
+      await skillsApi.updateEnabledSkills(props.wsId, props.pkg.id, [...enabled]);
       props.onSaved();
       props.onClose();
     } catch (e: any) {
@@ -92,10 +84,6 @@ export function EditSkillsModal(props: EditSkillsModalProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-500 mb-1">
               <span>Configure skills</span>
-              <span className="text-slate-700">·</span>
-              <span className={props.pkg.scope === "org" ? "text-warning" : "text-info"}>
-                {props.pkg.scope}
-              </span>
             </div>
             <h2 className="text-lg font-semibold text-slate-100 truncate">{props.pkg.name}</h2>
           </div>

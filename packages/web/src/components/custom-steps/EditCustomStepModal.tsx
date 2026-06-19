@@ -28,11 +28,10 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof FileText }> = [
 
 export function EditCustomStepModal(props: {
   initial?: CustomAiStep;
-  scope: "user" | "org";
   onCancel: () => void;
   onSave: (body: CustomAiStepCreateInput) => Promise<void>;
 }) {
-  const { initial, scope, onCancel, onSave } = props;
+  const { initial, onCancel, onSave } = props;
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
@@ -96,9 +95,6 @@ export function EditCustomStepModal(props: {
             <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-foreground" />
               {initial ? "Edit custom step" : "New custom step"}
-              <span className="text-[11px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                {scope}
-              </span>
             </h2>
             <p className="text-xs text-slate-400 mt-1">
               Define a reusable AI step: typed inputs, optional structured output, prompt and tools.

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/admin-styles.ts";
-import { skillsApi, type SkillCatalogEntry, type SkillPackage } from "../../api/skills.ts";
+import { skillsApi, type SkillCatalogEntry, type SkillPackageRow } from "../../api/skills.ts";
 
 export interface AddFromCatalogModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -13,7 +12,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
   const [catalog, setCatalog] = useState<SkillCatalogEntry[]>([]);
   const [chosen, setChosen] = useState<SkillCatalogEntry | null>(null);
   const [name, setName] = useState("");
-  const [shareable, setShareable] = useState<SkillPackage | null>(null);
+  const [shareable, setShareable] = useState<SkillPackageRow | null>(null);
   const [mode, setMode] = useState<"share" | "independent">("share");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +25,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
     setChosen(entry);
     setName(entry.name);
     setError(null);
-    const found =
-      props.scope === "user"
-        ? await skillsApi.findByUrlMy(props.orgId, entry.gitUrl)
-        : await skillsApi.findByUrlOrg(props.orgId, entry.gitUrl);
+    const found = await skillsApi.findByUrl(props.wsId, entry.gitUrl);
     setShareable(found);
     setMode(found ? "share" : "independent");
   }
@@ -44,8 +40,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
         name,
         ...(shareable && mode === "share" ? { shareCloneWith: shareable.id } : {}),
       };
-      if (props.scope === "user") await skillsApi.createMy(props.orgId, body);
-      else await skillsApi.createOrg(props.orgId, body);
+      await skillsApi.create(props.wsId, body);
       props.onCreated();
       props.onClose();
     } catch (e: any) {
@@ -95,7 +90,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Name (must be unique in this scope)</label>
+              <label className="text-xs text-slate-400 mb-1 block">Name (must be unique in this workspace)</label>
               <input
                 className={inputCls}
                 value={name}

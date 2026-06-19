@@ -4,8 +4,8 @@ import { customStepsApi } from "../../api/customSteps.ts";
 import { EditCustomStepModal } from "./EditCustomStepModal.tsx";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "../../routes/admin-styles.ts";
 
-export function CustomStepsList(props: { orgId: string; scope: "user" | "org" }) {
-  const { orgId, scope } = props;
+export function CustomStepsList(props: { wsId: string }) {
+  const { wsId } = props;
   const [items, setItems] = useState<CustomAiStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<{ step?: CustomAiStep } | null>(null);
@@ -15,10 +15,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
   const refresh = async () => {
     setLoading(true);
     try {
-      const list = scope === "user"
-        ? await customStepsApi.listMine(orgId)
-        : await customStepsApi.listOrg(orgId);
-      setItems(list);
+      setItems(await customStepsApi.list(wsId));
       setError(null);
     } catch (err: any) {
       setError(err?.message ?? String(err));
@@ -27,13 +24,13 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
     }
   };
 
-  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [orgId, scope]);
+  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [wsId]);
 
   const handleSave = async (body: CustomAiStepCreateInput) => {
     if (editing?.step) {
-      await customStepsApi.update(orgId, editing.step.id, scope, body);
+      await customStepsApi.update(wsId, editing.step.id, body);
     } else {
-      await customStepsApi.createMine(orgId, body);
+      await customStepsApi.create(wsId, body);
     }
     setEditing(null);
     await refresh();
@@ -41,13 +38,13 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
 
   const handleDelete = async (p: CustomAiStep) => {
     if (!confirm(`Delete custom step "${p.name}"?`)) return;
-    await customStepsApi.remove(orgId, p.id, scope);
+    await customStepsApi.remove(wsId, p.id);
     await refresh();
   };
 
   const handleImport = async (parsed: unknown) => {
     try {
-      await customStepsApi.importOne(orgId, parsed);
+      await customStepsApi.importOne(wsId, parsed);
       await refresh();
     } catch (err: any) {
       const msg: string = err?.message ?? String(err);
@@ -59,7 +56,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
         if (typeof parsed === "object" && parsed !== null && "step" in (parsed as any)) {
           (parsed as any).step.name = newName;
           try {
-            await customStepsApi.importOne(orgId, parsed);
+            await customStepsApi.importOne(wsId, parsed);
             await refresh();
             return;
           } catch (retryErr: any) {
@@ -77,37 +74,35 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
       <section className={`${card} overflow-hidden`}>
         <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <h2 className="text-base font-medium text-slate-100">
-            {scope === "user" ? "Your steps" : "Org steps"}
+            Steps
             <span className="text-slate-500 font-normal ml-2">({items.length})</span>
           </h2>
-          {scope === "user" && (
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                ref={fileInputRef}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!file) return;
-                  try {
-                    const text = await file.text();
-                    let parsed: unknown;
-                    try { parsed = JSON.parse(text); }
-                    catch { throw new Error("File is not valid JSON"); }
-                    await handleImport(parsed);
-                  } catch (err: any) {
-                    setError(err?.message ?? String(err));
-                  }
-                }}
-              />
-              <button className={btnGhost} onClick={() => fileInputRef.current?.click()}>
-                Import
-              </button>
-              <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom step</button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  let parsed: unknown;
+                  try { parsed = JSON.parse(text); }
+                  catch { throw new Error("File is not valid JSON"); }
+                  await handleImport(parsed);
+                } catch (err: any) {
+                  setError(err?.message ?? String(err));
+                }
+              }}
+            />
+            <button className={btnGhost} onClick={() => fileInputRef.current?.click()}>
+              Import
+            </button>
+            <button className={btnPrimary} onClick={() => setEditing({})}>+ New custom step</button>
+          </div>
         </div>
 
         {error && (
@@ -154,7 +149,7 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
                       className={btnGhost}
                       onClick={async () => {
                         try {
-                          await customStepsApi.exportOne(orgId, p.id, scope);
+                          await customStepsApi.exportOne(wsId, p.id);
                         } catch (err: any) {
                           setError(err?.message ?? String(err));
                         }
@@ -175,7 +170,6 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
       {editing && (
         <EditCustomStepModal
           initial={editing.step}
-          scope={scope}
           onCancel={() => setEditing(null)}
           onSave={handleSave}
         />

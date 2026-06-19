@@ -4,8 +4,7 @@ import { mcpApi, type CatalogEntry, type UpsertBody } from "../../api/mcp.ts";
 import { SecretPicker } from "./SecretPicker.tsx";
 
 export interface AddFromCatalogModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -23,7 +22,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    mcpApi.catalog().then(setCatalog).catch(() => setCatalog([]));
+    mcpApi.listCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
 
   const categories = useMemo(() => {
@@ -71,8 +70,7 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
         .map(([envVar, secretName]) => ({ envVar, secretName })),
     };
     try {
-      if (props.scope === "user") await mcpApi.createMy(props.orgId, body);
-      else await mcpApi.createOrg(props.orgId, body);
+      await mcpApi.create(props.wsId, body);
       props.onCreated();
       props.onClose();
     } catch (e: any) {
@@ -166,10 +164,10 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
                     <code className={codePill}>{ev}</code>
                     <span className="text-slate-500">→</span>
                     <SecretPicker
-                      orgId={props.orgId}
+                      orgId=""
                       value={bindings[ev] ?? ""}
                       onChange={(secretName) => setBindings((prev) => ({ ...prev, [ev]: secretName }))}
-                      scope={props.scope === "org" ? "org-and-global" : "all"}
+                      scope="org-and-global"
                       required
                     />
                   </div>

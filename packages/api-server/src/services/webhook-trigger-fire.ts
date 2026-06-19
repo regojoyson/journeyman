@@ -7,6 +7,15 @@ import type {
 } from "@journeyman/core";
 import type { Composition } from "../composition.ts";
 
+async function resolveOrgId(c: Composition, workspaceId: string): Promise<string | null> {
+  if (!c.pool) return null;
+  const r = await c.pool.query<{ org_id: string }>(
+    "SELECT org_id FROM jm_workspaces WHERE id = $1",
+    [workspaceId],
+  );
+  return r.rows[0]?.org_id ?? null;
+}
+
 export interface TriggerFireInput {
   webhook: Webhook;
   eventId: string;
@@ -96,7 +105,7 @@ export async function fireWebhookTriggers(
         definitionSnapshot: version.definition,
         inputs,
         startedByUserId: null,
-        startedByOrgId: null, // TODO(workspace cutover): resolve org from workspace
+        startedByOrgId: await resolveOrgId(c, workflow.workspaceId),
         triggerSource: "webhook",
         triggerNodeId: node.id,
         webhookEventId: input.eventId,

@@ -5,7 +5,6 @@ import { FlowEditor } from "@journeyman/flow-editor";
 import type { Workflow, WorkflowGraph } from "@journeyman/core";
 import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
-import { cloneFlow } from "../api/flow-grants.ts";
 import { builtInSteps } from "@journeyman/steps";
 import { useCustomStepPaletteEntries } from "../flow-editor-integration/useCustomStepPaletteEntries.ts";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
@@ -142,8 +141,8 @@ export function FlowEditorPage() {
   });
 
   const onClone = async () => {
-    const { id: newId } = await cloneFlow(flow.id);
-    navigate(`/workflows/${newId}/edit`);
+    // TODO(phase 3): re-expose clone via workspace copy UI
+    alert("Clone is not yet available in this view.");
   };
 
   const onPublish = async () => {

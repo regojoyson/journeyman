@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "./admin-styles.ts";
-import { skillsApi, type SkillPackage, type PromotableSkillRow } from "../api/skills.ts";
+import { skillsApi, type SkillPackageRow as SkillPackage } from "../api/skills.ts";
 import { AddFromCatalogModal } from "../components/skills/AddFromCatalogModal.tsx";
 import { AddCustomModal } from "../components/skills/AddCustomModal.tsx";
 import { EditSkillsModal } from "../components/skills/EditSkillsModal.tsx";
-import { PromoteSkillDialog } from "../components/skills/PromoteSkillDialog.tsx";
 
 export function AdminSkillsPage(props: { orgId: string }) {
   const [orgRows, setOrgRows] = useState<SkillPackage[]>([]);
-  const [promotable, setPromotable] = useState<PromotableSkillRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pulling, setPulling] = useState<string | null>(null);
   const [modal, setModal] = useState<"catalog" | "custom" | null>(null);
   const [editing, setEditing] = useState<SkillPackage | null>(null);
-  const [promoting, setPromoting] = useState<PromotableSkillRow | null>(null);
 
   const sharedPathCounts = orgRows.reduce<Record<string, number>>((acc, r) => {
     if (r.localPath) acc[r.localPath] = (acc[r.localPath] ?? 0) + 1;
@@ -23,12 +20,7 @@ export function AdminSkillsPage(props: { orgId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const [a, b] = await Promise.all([
-        skillsApi.listOrg(props.orgId),
-        skillsApi.listPromotable(props.orgId),
-      ]);
-      setOrgRows(a);
-      setPromotable(b);
+      setOrgRows(await skillsApi.list(""));
     } finally {
       setLoading(false);
     }
@@ -38,7 +30,7 @@ export function AdminSkillsPage(props: { orgId: string }) {
   async function pull(row: SkillPackage) {
     setPulling(row.id);
     try {
-      await skillsApi.pullOrg(props.orgId, row.id);
+      await skillsApi.pull("", row.id);
       await refresh();
     } finally {
       setPulling(null);
@@ -47,7 +39,7 @@ export function AdminSkillsPage(props: { orgId: string }) {
 
   async function remove(row: SkillPackage) {
     if (!confirm(`Delete org skill package "${row.name}"?`)) return;
-    await skillsApi.removeOrg(props.orgId, row.id);
+    await skillsApi.remove("", row.id);
     refresh();
   }
 
@@ -132,55 +124,16 @@ export function AdminSkillsPage(props: { orgId: string }) {
             </table>
           )}
         </section>
-
-        <section className={`${card} overflow-hidden`}>
-          <div className="px-6 py-4 border-b border-slate-700">
-            <h2 className="text-base font-medium text-slate-100">
-              Promotable from users <span className="text-slate-500 font-normal">({promotable.length})</span>
-            </h2>
-          </div>
-          {promotable.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500">
-              No user-level skill packages in this org.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-subtle text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left font-medium px-6 py-3">Owner</th>
-                  <th className="text-left font-medium px-6 py-3">Name</th>
-                  <th className="text-left font-medium px-6 py-3">Skills</th>
-                  <th className="px-6 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700 border-t border-slate-700">
-                {promotable.map((r) => (
-                  <tr key={r.id} className="hover:bg-surface-hover">
-                    <td className="px-6 py-3 text-slate-300">{r.ownerEmail}</td>
-                    <td className="px-6 py-3"><code className={codePill}>{r.name}</code></td>
-                    <td className="px-6 py-3 text-slate-300">{r.enabledSkillCount} enabled</td>
-                    <td className="px-6 py-3 text-right">
-                      <button onClick={() => setPromoting(r)} className={btnPrimary}>Promote →</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
       </div>
 
       {modal === "catalog" && (
-        <AddFromCatalogModal orgId={props.orgId} scope="org" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddFromCatalogModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {modal === "custom" && (
-        <AddCustomModal orgId={props.orgId} scope="org" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddCustomModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {editing && (
-        <EditSkillsModal orgId={props.orgId} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
-      )}
-      {promoting && (
-        <PromoteSkillDialog orgId={props.orgId} row={promoting} onClose={() => setPromoting(null)} onPromoted={refresh} />
+        <EditSkillsModal wsId={""} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

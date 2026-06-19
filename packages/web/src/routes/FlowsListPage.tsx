@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Workflow } from "@journeyman/core";
 import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
-import { cloneFlow, promoteFlow, deleteFlow } from "../api/flow-grants.ts";
+import { deleteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
 import { Pagination } from "@journeyman/runs-list";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
@@ -55,22 +55,9 @@ export function FlowsListPage() {
     isPlatformAdmin,
   };
 
-  async function handleClone(flow: Workflow) {
-    try {
-      const { id } = await cloneFlow(flow.id);
-      navigate(`/workflows/${id}/edit`);
-    } catch (e) {
-      alert(`Clone failed: ${(e as Error).message}`);
-    }
-  }
-
-  async function handlePromote(flow: Workflow, targetScope: "org" | "global") {
-    try {
-      await promoteFlow(flow.id, { targetScope });
-      await fetchFlows(scopeFilter, page, pageSize);
-    } catch (e) {
-      alert(`Promote failed: ${(e as Error).message}`);
-    }
+  async function handleClone(_flow: Workflow) {
+    // TODO(phase 3): re-expose clone via workspace copy UI
+    alert("Clone is not yet available in this view.");
   }
 
   async function handleRename(flow: Workflow) {

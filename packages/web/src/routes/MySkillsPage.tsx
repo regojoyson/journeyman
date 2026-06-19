@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { btnDanger, btnGhost, btnPrimary, card, codePill } from "./admin-styles.ts";
-import { skillsApi, type SkillPackage } from "../api/skills.ts";
+import { skillsApi, type SkillPackageRow as SkillPackage } from "../api/skills.ts";
 import { AddFromCatalogModal } from "../components/skills/AddFromCatalogModal.tsx";
 import { AddCustomModal } from "../components/skills/AddCustomModal.tsx";
 import { EditSkillsModal } from "../components/skills/EditSkillsModal.tsx";
@@ -20,7 +20,7 @@ export function MySkillsPage(props: { orgId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      setRows(await skillsApi.listMy(props.orgId));
+      setRows(await skillsApi.list(""));
     } finally {
       setLoading(false);
     }
@@ -30,7 +30,7 @@ export function MySkillsPage(props: { orgId: string }) {
   async function pull(row: SkillPackage) {
     setPulling(row.id);
     try {
-      await skillsApi.pullMy(props.orgId, row.id);
+      await skillsApi.pull("", row.id);
       await refresh();
     } finally {
       setPulling(null);
@@ -39,7 +39,7 @@ export function MySkillsPage(props: { orgId: string }) {
 
   async function remove(row: SkillPackage) {
     if (!confirm(`Delete skill package "${row.name}"?`)) return;
-    await skillsApi.removeMy(props.orgId, row.id);
+    await skillsApi.remove("", row.id);
     refresh();
   }
 
@@ -160,13 +160,13 @@ export function MySkillsPage(props: { orgId: string }) {
       </div>
 
       {modal === "catalog" && (
-        <AddFromCatalogModal orgId={props.orgId} scope="user" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddFromCatalogModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {modal === "custom" && (
-        <AddCustomModal orgId={props.orgId} scope="user" onClose={() => setModal(null)} onCreated={refresh} />
+        <AddCustomModal wsId={""} onClose={() => setModal(null)} onCreated={refresh} />
       )}
       {editing && (
-        <EditSkillsModal orgId={props.orgId} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <EditSkillsModal wsId={""} pkg={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

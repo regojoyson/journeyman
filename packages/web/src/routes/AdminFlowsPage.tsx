@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Workflow } from "@journeyman/core";
 import { listFlows } from "../api/flows.ts";
-import { promoteFlow } from "../api/flow-grants.ts";
 import { useAuth } from "../AuthContext.tsx";
 import { btnGhost, btnPrimary, card } from "./admin-styles.ts";
 
@@ -10,7 +9,7 @@ export function AdminFlowsPage() {
   const [userFlows, setUserFlows] = useState<Workflow[]>([]);
   const [orgFlows, setOrgFlows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const busyId: string | null = null;
 
   async function refresh() {
     setLoading(true);
@@ -25,14 +24,9 @@ export function AdminFlowsPage() {
   }
   useEffect(() => { void refresh(); }, [activeOrgId, isPlatformAdmin]);
 
-  async function promote(id: string, targetScope: "org" | "global") {
-    setBusyId(id);
-    try {
-      await promoteFlow(id, { targetScope });
-      await refresh();
-    } finally {
-      setBusyId(null);
-    }
+  async function promote(_id: string, _targetScope: "org" | "global") {
+    // TODO(phase 3): re-expose promote via workspace copy UI
+    alert("Promote is not yet available.");
   }
 
   return (

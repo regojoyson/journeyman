@@ -4,8 +4,7 @@ import { mcpApi, type McpInstance } from "../../api/mcp.ts";
 import { BindingsEditor, type Binding } from "./BindingsEditor.tsx";
 
 export interface EditMcpModalProps {
-  orgId: string;
-  scope: "user" | "org";
+  wsId: string;
   mcp: McpInstance;
   onClose: () => void;
   onSaved: () => void;
@@ -33,8 +32,7 @@ export function EditMcpModal(props: EditMcpModalProps) {
       body.url = url;
     }
     try {
-      if (props.scope === "user") await mcpApi.updateMy(props.orgId, props.mcp.id, body);
-      else await mcpApi.updateOrg(props.orgId, props.mcp.id, body);
+      await mcpApi.update(props.wsId, props.mcp.id, body);
       props.onSaved();
       props.onClose();
     } catch (e: any) {
@@ -68,10 +66,10 @@ export function EditMcpModal(props: EditMcpModalProps) {
           <div>
             <div className="text-sm text-slate-300 mb-2">Bindings</div>
             <BindingsEditor
-              orgId={props.orgId}
+              orgId=""
               value={bindings}
               onChange={setBindings}
-              scope={props.scope === "org" ? "org-and-global" : "all"}
+              scope="org-and-global"
             />
           </div>
 
