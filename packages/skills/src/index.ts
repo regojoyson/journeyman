@@ -15,14 +15,12 @@ export {
   updateEnabledSkills,
   deleteSkillPackage,
   listSkillPackagesForResolver,
-  listPromotableSkillPackages,
-  promoteSkillPackage,
   findShareableSkillPackage,
   countRowsByLocalPath,
   listVisibleSkillPackages,
   fetchSkillPackagesByIds,
 } from "./db.ts";
-export type { PromotableSkillRow, VisibleSkillRow } from "./db.ts";
+export type { VisibleSkillRow } from "./db.ts";
 export {
   clonePackage,
   refreshPackage,
