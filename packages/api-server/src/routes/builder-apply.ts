@@ -23,6 +23,16 @@ function makeApplyDeps(c: Composition): ApplyDeps {
   };
 }
 
+/** Resolve the default workspace id for an org. */
+async function resolveDefaultWorkspaceId(pool: import("pg").Pool, orgId: string): Promise<string> {
+  const res = await pool.query<{ id: string }>(
+    "SELECT id FROM jm_workspaces WHERE org_id = $1 AND slug = 'default' LIMIT 1",
+    [orgId],
+  );
+  if (res.rows.length === 0) throw new Error(`No default workspace found for org ${orgId}`);
+  return res.rows[0].id;
+}
+
 export function registerBuilderApplyRoute(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
 
@@ -40,7 +50,8 @@ export function registerBuilderApplyRoute(app: FastifyInstance, c: Composition):
         return reply.code(409).send({ error: "Resolve all required gaps before applying" });
       }
 
-      const args = buildApplyArgs(session, { orgId, userId: ctx.user.id });
+      const workspaceId = await resolveDefaultWorkspaceId(c.pool!, orgId);
+      const args = buildApplyArgs(session, { orgId, userId: ctx.user.id, workspaceId });
       const result = await applyBuildPlan(makeApplyDeps(c), args);
 
       await updateBuilderSession(c.pool!, {

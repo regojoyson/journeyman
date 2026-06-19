@@ -72,7 +72,6 @@ const customStepOutputField = z.object({
   description: z.string().optional(),
 });
 const customStepCreateInput = z.object({
-  scope: z.enum(["user", "org"]),
   name: z.string(),
   description: z.string().optional(),
   inputFields: z.array(customStepInputField).optional(),

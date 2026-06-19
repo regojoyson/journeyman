@@ -27,7 +27,7 @@ const dev: FewShotExample = {
     newCustomSteps: [{
       id: "tmp-impl",
       step: {
-        scope: "user", name: "Implement ticket",
+        name: "Implement ticket",
         promptTemplate: "Implement the change described in {{input.issue}}. When done, run git add/commit and push the branch.",
         inputFields: [{ name: "issue", type: "json-object", required: true }],
         outputMode: "text",
@@ -59,7 +59,7 @@ const qa: FewShotExample = {
     newCustomSteps: [{
       id: "tmp-test",
       step: {
-        scope: "user", name: "Run tests",
+        name: "Run tests",
         promptTemplate: "Run the project's test suite with bash and report whether it passed.",
         outputMode: "structured",
         outputFields: [{ name: "passed", type: "boolean", required: true }],
@@ -87,11 +87,11 @@ const sre: FewShotExample = {
         tools: ["bash"] },
     ],
     newCustomSteps: [
-      { id: "tmp-inv", step: { scope: "user", name: "Investigate incident",
+      { id: "tmp-inv", step: { name: "Investigate incident",
         promptTemplate: "Investigate the alert for {{input.service}} and propose a fix.",
         inputFields: [{ name: "service", type: "string", required: true }],
         outputMode: "text", defaultTools: ["bash"] } },
-      { id: "tmp-fix", step: { scope: "user", name: "Apply remediation",
+      { id: "tmp-fix", step: { name: "Apply remediation",
         promptTemplate: "Apply the approved fix in production, carefully.",
         outputMode: "text", defaultTools: ["bash"] } },
     ],

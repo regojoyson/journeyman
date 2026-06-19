@@ -6,7 +6,7 @@ function planWith(custom: BuildPlan["newCustomSteps"], graph: BuildPlan["workflo
   return { newCustomSteps: custom, workflow: graph, defaults: { sandboxId: null, model: null }, stepBindings: [], gaps: [], summary: "s" };
 }
 
-const baseArgs = { workflowName: "PR review", scope: "user" as const, orgId: "o1", userId: "u1", createdBy: "u1" };
+const baseArgs = { workflowName: "PR review", scope: "user" as const, orgId: "o1", userId: "u1", createdBy: "u1", workspaceId: "w1" };
 
 describe("applyBuildPlan", () => {
   it("creates steps, rewrites ids, and creates a draft workflow", async () => {
@@ -16,7 +16,7 @@ describe("applyBuildPlan", () => {
     const deps: ApplyDeps = { insertStep, deleteStep, createWorkflow };
 
     const plan = planWith(
-      [{ id: "tmp-a", step: { scope: "user", name: "Review" } }],
+      [{ id: "tmp-a", step: { name: "Review" } }],
       { schemaVersion: 2, nodes: [
         { id: "n_1", type: "step", stepType: "custom-ai", config: { customStepId: "tmp-a" }, position: { x: 0, y: 0 } },
       ], edges: [] },
@@ -25,7 +25,7 @@ describe("applyBuildPlan", () => {
     const res = await applyBuildPlan(deps, { ...baseArgs, plan });
 
     expect(insertStep).toHaveBeenCalledTimes(1);
-    expect(insertStep.mock.calls[0][0]).toMatchObject({ name: "Review", orgId: "o1", userId: "u1", createdBy: "u1" });
+    expect(insertStep.mock.calls[0][0]).toMatchObject({ name: "Review", workspaceId: "w1", createdBy: "u1" });
     const passedGraph = (createWorkflow.mock.calls[0][0] as CreateWorkflowArgs).initialDefinition;
     expect(passedGraph.nodes[0].config!.customStepId).toBe("real-Review");
     expect(createWorkflow.mock.calls[0][0]).toMatchObject({ scope: "user", name: "PR review", orgId: "o1", ownerUserId: "u1" });
@@ -40,7 +40,7 @@ describe("applyBuildPlan", () => {
     const deps: ApplyDeps = { insertStep, deleteStep, createWorkflow };
 
     const plan = planWith(
-      [{ id: "tmp-a", step: { scope: "user", name: "A" } }, { id: "tmp-b", step: { scope: "user", name: "B" } }],
+      [{ id: "tmp-a", step: { name: "A" } }, { id: "tmp-b", step: { name: "B" } }],
       { schemaVersion: 2, nodes: [], edges: [] },
     );
 
@@ -48,18 +48,18 @@ describe("applyBuildPlan", () => {
     expect(deleteStep.mock.calls.map((c) => c[0])).toEqual(["real-B", "real-A"]);
   });
 
-  it("derives org-scope workflow owner as null and org-scoped step userId as null", async () => {
+  it("derives org-scope workflow owner as null when scope is org", async () => {
     const insertStep = vi.fn(async (_input: any) => ({ id: "real-x" }));
     const createWorkflow = vi.fn(async (_args: CreateWorkflowArgs) => ({ workflowId: "wf", versionId: "v" }));
     const deps: ApplyDeps = { insertStep, deleteStep: vi.fn(async (_id: string) => {}), createWorkflow };
 
     const plan = planWith(
-      [{ id: "tmp-a", step: { scope: "org", name: "Shared" } }],
+      [{ id: "tmp-a", step: { name: "Shared" } }],
       { schemaVersion: 2, nodes: [], edges: [] },
     );
-    await applyBuildPlan(deps, { workflowName: "w", scope: "org", orgId: "o1", userId: "u1", createdBy: "u1", plan });
+    await applyBuildPlan(deps, { workflowName: "w", scope: "org", orgId: "o1", userId: "u1", createdBy: "u1", workspaceId: "w1", plan });
 
-    expect(insertStep.mock.calls[0][0]).toMatchObject({ userId: null });
+    expect(insertStep.mock.calls[0][0]).toMatchObject({ workspaceId: "w1", createdBy: "u1" });
     expect(createWorkflow.mock.calls[0][0]).toMatchObject({ scope: "org", orgId: "o1", ownerUserId: null });
   });
 

@@ -16,8 +16,7 @@ function node(config: Record<string, unknown>): WorkflowNode {
 function def(overrides: Partial<CustomAiStep>): CustomAiStep {
   return {
     id: "cp",
-    scope: "user",
-    orgId: "o",
+    workspaceId: "w",
     name: "Step",
     description: "",
     inputFields: [],

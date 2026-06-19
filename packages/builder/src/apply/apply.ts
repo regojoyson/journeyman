@@ -7,7 +7,7 @@ import { rewriteCustomStepIds } from "./rewrite.ts";
 export interface ApplyDeps {
   /** Create one custom step; returns at least its new id. */
   insertStep(
-    input: CustomAiStepCreateInput & { orgId: string; userId: string | null; createdBy: string },
+    input: CustomAiStepCreateInput & { workspaceId: string; createdBy: string },
   ): Promise<{ id: string }>;
   /** Hard-delete a created step (rollback). */
   deleteStep(id: string): Promise<void>;
@@ -22,6 +22,7 @@ export interface ApplyArgs {
   orgId: string | null;
   userId: string | null;
   createdBy: string | null;
+  workspaceId: string;
 }
 
 export interface ApplyResult {
@@ -45,14 +46,9 @@ export async function applyBuildPlan(deps: ApplyDeps, args: ApplyArgs): Promise<
   try {
     // 1. Create each new custom step, capturing placeholder → real id.
     for (const proposed of plan.newCustomSteps) {
-      const stepUserId = proposed.step.scope === "user" ? args.userId : null;
-      if (args.orgId === null) {
-        throw new Error("orgId is required to create custom steps");
-      }
       const created = await deps.insertStep({
         ...proposed.step,
-        orgId: args.orgId,
-        userId: stepUserId,
+        workspaceId: args.workspaceId,
         createdBy: args.createdBy ?? "",
       });
       createdStepIds.push(created.id);

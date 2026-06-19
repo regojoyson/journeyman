@@ -57,7 +57,6 @@ export function EditCustomStepModal(props: {
     setError(null);
     try {
       await onSave({
-        scope,
         name, description,
         icon,
         inputFields,

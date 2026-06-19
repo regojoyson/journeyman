@@ -5,7 +5,7 @@ describe("builder.types", () => {
   it("a BuildPlan object satisfies the contract", () => {
     const proposed: ProposedCustomStep = {
       id: "tmp-1",
-      step: { scope: "user", name: "Security review" },
+      step: { name: "Security review" },
     };
     const binding: StepBinding = {
       nodeId: "n1",

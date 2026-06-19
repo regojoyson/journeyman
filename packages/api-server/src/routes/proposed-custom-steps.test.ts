@@ -12,7 +12,6 @@ describe("shapesFromProposedSteps", () => {
       {
         id: "tmp-sec",
         step: {
-          scope: "user",
           name: "Security review",
           inputFields: [{ name: "diff", type: "string", required: true }],
           outputMode: "structured",
@@ -27,7 +26,7 @@ describe("shapesFromProposedSteps", () => {
   });
 
   it("defaults missing inputFields/outputMode safely", () => {
-    const map = shapesFromProposedSteps([{ id: "x", step: { scope: "user", name: "Bare" } }]);
+    const map = shapesFromProposedSteps([{ id: "x", step: { name: "Bare" } }]);
     expect(map.has("x")).toBe(true);
     expect(map.get("x")!.outputSchema).toBeNull(); // outputMode defaults to "none"
   });

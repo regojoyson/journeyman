@@ -5,7 +5,7 @@ import type { ApplyArgs } from "./apply.ts";
 /** Derive executor ApplyArgs from a (user-scoped) builder session + auth context. */
 export function buildApplyArgs(
   session: BuilderSessionRecord,
-  ctx: { orgId: string; userId: string },
+  ctx: { orgId: string; userId: string; workspaceId: string },
 ): ApplyArgs {
   return {
     plan: session.buildPlan as BuildPlan,
@@ -14,6 +14,7 @@ export function buildApplyArgs(
     orgId: ctx.orgId,
     userId: ctx.userId,
     createdBy: ctx.userId,
+    workspaceId: ctx.workspaceId,
   };
 }
 

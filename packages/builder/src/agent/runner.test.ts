@@ -6,7 +6,7 @@ const intent: AssemblerIntent = {
   summary: "Get a ticket",
   triggers: [{ kind: "manual" }],
   steps: [{ ref: "g", kind: "provider", label: "Get", stepType: "get-issue", provider: "jira" }],
-  newCustomSteps: [{ id: "tmp", step: { scope: "user", name: "X" } }],
+  newCustomSteps: [{ id: "tmp", step: { name: "X" } }],
 };
 
 describe("runBuilderTurn", () => {

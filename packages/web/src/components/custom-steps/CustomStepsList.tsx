@@ -72,12 +72,6 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
     }
   };
 
-  const handlePromote = async (p: CustomAiStep) => {
-    if (!confirm(`Promote "${p.name}" to org scope? It will be visible to all org members and removed from your personal steps.`)) return;
-    await customStepsApi.promoteToOrg(orgId, p.id);
-    await refresh();
-  };
-
   return (
     <>
       <section className={`${card} overflow-hidden`}>
@@ -169,9 +163,6 @@ export function CustomStepsList(props: { orgId: string; scope: "user" | "org" })
                       Export
                     </button>
                     <button className={btnGhost} onClick={() => setEditing({ step: p })}>Edit</button>
-                    {p.scope === "user" && (
-                      <button className={btnGhost} onClick={() => handlePromote(p)}>Promote to org</button>
-                    )}
                     <button className={btnDanger} onClick={() => handleDelete(p)}>Delete</button>
                   </td>
                 </tr>

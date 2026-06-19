@@ -38,7 +38,7 @@ function buildSyntheticStep(p: CustomAiStep, color: string): StepDefinition<any>
   return {
     stepType: `custom-ai:${p.id}`,
     label: p.name,
-    category: p.scope === "org" ? "Custom (Org)" : "Custom",
+    category: "Custom",
     description: p.description || `Custom AI step: ${p.name}`,
     color,
     icon: p.icon ?? DEFAULT_CUSTOM_STEP_ICON_ID,

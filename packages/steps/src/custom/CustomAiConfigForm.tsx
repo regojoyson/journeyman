@@ -54,7 +54,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
   if (error) return <div className="je-props__field-help" style={{ color: "#ff7675" }}>{error}</div>;
   if (!step) return <div className="je-props__field-help">Loading custom step…</div>;
 
-  const editHref = step.scope === "user" ? "/me/custom-steps" : "/admin/custom-steps";
+  const editHref = "/me/custom-steps";
   const removeInput = (name: string) => {
     const next = { ...inputs };
     delete next[name];
@@ -66,7 +66,6 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
         <label>Step</label>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <strong>{step.name}</strong>
-          <span style={{ fontSize: 11, color: "#888" }}>({step.scope})</span>
           <a
             href={editHref}
             target="_blank"
