@@ -48,7 +48,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { value?: string; description?: string | null };
       const ok = await updateSecret(pool, {
-        id, orgId, userId: null,
+        id, orgId, workspaceId: null,
         value: body?.value, description: body?.description,
       });
       if (!ok) return reply.code(404).send({ error: "Not found" });
