@@ -8,16 +8,16 @@ export interface Queryable {
 }
 
 const COLS =
-  "id, scope, org_id, user_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by, created_at, updated_at, image_state, image_fingerprint, image_ref, image_error, image_built_at";
+  "id, scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by, created_at, updated_at, image_state, image_fingerprint, image_ref, image_error, image_built_at";
 
 export async function insertSandbox(db: Queryable, input: CreateSandboxArgs): Promise<Sandbox> {
   const { rows } = await db.query(
     `INSERT INTO jm_sandboxes
-       (scope, org_id, user_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11)
+       (scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10)
      RETURNING ${COLS}`,
     [
-      input.scope, input.orgId, input.userId, input.name, input.type, input.executionMode,
+      input.scope, input.orgId, input.name, input.type, input.executionMode,
       input.connectivity ?? null, JSON.stringify(input.config ?? {}),
       JSON.stringify(input.tags ?? []), input.enabled ?? true, input.createdBy,
     ],
@@ -25,34 +25,18 @@ export async function insertSandbox(db: Queryable, input: CreateSandboxArgs): Pr
   return rowToSandbox(rows[0]);
 }
 
-export async function listSandboxes(
-  db: Queryable,
-  scope: { orgId: string; userId: string | null },
-): Promise<Sandbox[]> {
-  if (scope.userId === null) {
-    const { rows } = await db.query(
-      `SELECT ${COLS} FROM jm_sandboxes WHERE org_id = $1 AND user_id IS NULL ORDER BY name`,
-      [scope.orgId],
-    );
-    return rows.map(rowToSandbox);
-  }
+export async function listSandboxes(db: Queryable, orgId: string): Promise<Sandbox[]> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_sandboxes WHERE org_id = $1 AND user_id = $2 ORDER BY name`,
-    [scope.orgId, scope.userId],
+    `SELECT ${COLS} FROM jm_sandboxes WHERE org_id = $1 ORDER BY name`,
+    [orgId],
   );
   return rows.map(rowToSandbox);
 }
 
-export async function getSandbox(
-  db: Queryable,
-  id: string,
-  orgId: string,
-  userId: string | null,
-): Promise<Sandbox | null> {
+export async function getSandbox(db: Queryable, id: string, orgId: string): Promise<Sandbox | null> {
   const { rows } = await db.query(
-    `SELECT ${COLS} FROM jm_sandboxes
-     WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3`,
-    [id, orgId, userId],
+    `SELECT ${COLS} FROM jm_sandboxes WHERE id = $1 AND org_id = $2`,
+    [id, orgId],
   );
   return rows[0] ? rowToSandbox(rows[0]) : null;
 }
@@ -74,65 +58,41 @@ export async function updateSandbox(db: Queryable, input: UpdateSandboxArgs): Pr
   if (input.enabled !== undefined) set("enabled", input.enabled);
   if (sets.length === 0) return true;
   sets.push("updated_at = now()");
-  params.push(input.id, input.orgId, input.userId);
+  params.push(input.id, input.orgId);
   const { rows } = await db.query(
     `UPDATE jm_sandboxes SET ${sets.join(", ")}
-     WHERE id = $${i} AND org_id = $${i + 1} AND user_id IS NOT DISTINCT FROM $${i + 2}
+     WHERE id = $${i} AND org_id = $${i + 1}
      RETURNING id`,
     params,
   );
   return rows.length > 0;
 }
 
-export async function deleteSandbox(
-  db: Queryable,
-  id: string,
-  orgId: string,
-  userId: string | null,
-): Promise<boolean> {
+export async function deleteSandbox(db: Queryable, id: string, orgId: string): Promise<boolean> {
   const { rows } = await db.query(
-    `DELETE FROM jm_sandboxes
-     WHERE id = $1 AND org_id = $2 AND user_id IS NOT DISTINCT FROM $3
-     RETURNING id`,
-    [id, orgId, userId],
+    `DELETE FROM jm_sandboxes WHERE id = $1 AND org_id = $2 RETURNING id`,
+    [id, orgId],
   );
   return rows.length > 0;
 }
 
-/** System defaults + this org's org-scoped + this user's user-scoped, enabled only. */
-export async function listVisibleSandboxes(
-  db: Queryable,
-  orgId: string,
-  userId: string,
-): Promise<Sandbox[]> {
+/** System defaults + this org's org-scoped, enabled only. */
+export async function listVisibleSandboxes(db: Queryable, orgId: string): Promise<Sandbox[]> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_sandboxes
-     WHERE enabled = true AND (
-       scope = 'system'
-       OR (scope = 'org'  AND org_id = $1)
-       OR (scope = 'user' AND org_id = $1 AND user_id = $2)
-     )
+     WHERE enabled = true AND (scope = 'system' OR (scope = 'org' AND org_id = $1))
      ORDER BY scope, name`,
-    [orgId, userId],
+    [orgId],
   );
   return rows.map(rowToSandbox);
 }
 
-/** Fetch a single worker visible to {orgId,userId} (system OR org OR user scope). */
-export async function fetchSandboxById(
-  db: Queryable,
-  orgId: string,
-  userId: string,
-  id: string,
-): Promise<Sandbox | null> {
+/** Fetch a single sandbox visible to the org (system OR org scope). */
+export async function fetchSandboxById(db: Queryable, orgId: string, id: string): Promise<Sandbox | null> {
   const { rows } = await db.query(
     `SELECT ${COLS} FROM jm_sandboxes
-     WHERE id = $1 AND enabled = true AND (
-       scope = 'system'
-       OR (scope = 'org'  AND org_id = $2)
-       OR (scope = 'user' AND org_id = $2 AND user_id = $3)
-     )`,
-    [id, orgId, userId],
+     WHERE id = $1 AND enabled = true AND (scope = 'system' OR (scope = 'org' AND org_id = $2))`,
+    [id, orgId],
   );
   return rows[0] ? rowToSandbox(rows[0]) : null;
 }

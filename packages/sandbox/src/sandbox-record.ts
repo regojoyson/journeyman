@@ -58,7 +58,6 @@ export function rowToSandbox(r: Record<string, any>): Sandbox {
     id: r.id,
     scope: r.scope as SandboxScope,
     orgId: r.org_id ?? null,
-    userId: r.user_id ?? null,
     name: r.name,
     type: r.type as SandboxType,
     executionMode: r.execution_mode as ExecutionMode,
