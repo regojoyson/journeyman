@@ -1,25 +1,23 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
-import { makeRequireAuth } from "@journeyman/identity";
-import { DuplicateSecretError, fetchOwnUserSecret, insertOrgSecret } from "../db.ts";
+import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
+import { DuplicateSecretError, fetchPinnedWorkspaceSecret, insertOrgSecret } from "../db.ts";
 
 export async function registerPromoteSecretRoute(app: FastifyInstance, pool: Pool) {
   const requireAuth = makeRequireAuth({ pool });
+  const requirePerm = makeRequireWorkspacePermission({ pool });
 
   app.post(
-    "/api/orgs/:orgId/secrets/:secretName/promote-from-user",
-    { preHandler: requireAuth({ role: "admin" }) },
+    "/api/workspaces/:wsId/secrets/:secretName/promote-to-org",
+    { preHandler: [requireAuth(), requirePerm("members.manage")] },
     async (req, reply) => {
-      const { orgId, secretName } = req.params as { orgId: string; secretName: string };
+      const { wsId, secretName } = req.params as { wsId: string; secretName: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) {
-        return reply.code(403).send({ error: "Wrong org" });
-      }
 
-      // 1. Find the caller's user-scope secret by name.
+      // 1. Find the workspace-scope secret by name.
       let value: string | null;
       try {
-        value = await fetchOwnUserSecret(pool, ctx.user.id, secretName);
+        value = await fetchPinnedWorkspaceSecret(pool, wsId, secretName);
       } catch (err) {
         if (err instanceof Error && /Invalid secret name/.test(err.message)) {
           return reply.code(400).send({ error: err.message });
@@ -28,7 +26,7 @@ export async function registerPromoteSecretRoute(app: FastifyInstance, pool: Poo
       }
       if (value === null) {
         return reply.code(404).send({
-          error: `No personal secret named '${secretName}' to promote`,
+          error: `No workspace secret named '${secretName}' to promote`,
         });
       }
 
@@ -36,10 +34,10 @@ export async function registerPromoteSecretRoute(app: FastifyInstance, pool: Poo
       //    constraint and throws DuplicateSecretError on collision.
       try {
         const rec = await insertOrgSecret(pool, {
-          orgId,
+          orgId: ctx.workspace!.orgId,
           name: secretName,
           value,
-          description: `Promoted from personal secret by ${ctx.user.id}`,
+          description: `Promoted from workspace ${wsId} by ${ctx.user.id}`,
           createdBy: ctx.user.id,
         });
         reply.code(201);
