@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { makeRequireAuth } from "@journeyman/identity";
 import { listCustomAiSteps } from "@journeyman/custom-steps";
-import { listMcpInstances } from "@journeyman/mcp";
+
 import { listVisibleSandboxes } from "@journeyman/sandbox";
 import { PostgresWebhookStore } from "@journeyman/orchestrator";
 import {
@@ -22,14 +22,15 @@ const PING_MS = 15_000;
 
 async function loadInventory(c: Composition, orgId: string, userId: string): Promise<InventorySummary> {
   const pool = c.pool!;
-  const [customSteps, mcps, sandboxes] = await Promise.all([
+  const [customSteps, sandboxes] = await Promise.all([
     listCustomAiSteps(pool, orgId, userId),
-    listMcpInstances(pool, orgId, userId),
     listVisibleSandboxes(pool, orgId),
   ]);
   // TODO(builder cutover): skills are workspace-scoped now; the builder session's
   // workspace wires this up in the Builder cutover. Empty until then.
   const skills: { id: string; name: string }[] = [];
+  // TODO(builder cutover): mcp instances are workspace-scoped now.
+  const mcps: { id: string; name: string }[] = [];
   const webhooks = await new PostgresWebhookStore(pool).listByScope({ userId });
   return {
     customSteps: customSteps.map((s) => ({ id: s.id, name: s.name, description: s.description })),

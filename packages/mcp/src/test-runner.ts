@@ -32,7 +32,7 @@ const TEST_TIMEOUT_MS = 30_000;
 
 export async function testMcpInstance(
   pool: Pool,
-  ctx: { orgId: string; userId: string },
+  ctx: { workspaceId: string },
   instanceId: string,
   action: TestAction,
 ): Promise<TestOutcome> {

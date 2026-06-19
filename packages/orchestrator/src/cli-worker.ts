@@ -396,7 +396,7 @@ const harness = new WorkerHarness({
   bindingResolver: cliBindingResolver,
   mcpResolver: ({ ctx, instanceIds }) => {
     if (!pool) return Promise.resolve([]);
-    return resolveMcpInstances(pool, ctx, instanceIds);
+    return resolveMcpInstances(pool, { workspaceId: (ctx as { workspaceId?: string | null }).workspaceId ?? null }, instanceIds);
   },
   skillsResolver: ({ ctx, packageIds }) => {
     if (!pool) return Promise.resolve([]);

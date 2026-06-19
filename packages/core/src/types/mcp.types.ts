@@ -7,8 +7,7 @@ export interface McpBinding {
 
 export interface McpInstanceRecord {
   id: string;
-  orgId: string;
-  userId: string | null;
+  workspaceId: string;
   name: string;
   description: string | null;
   transport: McpTransport;

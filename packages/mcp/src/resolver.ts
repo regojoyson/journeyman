@@ -7,9 +7,7 @@ import { fetchForResolve } from "@journeyman/secrets/db";
 import { fetchInstancesByIds } from "./db.ts";
 
 export interface ResolveCtx {
-  orgId: string;
-  userId: string;
-  /** Active workspace for secret resolution (workspace > org). Null/undefined => org tier. */
+  /** Workspace for instance + secret resolution. Null/undefined => nothing resolves. */
   workspaceId?: string | null;
 }
 
@@ -18,9 +16,9 @@ export async function resolveMcpInstances(
   ctx: ResolveCtx,
   instanceIds: string[],
 ): Promise<ResolvedMcpInstance[]> {
-  if (instanceIds.length === 0) return [];
+  if (instanceIds.length === 0 || !ctx.workspaceId) return [];
 
-  const found = await fetchInstancesByIds(pool, ctx.orgId, ctx.userId, instanceIds);
+  const found = await fetchInstancesByIds(pool, ctx.workspaceId, instanceIds);
   const byId = new Map(found.map((i) => [i.id, i]));
   const missing = instanceIds.filter((id) => !byId.has(id));
   if (missing.length > 0) throw new MissingMcpInstancesError(missing);
@@ -29,9 +27,20 @@ export async function resolveMcpInstances(
     new Set(found.flatMap((i) => i.bindings.map((b) => b.secretName))),
   );
 
-  const workspaceId = ctx.workspaceId ?? null;
+  // Secrets resolution needs both org (for org-tier fallback) and workspace.
+  // Derive org from the workspace row.
+  let orgId: string | null = null;
+  if (allSecretNames.length > 0) {
+    const wsRow = await pool.query(
+      `SELECT org_id FROM jm_workspaces WHERE id = $1`,
+      [ctx.workspaceId],
+    );
+    orgId = wsRow.rows[0]?.org_id ?? null;
+  }
+
+  const workspaceId = ctx.workspaceId;
   const secretRows = allSecretNames.length > 0
-    ? await fetchForResolve(pool, ctx.orgId, workspaceId, allSecretNames)
+    ? await fetchForResolve(pool, orgId, workspaceId, allSecretNames)
     : [];
 
   // workspace-scope wins over org-scope.

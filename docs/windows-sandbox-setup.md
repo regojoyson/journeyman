@@ -42,6 +42,7 @@ There are **two machines**:
 - [ ] .NET SDK / MSBuild — only for steps that build .NET code
 - [ ] SQL Server (local or reachable) — only for steps that need the database
 - [ ] A headless browser + matching WebDriver — only for browser QA steps
+- [ ] **Serena + a language server** — **required** if any step or agent enables the Serena (code-intelligence) MCP. Serena runs as a local program on this box, so it must be installed here or that MCP fails at run time (the step falls back to plain grep). See **Part 3b**.
 
 > The agent doesn't care what's installed — it just runs whatever commands your steps issue. A box with only the **required** list can already clone repos and run, e.g., PowerShell or Node workflows. Add a toolchain piece **when a workflow needs it**, not before.
 
@@ -153,6 +154,42 @@ Now split the files:
 
 ---
 
+## Part 3b — Install Serena (required for the code-intelligence MCP)
+
+Serena is a **stdio MCP**: when a step or agent enables it, the runner **starts it as a local program on this Windows box**. Unlike a hosted MCP (which is just a URL), Serena must be **installed here** — otherwise enabling it fails with "command not found" and the step falls back to plain grep search.
+
+> **This is mandatory if you intend to use the Serena MCP**, and it must be done on **every** Windows box that runs steps — there's no shared image like Docker. Skip it only if no workflow/agent will ever enable Serena.
+
+1. **Install uv** (it brings Python with it — you don't install Python separately):
+   ```powershell
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+   uv installs to `%USERPROFILE%\.local\bin` — make sure that folder is on **PATH**.
+
+2. **Install a language server** for each language your repos use (these power Serena's lookups). TypeScript/JavaScript example:
+   ```powershell
+   npm install -g typescript typescript-language-server
+   ```
+   (Python: `pip install python-lsp-server`; other languages: install the matching LSP.)
+
+3. **Pre-warm Serena** so the first run doesn't pause to download it:
+   ```powershell
+   uvx --from git+https://github.com/oraios/serena serena-mcp-server --help
+   ```
+
+4. **Restart the agent** so it picks up the new PATH, then confirm in the **same shell that starts the agent**:
+   ```powershell
+   uvx --version
+   typescript-language-server --version
+   ```
+   Both must print a version. The agent — and the runner it spawns — inherit this shell's PATH, so `uvx` must resolve here or the Serena MCP can't launch.
+
+> **Two things, both required:** installing Serena here is the *program* (this part); enabling the Serena MCP in Journeyman is the *instruction to run it* (the MCP/connectors picker on a step or agent). You need **both** — the program with no instruction is never used; the instruction with no program fails.
+
+✅ **Done when:** `uvx --version` works in the agent's shell, and a test run with the Serena MCP enabled starts without a "command not found" error.
+
+---
+
 ## Part 4 — Register the box in Journeyman (orchestrator side)
 
 In the web UI → **Sandboxes → New**:
@@ -194,6 +231,7 @@ Click **Test connection** → you should get a green readiness scorecard reporte
 | Step killed after ~10 min | Default step timeout | Raise the timeout on the step's Retry tab |
 | Step ran locally, not on Windows | Sandbox not pinned | Set the sandbox on the node or the flow default |
 | Agent won't start: "failed to read mTLS certs" | Missing/incorrect server certs | Put `ca.pem`/`server.pem`/`server-key.pem` in `JM_AGENT_CERT_DIR` |
+| Serena MCP step fails / "command not found" / silently falls back to grep | `uvx` or the language server isn't installed, or isn't on the agent's PATH | Do **Part 3b** on this box; restart the agent; verify `uvx --version` in the agent's shell |
 
 ---
 
@@ -219,3 +257,6 @@ Click **Test connection** → you should get a green readiness scorecard reporte
 | Orchestrator cert folder | the sandbox's "mTLS cert folder" → `ca.pem` + `client.pem` + `client-key.pem` |
 | Workspaces on the box | `C:\jm-runs\<runId>` (created per run, deleted after) |
 | Supported providers | Claude, OpenCode (not AISDK) |
+| Install Serena (per box, for code-intelligence MCP) | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| Serena language server (per language) | `npm install -g typescript typescript-language-server` |
+| Pre-warm Serena | `uvx --from git+https://github.com/oraios/serena serena-mcp-server --help` |
