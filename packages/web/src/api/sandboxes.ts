@@ -2,7 +2,7 @@ export type SandboxType =
   | "local" | "docker" | "machine-linux" | "machine-windows" | "ecs" | "ec2" | "kubernetes" | "cloud";
 export type ExecutionMode = "per-instance" | "shared";
 export type Connectivity = "push" | "agent";
-export type SandboxScope = "user" | "org" | "system";
+export type SandboxScope = "org" | "system";
 
 export interface SandboxTypeDescriptor {
   type: SandboxType;
@@ -44,7 +44,6 @@ export interface SandboxUpsertBody {
   enabled?: boolean;
 }
 
-const userBase = (orgId: string) => `/api/orgs/${orgId}/users/me/sandboxes`;
 const orgBase = (orgId: string) => `/api/orgs/${orgId}/sandboxes`;
 
 async function jsonOrThrow<T>(r: Response): Promise<T> {
@@ -76,17 +75,6 @@ export const sandboxesApi = {
     fetch(`${orgBase(orgId)}/types`, { credentials: "include" }).then(jsonOrThrow<SandboxTypeDescriptor[]>),
   testConnection: (orgId: string, body: { type: SandboxType; config: Record<string, unknown> }) =>
     postJson(`${orgBase(orgId)}/test-connection`, body).then(jsonOrThrow<ConnectionTestResult>),
-
-  listMy: (orgId: string) =>
-    fetch(userBase(orgId), { credentials: "include" }).then(jsonOrThrow<Sandbox[]>),
-  createMy: (orgId: string, body: SandboxUpsertBody) =>
-    postJson(userBase(orgId), body).then(jsonOrThrow<Sandbox>),
-  updateMy: (orgId: string, id: string, body: Partial<SandboxUpsertBody>) =>
-    patchJson(`${userBase(orgId)}/${id}`, body).then(jsonOrThrow<{ ok: true }>),
-  rebuildMy: (orgId: string, id: string) =>
-    postJson(`${userBase(orgId)}/${id}/rebuild`, {}).then(jsonOrThrow<{ ok: true }>),
-  removeMy: (orgId: string, id: string) =>
-    fetch(`${userBase(orgId)}/${id}`, { method: "DELETE", credentials: "include" }).then(jsonOrThrow<{ ok: true }>),
 
   listOrg: (orgId: string) =>
     fetch(orgBase(orgId), { credentials: "include" }).then(jsonOrThrow<Sandbox[]>),

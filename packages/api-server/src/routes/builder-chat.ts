@@ -27,7 +27,7 @@ async function loadInventory(c: Composition, orgId: string, userId: string): Pro
     listCustomAiSteps(pool, orgId, userId),
     listMcpInstances(pool, orgId, userId),
     listSkillPackages(pool, orgId, userId),
-    listVisibleSandboxes(pool, orgId, userId),
+    listVisibleSandboxes(pool, orgId),
   ]);
   const webhooks = await new PostgresWebhookStore(pool).listByScope({ userId });
   return {

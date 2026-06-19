@@ -22,7 +22,7 @@ function ImageStateBadge({ state, error }: { state?: string; error?: string | nu
   );
 }
 
-export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
+export function SandboxesPage(props: { orgId: string }) {
   const [rows, setRows] = useState<Sandbox[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -31,27 +31,25 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
   async function refresh() {
     setLoading(true);
     try {
-      setRows(props.scope === "user" ? await sandboxesApi.listMy(props.orgId) : await sandboxesApi.listOrg(props.orgId));
+      setRows(await sandboxesApi.listOrg(props.orgId));
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { refresh(); }, [props.orgId, props.scope]);
+  useEffect(() => { refresh(); }, [props.orgId]);
 
   async function remove(row: Sandbox) {
     if (!confirm(`Delete sandbox "${row.name}"?`)) return;
-    if (props.scope === "user") await sandboxesApi.removeMy(props.orgId, row.id);
-    else await sandboxesApi.removeOrg(props.orgId, row.id);
+    await sandboxesApi.removeOrg(props.orgId, row.id);
     refresh();
   }
 
   async function rebuild(row: Sandbox) {
-    if (props.scope === "user") await sandboxesApi.rebuildMy(props.orgId, row.id);
-    else await sandboxesApi.rebuildOrg(props.orgId, row.id);
+    await sandboxesApi.rebuildOrg(props.orgId, row.id);
     refresh();
   }
 
-  const title = props.scope === "user" ? "My Sandboxes" : "Org Sandboxes";
+  const title = "Org Sandboxes";
 
   return (
     <div className="h-full overflow-y-auto">
@@ -114,10 +112,10 @@ export function SandboxesPage(props: { orgId: string; scope: "user" | "org" }) {
       </div>
 
       {creating && (
-        <SandboxFormModal orgId={props.orgId} scope={props.scope} onClose={() => setCreating(false)} onSaved={refresh} />
+        <SandboxFormModal orgId={props.orgId} onClose={() => setCreating(false)} onSaved={refresh} />
       )}
       {editing && (
-        <SandboxFormModal orgId={props.orgId} scope={props.scope} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
+        <SandboxFormModal orgId={props.orgId} worker={editing} onClose={() => setEditing(null)} onSaved={refresh} />
       )}
     </div>
   );

@@ -9,7 +9,6 @@ import { sandboxTypeForms } from "./types/registry.ts";
 
 export interface SandboxFormModalProps {
   orgId: string;
-  scope: "user" | "org";
   /** Present ⇒ edit; absent ⇒ create. */
   worker?: Sandbox;
   onClose: () => void;
@@ -82,10 +81,7 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
           name: body.name, executionMode: body.executionMode, connectivity: body.connectivity,
           config: body.config,
         };
-        if (props.scope === "user") await sandboxesApi.updateMy(props.orgId, props.worker!.id, patch);
-        else await sandboxesApi.updateOrg(props.orgId, props.worker!.id, patch);
-      } else if (props.scope === "user") {
-        await sandboxesApi.createMy(props.orgId, body);
+        await sandboxesApi.updateOrg(props.orgId, props.worker!.id, patch);
       } else {
         await sandboxesApi.createOrg(props.orgId, body);
       }

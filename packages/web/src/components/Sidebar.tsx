@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { to: "/workflow-instances", icon: "▶",  label: "Workflow Instances" },
   { to: "/me/secrets",  icon: "🔑", label: "My Secrets" },
   { to: "/me/mcps",     icon: "🔌", label: "My MCPs"    },
-  { to: "/me/sandboxes",  icon: "👷", label: "My Sandboxes" },
   { to: "/me/skills",   icon: "🎓", label: "My Skills"  },
   { to: "/me/custom-steps", icon: "🧩", label: "My Custom Steps" },
   { to: "/me/agents", icon: "🤖", label: "My Agents" },

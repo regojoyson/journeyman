@@ -44,7 +44,6 @@ export default function App() {
         <Route path="/workflow-instances/:id" element={<RunDetailPage />} />
         <Route path="/me/secrets" element={<MySecretsPage orgId={activeOrgId} />} />
         <Route path="/me/mcps" element={<MyMcpsPage orgId={activeOrgId} />} />
-        <Route path="/me/sandboxes" element={<SandboxesPage orgId={activeOrgId} scope="user" />} />
         <Route path="/me/skills" element={<MySkillsPage orgId={activeOrgId} />} />
         <Route path="/me/custom-steps" element={<MyCustomStepsPage orgId={activeOrgId} />} />
         <Route path="/me/agents" element={<MyAgentsPage orgId={activeOrgId} />} />
@@ -54,7 +53,7 @@ export default function App() {
         <Route path="/me/password" element={<ChangePasswordPage />} />
         <Route path="/admin/secrets" element={role === "admin" ? <AdminSecretsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/mcps" element={role === "admin" ? <AdminMcpsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
-        <Route path="/admin/sandboxes" element={role === "admin" ? <SandboxesPage orgId={activeOrgId} scope="org" /> : <Navigate to="/" replace />} />
+        <Route path="/admin/sandboxes" element={role === "admin" ? <SandboxesPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/skills" element={role === "admin" ? <AdminSkillsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/custom-steps" element={role === "admin" ? <AdminCustomStepsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
         <Route path="/admin/agents" element={role === "admin" ? <AdminAgentsPage orgId={activeOrgId} /> : <Navigate to="/" replace />} />
