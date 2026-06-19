@@ -1,0 +1,39 @@
+export type SectionId =
+  | "instructions" | "workspace" | "triggers" | "behavior" | "permissions" | "notifications" | "runs";
+
+export const SECTIONS: Array<{ id: SectionId; label: string; icon: string }> = [
+  { id: "instructions", label: "Instructions & Inputs", icon: "📝" },
+  { id: "workspace", label: "Workspace & Model", icon: "⚙️" },
+  { id: "triggers", label: "Triggers", icon: "⏱" },
+  { id: "behavior", label: "Behavior", icon: "🎛" },
+  { id: "permissions", label: "Permissions", icon: "🔐" },
+  { id: "notifications", label: "Notifications", icon: "🔔" },
+  { id: "runs", label: "Run history", icon: "📊" },
+];
+
+export function SectionNav({ active, onSelect }: { active: SectionId; onSelect: (id: SectionId) => void }) {
+  return (
+    <nav className="flex flex-col gap-0.5">
+      {SECTIONS.map((s) => {
+        const isRuns = s.id === "runs";
+        const isActive = active === s.id;
+        return (
+          <button
+            key={s.id}
+            onClick={() => onSelect(s.id)}
+            className={[
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-left transition",
+              isRuns ? "mt-2 pt-3 border-t" : "",
+              isActive
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+            ].join(" ")}
+          >
+            <span className="w-4 text-center opacity-80">{s.icon}</span>
+            {s.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}

@@ -10,6 +10,7 @@ import { McpsPage } from "./routes/McpsPage.tsx";
 import { SkillsPage } from "./routes/SkillsPage.tsx";
 import { CustomStepsPage } from "./routes/CustomStepsPage.tsx";
 import { AgentsPage } from "./routes/AgentsPage.tsx";
+import { AgentDetailPage } from "./routes/AgentDetailPage.tsx";
 import { ConnectionsPage } from "./routes/ConnectionsPage.tsx";
 import { WebhooksPage } from "./routes/WebhooksPage.tsx";
 import { WebhookDetailPage } from "./routes/WebhookDetailPage.tsx";
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/workspaces/:wsId/skills" element={<SkillsPage />} />
         <Route path="/workspaces/:wsId/custom-steps" element={<CustomStepsPage />} />
         <Route path="/workspaces/:wsId/agents" element={<AgentsPage />} />
+        <Route path="/workspaces/:wsId/agents/:agentId" element={<AgentDetailPage />} />
         <Route path="/workspaces/:wsId/connections" element={<ConnectionsPage />} />
         <Route path="/workspaces/:wsId/webhooks" element={<WebhooksPage />} />
         <Route path="/workspaces/:wsId/webhooks/:id" element={<WebhookDetailPage />} />
