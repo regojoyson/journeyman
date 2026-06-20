@@ -13,12 +13,11 @@ function gitClone(
     const child = spawn("git", args, { cwd: "/workspace" });
     let stderr = "";
     child.stderr.on("data", (d: Buffer) => { stderr += d.toString("utf8"); });
-    child.on("error", (e) => resolve({ ok: false, error: e.message }));
-    child.on("close", (code) => resolve(code === 0 ? { ok: true } : { ok: false, error: stderr.trim() }));
-    signal?.addEventListener("abort", () => {
-      child.kill();
-      resolve({ ok: false, error: "clone aborted" });
-    }, { once: true });
+    const onAbort = () => { child.kill(); resolve({ ok: false, error: "clone aborted" }); };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    const cleanup = () => signal?.removeEventListener("abort", onAbort);
+    child.on("error", (e) => { cleanup(); resolve({ ok: false, error: e.message }); });
+    child.on("close", (code) => { cleanup(); resolve(code === 0 ? { ok: true } : { ok: false, error: stderr.trim() }); });
   });
 }
 
