@@ -53,6 +53,12 @@ export interface WorkerHarnessDeps {
     Promise<{ slot: string; value: string } | null>;
 
   /**
+   * Fetch and decrypt a connection by ID. Called before running any step
+   * that has connectionId set. Returns the decrypted ResolvedConnection.
+   */
+  connectionResolver?: (connectionId: string) => Promise<import("@journeyman/core").ResolvedConnection>;
+
+  /**
    * Provision (or reconnect to) the per-run workspace on demand.
    * Returns the execution environment + provisioned handle for this run.
    */
@@ -151,12 +157,14 @@ export class WorkerHarness {
     const workspaceId = (stepInput as { workspaceId?: string | null }).workspaceId ?? null;
     const abort = new AbortController();
     // Per-step timeout: agents (and any step) may set `timeoutSeconds` in node config; auto-abort when it elapses.
+    // Falls back to WORKER_DEFAULT_STEP_TIMEOUT_S (default 1800s) so every step has a safety net.
+    const DEFAULT_STEP_TIMEOUT_S = Number(process.env.WORKER_DEFAULT_STEP_TIMEOUT_S ?? 1800);
     const timeoutSeconds =
       typeof (stepInput as { timeoutSeconds?: unknown }).timeoutSeconds === "number"
         ? (stepInput as { timeoutSeconds: number }).timeoutSeconds
-        : undefined;
+        : DEFAULT_STEP_TIMEOUT_S;
     const timeoutHandle =
-      timeoutSeconds && timeoutSeconds > 0
+      timeoutSeconds > 0
         ? setTimeout(() => abort.abort(new DOMException("Step timed out", "TimeoutError")), timeoutSeconds * 1000)
         : undefined;
 
@@ -280,6 +288,27 @@ export class WorkerHarness {
     }
     (stepInput as { skills?: ResolvedSkillPackage[] }).skills = skills;
 
+    const connectionId = (stepInput as { connectionId?: string }).connectionId;
+    let resolvedConnection: import("@journeyman/core").ResolvedConnection | undefined;
+    if (connectionId && this.deps.connectionResolver) {
+      try {
+        resolvedConnection = await this.deps.connectionResolver(connectionId);
+        rlog.info({ connectionId, provider: resolvedConnection.provider }, "connection resolved");
+      } catch (err: any) {
+        rlog.error({ connectionId, err: err?.message }, "connection resolution failed");
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
+          reason: "connection_resolution_failed",
+          error: serializeError(err),
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
+          status: "FAILED_WITH_TERMINAL_ERROR",
+          reasonForIncompletion: `Connection resolution failed: ${err?.message ?? String(err)}`,
+        });
+        return;
+      }
+    }
+
     const existingModel = (stepInput as { model?: unknown }).model;
     if ((typeof existingModel !== "string" || !existingModel) && this.deps.modelResolver) {
       const provider = (stepInput as { provider?: string }).provider;
@@ -355,40 +384,41 @@ export class WorkerHarness {
     let execFn: ((op: ExecOp) => Promise<import("@journeyman/core").ExecResult>) | undefined;
     let materializeFn: import("@journeyman/core").StepContext["materialize"];
 
-    if (needsWorkspace) {
-      const sandboxId = (stepInput as { sandboxId?: string }).sandboxId;
-      const provisionLogLevel =
-        typeof (stepInput as { agentLogLevel?: string }).agentLogLevel === "string"
-          ? (stepInput as { agentLogLevel: string }).agentLogLevel
-          : "light";
-      const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
-      const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
-        runId: workflowInstanceId,
-        sandboxId,
-        userId,
-        orgId,
-        log: (line: string) =>
-          this.deps.events
-            .append({ workflowInstanceId, nodeId, eventType: "step.log", payload: { line } })
-            .catch((err) => rlog.error({ err }, "provision log emit failed")),
-        verbose: provisionVerbose,
-      });
-      workspaceDir = provisioned.workspaceDir;
-      // Local runs: leave exec undefined — handlers run in-process.
-      // Non-local (docker, etc.): wire exec so operations go into the container.
-      if (provisioned.type !== "local") {
-        execFn = (op) => wsEnv.exec(provisioned, op);
-      }
-      materializeFn = (destDir, bundle) => wsEnv.materialize(provisioned, destDir, bundle);
-    }
-
     try {
+      if (needsWorkspace) {
+        const sandboxId = (stepInput as { sandboxId?: string }).sandboxId;
+        const provisionLogLevel =
+          typeof (stepInput as { agentLogLevel?: string }).agentLogLevel === "string"
+            ? (stepInput as { agentLogLevel: string }).agentLogLevel
+            : "light";
+        const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
+        const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
+          runId: workflowInstanceId,
+          sandboxId,
+          userId,
+          orgId,
+          log: (line: string) =>
+            this.deps.events
+              .append({ workflowInstanceId, nodeId, eventType: "step.log", payload: { line } })
+              .catch((err) => rlog.error({ err }, "provision log emit failed")),
+          verbose: provisionVerbose,
+        });
+        workspaceDir = provisioned.workspaceDir;
+        // Local runs: leave exec undefined — handlers run in-process.
+        // Non-local (docker, etc.): wire exec so operations go into the container.
+        if (provisioned.type !== "local") {
+          execFn = (op) => wsEnv.exec(provisioned, op);
+        }
+        materializeFn = (destDir, bundle) => wsEnv.materialize(provisioned, destDir, bundle);
+      }
+
       const workflowInputs = ((stepInput as { __workflowInput?: Record<string, unknown> }).__workflowInput) ?? {};
       const result = await handler.run(stepInput, {
         workflowInstanceId, nodeId, attempt: task.retryCount + 1,
         workspaceDir, signal: abort.signal,
         env: resolvedEnv,
         workflowInputs,
+        ...(resolvedConnection ? { connection: resolvedConnection } : {}),
         log: (line, meta) => {
           const text = typeof line === "string" ? line : String(line);
           tail.push(text);
@@ -429,6 +459,21 @@ export class WorkerHarness {
       }
     } catch (err: any) {
       const durationMs = Date.now() - startedAt;
+      if (err?.name === "ImageNotReadyError") {
+        rlog.info({ message: err.message, durationMs }, "image not ready; failing fast for Conductor retry");
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
+          reason: "image_not_ready",
+          error: serializeError(err),
+          tail: tail.drain(),
+          durationMs,
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
+          status: "FAILED",
+          reasonForIncompletion: `image_not_ready: ${err.message}`,
+        });
+        return;
+      }
       if (err?.name === "ConfigurationError" || err?.name === "SandboxNotFoundError") {
         rlog.error({ message: err.message, durationMs }, "step failed: configuration error");
         await appendStepEvent(this.deps.events, ctx, "step.failed", {
