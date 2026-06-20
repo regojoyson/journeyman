@@ -17,6 +17,18 @@ export const btnGhost =
 export const btnDanger =
   "rounded-md hover:bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive transition";
 
+export const btnDangerOutline =
+  "rounded-md border border-destructive text-destructive hover:bg-destructive/10 " +
+  "disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm font-medium transition";
+
+export const btnDangerSolid =
+  "rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 " +
+  "disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm font-medium transition";
+
+export const btnSecondary =
+  "rounded-md border border-input bg-transparent hover:bg-accent hover:text-accent-foreground " +
+  "disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm font-medium transition whitespace-nowrap";
+
 export const card =
   "bg-card text-card-foreground border rounded-lg shadow-card";
 

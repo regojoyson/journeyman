@@ -15,6 +15,7 @@ import {
   upsertWorkspaceMember,
   removeWorkspaceMember,
   updateWorkspaceMemberRole,
+  updateWorkspace,
 } from "../db-workspaces.ts";
 
 const WORKSPACE_ROLES = ["maintainer", "contributor", "observer"] as const;
@@ -73,6 +74,32 @@ export async function registerWorkspaceRoutes(app: FastifyInstance, pool: Pool) 
       // creator becomes a maintainer member so the workspace appears in their switcher
       await upsertWorkspaceMember(pool, { workspaceId: ws.id, userId: req.runContext!.user.id, role: "maintainer" });
       reply.code(201);
+      return ws;
+    } catch (err: any) {
+      if (err?.code === "23505") return reply.code(409).send({ error: "slug_exists" });
+      throw err;
+    }
+  });
+
+  app.get("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+    const { orgId, wsId } = req.params as { orgId: string; wsId: string };
+    if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "wrong_org" });
+    const ws = await getWorkspace(pool, wsId);
+    if (!ws || ws.orgId !== orgId) return reply.code(404).send({ error: "not_found" });
+    return ws;
+  });
+
+  app.patch("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+    const { orgId, wsId } = req.params as { orgId: string; wsId: string };
+    if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "wrong_org" });
+    const body = req.body as { name?: string; slug?: string };
+    if (!body?.name?.trim()) return reply.code(400).send({ error: "missing_name" });
+    const existing = await getWorkspace(pool, wsId);
+    if (!existing || existing.orgId !== orgId) return reply.code(404).send({ error: "not_found" });
+    const slug = body.slug?.trim() || slugifyWorkspaceName(body.name);
+    try {
+      const ws = await updateWorkspace(pool, { workspaceId: wsId, orgId, name: body.name.trim(), slug });
+      if (!ws) return reply.code(404).send({ error: "not_found" });
       return ws;
     } catch (err: any) {
       if (err?.code === "23505") return reply.code(409).send({ error: "slug_exists" });

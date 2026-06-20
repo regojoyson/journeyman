@@ -7,6 +7,7 @@ import {
   upsertWorkspaceMember,
   getWorkspaceMember,
   listWorkspaceMembers,
+  updateWorkspace,
 } from "./db-workspaces.ts";
 
 type Call = { text: string; params?: unknown[] };
@@ -75,5 +76,20 @@ describe("workspace store", () => {
     const rows = await listWorkspaceMembers(db, "w1");
     expect(rows[0].userId).toBe("u1");
     expect(db.calls[0].params).toEqual(["w1"]);
+  });
+
+  it("updateWorkspace updates name/slug and maps row->record", async () => {
+    const db = fakeDb(() => ({ rows: [{ ...WS_ROW, name: "Renamed", slug: "renamed" }] }));
+    const rec = await updateWorkspace(db, { workspaceId: "w1", orgId: "o1", name: "Renamed", slug: "renamed" });
+    expect(rec?.name).toBe("Renamed");
+    expect(rec?.slug).toBe("renamed");
+    expect((db as any).calls[0].text).toContain("UPDATE jm_workspaces");
+    expect((db as any).calls[0].params).toEqual(["w1", "o1", "Renamed", "renamed"]);
+  });
+
+  it("updateWorkspace returns null when no row matches", async () => {
+    const db = fakeDb(() => ({ rows: [] }));
+    const rec = await updateWorkspace(db, { workspaceId: "missing", orgId: "o1", name: "X", slug: "x" });
+    expect(rec).toBeNull();
   });
 });

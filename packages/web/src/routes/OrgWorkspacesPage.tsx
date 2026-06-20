@@ -1,21 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client.ts";
 import { workspaceAdminApi, type OrgWorkspace } from "../api/workspaces.ts";
-import { btnDanger, btnGhost, btnPrimary, card, codePill, inputCls } from "./admin-styles.ts";
+import { btnPrimary, card, codePill, inputCls } from "./admin-styles.ts";
 
 export function OrgWorkspacesPage() {
   const { orgId = "" } = useParams<{ orgId: string }>();
+  const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState<OrgWorkspace[]>([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-
-  // Delete confirm modal state.
-  const [target, setTarget] = useState<OrgWorkspace | null>(null);
-  const [confirmName, setConfirmName] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -46,33 +43,6 @@ export function OrgWorkspacesPage() {
       } else {
         setError(err instanceof Error ? err.message : "Failed to create workspace.");
       }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function openDelete(ws: OrgWorkspace) {
-    setTarget(ws);
-    setConfirmName("");
-    setError(null);
-  }
-
-  async function confirmDelete() {
-    if (!target) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await workspaceAdminApi.remove(orgId, target.id);
-      setTarget(null);
-      setConfirmName("");
-      await refresh();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setError("The default workspace can't be deleted.");
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to delete workspace.");
-      }
-      setTarget(null);
     } finally {
       setBusy(false);
     }
@@ -114,7 +84,7 @@ export function OrgWorkspacesPage() {
               {busy ? "Creating…" : "Create"}
             </button>
           </form>
-          {error && !target && (
+          {error && (
             <div className="mt-4 text-sm text-destructive">{error}</div>
           )}
         </section>
@@ -139,67 +109,22 @@ export function OrgWorkspacesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700 border-t border-slate-700">
-                {workspaces.map((ws) => {
-                  const isDefault = ws.slug === "default";
-                  return (
-                    <tr key={ws.id} className="hover:bg-surface-hover">
-                      <td className="px-6 py-3 text-slate-100 font-medium">{ws.name}</td>
-                      <td className="px-6 py-3"><span className={codePill}>{ws.slug}</span></td>
-                      <td className="px-6 py-3">
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => openDelete(ws)}
-                            disabled={isDefault}
-                            title={isDefault ? "The default workspace can't be deleted." : undefined}
-                            className={btnDanger + (isDefault ? " opacity-50 cursor-not-allowed" : "")}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {workspaces.map((ws) => (
+                  <tr
+                    key={ws.id}
+                    onClick={() => navigate(`/orgs/${orgId}/workspaces/${ws.id}`)}
+                    className="hover:bg-surface-hover cursor-pointer"
+                  >
+                    <td className="px-6 py-3 text-slate-100 font-medium">{ws.name}</td>
+                    <td className="px-6 py-3"><span className={codePill}>{ws.slug}</span></td>
+                    <td className="px-6 py-3 text-right text-slate-500">→</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
         </section>
       </div>
-
-      {target && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => { if (!busy) setTarget(null); }}
-        >
-          <div className={`${card} w-full max-w-md p-6`} onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-slate-100">Delete workspace</h3>
-            <p className="mt-3 text-sm text-destructive">
-              This permanently deletes ALL flows, agents, secrets, connections, MCPs, skills, custom steps,
-              and webhooks in this workspace. This cannot be undone.
-            </p>
-            <p className="mt-4 text-sm text-slate-300">
-              Type <span className={codePill}>{target.name}</span> to confirm.
-            </p>
-            <input
-              className={`${inputCls} mt-2`}
-              value={confirmName}
-              onChange={(e) => setConfirmName(e.target.value)}
-              placeholder={target.name}
-              autoFocus
-            />
-            <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setTarget(null)} disabled={busy} className={btnGhost}>Cancel</button>
-              <button
-                onClick={confirmDelete}
-                disabled={busy || confirmName !== target.name}
-                className={btnDanger + (busy || confirmName !== target.name ? " opacity-50 cursor-not-allowed" : "")}
-              >
-                {busy ? "Deleting…" : "Delete workspace"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -66,6 +66,20 @@ export async function deleteWorkspace(db: Queryable, workspaceId: string, orgId:
   await db.query(`DELETE FROM jm_workspaces WHERE id = $1 AND org_id = $2`, [workspaceId, orgId]);
 }
 
+export async function updateWorkspace(
+  db: Queryable,
+  input: { workspaceId: string; orgId: string; name: string; slug: string },
+): Promise<WorkspaceRecord | null> {
+  const r = await db.query(
+    `UPDATE jm_workspaces
+        SET name = $3, slug = $4, updated_at = now()
+      WHERE id = $1 AND org_id = $2
+      RETURNING id, org_id, slug, name, created_at, updated_at`,
+    [input.workspaceId, input.orgId, input.name, input.slug],
+  );
+  return r.rows[0] ? rowToWorkspace(r.rows[0]) : null;
+}
+
 /** Workspaces the user belongs to within an org (member rows joined to workspaces). */
 export async function listWorkspacesForUser(
   db: Queryable,
