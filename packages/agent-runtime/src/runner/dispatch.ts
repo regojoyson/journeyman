@@ -2,7 +2,12 @@ import { spawn } from "node:child_process";
 import type { CodingCliLogFn, ICodingCLI } from "@journeyman/core";
 import type { RunnerResponse } from "./runner-types.ts";
 
-function gitClone(url: string, dir: string, branch?: string): Promise<{ ok: boolean; error?: string }> {
+function gitClone(
+  url: string,
+  dir: string,
+  branch?: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
     const args = ["clone", ...(branch ? ["--branch", branch] : []), url, dir];
     const child = spawn("git", args, { cwd: "/workspace" });
@@ -10,6 +15,10 @@ function gitClone(url: string, dir: string, branch?: string): Promise<{ ok: bool
     child.stderr.on("data", (d: Buffer) => { stderr += d.toString("utf8"); });
     child.on("error", (e) => resolve({ ok: false, error: e.message }));
     child.on("close", (code) => resolve(code === 0 ? { ok: true } : { ok: false, error: stderr.trim() }));
+    signal?.addEventListener("abort", () => {
+      child.kill();
+      resolve({ ok: false, error: "clone aborted" });
+    }, { once: true });
   });
 }
 
@@ -52,7 +61,7 @@ export async function dispatchOperation(
       const dir = String((opts as { dir?: string }).dir ?? "repo");
       const branch = (opts as { branch?: string }).branch;
       if (!url) return { ok: false, error: "clone requires repoUrl" };
-      const r = await gitClone(url, dir, branch);
+      const r = await gitClone(url, dir, branch, hooks.signal);
       return r.ok ? { ok: true, structured: { dir } } : { ok: false, error: r.error };
     }
     default:
