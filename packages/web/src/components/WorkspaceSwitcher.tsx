@@ -6,7 +6,7 @@ function wsInitial(name: string): string {
   return (name.trim()[0] ?? "?").toUpperCase();
 }
 
-export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
+export function WorkspaceSwitcher() {
   const { workspaces, activeWorkspace, activeWorkspaceId, setActiveWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -24,6 +24,7 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
 
   const label = activeWorkspace?.name ?? "Select workspace";
   const initial = wsInitial(activeWorkspace?.name ?? "?");
+  const isStatic = workspaces.length <= 1;
 
   function select(id: string) {
     setActiveWorkspaceId(id);
@@ -31,11 +32,8 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
     navigate(`/workspaces/${id}/workflows`);
   }
 
-  // Single workspace: static, no dropdown.
-  const isStatic = workspaces.length <= 1;
-
   return (
-    <div ref={ref} style={{ position: "relative", padding: expanded ? "0 8px 8px" : "0 0 8px", flexShrink: 0 }}>
+    <div ref={ref} style={{ position: "relative" }}>
       <button
         type="button"
         disabled={isStatic}
@@ -45,17 +43,16 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          width: "100%",
-          padding: expanded ? "6px 8px" : "6px 0",
-          justifyContent: expanded ? "flex-start" : "center",
-          background: "rgb(var(--color-bg) / 1)",
-          border: "1px solid rgb(var(--color-border) / 1)",
-          borderRadius: 6,
+          padding: "5px 8px",
+          background: "none",
+          border: "none",
+          borderRadius: 7,
           cursor: isStatic ? "default" : "pointer",
           color: "rgb(var(--color-text) / 1)",
           fontSize: 13,
-          minWidth: 0,
+          maxWidth: 220,
         }}
+        className={isStatic ? undefined : "hover:bg-slate-800"}
       >
         <div
           style={{
@@ -74,12 +71,8 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
         >
           {initial}
         </div>
-        {expanded && (
-          <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {label}
-          </span>
-        )}
-        {expanded && !isStatic && <span style={{ fontSize: 10, color: "rgb(var(--color-text-subtle) / 1)" }}>▾</span>}
+        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        {!isStatic && <span style={{ fontSize: 10, color: "rgb(var(--color-text-subtle) / 1)" }}>▾</span>}
       </button>
 
       {open && !isStatic && (
@@ -88,10 +81,9 @@ export function WorkspaceSwitcher({ expanded }: { expanded: boolean }) {
           style={{
             position: "absolute",
             top: "100%",
-            left: expanded ? 8 : "50%",
-            transform: expanded ? "none" : "translateX(-50%)",
+            left: 0,
             marginTop: 4,
-            width: 200,
+            width: 220,
             background: "rgb(var(--color-bg) / 1)",
             border: "1px solid rgb(var(--color-border) / 1)",
             borderRadius: 8,

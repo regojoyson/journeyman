@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { agentsApi } from "../../api/agents.ts";
 import type { Agent } from "@journeyman/core";
-import { btnPrimary, btnGhost, btnDanger, card } from "../../routes/admin-styles.ts";
+import { btnPrimary, btnGhost, card } from "../../routes/admin-styles.ts";
 
 export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: string }) {
   const navigate = useNavigate();
@@ -90,15 +90,6 @@ export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: strin
               </td>
               <td className="px-4 py-2 text-right">
                 <button className={btnGhost} onClick={() => navigate(`/workspaces/${wsId}/agents/${a.id}`)}>Open</button>
-                <button
-                  className={btnDanger}
-                  onClick={async () => {
-                    await agentsApi.remove(wsId, a.id);
-                    await refresh();
-                  }}
-                >
-                  Delete
-                </button>
               </td>
             </tr>
           ))}

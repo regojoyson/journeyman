@@ -227,6 +227,76 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   });
 
   // Org agent settings — kill-switch (pause-all) + default safety limits (§15.1).
+  // Workspace-wide agent runs — all runs across every agent in this workspace.
+  app.get("/api/workspaces/:wsId/agent-runs", read, async (req) => {
+    const { wsId } = req.params as { wsId: string };
+    const q = req.query as {
+      status?: string;
+      agentId?: string;
+      trigger?: string;
+      page?: string;
+      pageSize?: string;
+    };
+
+    const page = Math.max(1, Number(q.page ?? 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(q.pageSize ?? 20) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const conds: string[] = ["wi.workspace_id = $1", "wi.inputs->>'agentId' IS NOT NULL"];
+    const params: unknown[] = [wsId];
+
+    if (q.status)  { conds.push(`wi.status = $${params.push(q.status)}`); }
+    if (q.agentId) { conds.push(`wi.inputs->>'agentId' = $${params.push(q.agentId)}`); }
+    if (q.trigger) { conds.push(`wi.trigger_source = $${params.push(q.trigger)}`); }
+
+    const where = conds.join(" AND ");
+
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT
+           wi.id, wi.status, wi.trigger_source,
+           wi.started_at, wi.completed_at, wi.duration_ms,
+           wi.inputs, wi.outputs,
+           a.id          AS agent_id,
+           a.name        AS agent_name,
+           a.definition->>'provider' AS provider,
+           a.definition->>'model'    AS model
+         FROM jm_workflow_instances wi
+         LEFT JOIN jm_agents a ON a.id = (wi.inputs->>'agentId')
+         WHERE ${where}
+         ORDER BY wi.started_at DESC NULLS LAST
+         LIMIT ${pageSize} OFFSET ${offset}`,
+        params,
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS n
+         FROM jm_workflow_instances wi
+         WHERE ${where}`,
+        params,
+      ),
+    ]);
+
+    return {
+      runs: dataRes.rows.map(r => ({
+        id: r.id,
+        status: r.status,
+        triggerSource: r.trigger_source,
+        startedAt: r.started_at,
+        completedAt: r.completed_at,
+        durationMs: r.duration_ms,
+        inputs: r.inputs,
+        outputs: r.outputs,
+        agentId: r.agent_id,
+        agentName: r.agent_name ?? "Unknown",
+        provider: r.provider ?? "claude",
+        model: r.model ?? null,
+      })),
+      total: countRes.rows[0]?.n ?? 0,
+      page,
+      pageSize,
+    };
+  });
+
   // These remain org-scoped (not per-agent).
   app.get("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };

@@ -15,6 +15,8 @@ export interface WorkflowLogsPanelProps {
   height: number;
   onResizeHeight: (next: number) => void;
   onClose: () => void;
+  /** When true, the step-chips filter row is not rendered (use for single-step runs). */
+  hideStepChips?: boolean;
 }
 
 const NEAR_BOTTOM_THRESHOLD = 24;
@@ -231,7 +233,7 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
         </div>
       )}
 
-      {stepChips.length > 0 && (
+      {!props.hideStepChips && stepChips.length > 0 && (
         <div className="je-runview__log-filters">
           <button
             type="button"

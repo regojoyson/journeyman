@@ -66,4 +66,10 @@ export interface FlowEditorProps {
    * Returns the warning shape if the server demanded confirmation; null when the flip succeeded.
    */
   onUnpublish?: (confirm: boolean) => Promise<UnpublishWarning | null>;
+  /** When false the steps palette is hidden. Pass capabilities.showPalette from the host. Defaults to true. */
+  showPalette?: boolean;
+  /** When provided, a Delete button appears in the topbar. Only pass when the caller's capabilities.canDelete is true. */
+  onDelete?: () => void;
+  /** When false the View JSON export button is hidden. Pass capabilities.canExport from the host. Defaults to true. */
+  exportEnabled?: boolean;
 }

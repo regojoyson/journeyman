@@ -11,6 +11,7 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -55,6 +56,10 @@ export interface TopbarProps {
   onUnpublishClick?: () => void;
   /** Click handler for node-id links inside validation/secret-warning messages. */
   onFocusNode?: (nodeId: string) => void;
+  /** When provided, a danger Delete button appears. Only shown for draft workflows by the caller. */
+  onDelete?: () => void;
+  /** When false the View JSON / export panel button is hidden. Defaults to true. */
+  exportEnabled?: boolean;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -153,7 +158,7 @@ export function Topbar(p: TopbarProps) {
             Move to Draft
           </button>
         )}
-        {p.flow && (
+        {p.flow && p.exportEnabled !== false && (
           <IconButton
             className="je-icon-btn--view-json"
             label="View JSON"
@@ -188,6 +193,19 @@ export function Topbar(p: TopbarProps) {
             disabled={p.busy || !p.runEnabled}
             onClick={p.onRun}
             icon={<Play size={16} fill="currentColor" aria-hidden="true" focusable="false" />}
+          />
+        )}
+        {p.onDelete && (
+          <IconButton
+            className="je-icon-btn--delete"
+            label="Delete"
+            hint="Delete this workflow (draft only)"
+            icon={<Trash2 size={16} aria-hidden="true" focusable="false" />}
+            onClick={() => {
+              if (window.confirm("Delete this workflow? This cannot be undone.")) {
+                p.onDelete!();
+              }
+            }}
           />
         )}
       </header>

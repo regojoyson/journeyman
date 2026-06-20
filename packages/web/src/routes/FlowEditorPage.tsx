@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Workflow, WorkflowGraph } from "@journeyman/core";
-import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, type UnpublishWarning } from "../api/flows.ts";
+import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, deleteFlow, type UnpublishWarning } from "../api/flows.ts";
+import { workflowCapabilities } from "../lib/workflow-capabilities.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
 import { builtInSteps } from "@journeyman/steps";
 import { useCustomStepPaletteEntries } from "../flow-editor-integration/useCustomStepPaletteEntries.ts";
@@ -23,7 +24,6 @@ export function FlowEditorPage() {
   const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
   const { activeOrgId } = useAuth();
   const { can } = useWorkspace();
-  const editable = can("resource.write");
   const customStepDefs = useCustomStepPaletteEntries(wsId);
 
   const flowQ = useQuery({
@@ -128,6 +128,7 @@ export function FlowEditorPage() {
   }
 
   const flow = flowQ.data;
+  const caps = workflowCapabilities({ can, status: flow.status });
 
   const onPublish = async () => {
     const res = await publishFlow(wsId, flow.id);
@@ -151,6 +152,16 @@ export function FlowEditorPage() {
     return res.warning;
   };
 
+  const onDelete = async () => {
+    try {
+      await deleteFlow(wsId, flow.id);
+      qc.invalidateQueries({ queryKey: ["flows"] });
+      navigate(`/workspaces/${wsId}/workflows`);
+    } catch (e) {
+      setSaveToast({ kind: "error", message: `Delete failed: ${(e as Error).message}` });
+    }
+  };
+
   return (
     <>
       <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -169,7 +180,7 @@ export function FlowEditorPage() {
             ))}
           </div>
         ) : null}
-        {!editable && (
+        {caps.readOnly && flow.status === "draft" && (
           <div style={{
             padding: "8px 12px", marginBottom: 12,
             background: "rgb(var(--color-warning) / 0.18)", border: "1px solid rgb(var(--color-warning) / 1)", borderRadius: 4,
@@ -181,7 +192,8 @@ export function FlowEditorPage() {
           <FlowEditor
             flow={graph}
             flowName={flow.name}
-            onRename={editable ? (next) => {
+            readOnly={caps.readOnly}
+            onRename={caps.canEdit ? (next) => {
               const trimmed = next.trim();
               if (!trimmed || trimmed === flow.name) return;
               renameM.mutate(trimmed);
@@ -192,12 +204,15 @@ export function FlowEditorPage() {
             controlCatalog={defaultControlCatalog}
             mcpCatalog={defaultMcpCatalog}
             onChange={(next) => { setGraph(next); setDirty(true); }}
-            onSave={editable ? async (next) => { await saveM.mutateAsync(next); } : undefined}
+            onSave={caps.canEdit ? async (next) => { await saveM.mutateAsync(next); } : undefined}
             onValidate={async (next) => await validateFlowDefinition(wsId, next)}
             busy={saveM.isPending}
             status={flow.status}
-            onPublish={editable ? onPublish : undefined}
-            onUnpublish={editable ? onUnpublish : undefined}
+            onPublish={caps.canPublish ? onPublish : undefined}
+            onUnpublish={caps.canPublish ? onUnpublish : undefined}
+            showPalette={caps.showPalette}
+            onDelete={caps.canDelete ? onDelete : undefined}
+            exportEnabled={caps.canExport}
           />
         </div>
       </div>

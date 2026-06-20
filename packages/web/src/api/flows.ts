@@ -133,3 +133,7 @@ export async function validateFlowDefinition(wsId: string, definition: WorkflowG
     { method: "POST", body: JSON.stringify({ definition }) },
   );
 }
+
+export async function deleteFlow(wsId: string, id: string): Promise<void> {
+  await api(`${wsBase(wsId)}/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

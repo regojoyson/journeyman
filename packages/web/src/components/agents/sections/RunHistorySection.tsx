@@ -32,7 +32,7 @@ export function RunHistorySection({ wsId, agentId }: { wsId: string; agentId: st
             {runs.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="py-1">
-                  <a className="text-primary underline" href={`/workspaces/${wsId}/workflow-instances/${r.id}`}>
+                  <a className="text-primary underline" href={`/workspaces/${wsId}/agent-runs/${r.id}`}>
                     {r.id.slice(0, 8)}
                   </a>
                 </td>

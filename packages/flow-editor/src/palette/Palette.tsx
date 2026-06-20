@@ -9,6 +9,8 @@ const COMING_SOON_LS_KEY = "flow-editor.palette.comingSoon";
 export interface PaletteProps {
   steps: StepDefinition<any>[];
   controlCatalog?: ControlNodeCatalog;
+  /** When false the palette is not rendered at all. Defaults to true. */
+  visible?: boolean;
 }
 
 type AnyEntry =
@@ -88,7 +90,7 @@ function entryDragMime(e: AnyEntry): string {
   return "application/journeyman-trigger";
 }
 
-export function Palette({ steps, controlCatalog }: PaletteProps) {
+export function Palette({ steps, controlCatalog, visible = true }: PaletteProps) {
   const entries = useMemo<AnyEntry[]>(() => [
     ...TRIGGER_ENTRIES,
     ...(controlCatalog ?? []).map((c): AnyEntry => ({
@@ -153,6 +155,8 @@ export function Palette({ steps, controlCatalog }: PaletteProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(COMING_SOON_LS_KEY, String(csOpen));
   }, [csOpen]);
+
+  if (!visible) return null;
 
   return (
     <aside className="je-editor__palette">

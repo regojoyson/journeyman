@@ -190,6 +190,8 @@ export function FlowEditor(props: FlowEditorProps) {
           onPublishClick={props.onPublish ? handlePublishClick : undefined}
           onUnpublishClick={props.onUnpublish ? handleUnpublishClick : undefined}
           onFocusNode={focusNode}
+          onDelete={props.onDelete}
+          exportEnabled={props.exportEnabled}
         />
         {effectiveReadOnly && props.status === "ready" && (
           <div className="fe-readonly-banner">
@@ -207,17 +209,20 @@ export function FlowEditor(props: FlowEditorProps) {
         )}
         {(() => {
           const rightPanelOpen = !!s.selectedEdge || !!s.selectedNode;
+          const showPalette = props.showPalette !== false;
           const gridCols = rightPanelOpen
-            ? `${paletteWidth}px 6px 1fr 6px ${propsWidth}px`
-            : `${paletteWidth}px 6px 1fr`;
+            ? (showPalette ? `${paletteWidth}px 6px 1fr 6px ${propsWidth}px` : `1fr 6px ${propsWidth}px`)
+            : (showPalette ? `${paletteWidth}px 6px 1fr` : `1fr`);
           const closeRightPanel = (): void => {
             s.setSelectedNodeId(null);
             s.setSelectedEdgeId(null);
           };
           return (
             <div className="je-editor__body" style={{ gridTemplateColumns: gridCols }}>
-              <Palette steps={props.steps} controlCatalog={props.controlCatalog} />
-              <PanelResizer width={paletteWidth} onResize={setPaletteWidth} side="left" min={160} max={480} />
+              <Palette steps={props.steps} controlCatalog={props.controlCatalog} visible={showPalette} />
+              {showPalette && (
+                <PanelResizer width={paletteWidth} onResize={setPaletteWidth} side="left" min={160} max={480} />
+              )}
               <Canvas
                 flow={heal.healed}
                 selectedNodeId={s.selectedNodeId}

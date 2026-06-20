@@ -8,7 +8,7 @@ export interface SectionProps {
   locked: boolean;
 }
 
-export function PermissionsSection({ a, patch }: SectionProps) {
+export function PermissionsSection({ a, patch, locked }: SectionProps) {
   return (
     <SectionShell title="Permissions" description="Which tools the agent is allowed to use.">
       <div>
@@ -16,6 +16,7 @@ export function PermissionsSection({ a, patch }: SectionProps) {
         <ToolsPicker
           value={a.permissions.allowedTools}
           onChange={(t: CanonicalTool[]) => patch({ permissions: { allowedTools: t }, tools: t })}
+          disabled={locked}
         />
       </div>
     </SectionShell>

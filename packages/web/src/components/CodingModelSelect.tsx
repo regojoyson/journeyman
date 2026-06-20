@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CodingModel } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
+import { inputCls } from "../routes/admin-styles.ts";
 
 export interface CodingModelSelectProps {
   provider: string;
@@ -10,6 +11,8 @@ export interface CodingModelSelectProps {
   emptyLabel?: string;
   disabled?: boolean;
   id?: string;
+  /** Override the default full-width styled-select class. */
+  className?: string;
 }
 
 function describeModel(m: CodingModel): string {
@@ -20,7 +23,7 @@ function describeModel(m: CodingModel): string {
 }
 
 export function CodingModelSelect(props: CodingModelSelectProps) {
-  const { provider, value, onChange, emptyLabel, disabled, id } = props;
+  const { provider, value, onChange, emptyLabel, disabled, id, className } = props;
   const { data, isLoading } = useQuery({
     queryKey: ["coding-models", provider],
     queryFn: () => codingModelsApi.list(provider),
@@ -31,6 +34,7 @@ export function CodingModelSelect(props: CodingModelSelectProps) {
   return (
     <select
       id={id}
+      className={className ?? inputCls}
       value={value ?? ""}
       disabled={disabled || isLoading}
       onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}

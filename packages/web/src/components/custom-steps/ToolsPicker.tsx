@@ -15,6 +15,7 @@ export function ToolsPicker(props: {
   onChange: (next: CanonicalTool[]) => void;
   disabledTools?: ReadonlySet<CanonicalTool>;
   unsupportedTools?: ReadonlySet<CanonicalTool>;
+  disabled?: boolean;
 }) {
   const selected = new Set(props.value);
   const ws = new Set<string>(WORKSPACE_TOOLS);
@@ -31,7 +32,7 @@ export function ToolsPicker(props: {
       {CANONICAL_TOOLS.map((t) => {
         const isWorkspace = ws.has(t);
         const unsupported = props.unsupportedTools?.has(t);
-        const disabled = props.disabledTools?.has(t);
+        const disabled = props.disabled || props.disabledTools?.has(t);
         return (
           <label
             key={t}

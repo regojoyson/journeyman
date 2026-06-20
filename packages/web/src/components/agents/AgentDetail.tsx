@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { Agent, AgentUpdateInput } from "@journeyman/core";
 import { agentsApi } from "../../api/agents.ts";
+import { Toggle } from "../Toggle.tsx";
 import { btnPrimary, btnGhost, card, inputCls } from "../../routes/admin-styles.ts";
 import { buildUpdateInput, isAgentDirty, agentSummary, statusLabel } from "./agent-form.ts";
 import { SectionNav, SECTIONS, type SectionId } from "./sections/SectionNav.tsx";
@@ -12,6 +13,7 @@ import { BehaviorSection } from "./sections/BehaviorSection.tsx";
 import { PermissionsSection } from "./sections/PermissionsSection.tsx";
 import { NotificationsSection } from "./sections/NotificationsSection.tsx";
 import { RunHistorySection } from "./sections/RunHistorySection.tsx";
+import { DeleteSection } from "./sections/DeleteSection.tsx";
 
 export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; orgId: string; initial: Agent }) {
   const navigate = useNavigate();
@@ -53,6 +55,10 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
   };
 
   const toggleEnable = async () => {
+    if (!a.enabled && dirty) {
+      setError("Save your changes before enabling.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -90,33 +96,32 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="w-full px-6 py-8 space-y-6">
-        <header>
-          <Link to={backTo} className="text-xs text-muted-foreground hover:text-foreground">← Agents</Link>
-          <div className="mt-2 flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold">{a.name}</h1>
-                <span className="text-[11px] font-semibold tracking-wide rounded-full bg-muted text-muted-foreground px-2 py-0.5">
-                  {statusLabel(a)}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{agentSummary(a)}</p>
-            </div>
+    <div className="h-full flex flex-col overflow-hidden">
+      <header className="shrink-0 border-b bg-background px-6 pt-6 pb-4">
+        <Link to={backTo} className="text-xs text-muted-foreground hover:text-foreground">← Agents</Link>
+        <div className="mt-2 flex items-start justify-between gap-4">
+          <div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={a.enabled} disabled={busy} onChange={toggleEnable} />
-                Enabled
-              </label>
-              <button className={btnGhost} disabled={busy} onClick={openRun}>Run now</button>
-              <button className={btnPrimary} disabled={busy || locked || !dirty} onClick={save}>
-                {dirty ? "Save changes" : "Saved"}
-              </button>
+              <h1 className="text-2xl font-semibold">{a.name}</h1>
+              <span className="text-[11px] font-semibold tracking-wide rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                {statusLabel(a)}
+              </span>
             </div>
+            <p className="mt-1 text-sm text-muted-foreground">{agentSummary(a)}</p>
           </div>
-        </header>
+          <div className="flex items-center gap-3">
+            <Toggle checked={a.enabled} disabled={busy} onChange={toggleEnable} label="Enabled" />
+            <span title={!a.enabled ? "Enable the agent to run it" : undefined}>
+              <button className={btnGhost} disabled={busy || !a.enabled} onClick={openRun}>Run now</button>
+            </span>
+            <button className={btnPrimary} disabled={busy || locked || !dirty} onClick={save}>
+              {dirty ? "Save changes" : "Saved"}
+            </button>
+          </div>
+        </div>
+      </header>
 
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6">
         {locked && (
           <div className="rounded-md bg-muted text-muted-foreground text-sm px-4 py-2">
             🔒 Enabled — disable to edit.
@@ -156,6 +161,9 @@ export function AgentDetail({ wsId, orgId: _orgId, initial }: { wsId: string; or
               {section === "permissions" && <PermissionsSection a={a} patch={patch} locked={locked} />}
               {section === "notifications" && <NotificationsSection a={a} patch={patch} locked={locked} wsId={wsId} />}
               {section === "runs" && <RunHistorySection wsId={wsId} agentId={a.id} />}
+              {section === "delete" && (
+                <DeleteSection a={a} wsId={wsId} locked={locked} onDeleted={() => navigate(backTo)} />
+              )}
             </div>
           </div>
         </div>

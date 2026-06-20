@@ -18,6 +18,28 @@ export interface AgentRunSummary {
   completed_at: string | null;
 }
 
+export interface AgentRunEnriched {
+  id: string;
+  status: string;
+  triggerSource: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
+  inputs: Record<string, unknown>;
+  outputs: Record<string, unknown> | null;
+  agentId: string;
+  agentName: string;
+  provider: string;
+  model: string | null;
+}
+
+export interface AgentRunsPage {
+  runs: AgentRunEnriched[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export const agentsApi = {
   list: (wsId: string) => fetch(wsBase(wsId), { credentials: "include" }).then(jsonOrThrow<Agent[]>),
   get: (wsId: string, id: string) => fetch(`${wsBase(wsId)}/${id}`, { credentials: "include" }).then(jsonOrThrow<Agent>),
@@ -50,6 +72,19 @@ export const agentsApi = {
     }).then(jsonOrThrow<{ workflowInstanceId: string }>),
   runs: (wsId: string, id: string) =>
     fetch(`${wsBase(wsId)}/${id}/runs`, { credentials: "include" }).then(jsonOrThrow<AgentRunSummary[]>),
+  listRuns: (
+    wsId: string,
+    opts: { status?: string; agentId?: string; trigger?: string; page?: number; pageSize?: number } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (opts.status)   q.set("status",   opts.status);
+    if (opts.agentId)  q.set("agentId",  opts.agentId);
+    if (opts.trigger)  q.set("trigger",  opts.trigger);
+    q.set("page",     String(opts.page     ?? 1));
+    q.set("pageSize", String(opts.pageSize ?? 20));
+    return fetch(`/api/workspaces/${wsId}/agent-runs?${q.toString()}`, { credentials: "include" })
+      .then(jsonOrThrow<AgentRunsPage>);
+  },
   issueApiToken: (wsId: string, id: string) =>
     fetch(`${wsBase(wsId)}/${id}/triggers/api-token`, { method: "POST", credentials: "include" }).then(
       jsonOrThrow<{ id: string; token: string }>,

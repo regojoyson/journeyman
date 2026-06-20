@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { Workflow } from "@journeyman/core";
 import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
-import { deleteFlow } from "../api/flow-grants.ts";
 import { useWorkspace } from "../WorkspaceContext.tsx";
 import { Pagination } from "@journeyman/runs-list";
 import { btnPrimary, card } from "./admin-styles.ts";
@@ -11,7 +10,6 @@ export function FlowsListPage() {
   const { wsId = "" } = useParams<{ wsId: string }>();
   const { can } = useWorkspace();
   const editable = can("resource.write");
-  const canDelete = can("resource.delete");
 
   const [flows, setFlows] = useState<Workflow[]>([]);
   const [total, setTotal] = useState(0);
@@ -53,17 +51,6 @@ export function FlowsListPage() {
       alert(`Rename failed: ${(e as Error).message}`);
     }
   }
-
-  async function handleDelete(flow: Workflow) {
-    if (!window.confirm(`Delete flow "${flow.name}"? This cannot be undone.`)) return;
-    try {
-      await deleteFlow(flow.id);
-      await fetchFlows(page, pageSize);
-    } catch (e) {
-      alert(`Delete failed: ${(e as Error).message}`);
-    }
-  }
-
 
   const statusBadge = (status: Workflow["status"]) => {
     const cls = status === "ready"
@@ -134,12 +121,6 @@ export function FlowsListPage() {
                               onClick={() => handleRename(f)}
                               className="text-foreground hover:text-foreground"
                             >Rename</button>
-                            {canDelete && (
-                              <button
-                                onClick={() => handleDelete(f)}
-                                className="text-danger hover:text-danger"
-                              >Delete</button>
-                            )}
                           </>
                         ) : (
                           <Link to={`/workspaces/${wsId}/workflows/${f.id}/edit`} className="text-slate-400 hover:text-slate-300">

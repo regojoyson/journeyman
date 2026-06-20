@@ -463,6 +463,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const { wsId, id } = req.params as { wsId: string; id: string };
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
+    if (workflow.status !== "draft") { reply.code(409); return { error: "not_draft" }; }
     await c.workflows.delete(id);
     reply.code(204).send();
   });

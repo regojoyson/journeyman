@@ -1,73 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { ThemeToggle } from "@journeyman/theme";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../AuthContext.tsx";
 import { useWorkspace } from "../WorkspaceContext.tsx";
-import { WorkspaceSwitcher } from "./WorkspaceSwitcher.tsx";
-import { Logo, LogoMark } from "./Logo.tsx";
+import { NAV_GROUPS, filterGroups, navHref, type NavGroup } from "./nav-config.ts";
 
-const WORKSPACE_ITEMS = [
-  { slug: "workflows",          icon: "⚡", label: "Workflows"          },
-  { slug: "workflow-instances", icon: "▶",  label: "Workflow Instances" },
-  { slug: "secrets",       icon: "🔑", label: "Secrets" },
-  { slug: "skills",        icon: "🎓", label: "Skills"  },
-  { slug: "mcps",          icon: "🔌", label: "MCPs"    },
-  { slug: "custom-steps",  icon: "🧩", label: "Custom Steps" },
-  { slug: "agents",        icon: "🤖", label: "Agents" },
-  { slug: "connections",   icon: "🔗", label: "Connections" },
-  { slug: "webhooks",      icon: "📡", label: "Webhooks" },
-];
-
-const ORG_ITEMS = [
-  { slug: "workspaces",    icon: "🗂", label: "Workspaces"   },
-  { slug: "members",       icon: "👥", label: "Members"      },
-  { slug: "secrets",       icon: "🔐", label: "Org Secrets"  },
-  { slug: "sandboxes",     icon: "👷", label: "Org Sandboxes" },
-  { slug: "coding-models", icon: "🧠", label: "Coding Models" },
-];
-
-function initials(label: string): string {
-  const parts = label.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function usePersistentBool(key: string, initial: boolean) {
+  const [val, setVal] = useState(() => {
+    const s = localStorage.getItem(key);
+    return s === null ? initial : s === "true";
+  });
+  useEffect(() => {
+    localStorage.setItem(key, String(val));
+  }, [key, val]);
+  return [val, setVal] as const;
 }
 
-export default function Sidebar() {
-  const { role, user, org, isPlatformAdmin, activeOrgId, logout } = useAuth();
-  const { activeWorkspaceId, can } = useWorkspace();
-  const isAdmin = role === "admin" || isPlatformAdmin;
-  const [pinned, setPinned] = useState(
-    () => localStorage.getItem("sidebar-pinned") === "true"
-  );
-  const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const expanded = pinned || hovered;
-
-  const label = user?.displayName?.trim() || user?.username || "?";
-  const subtitle = [org?.name ?? org?.slug, role].filter(Boolean).join(" • ");
-
-  useEffect(() => {
-    localStorage.setItem("sidebar-pinned", String(pinned));
-  }, [pinned]);
-
-  useEffect(() => {
-    function onDown(e: MouseEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    }
-    if (menuOpen) document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [menuOpen]);
-
-  const navStyle = ({ isActive }: { isActive: boolean }): React.CSSProperties => ({
+function navStyle(collapsed: boolean) {
+  return ({ isActive }: { isActive: boolean }): React.CSSProperties => ({
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    padding: expanded ? "7px 14px" : "7px 0",
-    justifyContent: expanded ? "flex-start" : "center",
+    gap: 9,
+    padding: collapsed ? "7px 0" : "7px 12px",
+    justifyContent: collapsed ? "center" : "flex-start",
     borderRadius: 6,
+    margin: collapsed ? "1px 8px" : "1px 6px",
     textDecoration: "none",
     color: isActive ? "rgb(var(--accent-foreground) / 1)" : "rgb(var(--color-text-subtle) / 1)",
     background: isActive ? "rgb(var(--accent) / 1)" : "transparent",
@@ -75,252 +31,216 @@ export default function Sidebar() {
     fontSize: 13,
     transition: "color 0.15s, background 0.15s",
   });
+}
+
+function NavGroupSection({
+  group,
+  collapsed,
+  workspaceId,
+  orgId,
+}: {
+  group: NavGroup;
+  collapsed: boolean;
+  workspaceId: string | null;
+  orgId: string | null;
+}) {
+  const [folded, setFolded] = usePersistentBool(`sidebar-group-${group.id}`, false);
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      {!collapsed && (
+        <button
+          type="button"
+          onClick={() => setFolded((f) => !f)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            padding: "4px 14px 4px 12px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "rgb(var(--color-text-subtle) / 1)",
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: 1,
+          }}
+        >
+          <span>{group.label}</span>
+          <span style={{ fontSize: 8 }}>{folded ? "▸" : "▾"}</span>
+        </button>
+      )}
+      {collapsed && (
+        <div style={{ borderTop: "1px solid rgb(var(--color-border) / 1)", margin: "6px 10px" }} />
+      )}
+      {(collapsed || !folded) &&
+        group.items.map((item) => (
+          <NavLink
+            key={item.slug}
+            to={navHref(group, item, workspaceId, orgId)}
+            title={collapsed ? item.label : undefined}
+            style={navStyle(collapsed)}
+          >
+            <span style={{ fontSize: 14, flexShrink: 0 }}>{item.icon}</span>
+            {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{item.label}</span>}
+          </NavLink>
+        ))}
+    </div>
+  );
+}
+
+export default function Sidebar() {
+  const { role, isPlatformAdmin, activeOrgId } = useAuth();
+  const { activeWorkspaceId, can } = useWorkspace();
+  const isAdmin = role === "admin" || isPlatformAdmin;
+
+  const [collapsed, setCollapsed] = usePersistentBool("sidebar-collapsed", false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Cmd/Ctrl+K focuses search (expanding the rail first if needed).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCollapsed(false);
+        setTimeout(() => searchRef.current?.focus(), 0);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [setCollapsed]);
+
+  // Gate groups/items by scope, role, and workspace permissions.
+  const gated: NavGroup[] = NAV_GROUPS.flatMap((group) => {
+    if (group.adminOnly && !isAdmin) return [];
+    if (group.scope === "workspace" && !activeWorkspaceId) return [];
+    if (group.scope === "org" && !activeOrgId) return [];
+    const items = group.items.filter((i) => !i.perm || can(i.perm));
+    return items.length ? [{ ...group, items }] : [];
+  });
+
+  const groups = filterGroups(gated, query);
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
-        width: expanded ? 200 : 52,
-        minWidth: expanded ? 200 : 52,
-        height: "100vh",
+        width: collapsed ? 54 : 210,
+        minWidth: collapsed ? 54 : 210,
+        height: "100%",
         background: "rgb(var(--color-surface) / 1)",
         borderRight: "1px solid rgb(var(--color-border) / 1)",
         display: "flex",
         flexDirection: "column",
-        alignItems: expanded ? "stretch" : "center",
         padding: "10px 0",
-        transition: "width 0.2s ease-in-out, min-width 0.2s ease-in-out",
+        transition: "width 0.18s ease, min-width 0.18s ease",
         overflow: "hidden",
         flexShrink: 0,
-        position: "relative",
-        zIndex: 20,
       }}
     >
-      {/* Brand + pin */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: expanded ? "space-between" : "center",
-        padding: expanded ? "0 10px 10px 12px" : "0 0 10px",
-        flexShrink: 0,
-      }}>
-        <Link
-          to="/"
-          style={{
-            color: "rgb(var(--color-text) / 1)",
-            fontWeight: 700,
-            textDecoration: "none",
-            fontSize: 13,
-            whiteSpace: "nowrap",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {expanded ? <Logo height={40} /> : <LogoMark height={28} />}
-        </Link>
-        {expanded && (
+      {/* Search */}
+      <div style={{ padding: collapsed ? "0 8px 8px" : "0 8px 10px", flexShrink: 0 }}>
+        {collapsed ? (
           <button
             type="button"
-            onClick={() => setPinned(p => !p)}
-            title={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+            title="Search (Cmd+K)"
+            onClick={() => {
+              setCollapsed(false);
+              setTimeout(() => searchRef.current?.focus(), 0);
+            }}
             style={{
-              background: "rgb(var(--color-info) / 0.13)",
-              border: "none",
-              borderRadius: 4,
-              width: 20,
-              height: 20,
-              cursor: "pointer",
-              color: "rgb(var(--color-info) / 1)",
-              fontSize: 11,
+              width: "100%",
+              padding: "7px 0",
               display: "flex",
-              alignItems: "center",
               justifyContent: "center",
-              flexShrink: 0,
+              background: "rgb(var(--color-bg) / 1)",
+              border: "1px solid rgb(var(--color-border) / 1)",
+              borderRadius: 7,
+              cursor: "pointer",
+              color: "rgb(var(--color-text-subtle) / 1)",
             }}
           >
-            {pinned ? "✕" : "📌"}
+            {"🔍"}
           </button>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgb(var(--color-bg) / 1)",
+              border: "1px solid rgb(var(--color-border) / 1)",
+              borderRadius: 7,
+              padding: "5px 9px",
+            }}
+          >
+            <span style={{ fontSize: 12, color: "rgb(var(--color-text-subtle) / 1)" }}>{"🔍"}</span>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search..."
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "none",
+                border: "none",
+                outline: "none",
+                color: "rgb(var(--color-text) / 1)",
+                fontSize: 12,
+              }}
+            />
+            <span style={{ fontSize: 9, color: "rgb(var(--color-text-subtle) / 1)", border: "1px solid rgb(var(--color-border) / 1)", borderRadius: 3, padding: "1px 4px" }}>
+              {"⌘K"}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Workspace switcher */}
-      <WorkspaceSwitcher expanded={expanded} />
-
-      {/* Nav items */}
-      <nav style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        padding: expanded ? "0 6px" : "0 8px",
-        flex: 1,
-        overflowY: "auto",
-      }}>
-        {activeWorkspaceId && WORKSPACE_ITEMS.map(({ slug, icon, label: itemLabel }) => (
-          <NavLink key={slug} to={`/workspaces/${activeWorkspaceId}/${slug}`} style={navStyle}>
-            <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-            {expanded && (
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{itemLabel}</span>
-            )}
-          </NavLink>
+      {/* Nav groups */}
+      <nav style={{ flex: 1, overflowY: "auto" }}>
+        {groups.map((group) => (
+          <NavGroupSection
+            key={group.id}
+            group={group}
+            collapsed={collapsed}
+            workspaceId={activeWorkspaceId}
+            orgId={activeOrgId}
+          />
         ))}
-
-        {activeWorkspaceId && can("members.manage") && (
-          <NavLink to={`/workspaces/${activeWorkspaceId}/members`} style={navStyle}>
-            <span style={{ fontSize: 14, flexShrink: 0 }}>👤</span>
-            {expanded && (
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>Members</span>
-            )}
-          </NavLink>
-        )}
-
-        {isAdmin && activeOrgId && (
-          <>
-            <div style={{ borderTop: "1px solid rgb(var(--color-border) / 1)", margin: "6px 0" }} />
-            {expanded && (
-              <div style={{
-                padding: "2px 8px 4px",
-                color: "rgb(var(--color-text-subtle) / 1)",
-                fontSize: 9,
-                textTransform: "uppercase",
-                letterSpacing: 1,
-              }}>
-                Organization
-              </div>
-            )}
-            {ORG_ITEMS.map(({ slug, icon, label: itemLabel }) => (
-              <NavLink key={slug} to={`/orgs/${activeOrgId}/${slug}`} style={navStyle}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-                {expanded && (
-                  <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>{itemLabel}</span>
-                )}
-              </NavLink>
-            ))}
-          </>
+        {!collapsed && groups.length === 0 && (
+          <div style={{ padding: "8px 14px", fontSize: 12, color: "rgb(var(--color-text-subtle) / 1)" }}>
+            No matches
+          </div>
         )}
       </nav>
 
-      {/* User profile */}
-      <div
-        ref={menuRef}
-        style={{
-          padding: expanded ? "8px 8px 0" : "8px 0 0",
-          borderTop: "1px solid rgb(var(--color-border) / 1)",
-          position: "relative",
-        }}
-      >
-        {menuOpen && (
-          <div
-            role="menu"
-            style={{
-              position: "absolute",
-              bottom: "100%",
-              left: expanded ? 8 : "50%",
-              transform: expanded ? "none" : "translateX(-50%)",
-              marginBottom: 6,
-              width: 220,
-              background: "rgb(var(--color-bg) / 1)",
-              border: "1px solid rgb(var(--color-border) / 1)",
-              borderRadius: 8,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-              zIndex: 50,
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid rgb(var(--color-border) / 1)" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "rgb(var(--color-text) / 1)" }}>{label}</div>
-              {user?.username && user?.displayName && (
-                <div style={{ fontSize: 11, color: "rgb(var(--color-border-strong) / 1)", marginTop: 2 }}>@{user.username}</div>
-              )}
-              {subtitle && (
-                <div style={{ fontSize: 11, color: "rgb(var(--color-border) / 1)", marginTop: 2 }}>{subtitle}</div>
-              )}
-            </div>
-            {[
-              { to: "/me/password", label: "Change password" },
-            ].map(({ to, label: itemLabel }) => (
-              <Link
-                key={to}
-                to={to}
-                role="menuitem"
-                onClick={() => setMenuOpen(false)}
-                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "rgb(var(--color-text) / 1)", textDecoration: "none" }}
-                className="hover:bg-slate-800"
-              >
-                {itemLabel}
-              </Link>
-            ))}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); void logout(); }}
-              style={{
-                width: "100%",
-                textAlign: "left",
-                padding: "8px 12px",
-                fontSize: 13,
-                color: "rgb(var(--color-danger) / 1)",
-                background: "none",
-                border: "none",
-                borderTop: "1px solid rgb(var(--color-border) / 1)",
-                cursor: "pointer",
-              }}
-              className="hover:bg-danger/10"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: expanded ? "row" : "column-reverse",
-            alignItems: "center",
-            justifyContent: expanded ? "space-between" : "center",
-            gap: expanded ? 8 : 6,
-          }}
-        >
+      {/* Collapse toggle */}
+      <div style={{ padding: "8px 8px 0", borderTop: "1px solid rgb(var(--color-border) / 1)", flexShrink: 0 }}>
         <button
           type="button"
-          onClick={() => setMenuOpen(o => !o)}
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           style={{
+            width: "100%",
             display: "flex",
             alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
             gap: 8,
-            padding: expanded ? "4px" : "0",
+            padding: collapsed ? "7px 0" : "7px 12px",
             background: "none",
             border: "none",
-            cursor: "pointer",
-            flex: expanded ? 1 : "0 0 auto",
-            minWidth: 0,
             borderRadius: 6,
+            cursor: "pointer",
+            color: "rgb(var(--color-text-subtle) / 1)",
+            fontSize: 13,
           }}
+          className="hover:bg-slate-800"
         >
-          <div style={{
-            width: 30,
-            height: 30,
-            background: "rgb(var(--color-accent) / 0.27)",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "rgb(var(--color-accent) / 1)",
-            fontSize: 11,
-            fontWeight: 700,
-            flexShrink: 0,
-          }}>
-            {initials(label)}
-          </div>
-          {expanded && (
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "rgb(var(--color-text) / 1)", whiteSpace: "nowrap" }}>{label}</div>
-              {role && <div style={{ fontSize: 10, color: "rgb(var(--color-border-strong) / 1)" }}>{role}</div>}
-            </div>
-          )}
+          <span style={{ fontSize: 14 }}>{collapsed ? "»" : "«"}</span>
+          {!collapsed && <span>Collapse</span>}
         </button>
-          <ThemeToggle />
-        </div>
       </div>
     </div>
   );
