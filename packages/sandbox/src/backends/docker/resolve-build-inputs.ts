@@ -45,15 +45,21 @@ export async function resolveBuildInputs(args: ResolveBuildInputsArgs): Promise<
     const ref = args.image.imageRef.trim();
     if (!isPinned(ref)) {
       const timeout = args.pullTimeoutMs ?? 60_000;
+      let timerId: ReturnType<typeof setTimeout> | undefined;
       try {
         await Promise.race([
           args.client.pullImage(ref),
-          new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error(`pull timed out after ${timeout / 1000}s`)), timeout)
-          ),
+          new Promise<void>((_, reject) => {
+            timerId = setTimeout(
+              () => reject(new Error(`pull timed out after ${timeout / 1000}s`)),
+              timeout,
+            );
+          }),
         ]);
       } catch (err) {
         log(`warning: could not pull '${ref}' (${(err as Error).message}); using local copy`);
+      } finally {
+        clearTimeout(timerId);
       }
     }
     baseRefId = (await args.client.imageId(ref)) ?? "";

@@ -56,14 +56,17 @@ describe("resolveBuildInputs", () => {
     const c = client({
       pullImage: vi.fn(() => new Promise<void>(() => {})),
     });
+    const log = vi.fn();
     const r = await resolveBuildInputs({
       image: { kind: "ref", imageRef: "node:20" },
       client: c,
       bundleRef: BUNDLE,
       pullTimeoutMs: 10,          // expire almost immediately
+      log,
     });
     // Despite the hung pull, we get a result using the locally-cached image id
     expect(r.baseRefId).toBe("sha256:ref");
     expect(r.imageRef).toMatch(/^journeyman\/jm-built:[0-9a-f]{16}$/);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("pull timed out"));
   });
 });
