@@ -38,7 +38,9 @@ export async function loadWorkspaceAccess(
   if (!row) return null;
   const member: WorkspaceMemberLike | null = row.ws_role
     ? { role: row.ws_role as WorkspaceRole, permissions: row.ws_permissions ?? null }
-    : null;
+    : row.org_role
+      ? { role: "contributor" as WorkspaceRole, permissions: null }
+      : null;
   return { orgId: row.org_id, isOrgAdmin: row.org_role === "admin", member };
 }
 

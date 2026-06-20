@@ -10,9 +10,9 @@ describe("NAV_GROUPS", () => {
     expect(org.scope).toBe("org");
     expect(org.adminOnly).toBe(true);
   });
-  it("gates the workspace Members item behind members.manage", () => {
+  it("has no members item in the workspace group", () => {
     const ws = NAV_GROUPS.find((g) => g.id === "workspace")!;
-    expect(ws.items.find((i) => i.slug === "members")?.perm).toBe("members.manage");
+    expect(ws.items.find((i) => i.slug === "members")).toBeUndefined();
   });
 });
 

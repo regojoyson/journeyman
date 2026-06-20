@@ -1,19 +1,9 @@
-import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { workspaceAdminApi } from "../../api/workspaces.ts";
 import { card } from "../admin-styles.ts";
 import type { WorkspaceDetailContext } from "../WorkspaceDetailPage.tsx";
 
 export function OverviewTab() {
-  const { wsId, workspace } = useOutletContext<WorkspaceDetailContext>();
-  const [memberCount, setMemberCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void workspaceAdminApi.listMembers(wsId).then((m) => { if (active) setMemberCount(m.length); }).catch(() => {});
-    return () => { active = false; };
-  }, [wsId]);
-
+  const { workspace } = useOutletContext<WorkspaceDetailContext>();
   const created = new Date(workspace.createdAt).toLocaleDateString();
 
   return (
@@ -23,7 +13,6 @@ export function OverviewTab() {
         <dt className="text-slate-500">Name</dt><dd className="text-slate-200">{workspace.name}</dd>
         <dt className="text-slate-500">Slug</dt><dd className="text-slate-200">{workspace.slug}</dd>
         <dt className="text-slate-500">Created</dt><dd className="text-slate-200">{created}</dd>
-        <dt className="text-slate-500">Members</dt><dd className="text-slate-200">{memberCount ?? "…"}</dd>
       </dl>
     </section>
   );

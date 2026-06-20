@@ -22,7 +22,6 @@ import { AdminUsersPage } from "./routes/AdminUsersPage.tsx";
 import { OrgWorkspacesPage } from "./routes/OrgWorkspacesPage.tsx";
 import { WorkspaceDetailPage } from "./routes/WorkspaceDetailPage.tsx";
 import { OverviewTab } from "./routes/workspace-detail/OverviewTab.tsx";
-import { MembersTab } from "./routes/workspace-detail/MembersTab.tsx";
 import { SettingsTab } from "./routes/workspace-detail/SettingsTab.tsx";
 import { ChangePasswordPage } from "./routes/ChangePasswordPage.tsx";
 import { FormsInventoryPage } from "./routes/forms/FormsInventoryPage.tsx";
@@ -81,7 +80,6 @@ export default function App() {
         >
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<OverviewTab />} />
-          <Route path="members" element={<MembersTab />} />
           <Route path="settings" element={<SettingsTab />} />
         </Route>
 

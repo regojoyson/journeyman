@@ -92,7 +92,7 @@ function NavGroupSection({
 
 export default function Sidebar() {
   const { role, isPlatformAdmin, activeOrgId } = useAuth();
-  const { activeWorkspaceId, can } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const isAdmin = role === "admin" || isPlatformAdmin;
 
   const [collapsed, setCollapsed] = usePersistentBool("sidebar-collapsed", false);
@@ -112,13 +112,12 @@ export default function Sidebar() {
     return () => document.removeEventListener("keydown", onKey);
   }, [setCollapsed]);
 
-  // Gate groups/items by scope, role, and workspace permissions.
+  // Gate groups by scope and role.
   const gated: NavGroup[] = NAV_GROUPS.flatMap((group) => {
     if (group.adminOnly && !isAdmin) return [];
     if (group.scope === "workspace" && !activeWorkspaceId) return [];
     if (group.scope === "org" && !activeOrgId) return [];
-    const items = group.items.filter((i) => !i.perm || can(i.perm));
-    return items.length ? [{ ...group, items }] : [];
+    return [group];
   });
 
   const groups = filterGroups(gated, query);

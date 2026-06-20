@@ -4,8 +4,6 @@ export type NavItem = {
   slug: string;
   icon: string;
   label: string;
-  /** Workspace-scoped permission required to show this item. */
-  perm?: "members.manage";
 };
 
 export type NavGroup = {
@@ -28,7 +26,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { slug: "agents", icon: "🤖", label: "Agents" },
       { slug: "agent-runs", icon: "▶", label: "Agent Runs" },
       { slug: "custom-steps", icon: "🧩", label: "Custom Steps" },
-      { slug: "members", icon: "👤", label: "Members", perm: "members.manage" },
     ],
   },
   {
