@@ -29,9 +29,10 @@ Additionally, `parse-logs.ts` formats every `step.failed` as `"❌ step failed"`
 
 | File | Change |
 |---|---|
-| `packages/orchestrator/src/cli-worker.ts` | Add `log?` param to `verifyImageFresh`; pass it to `resolveBuildInputs` |
-| `packages/sandbox/src/backends/docker/docker-backend.ts` | Add `log?` optional param to `checkRunnable` call signature |
+| `packages/core/src/types/execution-environment.types.ts` | Add `log?` param to `checkRunnable` interface signature |
+| `packages/sandbox/src/backends/docker/docker-backend.ts` | Add `log?` to `verifyImageFresh` args type; add `log?` to `checkRunnable` method; thread log through to `verifyImageFresh` |
 | `packages/orchestrator/src/sandbox/ensure-workspace.ts` | Pass `args.log` when calling `backend.checkRunnable` |
+| `packages/orchestrator/src/cli-worker.ts` | Destructure `log` in `verifyImageFresh` closure; pass it to `resolveBuildInputs` |
 | `packages/orchestrator/src/workers/steps/clone-repos-step-handler.ts` | Call `ctx.log()` when clone returns an error |
 | `packages/orchestrator/src/workers/worker-harness.ts` | Add `TimeoutError` catch branch + `step.log`; add `step.log` in `ImageNotReadyError` branch |
 | `packages/run-viewer/src/logs/parse-logs.ts` | Show `reason` + `error.message` inline in `step.failed` formatted line |
@@ -46,13 +47,15 @@ Additionally, `parse-logs.ts` formats every `step.failed` as `"❌ step failed"`
 
 **Fix:** Thread a `log` callback from `ensureWorkspace` down to `resolveBuildInputs` via the `checkRunnable` method.
 
-Three-file chain:
+Four-file chain:
 
-1. **`ensure-workspace.ts`** — `backend.checkRunnable(resolved)` becomes `backend.checkRunnable(resolved, args.log)`. The second param is optional so all other callers remain unaffected.
+1. **`core/src/types/execution-environment.types.ts`** — `checkRunnable?(worker: ResolvedSandbox): void | Promise<void>` gets an optional second param: `log?: (line: string) => void`.
 
-2. **`docker-backend.ts`** (or wherever the `IExecutionEnvironmentBackend` implementation lives) — the `checkRunnable` implementation accepts the optional `log` and passes it to `verifyImageFresh`.
+2. **`ensure-workspace.ts`** — `backend.checkRunnable(resolved)` becomes `backend.checkRunnable(resolved, args.log)`. Optional, so all other callers (tests, other backends) are unaffected.
 
-3. **`cli-worker.ts`** — `verifyImageFresh` accepts `log?: (line: string) => void` and passes it to `resolveBuildInputs({ ..., log })`.
+3. **`docker-backend.ts`** — `DockerBackendDeps.verifyImageFresh` args type gets `log?` added. `checkRunnable` method signature adds `log?` and passes it through to `this.deps.verifyImageFresh({ ..., log })`.
+
+4. **`cli-worker.ts`** — the `verifyImageFresh` closure destructures `log` from its args and passes it to `resolveBuildInputs({ ..., log })`.
 
 The existing warning line in `resolveBuildInputs` (`log(\`warning: could not pull ...\`)`) then travels through the provisioning log callback that `worker-harness.ts` already wires to `step.log` events.
 
