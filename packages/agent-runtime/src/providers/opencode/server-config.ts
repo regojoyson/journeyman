@@ -1,6 +1,7 @@
 import { createServer } from "node:net";
 import { join } from "node:path";
 import type { CodingModelConfig, ResolvedMcpInstance, ResolvedSkillPackage } from "@journeyman/core";
+import { codingModelKeySlot } from "@journeyman/core";
 import type { OpenCodeProviderConfig } from "./types.ts";
 import { toOpenCodeMcpConfigs } from "./mcp-adapter.ts";
 import { parseOpenCodeModel } from "./model.ts";
@@ -56,7 +57,8 @@ function buildProviderBlock(
   const parsed = model ? parseOpenCodeModel(model) : undefined;
   if (!parsed) return undefined;
 
-  const apiKey = modelConfig.apiKeySlot ? env?.[modelConfig.apiKeySlot] : undefined;
+  const slot = codingModelKeySlot({ provider: "opencode", config: modelConfig, modelId: model });
+  const apiKey = modelConfig.requiresApiKey ? env?.[slot] : undefined;
   const options: Record<string, unknown> = {
     ...(modelConfig.baseUrl ? { baseURL: modelConfig.baseUrl } : {}),
     ...(apiKey ? { apiKey } : {}),

@@ -134,11 +134,13 @@ export type { ProviderEntry } from "./registries/provider-catalog.ts";
 export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-catalog.ts";
 export * from "./registries/builder-availability.ts";
 export * from "./registries/opencode-slots.ts";
+export { codingModelKeySlot } from "./registries/coding-model-key-slot.ts";
 export { AISDK_PROVIDER_PACKAGES, isAiSdkPackage, type AiSdkPackage } from "./registries/aisdk-packages.ts";
 
 // === Phase 1 data types ===
 export type {
   Workflow, WorkflowGraph, WorkflowEdge, WorkflowEdgeType, WorkflowNode, WorkflowNodeType, WorkflowVersion,
+  WorkflowVersionSummary,
   WorkflowSchemaVersion,
   RetryPolicy, WorkflowRetryPolicy, BackoffStrategy,
   McpServerConfig, McpTransport, WorkflowInputValue, WorkflowInputDef, WorkflowAttributeDef,

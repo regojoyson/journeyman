@@ -1,6 +1,7 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState, useEffect, useMemo } from "react";
 import type { WorkflowDefaults, WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
+import { codingModelKeySlot } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -399,10 +400,14 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
                 // Auto-clean: drop the previous model's key binding when it is no
                 // longer the new model's declared key (OpenCode model-owned key only).
                 if (codingProvider === "opencode" && node.secretBindings) {
-                  const oldKey = codingModels.find(m => m.modelId === node.model)?.config?.apiKeySlot;
-                  const newKey = modelId
-                    ? codingModels.find(m => m.modelId === modelId)?.config?.apiKeySlot
-                    : undefined;
+                  const slotForModel = (mId: string | null | undefined) => {
+                    const m = mId ? codingModels.find(x => x.modelId === mId) : undefined;
+                    return m?.config?.requiresApiKey
+                      ? codingModelKeySlot({ provider: "opencode", config: m.config, modelId: m.modelId })
+                      : undefined;
+                  };
+                  const oldKey = slotForModel(node.model);
+                  const newKey = slotForModel(modelId);
                   if (oldKey && oldKey !== newKey && node.secretBindings[oldKey]) {
                     const { [oldKey]: _drop, ...rest } = node.secretBindings;
                     next.secretBindings = rest;

@@ -26,8 +26,8 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   // Claude's API key is model-owned (each coding model binds an org secret directly),
   // so there is no framework-level key slot.
   { kind: "coding-cli", value: "claude", label: "Claude", implemented: true, isDefault: true },
-  // OpenCode has no framework-level key slot — each coding model declares its own
-  // required secret (config.apiKeySlot), surfaced via openCodeModelSlots().
+  // OpenCode has no framework-level key slot — each coding model declares whether
+  // it needs a key (config.requiresApiKey), surfaced via openCodeModelSlots().
   { kind: "coding-cli", value: "opencode", label: "OpenCode", implemented: true, slots: [] },
   // AI SDK: model + per-vendor key live on the coding-model config (like OpenCode);
   // no framework-level slot. Required slot surfaced via codingModelSlots().

@@ -24,9 +24,6 @@ export function validateCodingModelConfig(
         return `config.baseUrl is not a valid URL: ${config.baseUrl}`;
       }
     }
-    if (config.apiKeySlot !== undefined && !config.apiKeySlot.trim()) {
-      return "config.apiKeySlot must be a non-empty string";
-    }
     return null;
   }
 
@@ -44,9 +41,6 @@ export function validateCodingModelConfig(
   }
   if (config.npm !== undefined && (typeof config.npm !== "string" || !config.npm.trim())) {
     return "config.npm must be a non-empty string";
-  }
-  if (config.apiKeySlot !== undefined && (typeof config.apiKeySlot !== "string" || !config.apiKeySlot.trim())) {
-    return "config.apiKeySlot must be a non-empty string";
   }
   return null;
 }

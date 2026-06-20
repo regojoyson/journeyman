@@ -6,18 +6,30 @@ const fakeAnthropic = {
 };
 const fakeCompat = {
   createOpenAICompatible: (o: { baseURL?: string; apiKey?: string; supportsStructuredOutputs?: boolean }) =>
-    (id: string) => ({ vendor: "compat", id, baseURL: o.baseURL, supportsStructuredOutputs: o.supportsStructuredOutputs }),
+    (id: string) => ({ vendor: "compat", id, baseURL: o.baseURL, key: o.apiKey, supportsStructuredOutputs: o.supportsStructuredOutputs }),
 };
 
 describe("resolveModel", () => {
   const importer = async (npm: string) => (npm === "@ai-sdk/anthropic" ? fakeAnthropic : fakeCompat);
 
-  it("loads anthropic and passes the resolved api key", async () => {
+  it("loads anthropic and passes the resolved api key from the derived label", async () => {
     const m: any = await resolveModel(
-      { modelId: "claude-sonnet-4-6", config: { npm: "@ai-sdk/anthropic", apiKeySlot: "ANTHROPIC_API_KEY" }, env: { ANTHROPIC_API_KEY: "sk-1" } },
+      { modelId: "claude-sonnet-4-6", config: { npm: "@ai-sdk/anthropic" }, env: { ANTHROPIC_API_KEY: "sk-1" } },
       { importer },
     );
     expect(m).toMatchObject({ vendor: "anthropic", id: "claude-sonnet-4-6", key: "sk-1" });
+  });
+
+  it("openai-compatible reads the key from the derived fallback label", async () => {
+    const m: any = await resolveModel(
+      {
+        modelId: "MiniMax-M3",
+        config: { npm: "@ai-sdk/openai-compatible", baseUrl: "https://api.minimax.io/v1" },
+        env: { AISDK_API_KEY: "sk-mini" },
+      },
+      { importer: async () => fakeCompat },
+    );
+    expect(m).toMatchObject({ vendor: "compat", id: "MiniMax-M3", key: "sk-mini" });
   });
 
   it("errors when model is missing", async () => {

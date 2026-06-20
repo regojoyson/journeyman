@@ -1,5 +1,7 @@
-import type { Workflow, WorkflowGraph, WorkflowSaveWarning, WorkflowVersion, PublishError } from "@journeyman/core";
+import type { Workflow, WorkflowGraph, WorkflowSaveWarning, WorkflowVersion, PublishError, WorkflowVersionSummary } from "@journeyman/core";
 import { api, ApiError } from "./client.ts";
+
+export type { WorkflowVersionSummary } from "@journeyman/core";
 
 const wsBase = (wsId: string) => `/api/workspaces/${encodeURIComponent(wsId)}/workflows`;
 
@@ -45,14 +47,6 @@ export async function rollbackFlow(
     }
     throw e;
   }
-}
-
-export interface WorkflowVersionSummary {
-  id: string;
-  versionNumber: number;
-  createdAt: string;
-  createdByUserId: string | null;
-  isPublished: boolean;
 }
 
 export async function listWorkflowVersions(wsId: string, workflowId: string): Promise<WorkflowVersionSummary[]> {

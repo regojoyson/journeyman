@@ -169,6 +169,16 @@ export interface WorkflowVersion {
   createdAt: Date;
 }
 
+/** Lightweight version row for the history list (no definition payload). */
+export interface WorkflowVersionSummary {
+  id: string;
+  versionNumber: number;
+  /** ISO timestamp string (serialized over the wire). */
+  createdAt: string;
+  createdByUserId: string | null;
+  isPublished: boolean;
+}
+
 export type WorkflowStatus = "draft" | "ready";
 
 export interface Workflow {

@@ -31,19 +31,19 @@ describe("buildServerConfig", () => {
       },
     });
   });
-  it("omits the provider block for a cloud model that has only an apiKeySlot (no baseUrl)", () => {
+  it("omits the provider block for a cloud model (no baseUrl)", () => {
     const c = buildServerConfig(cfg, {
       model: "anthropic/claude-sonnet-4-6",
-      modelConfig: { apiKeySlot: "ANTHROPIC_API_KEY" },
+      modelConfig: { requiresApiKey: true },
       env: { ANTHROPIC_API_KEY: "sk-x" },
     });
     expect(c.provider).toBeUndefined();
   });
-  it("injects apiKey from env when apiKeySlot is set", () => {
+  it("injects apiKey from env under the derived label", () => {
     const c = buildServerConfig(cfg, {
       model: "myvllm/mistral",
-      modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/openai-compatible", apiKeySlot: "MY_KEY" },
-      env: { MY_KEY: "secret-123" },
+      modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/openai-compatible", requiresApiKey: true },
+      env: { MYVLLM_API_KEY: "secret-123" },
     });
     expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123" });
   });

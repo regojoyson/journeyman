@@ -7,7 +7,7 @@ import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { createLogger } from "@journeyman/core";
+import { createLogger, codingModelKeySlot } from "@journeyman/core";
 import { createCodingProvider } from "@journeyman/agent-runtime";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
 import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider, LinearProvider, MondayProvider } from "@journeyman/ticket-provider";
@@ -493,10 +493,10 @@ const harness = new WorkerHarness({
   modelKeyResolver: async ({ provider, modelId, orgId }) => {
     if (!pool || !orgId) return null;
     const m = await findCodingModel(pool, orgId, provider, modelId);
-    const slot = m?.config?.apiKeySlot?.trim();
-    if (!m?.apiKeySecretId || !slot) return null;
+    if (!m?.apiKeySecretId || !m?.config?.requiresApiKey) return null;
     const value = await fetchSecretById(pool, orgId, m.apiKeySecretId);
     if (value == null) return null;
+    const slot = codingModelKeySlot({ provider, config: m.config, modelId });
     return { slot, value };
   },
   ensureWorkspace: ensureWs,

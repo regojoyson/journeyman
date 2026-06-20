@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
-import { providersForKind, suggestedKeySlotName, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
+import { providersForKind, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
 import { listOrgSecrets, createOrgSecret, type OrgSecretMeta } from "../api/secrets.ts";
 
@@ -162,22 +162,16 @@ function ModelForm(props: {
   const [v, setV] = useState<CodingModelCreateInput>({ ...(props.initial as CodingModelCreateInput) });
   const set = <K extends keyof CodingModelCreateInput>(k: K, val: CodingModelCreateInput[K]) =>
     setV((prev) => ({ ...prev, [k]: val }));
-  const setConfig = (k: "baseUrl" | "npm" | "apiKeySlot", val: string) =>
+  const setConfig = (k: "baseUrl" | "npm", val: string) =>
     setV((prev) => ({ ...prev, config: { ...(prev.config ?? {}), [k]: val || undefined } }));
   const setApiKeySecretId = (id: string | undefined) =>
     setV((prev) => ({ ...prev, apiKeySecretId: id || undefined }));
-  const requiresKey = Boolean(v.config?.apiKeySlot);
+  const requiresKey = Boolean(v.config?.requiresApiKey);
   const setRequiresKey = (b: boolean) =>
     setV((prev) => ({
       ...prev,
       apiKeySecretId: b ? prev.apiKeySecretId : undefined,
-      config: {
-        ...(prev.config ?? {}),
-        apiKeySlot: b
-          ? (prev.config?.apiKeySlot
-              || (prev.provider === "claude" ? "ANTHROPIC_API_KEY" : suggestedKeySlotName(prev.modelId) || "API_KEY"))
-          : undefined,
-      },
+      config: { ...(prev.config ?? {}), requiresApiKey: b || undefined },
     }));
 
   const { data: orgSecrets = [] } = useQuery({
@@ -313,24 +307,12 @@ function ModelForm(props: {
             onChange={setRequiresKey}
           />
           {requiresKey && (
-            <>
-              {(v.provider === "opencode" || v.provider === "aisdk") && (
-                <Field label="Env var name">
-                  <input
-                    className={`${inputCls} font-mono text-sm`}
-                    value={v.config?.apiKeySlot ?? ""}
-                    onChange={(e) => setConfig("apiKeySlot", e.target.value)}
-                    placeholder="ANTHROPIC_API_KEY"
-                  />
-                </Field>
-              )}
-              <SecretBindingField
-                orgId={props.orgId}
-                secrets={orgSecrets}
-                value={v.apiKeySecretId}
-                onChange={setApiKeySecretId}
-              />
-            </>
+            <SecretBindingField
+              orgId={props.orgId}
+              secrets={orgSecrets}
+              value={v.apiKeySecretId}
+              onChange={setApiKeySecretId}
+            />
           )}
         </section>
 

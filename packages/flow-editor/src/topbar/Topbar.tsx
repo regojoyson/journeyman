@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   FileCode2,
+  History,
   Loader2,
   Play,
   Save,
@@ -60,6 +61,10 @@ export interface TopbarProps {
   onDelete?: () => void;
   /** When false the View JSON / export panel button is hidden. Defaults to true. */
   exportEnabled?: boolean;
+  /** Opens the version-history panel. When omitted, the history button is hidden. */
+  onHistoryClick?: () => void;
+  /** Count shown as a badge on the history button. Hidden when 0/undefined. */
+  versionCount?: number;
 }
 
 export function Topbar(p: TopbarProps) {
@@ -174,6 +179,16 @@ export function Topbar(p: TopbarProps) {
             hint="Replace this flow from JSON (paste or file)"
             icon={<Upload size={16} aria-hidden="true" focusable="false" />}
             onClick={() => setImportOpen(true)}
+          />
+        )}
+        {p.onHistoryClick && (
+          <IconButton
+            className="je-icon-btn--history"
+            label="Version history"
+            hint="View and restore promoted versions"
+            badge={p.versionCount}
+            icon={<History size={16} aria-hidden="true" focusable="false" />}
+            onClick={p.onHistoryClick}
           />
         )}
         {p.onWorkflowSetup && (

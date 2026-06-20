@@ -15,7 +15,7 @@ import { isValidCodingProvider, LIST_CODING_PROVIDERS } from "../validate-provid
 import { validateCodingModelConfig } from "../validate-config.ts";
 
 /**
- * Validate the secret binding: when config.apiKeySlot is set the model needs a key,
+ * Validate the secret binding: when config.requiresApiKey is set the model needs a key,
  * so api_key_secret_id must reference a real org secret in this org. Returns an error
  * message, or null.
  */
@@ -25,7 +25,7 @@ async function validateBinding(
   config: CodingModelConfig | undefined,
   apiKeySecretId: string | undefined | null,
 ): Promise<string | null> {
-  const needsKey = Boolean(config?.apiKeySlot?.trim());
+  const needsKey = Boolean(config?.requiresApiKey);
   if (needsKey) {
     if (!apiKeySecretId) return "apiKeySecretId is required when the model requires an API key";
     const meta = await getOrgSecretMeta(pool, orgId, apiKeySecretId);

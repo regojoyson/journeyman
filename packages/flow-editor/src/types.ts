@@ -1,4 +1,4 @@
-import type { WorkflowGraph, WorkflowNodeType, WorkflowSaveWarning, WorkflowStatus, McpTransport, PublishError } from "@journeyman/core";
+import type { WorkflowGraph, WorkflowNodeType, WorkflowSaveWarning, WorkflowStatus, McpTransport, PublishError, WorkflowVersionSummary } from "@journeyman/core";
 import type { StepDefinition, StepRunState } from "./step-definition.ts";
 import type { UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
 
@@ -66,6 +66,10 @@ export interface FlowEditorProps {
    * Returns the warning shape if the server demanded confirmation; null when the flip succeeded.
    */
   onUnpublish?: (confirm: boolean) => Promise<UnpublishWarning | null>;
+  /** Promoted version history, newest-or-any order. When provided, the history toolbar button appears. */
+  versions?: WorkflowVersionSummary[];
+  /** Restore (rollback) the live pointer to an existing version. When provided, Restore buttons show. */
+  onRollback?: (versionId: string) => void | Promise<void>;
   /** When false the steps palette is hidden. Pass capabilities.showPalette from the host. Defaults to true. */
   showPalette?: boolean;
   /** When provided, a Delete button appears in the topbar. Only pass when the caller's capabilities.canDelete is true. */

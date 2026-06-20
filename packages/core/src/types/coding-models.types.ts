@@ -8,7 +8,12 @@ export interface CodingModelConfig {
   baseUrl?: string;
   /** AI-SDK npm package for the provider; defaults to "@ai-sdk/openai-compatible". */
   npm?: string;
-  /** Env-var name the provider expects the API key under (e.g. ANTHROPIC_API_KEY); blank = no key. */
+  /** Whether this model needs an API key bound (replaces the old typed apiKeySlot). */
+  requiresApiKey?: boolean;
+  /**
+   * @deprecated Legacy typed env-var label. No longer read; the label is derived
+   * by codingModelKeySlot(). Kept only so old JSONB rows still parse.
+   */
   apiKeySlot?: string;
 }
 

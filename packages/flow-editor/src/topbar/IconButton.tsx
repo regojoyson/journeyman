@@ -11,6 +11,8 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   tooltipPlacement?: "bottom" | "top";
   /** Indicates a long-running action is in progress (sets aria-busy). */
   busy?: boolean;
+  /** Optional count rendered as a small badge on the button corner. Hidden when 0/undefined. */
+  badge?: number;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
  * - Dismissible with Escape (WCAG 1.4.13)
  */
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { label, hint, icon, tooltipPlacement = "bottom", busy, className, onKeyDown, ...rest },
+  { label, hint, icon, tooltipPlacement = "bottom", busy, badge, className, onKeyDown, ...rest },
   ref,
 ) {
   const [open, setOpen] = useState(false);
@@ -51,6 +53,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       >
         <span aria-hidden="true" className="je-icon-btn__icon">{icon}</span>
       </button>
+      {badge ? <span className="je-icon-btn__badge" aria-hidden="true">{badge}</span> : null}
       {open && (
         <span
           id={tipId}

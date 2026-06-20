@@ -1,5 +1,5 @@
 import type { CodingModelConfig } from "@journeyman/core";
-import { AISDK_PROVIDER_PACKAGES, isAiSdkPackage } from "@journeyman/core";
+import { AISDK_PROVIDER_PACKAGES, isAiSdkPackage, codingModelKeySlot } from "@journeyman/core";
 
 export interface ResolveModelOpts {
   modelId: string | undefined;
@@ -41,8 +41,8 @@ export async function resolveModel(opts: ResolveModelOpts, deps: ResolveModelDep
   if (npm === "@ai-sdk/openai-compatible" && !opts.config?.baseUrl?.trim()) {
     throw configError("@ai-sdk/openai-compatible requires config.baseUrl");
   }
-  const slot = opts.config?.apiKeySlot;
-  const apiKey = slot ? (opts.env?.[slot] ?? process.env[slot]) : undefined;
+  const slot = codingModelKeySlot({ provider: "aisdk", config: opts.config, modelId: opts.modelId });
+  const apiKey = opts.env?.[slot] ?? process.env[slot];
   const importer = deps.importer ?? ((n: string) => import(n));
   let mod: any;
   try {

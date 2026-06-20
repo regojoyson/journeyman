@@ -9,6 +9,7 @@ import { CreateFlowWizard } from "./create-wizard/CreateFlowWizard.tsx";
 import { Topbar } from "./topbar/Topbar.tsx";
 import { PublishModal } from "./topbar/PublishModal.tsx";
 import { UnpublishDialog, type UnpublishWarning } from "./topbar/UnpublishDialog.tsx";
+import { VersionHistoryPanel } from "./topbar/VersionHistoryPanel.tsx";
 import { useFlowEditorState } from "./state/useFlowEditorState.ts";
 import { isValidPhase4Graph } from "./state/validation.ts";
 import { StepRegistryProvider } from "./state/step-registry-context.tsx";
@@ -125,6 +126,7 @@ export function FlowEditor(props: FlowEditorProps) {
   }, [paletteWidth]);
 
   const [setupOpen, setSetupOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [unpublishOpen, setUnpublishOpen] = useState(false);
   const [unpublishWarning, setUnpublishWarning] = useState<UnpublishWarning | null>(null);
@@ -185,6 +187,8 @@ export function FlowEditor(props: FlowEditorProps) {
           }
           validationErrors={validity.errors}
           onWorkflowSetup={() => setSetupOpen(true)}
+          onHistoryClick={props.versions ? () => setHistoryOpen(true) : undefined}
+          versionCount={props.versions?.length}
           onImport={effectiveReadOnly ? undefined : (flow) => props.onChange(flow)}
           status={props.status}
           onPublishClick={props.onPublish ? handlePublishClick : undefined}
@@ -193,6 +197,13 @@ export function FlowEditor(props: FlowEditorProps) {
           onDelete={props.onDelete}
           exportEnabled={props.exportEnabled}
         />
+        {historyOpen && props.versions && (
+          <VersionHistoryPanel
+            versions={props.versions}
+            onRollback={props.onRollback}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
         {effectiveReadOnly && props.status === "ready" && (
           <div className="fe-readonly-banner">
             This flow is published and read-only. Move to Draft to edit.

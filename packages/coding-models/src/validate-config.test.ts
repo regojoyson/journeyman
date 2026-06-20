@@ -18,9 +18,6 @@ describe("validateCodingModelConfig", () => {
   it("rejects a non-string npm", () => {
     expect(validateCodingModelConfig("opencode", { npm: 123 as any })).toMatch(/npm/);
   });
-  it("rejects an empty-string apiKeySlot", () => {
-    expect(validateCodingModelConfig("opencode", { apiKeySlot: "" })).toMatch(/apiKeySlot/);
-  });
 });
 
 describe("validateCodingModelConfig (aisdk)", () => {
@@ -31,7 +28,8 @@ describe("validateCodingModelConfig (aisdk)", () => {
     expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/openai-compatible" })).toMatch(/baseUrl/);
   });
   it("accepts a valid anthropic config", () => {
-    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/anthropic", apiKeySlot: "ANTHROPIC_API_KEY" })).toBeNull();
+    expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/anthropic" })).toBeNull();
+    expect(validateCodingModelConfig("aisdk", { requiresApiKey: true, npm: "@ai-sdk/anthropic" })).toBeNull();
   });
   it("accepts openai-compatible with a baseUrl", () => {
     expect(validateCodingModelConfig("aisdk", { npm: "@ai-sdk/openai-compatible", baseUrl: "http://x/v1" })).toBeNull();

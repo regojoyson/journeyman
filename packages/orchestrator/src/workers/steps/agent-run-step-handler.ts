@@ -17,6 +17,7 @@ import {
   type CodingModelConfig,
   PROVIDER_CATALOG,
   defaultProviderForKind,
+  codingModelKeySlot,
 } from "@journeyman/core";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { SandboxInstanceGitProvider, type SandboxGitAuth } from "../../sandbox/sandbox-instance-git-provider.ts";
@@ -136,10 +137,12 @@ export class AgentRunStepHandler implements IStepHandler {
     if (provider && model && orgId) {
       try {
         const cm = await findCodingModel(this.deps.pool, orgId, provider, model);
-        const slot = cm?.config?.apiKeySlot?.trim();
-        if (cm?.apiKeySecretId && slot) {
+        if (cm?.apiKeySecretId && cm.config?.requiresApiKey) {
           const value = await fetchSecretById(this.deps.pool, orgId, cm.apiKeySecretId);
-          if (value != null) env[slot] = value;
+          if (value != null) {
+            const slot = codingModelKeySlot({ provider, config: cm.config, modelId: model });
+            env[slot] = value;
+          }
         }
       } catch (err: any) {
         log.warn({ err: err?.message }, "model key resolution failed; continuing without model-owned key");

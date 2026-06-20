@@ -2,15 +2,15 @@ import { describe, it, expect } from "vitest";
 import { openCodeModelSlots, suggestedKeySlotName } from "./opencode-slots.ts";
 
 describe("openCodeModelSlots", () => {
-  it("returns one required slot when apiKeySlot is set", () => {
-    expect(openCodeModelSlots({ apiKeySlot: "ANTHROPIC_API_KEY" })).toEqual([
+  it("returns one required slot, named by derivation, when requiresApiKey is true", () => {
+    expect(openCodeModelSlots({ requiresApiKey: true }, "anthropic/claude-sonnet-4-6")).toEqual([
       { name: "ANTHROPIC_API_KEY", description: "API key for this model.", optional: false },
     ]);
   });
-  it("returns [] when apiKeySlot is absent", () => {
-    expect(openCodeModelSlots(undefined)).toEqual([]);
-    expect(openCodeModelSlots({})).toEqual([]);
-    expect(openCodeModelSlots({ baseUrl: "http://x/v1" })).toEqual([]);
+  it("returns [] when the model does not require a key", () => {
+    expect(openCodeModelSlots(undefined, "anthropic/claude")).toEqual([]);
+    expect(openCodeModelSlots({}, "anthropic/claude")).toEqual([]);
+    expect(openCodeModelSlots({ requiresApiKey: false }, "anthropic/claude")).toEqual([]);
   });
 });
 

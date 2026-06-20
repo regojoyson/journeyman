@@ -136,8 +136,9 @@ export class CustomAiStepHandler implements IStepHandler {
     for (const s of providerSlots) slotsByName.set(s.name, s);
     for (const s of dbSlots)       slotsByName.set(s.name, s);
     const modelConfig = (input.modelConfig as CodingModelConfig | undefined) ?? undefined;
+    const model = typeof input.model === "string" && input.model ? input.model : undefined;
     // OpenCode models declare their own required key slot; non-opencode → [].
-    for (const s of openCodeModelSlots(modelConfig)) {
+    for (const s of openCodeModelSlots(modelConfig, model)) {
       slotsByName.set(s.name, { name: s.name, optional: s.optional });
     }
     const effectiveSlots = Array.from(slotsByName.values());
@@ -181,7 +182,6 @@ export class CustomAiStepHandler implements IStepHandler {
     const mcps = Array.isArray(input.mcps) ? (input.mcps as ResolvedMcpInstance[]) : undefined;
     let skills: ResolvedSkillPackage[] | undefined =
       Array.isArray(input.skills) ? (input.skills as ResolvedSkillPackage[]) : undefined;
-    const model = typeof input.model === "string" && input.model ? input.model : undefined;
 
     // When running in a container (ctx.exec + ctx.materialize), deliver skills into the container
     // and rewrite localPath to the in-container location. For local runs, skills load from the

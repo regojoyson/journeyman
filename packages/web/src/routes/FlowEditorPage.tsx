@@ -3,8 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Workflow, WorkflowGraph } from "@journeyman/core";
-import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, type UnpublishWarning } from "../api/flows.ts";
-import { VersionHistoryPanel } from "../components/VersionHistoryPanel.tsx";
+import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, listWorkflowVersions, type UnpublishWarning } from "../api/flows.ts";
 import { workflowCapabilities } from "../lib/workflow-capabilities.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
 import { builtInSteps } from "@journeyman/steps";
@@ -23,7 +22,6 @@ export function FlowEditorPage() {
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const { activeOrgId } = useAuth();
   const { can } = useWorkspace();
   const customStepDefs = useCustomStepPaletteEntries(wsId);
@@ -39,6 +37,12 @@ export function FlowEditorPage() {
       console.log("[FlowEditorPage] flow meta loaded", { id, name: result.name });
       return result;
     },
+    enabled: !!id,
+  });
+
+  const versionsQ = useQuery({
+    queryKey: ["flow-versions", id],
+    queryFn: () => listWorkflowVersions(wsId, id!),
     enabled: !!id,
   });
 
@@ -139,7 +143,7 @@ export function FlowEditorPage() {
 
   return (
     <>
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0, position: "relative" }}>
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {triggers && triggers.length > 0 ? (
           <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "rgb(var(--color-border-strong) / 1)", flex: "0 0 auto" }}>
             Triggered by:{" "}
@@ -185,28 +189,13 @@ export function FlowEditorPage() {
             status={flow.status}
             onPublish={caps.canPublish ? onPublish : undefined}
             onUnpublish={caps.canPublish ? onUnpublish : undefined}
+            versions={versionsQ.data ?? []}
+            onRollback={caps.canPublish ? onRollback : undefined}
             showPalette={caps.showPalette}
             onDelete={caps.canDelete ? onDelete : undefined}
             exportEnabled={caps.canExport}
           />
         </div>
-        {caps.canPublish && (
-          <button
-            type="button"
-            onClick={() => setHistoryOpen((v) => !v)}
-            style={{ position: "absolute", top: 8, right: 12, zIndex: 5 }}
-          >
-            {historyOpen ? "Hide history" : "Version history"}
-          </button>
-        )}
-        {historyOpen && (
-          <VersionHistoryPanel
-            wsId={wsId}
-            workflowId={flow.id}
-            onRollback={onRollback}
-            onClose={() => setHistoryOpen(false)}
-          />
-        )}
       </div>
       {saveToast && (
         <StatusToast
