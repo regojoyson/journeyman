@@ -67,9 +67,10 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
   }, [wsId, customStepId]);
 
   useEffect(() => {
+    if (!wsId) { setAvailable([]); setLoading(false); return; }
     let alive = true;
     setLoading(true);
-    fetch(`/api/orgs/${orgId}/mcp-instances/visible`, { credentials: "include" })
+    fetch(`/api/workspaces/${wsId}/mcp-instances/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: VisibleMcp[]) => {
         if (!alive) return;
@@ -85,7 +86,7 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
       .catch(() => { if (alive) setAvailable([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [orgId]);
+  }, [wsId]);
 
   const toggle = (id: string) => {
     if (readOnly) return;

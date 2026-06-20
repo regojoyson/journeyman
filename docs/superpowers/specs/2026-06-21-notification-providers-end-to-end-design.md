@@ -149,6 +149,60 @@ never fail a run, still uses `agent.notifications.target` as the channel.
 - `packages/core/src/registries/provider-catalog.ts`: slack `implemented: false` → `true`.
 - `CLAUDE.md`: status table — mark `SlackProvider` implemented (token + webhook).
 
+### 3e. Provider-aware notification inputs (UI)
+
+When a user picks a notification connection, the editor shows the input fields that match
+that connection's provider. The fields always persist into the same three backend slots
+(`channel`, `title`, `message` on `SendNotificationOptions`) — only the **visible boxes and
+labels** change. The worker, `EmailProvider`, and `SlackProvider` need no changes for this.
+
+**Shared source of truth — `packages/core/src/registries/notification-fields.ts` (new):**
+
+```ts
+export interface NotificationField {
+  key: "channel" | "title" | "message";
+  label: string;
+  help?: string;
+  placeholder?: string;
+  required?: boolean;
+}
+
+/** Ordered fields the editor should show for a notification provider. */
+export function notificationFields(provider?: string): NotificationField[];
+```
+
+| provider | fields (in order) → backend slot |
+|---|---|
+| `email` | Recipient email → `channel` (req) · Subject → `title` · Email body → `message` (req) |
+| `slack` | Channel / user → `channel` (req) · Message → `message` (req) |
+| `console` | Message → `message` (req) |
+| *(unknown / none)* | Channel / recipient → `channel` (req) · Message → `message` (req) |
+
+Exported from `packages/core/src/index.ts`. Both UI packages already depend on `core`, so no
+new cross-package coupling.
+
+**Step editor — `send-message`:**
+
+- `packages/flow-editor/src/properties-panel/ConnectionPicker.tsx`: add an optional
+  `onResolved?(connection: Connection | null) => void` prop, fired whenever the selected
+  connection resolves against the fetched list. Keeps the picker reusable.
+- `packages/flow-editor/src/properties-panel/ConfigTab.tsx`: for `stepType === "send-message"`,
+  track the resolved connection's `provider` and render the `notificationFields(provider)` set
+  as the step's bind-only input fields (instead of the static catalog `inputFields`). Each field
+  writes to `node.inputs[key]` exactly as the existing bind-only fields do.
+- `packages/steps/src/notifications/send-message.meta.ts`: add `title` (optional) to
+  `sendMessageConfigSchema` and `sendMessageInputFields` so subject is a declared input. The
+  handler already forwards `input.title` → `SendNotificationOptions.title`; no handler change.
+
+**Agent editor — `NotificationsSection.tsx`:**
+
+- Derive the provider from the selected connection (`notifyConnections.find(c => c.id === id)?.provider`).
+- Drive the recipient field's label / help / placeholder from `notificationFields(provider)` (the
+  `channel` entry). Agents have no message box — the body stays the auto-generated run-status line.
+- De-Slack-ify the connection field help (`"Channel used to send run notifications"`).
+
+A per-agent custom message template is **out of scope** (see §6).
+
 ---
 
 ## 4. Testing
@@ -176,9 +230,15 @@ never fail a run, still uses `agent.notifications.target` as the channel.
 | `packages/api-server/src/services/notify-on-terminal.ts` | delegate to shared builder; generic over all notification types |
 | `packages/api-server/src/services/notify-on-terminal.test.ts` | add email case |
 | `packages/core/src/registries/provider-catalog.ts` | slack `implemented: true` |
+| `packages/core/src/registries/notification-fields.ts` | **New** — `notificationFields(provider)` |
+| `packages/core/src/index.ts` | export `notificationFields` + `NotificationField` |
+| `packages/steps/src/notifications/send-message.meta.ts` | add optional `title` input/config |
+| `packages/flow-editor/src/properties-panel/ConnectionPicker.tsx` | optional `onResolved` callback |
+| `packages/flow-editor/src/properties-panel/ConfigTab.tsx` | provider-aware inputs for `send-message` |
+| `packages/web/src/components/agents/sections/NotificationsSection.tsx` | provider-aware recipient field |
 | `CLAUDE.md` | mark `SlackProvider` implemented |
 
-No DB migrations. No `@journeyman/core` type changes.
+No DB migrations. No `@journeyman/core` type changes (additive new module only).
 
 ---
 

@@ -1,4 +1,5 @@
 import type { CanonicalTool } from "./coding-tools.types.ts";
+import type { AgentLogLevel } from "./coding.types.ts";
 import type { RetryPolicy } from "./flow.types.ts";
 import type { CustomStepOutputField } from "./custom-steps.types.ts";
 
@@ -87,6 +88,8 @@ export interface Agent {
   permissions: AgentPermissions;
   notifications: AgentNotifications;
   outputMode: "none" | "text" | "structured";
+  /** How much coding-CLI transcript streams to run logs. Default "medium". */
+  agentLogLevel?: AgentLogLevel;
   outputFields?: CustomStepOutputField[];
   behavior: AgentBehavior;
   /** Per-agent safety overrides (§15.1); merged over org defaults. */

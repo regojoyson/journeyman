@@ -14,7 +14,9 @@ import {
   type CodingModelConfig,
 } from "@journeyman/core";
 import { getCustomAiStep, renderPrompt, outputFieldsToJsonSchema } from "@journeyman/custom-steps";
-import { defaultProviderForKind, PROVIDER_CATALOG, openCodeModelSlots } from "@journeyman/core";
+import { defaultProviderForKind, PROVIDER_CATALOG, codingModelKeySlot } from "@journeyman/core";
+import { findCodingModel } from "@journeyman/coding-models";
+import { fetchSecretById } from "@journeyman/secrets";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
@@ -137,10 +139,8 @@ export class CustomAiStepHandler implements IStepHandler {
     for (const s of dbSlots)       slotsByName.set(s.name, s);
     const modelConfig = (input.modelConfig as CodingModelConfig | undefined) ?? undefined;
     const model = typeof input.model === "string" && input.model ? input.model : undefined;
-    // OpenCode models declare their own required key slot; non-opencode → [].
-    for (const s of openCodeModelSlots(modelConfig, model)) {
-      slotsByName.set(s.name, { name: s.name, optional: s.optional });
-    }
+    // The model's API key is model-owned (bound to the coding model), injected
+    // below — not a per-step required slot. So it is NOT declared here.
     const effectiveSlots = Array.from(slotsByName.values());
 
     let env: Record<string, string>;
@@ -161,6 +161,23 @@ export class CustomAiStepHandler implements IStepHandler {
           retryable: false,
         },
       };
+    }
+
+    // Inject the model-owned API key: the coding model binds an org secret
+    // directly (same as agent-run). Resolve + merge into env under the derived label.
+    if (provider && model && orgId) {
+      try {
+        const cm = await findCodingModel(this.deps.pool, orgId, provider, model);
+        if (cm?.apiKeySecretId && cm.config?.requiresApiKey) {
+          const value = await fetchSecretById(this.deps.pool, orgId, cm.apiKeySecretId);
+          if (value != null) {
+            const slot = codingModelKeySlot({ provider, config: cm.config, modelId: model });
+            env[slot] = value;
+          }
+        }
+      } catch (err: any) {
+        log.warn({ err: err?.message }, "model key resolution failed; continuing without model-owned key");
+      }
     }
 
     ctx.log(

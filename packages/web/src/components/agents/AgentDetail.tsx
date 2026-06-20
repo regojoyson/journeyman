@@ -4,7 +4,7 @@ import type { Agent, AgentUpdateInput } from "@journeyman/core";
 import { agentsApi } from "../../api/agents.ts";
 import type { ReadinessError } from "../../api/agents.ts";
 import { Toggle } from "../Toggle.tsx";
-import { btnPrimary, btnGhost, card, inputCls } from "../../routes/admin-styles.ts";
+import { btnPrimary, btnGhost, card } from "../../routes/admin-styles.ts";
 import { isAgentDirty, isSectionDirty, buildSectionUpdateInput, SAVEABLE_SECTION_IDS, agentSummary, statusLabel } from "./agent-form.ts";
 import { SectionNav, SECTIONS, type SectionId } from "./sections/SectionNav.tsx";
 import { InstructionsSection } from "./sections/InstructionsSection.tsx";
@@ -12,9 +12,11 @@ import { WorkspaceSection } from "./sections/WorkspaceSection.tsx";
 import { TriggersSection } from "./sections/TriggersSection.tsx";
 import { BehaviorSection } from "./sections/BehaviorSection.tsx";
 import { PermissionsSection } from "./sections/PermissionsSection.tsx";
+import { IntegrationsSection } from "./sections/IntegrationsSection.tsx";
 import { NotificationsSection } from "./sections/NotificationsSection.tsx";
 import { RunHistorySection } from "./sections/RunHistorySection.tsx";
 import { DeleteSection } from "./sections/DeleteSection.tsx";
+import { RunAgentModal } from "./shared/RunAgentModal.tsx";
 
 const FIELD_TO_SECTION: Record<string, SectionId> = {
   name:         "instructions",
@@ -62,8 +64,7 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [readinessErrors, setReadinessErrors] = useState<ReadinessError[] | null>(null);
-  const [showRunForm, setShowRunForm] = useState(false);
-  const [runInputs, setRunInputs] = useState<Record<string, string>>({});
+  const [showRun, setShowRun] = useState(false);
 
   const locked = a.enabled;
   const backTo = `/workspaces/${wsId}/agents`;
@@ -77,6 +78,7 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
     triggers: "Triggers",
     behavior: "Behavior",
     permissions: "Permissions",
+    integrations: "MCP & skills",
     notifications: "Notifications",
   };
 
@@ -134,29 +136,6 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
     }
   };
 
-  const openRun = () => {
-    if (a.inputs.length === 0) {
-      void runNow({});
-      return;
-    }
-    setRunInputs(Object.fromEntries(a.inputs.map((i) => [i.name, ""])));
-    setShowRunForm(true);
-  };
-
-  const runNow = async (inputs: Record<string, unknown>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await agentsApi.runNow(wsId, a.id, inputs);
-      setShowRunForm(false);
-      selectSection("runs");
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <header className="shrink-0 border-b bg-background px-6 pt-6 pb-4">
@@ -174,7 +153,7 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
           <div className="flex items-center gap-3">
             <Toggle checked={a.enabled} disabled={busy} onChange={toggleEnable} label="Enabled" />
             <span title={!a.enabled ? "Enable the agent to run it" : undefined}>
-              <button className={btnGhost} disabled={busy || !a.enabled} onClick={openRun}>Run now</button>
+              <button className={btnGhost} disabled={busy || !a.enabled} onClick={() => setShowRun(true)}>Run now</button>
             </span>
           </div>
         </div>
@@ -216,24 +195,8 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
             🔒 Enabled — disable to edit.
           </div>
         )}
-        {showRunForm && (
-          <div className={`${card} p-4 space-y-3`}>
-            <div className="font-medium text-sm">Run now — provide inputs</div>
-            {a.inputs.map((inp) => (
-              <div key={inp.name} className="flex items-center gap-2">
-                <span className="text-sm w-32 truncate" title={inp.name}>{inp.name}</span>
-                <input
-                  className={inputCls}
-                  value={runInputs[inp.name] ?? ""}
-                  onChange={(e) => setRunInputs((prev) => ({ ...prev, [inp.name]: e.target.value }))}
-                />
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <button className={btnPrimary} disabled={busy} onClick={() => runNow(runInputs)}>Run</button>
-              <button className={btnGhost} disabled={busy} onClick={() => setShowRunForm(false)}>Cancel</button>
-            </div>
-          </div>
+        {showRun && (
+          <RunAgentModal wsId={wsId} agent={a} onClose={() => setShowRun(false)} />
         )}
         {error && <div className="text-sm text-destructive">{error}</div>}
 
@@ -249,6 +212,7 @@ export function AgentDetail({ wsId, orgId, initial }: { wsId: string; orgId: str
                 {section === "triggers" && <TriggersSection a={a} patch={patch} locked={locked} wsId={wsId} />}
                 {section === "behavior" && <BehaviorSection a={a} patch={patch} locked={locked} />}
                 {section === "permissions" && <PermissionsSection a={a} patch={patch} locked={locked} />}
+                {section === "integrations" && <IntegrationsSection a={a} patch={patch} locked={locked} wsId={wsId} />}
                 {section === "notifications" && <NotificationsSection a={a} patch={patch} locked={locked} wsId={wsId} />}
                 {section === "runs" && <RunHistorySection wsId={wsId} agentId={a.id} />}
                 {section === "delete" && (

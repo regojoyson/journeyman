@@ -9,6 +9,7 @@ interface Props {
   value: string | null | undefined;
   onChange: (connectionId: string | null) => void;
   readOnly?: boolean;
+  onResolved?: (connection: Connection | null) => void;
 }
 
 const CATEGORY_LABEL: Record<ConnectionCategory, string> = {
@@ -17,7 +18,7 @@ const CATEGORY_LABEL: Record<ConnectionCategory, string> = {
   notification: "Notification",
 };
 
-export function ConnectionPicker({ category, value, onChange, readOnly }: Props) {
+export function ConnectionPicker({ category, value, onChange, readOnly, onResolved }: Props) {
   const wsId = useWsId();
   const [connections, setConnections] = useState<Connection[]>([]);
 
@@ -25,6 +26,11 @@ export function ConnectionPicker({ category, value, onChange, readOnly }: Props)
     if (!wsId) return;
     fetchConnections(wsId, category).then(setConnections).catch(() => {});
   }, [wsId, category]);
+
+  useEffect(() => {
+    if (!onResolved) return;
+    onResolved(connections.find(c => c.id === value) ?? null);
+  }, [value, connections, onResolved]);
 
   return (
     <div className="je-props__field">

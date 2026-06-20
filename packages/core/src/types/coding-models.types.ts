@@ -31,7 +31,7 @@ export type CodingModel = {
   supportsThinking: boolean;
   contextWindow?: number;
   config?: CodingModelConfig;
-  /** Org secret (jm_secrets.id, workspace_id IS NULL) that fills config.apiKeySlot at run time. */
+  /** Org secret (jm_secrets.id, workspace_id IS NULL) injected under the derived key slot at run time (see codingModelKeySlot). */
   apiKeySecretId?: string;
   createdAt: string;
   updatedAt: string;

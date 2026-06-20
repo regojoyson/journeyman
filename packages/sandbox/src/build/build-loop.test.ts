@@ -55,6 +55,24 @@ describe("runBuildTick", () => {
     expect(d.build).toHaveBeenCalledOnce();
   });
 
+  it("resolves a function bundleRef live each tick (tracks a kit republish)", async () => {
+    let current = "journeyman/runner-bundle:v1";
+    const ensureKit = vi.fn().mockResolvedValue(undefined);
+    const build = vi.fn().mockResolvedValue({ imageRef: "journeyman/jm-built:fp", fingerprint: "fp" });
+    const d = deps({ bundleRef: () => current, ensureKit, build });
+
+    await runBuildTick(d as any);
+    expect(ensureKit).toHaveBeenCalledWith(expect.anything(), "journeyman/runner-bundle:v1", undefined, expect.any(Function));
+    expect(build).toHaveBeenCalledWith(expect.objectContaining({ bundleRef: "journeyman/runner-bundle:v1" }));
+
+    // Kit republished after the loop started — the next tick must pick up the new ref,
+    // otherwise the builder and the freshness gate fingerprint different bundles forever.
+    current = "journeyman/runner-bundle:v2";
+    await runBuildTick(d as any);
+    expect(ensureKit).toHaveBeenLastCalledWith(expect.anything(), "journeyman/runner-bundle:v2", undefined, expect.any(Function));
+    expect(build).toHaveBeenLastCalledWith(expect.objectContaining({ bundleRef: "journeyman/runner-bundle:v2" }));
+  });
+
   it("passes registry auth through to ensureKit when configured", async () => {
     const ensureKit = vi.fn().mockResolvedValue(undefined);
     const kitAuth = { username: "u", password: "p", serveraddress: "reg" };

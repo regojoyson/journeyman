@@ -8,7 +8,13 @@ import type { RegistryAuth } from "../backends/docker/registry-auth.ts";
 
 export interface BuildTickDeps {
   db: Queryable;
-  bundleRef: string;
+  /**
+   * Kit bundle ref folded into the image fingerprint. Accepts a resolver so the
+   * builder reads the CURRENT kit ref each tick — the per-run freshness gate
+   * (verifyImageFresh) resolves it live too, and the two must agree or every
+   * check sees "image drift" and rebuilds forever after a kit republish.
+   */
+  bundleRef: string | (() => string | Promise<string>);
   /** Optional registry auth for pulling the kit bundle. */
   kitAuth?: RegistryAuth;
   leaseMs: number;
@@ -37,6 +43,9 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
   const target = await claim(deps.db, deps.owner, deps.leaseMs);
   if (!target) return false;
 
+  // Resolve the kit bundle ref LIVE for this build (matches the freshness gate).
+  const bundleRef = typeof deps.bundleRef === "function" ? await deps.bundleRef() : deps.bundleRef;
+
   const cfg = (target.config ?? {}) as Record<string, unknown>;
   let fingerprint = target.imageFingerprint ?? "";
   try {
@@ -44,8 +53,8 @@ export async function runBuildTick(deps: BuildTickDeps): Promise<boolean> {
     const client = makeClient(cfg["connection"]);
     // The box recipe grafts the kit via `COPY --from=<bundleRef>`; ensure that
     // kit image exists on this daemon first (pulled from the registry by digest).
-    await ensureKit(client, deps.bundleRef, deps.kitAuth, log);
-    const result = await build({ image: cfg["image"], client, bundleRef: deps.bundleRef });
+    await ensureKit(client, bundleRef, deps.kitAuth, log);
+    const result = await build({ image: cfg["image"], client, bundleRef });
     fingerprint = result.fingerprint;
     await commit(deps.db, target.id, result.fingerprint, result.imageRef);
     log(`image ready for ${target.id}: ${result.imageRef}`);

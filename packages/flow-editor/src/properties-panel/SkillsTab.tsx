@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { WorkflowNode } from "@journeyman/core";
+import { useWsId } from "../state/org-context.tsx";
 
 interface VisibleSkill {
   id: string;
@@ -27,16 +28,18 @@ function setSelectedIds(node: WorkflowNode, ids: string[]): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), skillPackageIds: ids } };
 }
 
-export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
+export function SkillsTab({ node, onChange, readOnly }: SkillsTabProps) {
+  const wsId = useWsId();
   const [available, setAvailable] = useState<VisibleSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const selected = getSelectedIds(node);
   const enabledIds = new Set(selected);
 
   useEffect(() => {
+    if (!wsId) { setAvailable([]); setLoading(false); return; }
     let alive = true;
     setLoading(true);
-    fetch(`/api/orgs/${orgId}/skill-packages/visible`, { credentials: "include" })
+    fetch(`/api/workspaces/${wsId}/skill-packages/visible`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: VisibleSkill[]) => {
         if (!alive) return;
@@ -50,7 +53,7 @@ export function SkillsTab({ node, orgId, onChange, readOnly }: SkillsTabProps) {
       .catch(() => { if (alive) setAvailable([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [orgId]);
+  }, [wsId]);
 
   const toggle = (id: string) => {
     if (readOnly) return;

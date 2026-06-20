@@ -13,9 +13,12 @@ export function buildUpdateInput(a: Agent): AgentUpdateInput {
     triggers: a.triggers,
     behavior: a.behavior,
     outputMode: a.outputMode,
+    agentLogLevel: a.agentLogLevel,
     limits: a.limits,
     permissions: a.permissions,
     tools: a.tools,
+    connectorMcpIds: a.connectorMcpIds,
+    skillIds: a.skillIds,
     notifications: a.notifications,
   };
 }
@@ -41,14 +44,15 @@ const SECTION_FIELDS: Partial<Record<SectionId, readonly (keyof Agent)[]>> = {
   instructions: ["instructions", "inputs"],
   workspace:    ["provider", "model", "sandboxId", "repoSelections"],
   triggers:     ["triggers"],
-  behavior:     ["behavior", "limits", "outputMode"],
+  behavior:     ["behavior", "limits", "outputMode", "agentLogLevel"],
   permissions:  ["permissions", "tools"],
+  integrations: ["connectorMcpIds", "skillIds"],
   notifications:["notifications"],
 };
 
 /** Section IDs that have a save action (Runs and Delete are excluded). */
 export const SAVEABLE_SECTION_IDS: readonly SectionId[] = [
-  "instructions", "workspace", "triggers", "behavior", "permissions", "notifications",
+  "instructions", "workspace", "triggers", "behavior", "permissions", "integrations", "notifications",
 ];
 
 /** True when any of the section's owned fields differ between original and current. */

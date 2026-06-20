@@ -245,9 +245,9 @@ describe("EmailProvider", () => {
     });
     const cmdArg = vi.mocked(SendEmailCommand).mock.calls[0][0];
     expect(cmdArg.Source).toBe("noreply@acme.com");
-    expect(cmdArg.Destination.ToAddresses).toEqual(["alice@example.com"]);
-    expect(cmdArg.Message.Subject.Data).toBe("SES subject");
-    expect(cmdArg.Message.Body.Text.Data).toBe("SES body");
+    expect(cmdArg.Destination!.ToAddresses).toEqual(["alice@example.com"]);
+    expect(cmdArg.Message!.Subject!.Data).toBe("SES subject");
+    expect(cmdArg.Message!.Body!.Text!.Data).toBe("SES body");
   });
 
   it("ses: returns error when SESClient.send throws", async () => {

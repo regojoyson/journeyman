@@ -260,7 +260,8 @@ npm run k8s:reset
 | `GitHubProvider` | Implemented (cloneRepos + getRepo/createPR/listPRs via `@journeyman/github-api`) |
 | `GitHubIssuesProvider` | Implemented (REST via `@journeyman/github-api`) |
 | `GitHubProjectsProvider` | Implemented (GraphQL ProjectV2 via `@journeyman/github-api`) |
-| `GitLabProvider` / `JiraProvider` / `LinearProvider` / `MondayProvider` / `SlackProvider` | Stub |
+| `GitLabProvider` / `JiraProvider` / `LinearProvider` / `MondayProvider` | Stub |
+| `SlackProvider` (notifications) | Implemented (token → chat.postMessage; webhook → incoming webhook) |
 | `ConsoleProvider` (notifications) | Implemented |
 | `retryable` step flag (`FlowStepDefinition`; gates `POST /retry`) | Implemented |
 | `@journeyman/mcp` — registry, CRUD (user + org routes), `resolveMcpInstances`, `toMcpServerConfigs` / `mergeSystemPrompts` subpath | Implemented |

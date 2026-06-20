@@ -35,6 +35,7 @@ describe("buildUpdateInput", () => {
       inputs: [],
       provider: "claude",
       model: "claude-opus-4-8",
+      sandboxId: undefined,
       repoSelections: [{ repo: "acme/api", allowWrites: false }],
       triggers: [{ type: "schedule", cron: "0 2 * * *", timezone: "UTC" }],
       behavior: {},
@@ -42,6 +43,8 @@ describe("buildUpdateInput", () => {
       limits: undefined,
       permissions: { allowedTools: [] },
       tools: [],
+      connectorMcpIds: [],
+      skillIds: [],
       notifications: { on: [] },
     });
     expect(out).not.toHaveProperty("id");
@@ -123,6 +126,13 @@ describe("buildSectionUpdateInput", () => {
   it("returns only the fields owned by the permissions section", () => {
     const result = buildSectionUpdateInput(base, "permissions");
     expect(Object.keys(result).sort()).toEqual(["permissions", "tools"]);
+  });
+
+  it("returns only the fields owned by the integrations section", () => {
+    const result = buildSectionUpdateInput(base, "integrations");
+    expect(Object.keys(result).sort()).toEqual(["connectorMcpIds", "skillIds"]);
+    expect(result.connectorMcpIds).toEqual([]);
+    expect(result.skillIds).toEqual([]);
   });
 
   it("returns an empty object for non-saveable sections", () => {

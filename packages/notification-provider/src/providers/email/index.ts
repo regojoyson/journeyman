@@ -44,7 +44,7 @@ export class EmailProvider implements INotificationProvider {
     }
   }
 
-  private async sendSmtp(to: string, subject: string, text: string, sessionId: string): Promise<SendNotificationResult> {
+  private async sendSmtp(to: string, subject: string, text: string, sessionId?: string): Promise<SendNotificationResult> {
     const o = this.opts as Extract<EmailProviderOptions, { method: "smtp" }>;
     const transport = nodemailer.createTransport({
       host: o.host,
@@ -56,7 +56,7 @@ export class EmailProvider implements INotificationProvider {
     return { success: true, messageId: info.messageId, sessionId };
   }
 
-  private async sendResend(to: string, subject: string, text: string, sessionId: string): Promise<SendNotificationResult> {
+  private async sendResend(to: string, subject: string, text: string, sessionId?: string): Promise<SendNotificationResult> {
     const o = this.opts as Extract<EmailProviderOptions, { method: "resend" }>;
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -71,7 +71,7 @@ export class EmailProvider implements INotificationProvider {
     return { success: true, messageId: data.id, sessionId };
   }
 
-  private async sendSendGrid(to: string, subject: string, text: string, sessionId: string): Promise<SendNotificationResult> {
+  private async sendSendGrid(to: string, subject: string, text: string, sessionId?: string): Promise<SendNotificationResult> {
     const o = this.opts as Extract<EmailProviderOptions, { method: "sendgrid" }>;
     const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
@@ -89,7 +89,7 @@ export class EmailProvider implements INotificationProvider {
     return { success: true, sessionId };
   }
 
-  private async sendMailgun(to: string, subject: string, text: string, sessionId: string): Promise<SendNotificationResult> {
+  private async sendMailgun(to: string, subject: string, text: string, sessionId?: string): Promise<SendNotificationResult> {
     const o = this.opts as Extract<EmailProviderOptions, { method: "mailgun" }>;
     const host = o.region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
     const auth = Buffer.from(`api:${o.apiKey}`).toString("base64");
@@ -106,7 +106,7 @@ export class EmailProvider implements INotificationProvider {
     return { success: true, messageId: data.id, sessionId };
   }
 
-  private async sendSes(to: string, subject: string, text: string, sessionId: string): Promise<SendNotificationResult> {
+  private async sendSes(to: string, subject: string, text: string, sessionId?: string): Promise<SendNotificationResult> {
     const o = this.opts as Extract<EmailProviderOptions, { method: "ses" }>;
     const client = new SESClient({
       region: o.region,

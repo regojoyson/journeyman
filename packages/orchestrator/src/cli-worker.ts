@@ -26,8 +26,7 @@ import {
 } from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
-import { ConsoleProvider, EmailProvider } from "@journeyman/notification-provider";
-import type { EmailProviderOptions } from "@journeyman/notification-provider";
+import { buildNotificationProvider } from "@journeyman/notification-provider";
 import { resolveBindings, fetchSecretById } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
 import { resolveSkillPackagesByIds } from "@journeyman/skills";
@@ -273,61 +272,11 @@ registry.register(new CommentOnIssueStepHandler({ issue }));
 
 const notification: ProviderFactory<INotificationProvider> = (key, _env, connection) => {
   const provider = connection?.provider ?? key ?? "console";
-  switch (provider) {
-    case "console":
-      return new ConsoleProvider();
-    case "slack":
-      throw Object.assign(new Error("Slack provider not yet implemented"), { name: "ConfigurationError" });
-    case "email": {
-      const cfg = (connection?.config ?? {}) as Record<string, unknown>;
-      const method = cfg.method as string | undefined;
-      if (!method) {
-        throw Object.assign(new Error("Email connection missing config.method"), { name: "ConfigurationError" });
-      }
-      const from = cfg.from as string;
-      const credential = connection?.credential ?? "";
-      let opts: EmailProviderOptions;
-      if (method === "smtp") {
-        opts = {
-          method: "smtp",
-          host: cfg.host as string,
-          port: Number(cfg.port),
-          secure: Boolean(cfg.secure),
-          from,
-          username: cfg.username as string,
-          password: credential,
-        };
-      } else if (method === "resend") {
-        opts = { method: "resend", from, apiKey: credential };
-      } else if (method === "sendgrid") {
-        opts = { method: "sendgrid", from, apiKey: credential };
-      } else if (method === "mailgun") {
-        opts = {
-          method: "mailgun",
-          from,
-          domain: cfg.domain as string,
-          apiKey: credential,
-          region: (cfg.region as "us" | "eu" | undefined) ?? "us",
-        };
-      } else if (method === "ses") {
-        opts = {
-          method: "ses",
-          from,
-          region: cfg.region as string,
-          accessKeyId: cfg.accessKeyId as string,
-          secretAccessKey: credential,
-        };
-      } else {
-        throw Object.assign(new Error(`Unknown email method: ${method}`), { name: "ConfigurationError" });
-      }
-      return new EmailProvider(opts);
-    }
-    default: {
-      const err = new Error(`Unknown notification provider: ${provider}`) as Error & { name: string };
-      err.name = "ConfigurationError";
-      throw err;
-    }
-  }
+  return buildNotificationProvider(
+    provider,
+    (connection?.config ?? {}) as Record<string, unknown>,
+    connection?.credential ?? "",
+  );
 };
 registry.register(new SendMessageStepHandler({ notification }));
 
@@ -523,7 +472,10 @@ const harness = new WorkerHarness({
 const stopBuildLoop = pool
   ? startBuildLoop({
       db: pool,
-      bundleRef: (await kitRefs()).bundle,
+      // Resolve the kit bundle ref live per tick (not cached at startup) so the
+      // builder and the per-run freshness gate fold the SAME bundle into the
+      // fingerprint — otherwise a kit republish after boot causes permanent drift.
+      bundleRef: () => kitRefs().then((r) => r.bundle),
       kitAuth: REGISTRY_AUTH,
       leaseMs: 120_000,
       intervalMs: 3000,

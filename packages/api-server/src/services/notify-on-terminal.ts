@@ -1,9 +1,9 @@
 import type { Pool } from "pg";
-import type { INotificationProvider, IWorkflowInstanceStore, WorkflowInstanceStatus } from "@journeyman/core";
+import type { IWorkflowInstanceStore, WorkflowInstanceStatus } from "@journeyman/core";
 import { getAgent } from "@journeyman/agents";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
 import { open } from "@journeyman/secrets";
-import { SlackProvider, ConsoleProvider } from "@journeyman/notification-provider";
+import { buildNotificationProvider } from "@journeyman/notification-provider";
 
 export interface NotifyOnTerminalDeps {
   pool: Pool;
@@ -12,7 +12,7 @@ export interface NotifyOnTerminalDeps {
 
 /**
  * Builds the orchestrator's `notifyOnTerminal` hook: when an agent-tagged run
- * finishes, deliver the agent's configured notification (Slack/Console). Never
+ * finishes, deliver the agent's configured notification (console/slack/email). Never
  * throws — notification failures are swallowed so they can't fail the run.
  */
 export function makeNotifyOnTerminal(deps: NotifyOnTerminalDeps) {
@@ -32,21 +32,13 @@ export function makeNotifyOnTerminal(deps: NotifyOnTerminalDeps) {
       const conn = await getConnection(deps.pool, connectionId);
       if (!conn || conn.category !== "notification") return;
 
-      let provider: INotificationProvider;
-      if (conn.provider === "console") {
-        provider = new ConsoleProvider();
-      } else if (conn.provider === "slack") {
-        const sealed = await getConnectionSealed(deps.pool, connectionId);
-        if (!sealed) return;
-        const credential = open(sealed);
-        const method = (conn.config as { method?: string } | undefined)?.method === "webhook" ? "webhook" : "token";
-        provider =
-          method === "webhook"
-            ? new SlackProvider({ method: "webhook", webhookUrl: credential })
-            : new SlackProvider({ method: "token", token: credential });
-      } else {
-        return;
-      }
+      const sealed = await getConnectionSealed(deps.pool, connectionId);
+      const credential = sealed ? open(sealed) : "";
+      const provider = buildNotificationProvider(
+        conn.provider,
+        (conn.config ?? {}) as Record<string, unknown>,
+        credential,
+      );
 
       await provider.send({
         channel: agent.notifications.target ?? "",

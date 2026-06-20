@@ -74,3 +74,8 @@ body {
 }
 .je-humantask__chip-x:hover { color: rgb(var(--color-danger) / 1); }
 .je-hint--error { color: rgb(var(--color-danger) / 1); font-size: 11px; margin-top: 4px; }
+
+@keyframes jePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}

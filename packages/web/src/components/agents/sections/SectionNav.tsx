@@ -1,5 +1,5 @@
 export type SectionId =
-  | "instructions" | "workspace" | "triggers" | "behavior" | "permissions" | "notifications" | "runs" | "delete";
+  | "instructions" | "workspace" | "triggers" | "behavior" | "permissions" | "integrations" | "notifications" | "runs" | "delete";
 
 export const SECTIONS: Array<{ id: SectionId; label: string; icon: string; danger?: boolean }> = [
   { id: "instructions", label: "Instructions & Inputs", icon: "📝" },
@@ -7,6 +7,7 @@ export const SECTIONS: Array<{ id: SectionId; label: string; icon: string; dange
   { id: "triggers", label: "Triggers", icon: "⏱" },
   { id: "behavior", label: "Behavior", icon: "🎛" },
   { id: "permissions", label: "Permissions", icon: "🔐" },
+  { id: "integrations", label: "MCP & skills", icon: "🔌" },
   { id: "notifications", label: "Notifications", icon: "🔔" },
   { id: "runs", label: "Run history", icon: "📊" },
   { id: "delete", label: "Delete agent", icon: "🗑", danger: true },

@@ -48,6 +48,7 @@ export function rowToAgent(r: any): Agent {
     permissions: d.permissions ?? { allowedTools: [] },
     notifications: d.notifications ?? { on: [] },
     outputMode: d.outputMode ?? "text",
+    agentLogLevel: d.agentLogLevel,
     outputFields: d.outputFields,
     behavior: d.behavior ?? {},
     limits: d.limits,

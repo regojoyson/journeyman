@@ -1,4 +1,4 @@
-import type { Agent, AgentUpdateInput } from "@journeyman/core";
+import type { Agent, AgentUpdateInput, AgentLogLevel } from "@journeyman/core";
 import { inputCls } from "../../../routes/admin-styles.ts";
 import { SectionShell, FieldLabel, InfoIcon } from "./SectionShell.tsx";
 
@@ -44,6 +44,20 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
           <option value="text">Text</option>
           <option value="structured">Structured</option>
           <option value="none">None</option>
+        </select>
+      </div>
+      <div>
+        <FieldLabel help="How much of the agent transcript is streamed to run logs">Log level</FieldLabel>
+        <select
+          className={inputCls}
+          disabled={locked}
+          value={a.agentLogLevel ?? "medium"}
+          onChange={(e) => patch({ agentLogLevel: e.target.value as AgentLogLevel })}
+        >
+          <option value="none">None — no agent SDK logs</option>
+          <option value="light">Light — only final result line</option>
+          <option value="medium">Medium — result + tool calls</option>
+          <option value="all">All — full transcript</option>
         </select>
       </div>
 

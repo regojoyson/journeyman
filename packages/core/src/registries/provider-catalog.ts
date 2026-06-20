@@ -48,7 +48,7 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
 
   // notification — credentials come from connections, not secret slots
   { kind: "notification", value: "console", label: "Console", implemented: true, isDefault: true },
-  { kind: "notification", value: "slack",   label: "Slack",   implemented: false },
+  { kind: "notification", value: "slack",   label: "Slack",   implemented: true },
   { kind: "notification", value: "email",   label: "Email",   implemented: true },
 ];
 

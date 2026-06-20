@@ -176,8 +176,8 @@
   height: 15px;
   padding: 0 3px;
   border-radius: 8px;
-  background: rgb(var(--color-accent) / 1);
-  color: #fff;
+  background: rgb(var(--primary) / 1);
+  color: rgb(var(--primary-foreground) / 1);
   font-size: 9px;
   font-weight: 600;
   line-height: 15px;
@@ -1047,7 +1047,7 @@ label.je-switch,
   display: inline-flex; align-items: center; gap: 6px;
 }
 .je-history-btn:hover:not(:disabled) { border-color: rgb(var(--color-border-strong) / 1); }
-.je-history-btn--primary { background: rgb(var(--color-accent) / 1); border-color: rgb(var(--color-accent) / 1); color: #fff; }
+.je-history-btn--primary { background: rgb(var(--primary) / 1); border-color: rgb(var(--primary) / 1); color: rgb(var(--primary-foreground) / 1); }
 .je-history-btn:disabled { opacity: 0.6; }
 .je-export-panel__header {
   display: flex;

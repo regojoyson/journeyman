@@ -36,6 +36,22 @@ describe("rowToAgent", () => {
     expect(a.provider).toBe("claude");
     expect(a.tools).toEqual(["bash"]);
   });
+
+  it("reads agentLogLevel back from the definition JSONB", () => {
+    const row = {
+      id: "a2",
+      workspace_id: "ws1",
+      org_id: "o1",
+      name: "Logged",
+      status: "draft",
+      enabled: false,
+      definition: { provider: "claude", agentLogLevel: "all" },
+      created_by: "u1",
+      created_at: "2026-06-18T00:00:00Z",
+      updated_at: "2026-06-18T00:00:00Z",
+    };
+    expect(rowToAgent(row).agentLogLevel).toBe("all");
+  });
 });
 
 describe("buildInsert", () => {

@@ -1,48 +1,40 @@
-import { useEffect, useState } from "react";
-import { agentsApi, type AgentRunSummary } from "../../../api/agents.ts";
+import { useCallback, useEffect, useState } from "react";
+import { agentsApi, type AgentRunsPage } from "../../../api/agents.ts";
 import { SectionShell } from "./SectionShell.tsx";
+import { RunHistoryTable } from "./RunHistoryTable.tsx";
+
+const PAGE_SIZE = 10;
 
 export function RunHistorySection({ wsId, agentId }: { wsId: string; agentId: string }) {
-  const [runs, setRuns] = useState<AgentRunSummary[]>([]);
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<AgentRunsPage | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    agentsApi
-      .runs(wsId, agentId)
-      .then(setRuns)
-      .catch(() => setRuns([]))
-      .finally(() => setLoading(false));
-  }, [wsId, agentId]);
+
+  const loadRuns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await agentsApi.listRuns(wsId, { agentId, page, pageSize: PAGE_SIZE });
+      setResult(data);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [wsId, agentId, page]);
+
+  useEffect(() => { void loadRuns(); }, [loadRuns]);
 
   return (
-    <SectionShell title="Run history" description="Past executions of this agent.">
-      {loading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : runs.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No runs yet.</div>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted-foreground">
-              <th className="py-1">Run</th>
-              <th className="py-1">Status</th>
-              <th className="py-1">Started</th>
-            </tr>
-          </thead>
-          <tbody>
-            {runs.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td className="py-1">
-                  <a className="text-primary underline" href={`/workspaces/${wsId}/agent-runs/${r.id}`}>
-                    {r.id.slice(0, 8)}
-                  </a>
-                </td>
-                <td className="py-1">{r.status}</td>
-                <td className="py-1 text-muted-foreground">{r.started_at ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <SectionShell title="Run history" description="Past executions of this agent, newest first.">
+      <RunHistoryTable
+        wsId={wsId}
+        runs={result?.runs ?? []}
+        total={result?.total ?? 0}
+        page={result?.page ?? page}
+        pageSize={result?.pageSize ?? PAGE_SIZE}
+        loading={loading}
+        onPageChange={setPage}
+      />
     </SectionShell>
   );
 }

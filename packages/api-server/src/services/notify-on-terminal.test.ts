@@ -17,12 +17,13 @@ vi.mock("@journeyman/connections", () => ({
 vi.mock("@journeyman/secrets", () => ({
   open: (...a: unknown[]) => openMock(...a),
 }));
+const emailSendMock = vi.fn().mockResolvedValue({ success: true });
 vi.mock("@journeyman/notification-provider", () => ({
-  SlackProvider: class {
-    send = slackSendMock;
-  },
-  ConsoleProvider: class {
-    send = consoleSendMock;
+  buildNotificationProvider: (provider: string) => {
+    if (provider === "slack") return { send: slackSendMock };
+    if (provider === "console") return { send: consoleSendMock };
+    if (provider === "email") return { send: emailSendMock };
+    throw Object.assign(new Error(`Unknown notification provider: ${provider}`), { name: "ConfigurationError" });
   },
 }));
 
@@ -38,6 +39,7 @@ beforeEach(() => {
   getConnectionSealedMock.mockReset();
   slackSendMock.mockClear();
   consoleSendMock.mockClear();
+  emailSendMock.mockClear();
 });
 
 describe("makeNotifyOnTerminal", () => {
@@ -80,6 +82,29 @@ describe("makeNotifyOnTerminal", () => {
     expect(consoleSendMock).not.toHaveBeenCalled();
   });
 
+  it("sends an email success notification", async () => {
+    getAgentMock.mockResolvedValue({
+      name: "Dev Agent",
+      notifications: { on: ["success"], connectionId: "c1", target: "alice@example.com" },
+    });
+    getConnectionMock.mockResolvedValue({
+      category: "notification",
+      provider: "email",
+      config: { method: "resend", from: "noreply@acme.com" },
+    });
+    getConnectionSealedMock.mockResolvedValue({ ciphertext: Buffer.from("x"), iv: Buffer.from("y"), authTag: Buffer.from("z") });
+
+    const notify = makeNotifyOnTerminal(deps(vi.fn().mockResolvedValue({ inputs: { agentId: "a1" } })));
+    await notify("wi1", "completed");
+
+    expect(emailSendMock).toHaveBeenCalledOnce();
+    const arg = emailSendMock.mock.calls[0][0];
+    expect(arg.channel).toBe("alice@example.com");
+    expect(arg.title).toContain("Dev Agent");
+    expect(consoleSendMock).not.toHaveBeenCalled();
+    expect(slackSendMock).not.toHaveBeenCalled();
+  });
+
   it("uses ConsoleProvider for a console connection", async () => {
     getAgentMock.mockResolvedValue({ name: "A", notifications: { on: ["success"], connectionId: "c1" } });
     getConnectionMock.mockResolvedValue({ category: "notification", provider: "console" });
@@ -88,7 +113,6 @@ describe("makeNotifyOnTerminal", () => {
     await notify("wi1", "completed");
 
     expect(consoleSendMock).toHaveBeenCalledOnce();
-    expect(getConnectionSealedMock).not.toHaveBeenCalled();
   });
 
   it("skips when the connection is not a notification connection", async () => {

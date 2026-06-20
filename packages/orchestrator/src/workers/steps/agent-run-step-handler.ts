@@ -22,6 +22,7 @@ import {
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { SandboxInstanceGitProvider, type SandboxGitAuth } from "../../sandbox/sandbox-instance-git-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
+import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
 import { open, fetchSecretById } from "@journeyman/secrets";
 import { findCodingModel } from "@journeyman/coding-models";
@@ -163,6 +164,7 @@ export class AgentRunStepHandler implements IStepHandler {
     }
 
     ctx.log(`Running agent "${(input.displayName as string) ?? "agent"}" (${outputMode})`);
+    const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const result = await coding.runCustomPrompt({
       prompt: instructions,
       outputMode,
@@ -177,6 +179,7 @@ export class AgentRunStepHandler implements IStepHandler {
       ...(model ? { model } : {}),
       ...(modelConfig ? { modelConfig } : {}),
       ...(maxSteps ? { maxSteps } : {}),
+      ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
     });
 
     if (result.error) {

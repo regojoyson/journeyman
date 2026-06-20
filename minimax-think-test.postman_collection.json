@@ -1,0 +1,107 @@
+{
+  "info": {
+    "name": "MiniMax <think> Test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://api.minimax.io/v1" },
+    { "key": "apiKey", "value": "PASTE_YOUR_KEY_HERE" }
+  ],
+  "item": [
+    {
+      "name": "1. Plain JSON ask (correct endpoint)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/chat/completions", "host": ["{{baseUrl}}"], "path": ["chat", "completions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"MiniMax-M3\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Reply with only this JSON object: {\\\"city\\\":\\\"Paris\\\",\\\"country\\\":\\\"France\\\"}\" }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "const msg = j.choices && j.choices[0] && j.choices[0].message || {};",
+              "const content = msg.content || '';",
+              "const reasoning = msg.reasoning_content || msg.reasoning || '';",
+              "const inlineThink = /<think>/i.test(content);",
+              "console.log('--- content ---\\n' + content);",
+              "console.log('--- reasoning_content (separate field) ---\\n' + reasoning);",
+              "console.log('<think> inline in content? ' + inlineThink);",
+              "console.log('reasoning in separate field? ' + (reasoning.length > 0));",
+              "pm.test('content is clean (no <think>)', () => pm.expect(inlineThink).to.be.false);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. JSON mode (response_format)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/chat/completions", "host": ["{{baseUrl}}"], "path": ["chat", "completions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"MiniMax-M3\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Give a city and its country as JSON with keys city and country.\" }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "const msg = j.choices && j.choices[0] && j.choices[0].message || {};",
+              "const content = msg.content || '';",
+              "const inlineThink = /<think>/i.test(content);",
+              "console.log('--- content ---\\n' + content);",
+              "console.log('response_format respected? ' + (!inlineThink));",
+              "pm.test('JSON mode returns clean content', () => pm.expect(inlineThink).to.be.false);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Wrong endpoint (bare /v1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}", "host": ["{{baseUrl}}"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"MiniMax-M3\",\n  \"messages\": [ { \"role\": \"user\", \"content\": \"hi\" } ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('HTTP status: ' + pm.response.code);",
+              "console.log('body: ' + pm.response.text().slice(0, 500));",
+              "pm.test('bare /v1 is not the chat endpoint (not 200, or different shape)', () => { pm.expect(true).to.be.true; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

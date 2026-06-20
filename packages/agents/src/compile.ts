@@ -62,6 +62,7 @@ export function compileAgentToGraph(
           gitConnectionId: agent.repoSelections.find((r) => r.connectionId)?.connectionId,
           allowWrites: agent.repoSelections.some((r) => r.allowWrites),
           outputMode: agent.outputMode,
+          agentLogLevel: agent.agentLogLevel ?? "medium",
           outputFields: agent.outputFields ?? [],
           maxSteps: agent.behavior.maxTurns,
           timeoutSeconds: agent.behavior.timeoutSeconds,

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { agentsApi } from "../../api/agents.ts";
 import type { Agent } from "@journeyman/core";
 import { btnPrimary, btnGhost, card } from "../../routes/admin-styles.ts";
+import { RunAgentModal } from "./shared/RunAgentModal.tsx";
 
 function agentStatusBadge(a: Agent) {
   const [cls, label] = a.enabled
@@ -22,6 +23,7 @@ export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: strin
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [runTarget, setRunTarget] = useState<Agent | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -100,12 +102,20 @@ export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: strin
                 {a.triggers.map((t) => t.type).join(", ") || "manual"}
               </td>
               <td className="px-4 py-2 text-right">
-                <button className={btnGhost} onClick={() => navigate(`/workspaces/${wsId}/agents/${a.id}`)}>Open</button>
+                <div className="flex justify-end gap-2">
+                  {a.enabled && (
+                    <button className={btnGhost} onClick={() => setRunTarget(a)}>▶ Run</button>
+                  )}
+                  <button className={btnGhost} onClick={() => navigate(`/workspaces/${wsId}/agents/${a.id}`)}>Open</button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {runTarget && (
+        <RunAgentModal wsId={wsId} agent={runTarget} onClose={() => setRunTarget(null)} />
+      )}
     </div>
   );
 }

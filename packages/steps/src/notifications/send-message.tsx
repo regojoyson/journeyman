@@ -10,6 +10,7 @@ import {
 
 interface SendMessageConfig {
   channel: string;
+  title?: string;
   message: string;
   blocks?: string;
 }
@@ -21,10 +22,11 @@ export const sendMessageStep: StepDefinition<SendMessageConfig> = {
   description: SEND_MESSAGE_DESCRIPTION,
   color: "#fd79a8",
   icon: "💬",
-  defaultConfig: { channel: "", message: "", blocks: "" },
+  defaultConfig: { channel: "", title: "", message: "", blocks: "" },
   configSchema: sendMessageConfigSchema,
   configFields: {
     channel: { label: "Channel / target", widget: "text", help: "e.g. #deploys (Slack)" },
+    title:   { label: "Subject", widget: "text", help: "Subject line (used by email)" },
     message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{issue}" },
     blocks:  { label: "Rich blocks (optional)", widget: "code", help: "Provider-specific rich formatting JSON" },
   },

@@ -1,7 +1,7 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState, useEffect, useMemo } from "react";
 import type { WorkflowDefaults, WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
-import { codingModelKeySlot } from "@journeyman/core";
+import { codingModelKeySlot, notificationFields } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -49,6 +49,23 @@ export function nextMaxStepsConfig(
   return next;
 }
 
+/** Build the editor field map for a notification step from the selected
+ *  connection's provider. Keys stay channel/title/message so the worker and
+ *  providers are unchanged — only labels/help/order vary. */
+function notificationConfigFields(
+  provider?: string,
+): Record<string, import("../step-definition.ts").FieldMeta> {
+  const out: Record<string, import("../step-definition.ts").FieldMeta> = {};
+  for (const f of notificationFields(provider)) {
+    out[f.key] = {
+      label: f.label,
+      widget: f.key === "message" ? "textarea" : "text",
+      help: f.help,
+    };
+  }
+  return out;
+}
+
 export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefaults }: ConfigTabProps) {
   const registry = useStepRegistry();
   const definition = registry.get(node.stepType);
@@ -62,6 +79,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const customStepDefs = useCustomStepDefs(collectCustomStepIds(flow));
   const sources = useUpstreamSources(flow, node.id, catalog, customStepDefs);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [notifyProvider, setNotifyProvider] = useState<string | undefined>(undefined);
   const nodeWarningsByKey = useNodeWarningsByKey(node.id);
 
   // Strip stale keys that are no longer declared in the step definition.
@@ -138,7 +156,11 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
 
   // Fields declared in the catalog as bindable-only (no typed UI). Shown as a separate "Required bindings" section.
   const catalogEntry = node.stepType ? catalog[node.stepType] : undefined;
-  const configFieldKeys = new Set(definition?.configFields ? Object.keys(definition.configFields) : []);
+  const isNotificationStep = catalogEntry?.connectionCategory === "notification";
+  const effectiveConfigFields = isNotificationStep
+    ? notificationConfigFields(notifyProvider)
+    : definition?.configFields;
+  const configFieldKeys = new Set(effectiveConfigFields ? Object.keys(effectiveConfigFields) : []);
   const bindOnlyFields = Object.entries(catalogEntry?.inputFields ?? {}).filter(
     ([key, meta]) => (meta as { bindOnly?: boolean }).bindOnly === true && !configFieldKeys.has(key),
   ) as [string, { label?: string; required?: boolean; bindOnly?: boolean }][];
@@ -158,7 +180,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
   const expectedForKey = (key: string): import("@journeyman/core").Shape | undefined => {
     const inputShape = (catalogEntry?.inputFields?.[key] as { shape?: import("@journeyman/core").Shape } | undefined)?.shape;
     if (inputShape) return inputShape;
-    return shapeForWidget(definition?.configFields?.[key]?.widget);
+    return shapeForWidget(effectiveConfigFields?.[key]?.widget);
   };
 
   /** Build the initial chip-editor segments for a field from its stored value. */
@@ -312,6 +334,7 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
             category={catalogEntry.connectionCategory}
             value={node.connectionId}
             onChange={connectionId => onChange({ ...node, connectionId })}
+            onResolved={conn => setNotifyProvider(conn?.provider)}
             readOnly={readOnly}
           />
           {node.stepType === "clone-repos" && node.connectionId && (
@@ -439,13 +462,13 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
         />
       )}
 
-      {(definition?.configFields || bindOnlyFields.length > 0) && (
+      {(effectiveConfigFields || bindOnlyFields.length > 0) && (
         <div style={{ position: "relative" }}>
-          {definition?.configFields && (
+          {effectiveConfigFields && (
             <SchemaForm
               config={config}
-              fields={definition.configFields}
-              schema={definition.configSchema}
+              fields={effectiveConfigFields}
+              schema={definition?.configSchema}
               onChange={next => onChange({ ...node, config: next })}
               readOnly={readOnly}
               boundKeys={boundKeys}
