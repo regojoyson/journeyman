@@ -37,7 +37,17 @@ export async function resolveBuildInputs(args: ResolveBuildInputsArgs): Promise<
   const effectiveRecipe = buildEffectiveRecipe(args.image, args.bundleRef);
   if (effectiveRecipe === null) throw new Error("no image recipe to build (empty image)");
 
-  const bundleId = (await args.client.imageId(args.bundleRef)) ?? "";
+  // A digest-pinned ref (`<repo>@sha256:…`) already names exact content, and that
+  // digest is baked into the recipe text (the COPY --from / FROM line), so the
+  // recipe alone fingerprints it. Folding the LOCAL image id on top would make the
+  // fingerprint depend on the image being present on the daemon — which breaks the
+  // moment the daemon GCs the kit image (k3s/kubelet does this): the id resolves to
+  // "", the fingerprint silently changes, and the freshness gate sees permanent
+  // "drift" and rebuilds on every run. Only fold the local id for MUTABLE refs,
+  // where it's the only way to notice a tag that moved.
+  const bundleId = isPinned(args.bundleRef)
+    ? ""
+    : ((await args.client.imageId(args.bundleRef)) ?? "");
 
   let baseRefId = "";
   let dockerfilePull = false;
@@ -61,8 +71,10 @@ export async function resolveBuildInputs(args: ResolveBuildInputsArgs): Promise<
       } finally {
         clearTimeout(timerId);
       }
+      // Mutable ref: fold its current local id so a moved tag ⇒ a new fingerprint.
+      baseRefId = (await args.client.imageId(ref)) ?? "";
     }
-    baseRefId = (await args.client.imageId(ref)) ?? "";
+    // Pinned base ref: its digest is already in the recipe's FROM line — nothing to fold.
   } else if (args.image?.kind === "dockerfile") {
     dockerfilePull = true;
   }

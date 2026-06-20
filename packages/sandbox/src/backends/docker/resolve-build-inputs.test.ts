@@ -22,13 +22,43 @@ describe("resolveBuildInputs", () => {
     expect(r.dockerfilePull).toBe(false);
   });
 
-  it("does NOT pull a digest-pinned ref", async () => {
+  it("does NOT pull a digest-pinned ref, and does not fold its local id", async () => {
     const c = client();
-    await resolveBuildInputs({
+    const r = await resolveBuildInputs({
       image: { kind: "ref", imageRef: "node@sha256:" + "a".repeat(64) },
       client: c, bundleRef: BUNDLE,
     });
     expect(c.pullImage).not.toHaveBeenCalled();
+    // pinned base ref → digest already in the recipe FROM line, local id not folded
+    expect(r.baseRefId).toBe("");
+  });
+
+  it("a digest-pinned bundle fingerprints the same whether or not its image is present (GC-safe)", async () => {
+    const pinnedBundle = "localhost:5500/runner-bundle@sha256:" + "b".repeat(64);
+    const image = { kind: "dockerfile" as const, content: "FROM node:22-bookworm" };
+    // present: imageId returns an id; absent: imageId returns null (daemon GC'd the bundle)
+    const present = await resolveBuildInputs({
+      image, bundleRef: pinnedBundle,
+      client: client({ imageId: vi.fn(async () => "sha256:localbundle") }),
+    });
+    const absent = await resolveBuildInputs({
+      image, bundleRef: pinnedBundle,
+      client: client({ imageId: vi.fn(async () => null) }),
+    });
+    expect(present.fingerprint).toBe(absent.fingerprint);
+  });
+
+  it("a MUTABLE bundle still folds its local id (a moved tag ⇒ a new fingerprint)", async () => {
+    const image = { kind: "dockerfile" as const, content: "FROM node:22-bookworm" };
+    const v1 = await resolveBuildInputs({
+      image, bundleRef: "journeyman/runner-bundle:dev",
+      client: client({ imageId: vi.fn(async () => "sha256:v1") }),
+    });
+    const v2 = await resolveBuildInputs({
+      image, bundleRef: "journeyman/runner-bundle:dev",
+      client: client({ imageId: vi.fn(async () => "sha256:v2") }),
+    });
+    expect(v1.fingerprint).not.toBe(v2.fingerprint);
   });
 
   it("falls back to the local image when the pull fails", async () => {
