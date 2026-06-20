@@ -104,7 +104,7 @@ Red background (`bg-destructive/10`), red border, red text. Section names are un
 Add:
 - `SECTION_FIELDS: Partial<Record<SectionId, (keyof Agent)[]>>` — internal map of section → fields
 - `isSectionDirty(original, current, section): boolean` — compares only that section's fields via `JSON.stringify`
-- `buildSectionUpdateInput(a, current, section): AgentUpdateInput` — extracts only that section's fields for the PATCH body
+- `buildSectionUpdateInput(a: Agent, section: SectionId): AgentUpdateInput` — extracts only that section's fields for the PATCH body
 
 ### `packages/web/src/api/agents.ts`
 
