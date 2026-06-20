@@ -28,9 +28,9 @@ export function NotificationsSection({ a, patch, locked, wsId }: SectionProps) {
     });
 
   return (
-    <SectionShell title="Notifications" description="Deliver a message when a run finishes.">
+    <SectionShell title="Notifications" description="Send a message when a run finishes. Add a notification channel under Connections first, then pick when to fire — on success, failure, or both.">
       <div>
-        <FieldLabel>Notification connection</FieldLabel>
+        <FieldLabel help="Slack or other channel used to send run notifications">Notification connection</FieldLabel>
         <select
           className={inputCls}
           disabled={locked}
@@ -50,7 +50,7 @@ export function NotificationsSection({ a, patch, locked, wsId }: SectionProps) {
       </div>
 
       <div>
-        <FieldLabel>Channel / target</FieldLabel>
+        <FieldLabel help="Slack channel or user ID to receive messages">Channel / target</FieldLabel>
         <input
           className={inputCls}
           disabled={locked}

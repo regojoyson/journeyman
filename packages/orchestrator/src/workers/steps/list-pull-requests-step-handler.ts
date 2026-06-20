@@ -15,7 +15,7 @@ export class ListPullRequestsStepHandler implements IStepHandler {
     if (!owner || !repo) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "list-prs requires `owner` and `repo`", retryable: false } };
     }
-    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const git = this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`List PRs ${owner}/${repo}`);
     const result = await git.listPRs({ owner, repo, head, state, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

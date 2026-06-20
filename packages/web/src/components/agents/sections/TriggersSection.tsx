@@ -79,7 +79,7 @@ export function TriggersSection({ a, patch, locked, wsId }: SectionProps) {
   return (
     <SectionShell
       title="Triggers"
-      description="How runs are started — on a schedule, via the API, or from an inbound webhook."
+      description="Define what starts a run. Triggers can be combined — schedule + API at the same time. Webhook triggers fire when an external system sends a matching event."
     >
       <div className="space-y-3">
         {/* Schedule */}

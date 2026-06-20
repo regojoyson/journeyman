@@ -36,12 +36,14 @@ export interface IWorkflowInstanceStore {
     limit?: number;
     offset?: number;
     provider?: string;
+    excludeAgentRuns?: boolean;
   }): Promise<WorkflowInstance[]>;
   count(opts?: {
     workspaceId?: string;
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     provider?: string;
+    excludeAgentRuns?: boolean;
   }): Promise<number>;
 }
 

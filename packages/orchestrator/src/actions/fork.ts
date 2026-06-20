@@ -1,5 +1,5 @@
 import type {
-  Workflow, WorkflowVersion, IWorkflowStore, IWorkflowVersionStore, IWorkflowInstanceStore,
+  Workflow, IWorkflowStore, IWorkflowVersionStore, IWorkflowInstanceStore,
 } from "@journeyman/core";
 
 export interface ForkDeps {
@@ -17,7 +17,7 @@ export async function forkFromWorkflowInstance(
   deps: ForkDeps,
   originalWorkflowInstanceId: string,
   opts: { name?: string; createdByUserId?: string | null; ownerUserId?: string | null } = {},
-): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
+): Promise<{ workflow: Workflow }> {
   const instance = await deps.workflowInstances.getById(originalWorkflowInstanceId);
   if (!instance) throw new Error(`WorkflowInstance not found: ${originalWorkflowInstanceId}`);
 
@@ -30,11 +30,12 @@ export async function forkFromWorkflowInstance(
     throw new Error(`Cannot fork instance ${originalWorkflowInstanceId}: no workspace`);
   }
   const name = opts.name ?? `Fork of instance ${originalWorkflowInstanceId.slice(0, 8)}`;
-  return await deps.workflows.create({
+  const workflow = await deps.workflows.create({
     workspaceId: instance.workspaceId,
     name,
     description: `Forked from workflow instance ${originalWorkflowInstanceId}.`,
     initialDefinition: definition,
     createdByUserId: opts.createdByUserId ?? instance.startedByUserId ?? null,
   });
+  return { workflow };
 }

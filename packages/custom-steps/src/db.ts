@@ -19,6 +19,7 @@ function rowToStep(r: any): CustomAiStep {
     name: r.name,
     description: r.description ?? "",
     icon: r.icon ?? null,
+    enabled: r.enabled ?? false,
     inputFields: r.input_fields ?? [],
     outputMode: r.output_mode,
     outputFields: Array.isArray(r.output_schema) ? r.output_schema : [],
@@ -140,4 +141,31 @@ export async function deleteCustomAiStep(pool: Pool, id: string): Promise<boolea
     `DELETE FROM jm_custom_ai_steps WHERE id = $1`, [id],
   );
   return (rowCount ?? 0) > 0;
+}
+
+export async function enableCustomAiStep(pool: Pool, id: string): Promise<CustomAiStep | null> {
+  const { rows } = await pool.query(
+    `UPDATE jm_custom_ai_steps SET enabled = true, updated_at = now() WHERE id = $1 RETURNING *`,
+    [id],
+  );
+  return rows[0] ? rowToStep(rows[0]) : null;
+}
+
+export async function disableCustomAiStep(pool: Pool, id: string): Promise<CustomAiStep | null> {
+  const { rows } = await pool.query(
+    `UPDATE jm_custom_ai_steps SET enabled = false, updated_at = now() WHERE id = $1 RETURNING *`,
+    [id],
+  );
+  return rows[0] ? rowToStep(rows[0]) : null;
+}
+
+export async function listEnabledCustomAiSteps(
+  pool: Pool,
+  workspaceId: string,
+): Promise<CustomAiStep[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM jm_custom_ai_steps WHERE workspace_id = $1 AND enabled = true ORDER BY name`,
+    [workspaceId],
+  );
+  return rows.map(rowToStep);
 }

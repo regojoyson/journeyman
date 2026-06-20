@@ -14,7 +14,7 @@ export class SendMessageStepHandler implements IStepHandler {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "notify requires `channel` and `message`", retryable: false } };
     }
     const title = typeof input.title === "string" ? input.title : undefined;
-    const notification = this.deps.notification(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const notification = this.deps.notification(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Notify ${channel}`);
     const result = await notification.send({ channel, message, title, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.success) {

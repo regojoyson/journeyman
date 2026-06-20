@@ -10,7 +10,10 @@ function rowToWorkflow(row: any): Workflow {
     id: row.id,
     name: row.name,
     description: row.description,
-    currentVersionId: row.current_version_id,
+    publishedVersionId: row.published_version_id,
+    draftDefinition: row.draft_definition as WorkflowGraph,
+    draftUpdatedAt: row.draft_updated_at ? new Date(row.draft_updated_at) : null,
+    draftUpdatedByUserId: row.draft_updated_by_user_id,
     createdByUserId: row.created_by_user_id,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
@@ -71,41 +74,17 @@ export class PostgresWorkflowStore implements IWorkflowStore {
     private versions: PostgresWorkflowVersionStore,
   ) {}
 
-  async create(args: CreateWorkflowArgs): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query("SET CONSTRAINTS ALL DEFERRED");
-      const workflowRes = await client.query(
-        `INSERT INTO jm_workflows (workspace_id, name, description, created_by_user_id)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [args.workspaceId, args.name, args.description ?? null, args.createdByUserId],
-      );
-      const workflowId = workflowRes.rows[0].id;
-
-      const verRes = await client.query(
-        `INSERT INTO jm_workflow_versions (workflow_id, version_number, definition, created_by_user_id)
-         VALUES ($1, 1, $2::jsonb, $3) RETURNING *`,
-        [workflowId, JSON.stringify(args.initialDefinition), args.createdByUserId],
-      );
-      await client.query(
-        "UPDATE jm_workflows SET current_version_id = $1 WHERE id = $2",
-        [verRes.rows[0].id, workflowId],
-      );
-
-      const finalWorkflow = await client.query("SELECT * FROM jm_workflows WHERE id = $1", [workflowId]);
-      await client.query("COMMIT");
-
-      return {
-        workflow: rowToWorkflow(finalWorkflow.rows[0]),
-        version: rowToVersion(verRes.rows[0]),
-      };
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+  async create(args: CreateWorkflowArgs): Promise<Workflow> {
+    const { rows } = await this.pool.query(
+      `INSERT INTO jm_workflows
+         (workspace_id, name, description, created_by_user_id,
+          draft_definition, draft_updated_at, draft_updated_by_user_id)
+       VALUES ($1, $2, $3, $4, $5::jsonb, now(), $4)
+       RETURNING *`,
+      [args.workspaceId, args.name, args.description ?? null, args.createdByUserId,
+       JSON.stringify(args.initialDefinition)],
+    );
+    return rowToWorkflow(rows[0]);
   }
 
   async getById(workflowId: string): Promise<Workflow | null> {
@@ -144,13 +123,77 @@ export class PostgresWorkflowStore implements IWorkflowStore {
     return this.getById(workflowId);
   }
 
-  async setStatus(workflowId: string, status: WorkflowStatus): Promise<Workflow | null> {
+  async updateDraft(
+    workflowId: string,
+    args: { definition: WorkflowGraph; updatedByUserId: string | null },
+  ): Promise<Workflow | null> {
     const { rows } = await this.pool.query(
-      "UPDATE jm_workflows SET status = $1, updated_at = now() WHERE id = $2 RETURNING id",
-      [status, workflowId],
+      `UPDATE jm_workflows
+         SET draft_definition = $1::jsonb,
+             draft_updated_at = now(),
+             draft_updated_by_user_id = $2,
+             updated_at = now()
+       WHERE id = $3
+       RETURNING *`,
+      [JSON.stringify(args.definition), args.updatedByUserId, workflowId],
     );
-    if (!rows[0]) return null;
-    return this.getById(workflowId);
+    return rows[0] ? rowToWorkflow(rows[0]) : null;
+  }
+
+  async promote(
+    workflowId: string,
+    args: { createdByUserId: string | null },
+  ): Promise<{ workflow: Workflow; version: WorkflowVersion } | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const wf = await client.query("SELECT draft_definition FROM jm_workflows WHERE id = $1 FOR UPDATE", [workflowId]);
+      if (!wf.rows[0]) { await client.query("ROLLBACK"); return null; }
+      const verRes = await client.query(
+        `INSERT INTO jm_workflow_versions (workflow_id, version_number, definition, created_by_user_id)
+         VALUES ($1,
+                 COALESCE((SELECT MAX(version_number) + 1 FROM jm_workflow_versions WHERE workflow_id = $1), 1),
+                 $2::jsonb, $3)
+         RETURNING *`,
+        [workflowId, JSON.stringify(wf.rows[0].draft_definition), args.createdByUserId],
+      );
+      const updated = await client.query(
+        `UPDATE jm_workflows SET published_version_id = $1, status = 'ready', updated_at = now()
+         WHERE id = $2 RETURNING *`,
+        [verRes.rows[0].id, workflowId],
+      );
+      await client.query("COMMIT");
+      return { workflow: rowToWorkflow(updated.rows[0]), version: rowToVersion(verRes.rows[0]) };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async rollback(workflowId: string, args: { versionId: string }): Promise<Workflow | null> {
+    const { rows } = await this.pool.query(
+      `UPDATE jm_workflows SET published_version_id = $1, status = 'ready', updated_at = now()
+       WHERE id = $2
+         AND EXISTS (SELECT 1 FROM jm_workflow_versions WHERE id = $1 AND workflow_id = $2)
+       RETURNING *`,
+      [args.versionId, workflowId],
+    );
+    return rows[0] ? rowToWorkflow(rows[0]) : null;
+  }
+
+  async setStatus(workflowId: string, status: WorkflowStatus): Promise<Workflow | null> {
+    const clearPointer = status === "draft";
+    const { rows } = await this.pool.query(
+      `UPDATE jm_workflows
+         SET status = $1,
+             published_version_id = CASE WHEN $2 THEN NULL ELSE published_version_id END,
+             updated_at = now()
+       WHERE id = $3 RETURNING *`,
+      [status, clearPointer, workflowId],
+    );
+    return rows[0] ? rowToWorkflow(rows[0]) : null;
   }
 
   async delete(workflowId: string): Promise<void> {

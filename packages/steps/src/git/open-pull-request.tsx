@@ -27,13 +27,7 @@ export const openPullRequestStep: StepDefinition<OpenPullRequestConfig> = {
     body:         { label: "Body",          widget: "textarea" },
     sourceBranch: { label: "Source branch", widget: "text", help: "The feature branch to open the PR from. Typically ref'd from start-feature-branch.output.newBranch." },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.sourceBranch ? `← ${c.sourceBranch}` : (c.title || ""),
   executor: { kind: "git-provider", method: "createPR" },
 };

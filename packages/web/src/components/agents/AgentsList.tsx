@@ -4,6 +4,17 @@ import { agentsApi } from "../../api/agents.ts";
 import type { Agent } from "@journeyman/core";
 import { btnPrimary, btnGhost, card } from "../../routes/admin-styles.ts";
 
+function agentStatusBadge(a: Agent) {
+  const [cls, label] = a.enabled
+    ? ["bg-success/10 text-success border-emerald-800/60", "Enabled"]
+    : ["bg-warning/10 text-warning border-amber-800/60", "In Development"];
+  return (
+    <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: string }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<Agent[]>([]);
@@ -84,7 +95,7 @@ export function AgentsList({ orgId: _orgId, wsId }: { orgId: string; wsId: strin
           {items.map((a) => (
             <tr key={a.id} className="border-t">
               <td className="px-4 py-2 font-medium">{a.name}</td>
-              <td className="px-4 py-2">{a.enabled ? "enabled" : a.status}</td>
+              <td className="px-4 py-2">{agentStatusBadge(a)}</td>
               <td className="px-4 py-2 text-muted-foreground">
                 {a.triggers.map((t) => t.type).join(", ") || "manual"}
               </td>

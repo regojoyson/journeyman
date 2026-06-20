@@ -1,4 +1,4 @@
-export type ConnectionCategory = "git" | "notification";
+export type ConnectionCategory = "git" | "notification" | "ticket";
 
 /**
  * A reusable, encrypted credential + config for an external service, classified
@@ -10,7 +10,7 @@ export interface Connection {
   workspaceId: string;
   orgId: string;
   category: ConnectionCategory;
-  provider: string; // git: "github" | "gitlab" ; notification: "slack" | "console"
+  provider: string; // git: "github" | "gitlab" ; notification: "slack" | "console" | "email"
   label: string;
   /** git self-hosted instance URL / slack workspace; defaults applied per provider. */
   baseUrl?: string;
@@ -32,3 +32,13 @@ export type ConnectionUpdateInput = Partial<Pick<Connection, "label" | "baseUrl"
   /** When present, rotates the stored credential. */
   credential?: string;
 };
+
+/** Decrypted connection handed to a step handler via StepContext.connection. */
+export interface ResolvedConnection {
+  id: string;
+  category: ConnectionCategory;
+  provider: string;
+  credential: string;
+  baseUrl?: string;
+  config?: Record<string, unknown>;
+}

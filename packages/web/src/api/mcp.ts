@@ -4,6 +4,7 @@ export interface McpBinding { envVar: string; secretName: string }
 
 export interface McpInstance {
   id: string;
+  scope: "workspace" | "global";
   name: string;
   description: string | null;
   transport: McpTransport;

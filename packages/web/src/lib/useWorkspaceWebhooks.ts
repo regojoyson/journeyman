@@ -30,9 +30,10 @@ async function fetchWorkspaceWebhooks(wsId: string): Promise<WebhookForPicker[]>
   }));
 }
 
-export function useWorkspaceWebhooks(wsId: string): { webhooks: WebhookForPicker[]; loading: boolean } {
+export function useWorkspaceWebhooks(wsId: string): { webhooks: WebhookForPicker[]; loading: boolean; refresh: () => void } {
   const [webhooks, setWebhooks] = useState<WebhookForPicker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seq, setSeq] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +45,7 @@ export function useWorkspaceWebhooks(wsId: string): { webhooks: WebhookForPicker
       }
     });
     return () => { cancelled = true; };
-  }, [wsId]);
+  }, [wsId, seq]);
 
-  return { webhooks, loading };
+  return { webhooks, loading, refresh: () => setSeq((s) => s + 1) };
 }

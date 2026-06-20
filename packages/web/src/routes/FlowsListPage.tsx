@@ -5,6 +5,7 @@ import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
 import { useWorkspace } from "../WorkspaceContext.tsx";
 import { Pagination } from "@journeyman/runs-list";
 import { btnPrimary, card } from "./admin-styles.ts";
+import { StatusChip } from "../components/StatusChip.tsx";
 
 export function FlowsListPage() {
   const { wsId = "" } = useParams<{ wsId: string }>();
@@ -52,18 +53,6 @@ export function FlowsListPage() {
     }
   }
 
-  const statusBadge = (status: Workflow["status"]) => {
-    const cls = status === "ready"
-      ? "bg-success/10 text-success border-emerald-800/60"
-      : "bg-warning/10 text-warning border-amber-800/60";
-    const label = status === "ready" ? "Ready" : "Draft";
-    return (
-      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${cls}`}>
-        {label}
-      </span>
-    );
-  };
-
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full px-6 py-10 space-y-6">
@@ -105,7 +94,12 @@ export function FlowsListPage() {
                     <td className="px-6 py-3 text-slate-100 font-medium">
                       {f.name}
                     </td>
-                    <td className="px-6 py-3">{statusBadge(f.status)}</td>
+                    <td className="px-6 py-3">
+                      <StatusChip
+                        tone={f.status === "ready" ? "success" : "warning"}
+                        label={f.status === "ready" ? "Ready" : "Draft"}
+                      />
+                    </td>
                     <td className="px-6 py-3 text-slate-400">{f.description ?? ""}</td>
                     <td className="px-6 py-3 text-slate-500">
                       {new Date(f.updatedAt).toLocaleString()}

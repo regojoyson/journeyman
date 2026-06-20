@@ -28,7 +28,7 @@ export const commentOnIssueStep: StepDefinition<CommentOnIssueConfig> = {
     template:  { label: "Template id", widget: "text", help: "e.g. analysis-summary, completion-summary" },
     body:      { label: "Inline body (optional)", widget: "textarea", help: "Used when no template is set" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.template || c.ref || "(no target)",
   executor: { kind: "issue-provider", method: "addComment" },
   outputSchema: commentOnIssueOutputSchema,

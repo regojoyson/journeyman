@@ -1,13 +1,20 @@
-/** Max characters for a single input value before it is clamped (so one large
- *  value cannot crowd the others out of the Ref column). */
+/** Max characters for a single input value before it is clamped. */
 const VALUE_MAX = 40;
-/** Max characters for the whole visible Ref string. Full text goes in the tooltip. */
-const LABEL_MAX = 60;
+
+export interface RefLabel {
+  /** Input keys joined with " · ": "branch" or "repo · branch" */
+  keyLabel: string;
+  /** Formatted values joined with " · ": "main" or "acme/api · main" */
+  valueText: string;
+  /** Full tooltip text: "repo: acme/api · branch: main". Each value passes through
+   *  formatValue() (40-char cap) but the total string has no additional length cap. */
+  full: string;
+}
 
 /**
- * Format a single input value as a clean one-line string for the Ref column.
+ * Format a single input value as a clean one-line string.
  * Primitives render bare (no quotes); objects/arrays render as compact JSON.
- * The result is clamped to VALUE_MAX chars. Unserializable values fall back to "…".
+ * Clamped to VALUE_MAX chars. Unserializable values fall back to "…".
  */
 export function formatValue(v: unknown): string {
   let s: string;
@@ -27,20 +34,26 @@ export function formatValue(v: unknown): string {
 }
 
 /**
- * Render the workflow inputs as a short "key=value, key=value" summary for the
- * leftmost column. All non-null values are rendered (objects/arrays as compact
- * JSON). Each value is clamped individually; the full joined string goes in the
- * tooltip and the visible string is clamped to LABEL_MAX.
+ * Format workflow/agent run inputs as a structured label for the list table.
+ * Returns null when inputs are absent, empty, or entirely null/undefined —
+ * callers render their own fallback (dash or nothing).
  */
-export function refLabel(inputs: Record<string, unknown> | undefined): { text: string; title?: string } {
-  if (!inputs) return { text: "—" };
-  const pairs: string[] = [];
+export function refLabel(inputs: Record<string, unknown> | undefined): RefLabel | null {
+  if (!inputs) return null;
+  const keys: string[] = [];
+  const vals: string[] = [];
+  const fullPairs: string[] = [];
   for (const [k, v] of Object.entries(inputs)) {
     if (v == null) continue;
-    pairs.push(`${k}=${formatValue(v)}`);
+    const fv = formatValue(v);
+    keys.push(k);
+    vals.push(fv);
+    fullPairs.push(`${k}: ${fv}`);
   }
-  if (pairs.length === 0) return { text: "—" };
-  const full = pairs.join(", ");
-  const text = full.length > LABEL_MAX ? full.slice(0, LABEL_MAX - 3) + "…" : full;
-  return { text, title: full };
+  if (keys.length === 0) return null;
+  return {
+    keyLabel: keys.join(" · "),
+    valueText: vals.join(" · "),
+    full: fullPairs.join(" · "),
+  };
 }

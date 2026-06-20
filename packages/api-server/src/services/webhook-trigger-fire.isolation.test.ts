@@ -25,7 +25,7 @@ function workflow(workflowId: string) {
     id: workflowId,
     name: `Workflow ${workflowId}`,
     status: "ready" as const,
-    currentVersionId: `${workflowId}-v1`,
+    publishedVersionId: `${workflowId}-v1`,
     scope: "user" as const,
     ownerUserId: "user-1",
     orgId: "org-1",

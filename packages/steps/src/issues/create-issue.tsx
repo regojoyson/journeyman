@@ -31,7 +31,7 @@ export const createIssueStep: StepDefinition<CreateIssueConfig> = {
     description: { label: "Description", widget: "textarea" },
     // labels rendered as comma-separated string for round 1; the schema enforces array shape via the form's array handling below.
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.title || c.project,
   executor: { kind: "issue-provider", method: "createIssue" },
   outputSchema: createIssueOutputSchema,

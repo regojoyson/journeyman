@@ -35,30 +35,21 @@ export const PROVIDER_CATALOG: ReadonlyArray<ProviderEntry> = [
   { kind: "coding-cli", value: "gemini", label: "Gemini", implemented: false },
   { kind: "coding-cli", value: "codex",  label: "Codex",  implemented: false },
 
-  // git-provider
-  { kind: "git-provider", value: "github", label: "GitHub", implemented: true, isDefault: true, slots: [
-    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo scope" },
-  ]},
+  // git-provider — credentials come from connections, not secret slots
+  { kind: "git-provider", value: "github", label: "GitHub", implemented: true, isDefault: true },
   { kind: "git-provider", value: "gitlab", label: "GitLab", implemented: false },
 
-  // issue-provider
-  { kind: "issue-provider", value: "jira", label: "Jira", implemented: true, isDefault: true, slots: [
-    { name: "JIRA_API_TOKEN", description: "Atlassian API token (user or service account)" },
-    { name: "JIRA_EMAIL",     description: "Atlassian account email associated with the token" },
-    { name: "JIRA_HOST",      description: "Your Jira domain, e.g. acme.atlassian.net" },
-  ]},
-  { kind: "issue-provider", value: "github-issues", label: "GitHub Issues", implemented: true, slots: [
-    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo scope" },
-  ]},
-  { kind: "issue-provider", value: "github-projects", label: "GitHub Projects", implemented: true, slots: [
-    { name: "GITHUB_ACCESS_TOKEN", description: "GitHub PAT with repo and project scopes" },
-  ]},
-  { kind: "issue-provider", value: "linear",  label: "Linear",  implemented: false },
-  { kind: "issue-provider", value: "monday",  label: "Monday",  implemented: false },
+  // issue-provider — credentials come from connections, not secret slots
+  { kind: "issue-provider", value: "jira",            label: "Jira",            implemented: true, isDefault: true },
+  { kind: "issue-provider", value: "github-issues",   label: "GitHub Issues",   implemented: true },
+  { kind: "issue-provider", value: "github-projects", label: "GitHub Projects", implemented: true },
+  { kind: "issue-provider", value: "linear",          label: "Linear",          implemented: false },
+  { kind: "issue-provider", value: "monday",          label: "Monday",          implemented: false },
 
-  // notification
+  // notification — credentials come from connections, not secret slots
   { kind: "notification", value: "console", label: "Console", implemented: true, isDefault: true },
   { kind: "notification", value: "slack",   label: "Slack",   implemented: false },
+  { kind: "notification", value: "email",   label: "Email",   implemented: true },
 ];
 
 export function providersForKind(kind: ExecutorKind): ProviderEntry[] {
@@ -80,24 +71,11 @@ export function defaultProviderForKind(kind: ExecutorKind): ProviderEntry | unde
  * Must be updated when new step types are added.
  */
 export const PHASE_KIND_MAP: Record<string, ExecutorKind> = {
-  // coding-cli
+  // coding-cli — only kind that still resolves provider defaults via executor config
   "custom-ai":            "coding-cli",
   "list-workspace-files": "coding-cli",
   "start-feature-branch": "coding-cli",
-  // git-provider
-  "clone-repos":                "git-provider",
-  "get-repository":             "git-provider",
-  "list-pull-request-comments": "git-provider",
-  "list-pull-requests":         "git-provider",
-  "open-pull-request":          "git-provider",
-  // issue-provider
-  "comment-on-issue":   "issue-provider",
-  "create-issue":       "issue-provider",
-  "get-issue":          "issue-provider",
-  "transition-issue":   "issue-provider",
-  "update-issue-fields":"issue-provider",
-  // notification
-  "send-message": "notification",
+  // git, issue, and notification steps now use connectionId — removed from PHASE_KIND_MAP
 };
 
 /** Returns the ExecutorKind for a given stepType, or undefined if unknown. */

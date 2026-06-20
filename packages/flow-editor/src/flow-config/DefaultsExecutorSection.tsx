@@ -2,14 +2,11 @@ import { useState } from "react";
 import type { WorkflowDefaults, CoreExecutorKind } from "@journeyman/core";
 import { PROVIDER_CATALOG } from "@journeyman/core";
 
-const KIND_LABELS: Record<CoreExecutorKind, string> = {
-  "coding-cli":      "Coding CLI",
-  "git-provider":    "Git Provider",
-  "issue-provider": "Issue Provider",
-  "notification":    "Notification",
+const KIND_LABELS: Partial<Record<CoreExecutorKind, string>> = {
+  "coding-cli": "Coding CLI",
 };
 
-const EXECUTOR_KINDS: CoreExecutorKind[] = ["coding-cli", "git-provider", "issue-provider", "notification"];
+const EXECUTOR_KINDS: CoreExecutorKind[] = ["coding-cli"];
 
 const CATALOG_BY_KIND = (() => {
   const groups: Record<string, Array<{ value: string; label: string; implemented: boolean }>> = {};
@@ -56,7 +53,7 @@ export function DefaultsExecutorSection({ defaults, onChange, readOnly }: Props)
             const selected = defaults.executorConfig?.[kind]?.provider ?? "";
             return (
               <div key={kind} className="je-props__field" style={{ marginBottom: 8 }}>
-                <label>{KIND_LABELS[kind]}</label>
+                <label>{KIND_LABELS[kind] ?? kind}</label>
                 <select
                   value={selected}
                   disabled={readOnly}

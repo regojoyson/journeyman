@@ -20,7 +20,7 @@ export function InstructionsSection({ a, patch, locked }: SectionProps) {
   const detected = a.inputs.map((i) => i.name);
 
   return (
-    <SectionShell title="Instructions & Inputs" description="What this agent should do each run.">
+    <SectionShell title="Instructions & Inputs" description="Describe what this agent should do on each run. Be specific — the more context you give, the better the results.">
       <div>
         <FieldLabel>Instructions</FieldLabel>
         <textarea

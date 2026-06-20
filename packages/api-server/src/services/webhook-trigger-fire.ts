@@ -76,7 +76,7 @@ export async function fireWebhookTriggers(
       const workflow = await c.workflows.getById(row.workflowId);
       if (!workflow || workflow.status !== "ready") continue;
       workflowName = workflow.name;
-      if (workflow.currentVersionId !== row.workflowVersionId) continue;
+      if (workflow.publishedVersionId !== row.workflowVersionId) continue;
       const version = await c.workflowVersions.getById(row.workflowVersionId);
       if (!version) continue;
 

@@ -34,6 +34,7 @@ export function registerWorkflowInstanceRoutes(app: FastifyInstance, c: Composit
       workflowId: q.workflow_id,
       status: q.status as WorkflowInstanceStatus | undefined,
       provider: q.provider,
+      excludeAgentRuns: true,
     };
 
     if (paginated) {

@@ -18,7 +18,7 @@
 .je-runslist__pill.paused    { background: rgba(253,203,110,0.15); color: rgb(var(--color-warning) / 1); }
 .je-runslist__rerun { background: transparent; border: 1px solid rgb(var(--color-border) / 1); color: rgb(var(--color-text) / 1); padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
 .je-runslist__rerun:hover { background: rgb(var(--color-surface-raised) / 1); }
-.je-runslist__new-run { background: rgb(var(--color-accent) / 1); border: none; color: #fff /* theme-colors-allow: white-on-color */; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.je-runslist__new-run { background: rgb(var(--color-accent) / 1); border: none; color: rgb(var(--primary-foreground) / 1); padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .je-runslist__new-run:hover { background: rgb(var(--color-accent) / 1); }
 
 /* Scope chip toggles in the header (Mine / Organization / All). */
@@ -38,7 +38,7 @@
 .je-chip--active {
   background: rgb(var(--color-accent) / 1);
   border-color: rgb(var(--color-accent) / 1);
-  color: #fff /* theme-colors-allow: white-on-color */;
+  color: rgb(var(--primary-foreground) / 1);
 }
 .je-chip--active:hover { background: rgb(var(--color-accent) / 1); border-color: rgb(var(--color-accent) / 1); }
 
@@ -56,3 +56,8 @@
 .je-badge--scope-user   { background: rgba(107, 114, 128, 0.18); color: rgb(var(--color-text) / 1); border-color: rgba(107, 114, 128, 0.4); }
 .je-badge--scope-org    { background: rgba(37, 99, 235, 0.18);   color: rgb(var(--color-info) / 1); border-color: rgba(37, 99, 235, 0.4); }
 .je-badge--scope-global { background: rgba(124, 58, 237, 0.18);  color: rgb(var(--color-accent) / 1); border-color: rgba(124, 58, 237, 0.4); }
+
+/* Ref column: key-as-label above, value prominent below */
+.je-ref__key { font-size: 10px; color: rgb(var(--color-text-muted) / 1); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.04em; }
+.je-ref__val { font-size: 13px; color: rgb(var(--color-text) / 1); font-family: ui-monospace, monospace; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.je-ref__empty { color: rgb(var(--color-text-muted) / 1); font-style: italic; font-size: 12px; }

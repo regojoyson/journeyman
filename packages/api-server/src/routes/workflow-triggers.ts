@@ -17,9 +17,8 @@ export function registerWorkflowTriggersRoute(app: FastifyInstance, c: Compositi
     const wf = await c.workflows.getById(id);
     if (!wf) { reply.code(404); return { error: "not_found" }; }
 
-    const versionId = wf.currentVersionId;
-    const version = versionId ? await c.workflowVersions.getById(versionId) : null;
-    const triggers = (version?.definition.nodes ?? []).filter(isTriggerNode);
+    // Editor shows the draft, so reflect the draft's trigger nodes here.
+    const triggers = (wf.draftDefinition.nodes ?? []).filter(isTriggerNode);
 
     const summaries: TriggerSummary[] = await Promise.all(triggers.map(async (t): Promise<TriggerSummary> => {
       const base = { id: t.id, type: t.type as TriggerSummary["type"] };

@@ -1,5 +1,7 @@
 export type McpTransport = "stdio" | "http" | "sse";
 
+export type McpScope = "workspace" | "global";
+
 export interface McpBinding {
   envVar: string;
   secretName: string;
@@ -7,7 +9,8 @@ export interface McpBinding {
 
 export interface McpInstanceRecord {
   id: string;
-  workspaceId: string;
+  scope: McpScope;
+  workspaceId: string | null;
   name: string;
   description: string | null;
   transport: McpTransport;

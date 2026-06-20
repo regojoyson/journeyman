@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { OutputSchema, InputField } from "@journeyman/core";
+import type { OutputSchema, InputField, ConnectionCategory } from "@journeyman/core";
 
 export type StepInputFieldMeta = InputField;
 export interface StepCatalogEntry {
@@ -8,6 +8,7 @@ export interface StepCatalogEntry {
   category: string;
   inputFields: Record<string, StepInputFieldMeta>;
   outputSchema: OutputSchema | null;
+  connectionCategory?: ConnectionCategory;
 }
 
 function resolveBaseUrl(): string {

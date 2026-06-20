@@ -120,7 +120,7 @@ export interface ExecutionEnvironmentBackend {
    * pre-built artifact (docker managed images) throw a retryable
    * ImageNotReadyError or a terminal ConfigurationError here. No-op when absent.
    */
-  checkRunnable?(worker: ResolvedSandbox): void | Promise<void>;
+  checkRunnable?(worker: ResolvedSandbox, log?: (line: string) => void): void | Promise<void>;
   create(worker: ResolvedSandbox): IExecutionEnvironment;
 }
 

@@ -86,11 +86,15 @@ export function WorkflowInstancesList(p: WorkflowInstancesListProps) {
                         })
                       : () => p.onSelectWorkflowInstance(r.id)}
                   >
-                    <td
-                      title={ref.title}
-                      style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "rgb(var(--color-text) / 1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                    >
-                      {ref.text}
+                    <td title={ref?.full}>
+                      {ref ? (
+                        <>
+                          <div className="je-ref__key">{ref.keyLabel}</div>
+                          <div className="je-ref__val">{ref.valueText}</div>
+                        </>
+                      ) : (
+                        <span className="je-ref__empty">—</span>
+                      )}
                     </td>
                     <td><span className={`je-runslist__pill ${r.status}`}>{r.status}</span></td>
                     <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 11 }}>{r.id.slice(0, 8)}</td>

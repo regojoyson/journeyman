@@ -33,7 +33,7 @@ export class TransitionIssueStepHandler implements IStepHandler {
         },
       };
     }
-    const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const issueProvider = this.deps.issue(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Updating issue ${ref} → ${status}`);
     const result = await issueProvider.updateStatus({ id: ref, status, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

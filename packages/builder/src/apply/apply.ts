@@ -11,8 +11,8 @@ export interface ApplyDeps {
   ): Promise<{ id: string }>;
   /** Hard-delete a created step (rollback). */
   deleteStep(id: string): Promise<void>;
-  /** Create the draft workflow; returns the new workflow + version ids. */
-  createWorkflow(args: CreateWorkflowArgs): Promise<{ workflowId: string; versionId: string }>;
+  /** Create the draft workflow; returns the new workflow id. */
+  createWorkflow(args: CreateWorkflowArgs): Promise<{ workflowId: string }>;
 }
 
 export interface ApplyArgs {
@@ -24,7 +24,6 @@ export interface ApplyArgs {
 
 export interface ApplyResult {
   workflowId: string;
-  versionId: string;
   createdStepIds: string[];
   placeholderToRealId: Record<string, string>;
 }
@@ -56,14 +55,14 @@ export async function applyBuildPlan(deps: ApplyDeps, args: ApplyArgs): Promise<
     const definition = rewriteCustomStepIds(plan.workflow, placeholderToRealId);
 
     // 3. Create the draft workflow (draft is the DB default — never publish).
-    const { workflowId, versionId } = await deps.createWorkflow({
+    const { workflowId } = await deps.createWorkflow({
       workspaceId: args.workspaceId,
       name: args.workflowName,
       initialDefinition: definition,
       createdByUserId: args.createdBy,
     });
 
-    return { workflowId, versionId, createdStepIds, placeholderToRealId };
+    return { workflowId, createdStepIds, placeholderToRealId };
   } catch (err) {
     // Rollback created steps, newest first; swallow rollback errors so the
     // original failure is what surfaces.

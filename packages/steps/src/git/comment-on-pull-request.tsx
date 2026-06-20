@@ -31,13 +31,7 @@ export const commentOnPullRequestStep: StepDefinition<CommentOnPullRequestConfig
     template: { label: "Template id", widget: "text", help: "e.g. plan-summary, pr-opened" },
     body:     { label: "Inline body (optional)", widget: "textarea" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.template || (c.prNumber ? `#${c.prNumber}` : "(no target)"),
   executor: { kind: "git-provider", method: "addComment" },
   comingSoon: true,

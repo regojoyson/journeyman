@@ -13,7 +13,7 @@ export class GetRepositoryStepHandler implements IStepHandler {
     if (!owner || !repo) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "get-repo requires `owner` and `repo`", retryable: false } };
     }
-    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const git = this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Get repo ${owner}/${repo}`);
     const result = await git.getRepo({ owner, repo, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

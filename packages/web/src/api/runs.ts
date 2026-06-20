@@ -1,4 +1,4 @@
-import type { Workflow, WorkflowVersion, NodeExecution, WorkflowInstance, WorkflowInstanceEvent } from "@journeyman/core";
+import type { Workflow, NodeExecution, WorkflowInstance, WorkflowInstanceEvent } from "@journeyman/core";
 import type { PendingHumanTask, HumanTaskHistoryEntry } from "@journeyman/run-viewer";
 import { api } from "./client.ts";
 
@@ -132,7 +132,7 @@ export async function rerunRun(wsId: string, workflowInstanceId: string): Promis
   });
 }
 
-export async function forkRun(wsId: string, workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
+export async function forkRun(wsId: string, workflowInstanceId: string, name?: string): Promise<{ workflow: Workflow }> {
   return await api(`${wsBase(wsId)}/${encodeURIComponent(workflowInstanceId)}/fork`, {
     method: "POST", body: JSON.stringify({ name }),
   });

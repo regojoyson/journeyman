@@ -44,6 +44,9 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
     const { wsId } = req.params as { wsId: string };
     const ctx = req.runContext!;
     const body = req.body as any;
+    if (body.scope === "global") {
+      return reply.code(400).send({ error: "scope 'global' cannot be set via API" });
+    }
     try {
       const rec = await insertMcpInstance(pool, {
         workspaceId: wsId,
@@ -81,9 +84,14 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
 
   app.patch("/api/workspaces/:wsId/mcp-instances/:id", write, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
+    const existing = await getMcpInstance(pool, id, wsId);
+    if (!existing) return reply.code(404).send({ error: "Not found" });
+    if (existing.scope === "global") {
+      return reply.code(403).send({ error: "Global MCP instances cannot be edited" });
+    }
     const body = req.body as any;
     try {
-      const ok = await updateMcpInstance(pool, {
+      await updateMcpInstance(pool, {
         id, workspaceId: wsId,
         description: body.description,
         command: body.command,
@@ -93,7 +101,6 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
         systemPrompt: body.systemPrompt,
         enabled: body.enabled,
       });
-      if (!ok) return reply.code(404).send({ error: "Not found" });
       return { ok: true };
     } catch (err) {
       if (err instanceof InvalidMcpInputError) return reply.code(400).send({ error: err.message });
@@ -103,8 +110,12 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
 
   app.delete("/api/workspaces/:wsId/mcp-instances/:id", del, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
-    const ok = await deleteMcpInstance(pool, id, wsId);
-    if (!ok) return reply.code(404).send({ error: "Not found" });
+    const existing = await getMcpInstance(pool, id, wsId);
+    if (!existing) return reply.code(404).send({ error: "Not found" });
+    if (existing.scope === "global") {
+      return reply.code(403).send({ error: "Global MCP instances cannot be deleted" });
+    }
+    await deleteMcpInstance(pool, id, wsId);
     return { ok: true };
   });
 

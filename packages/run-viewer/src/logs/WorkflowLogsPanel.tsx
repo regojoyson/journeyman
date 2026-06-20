@@ -13,8 +13,10 @@ import {
 export interface WorkflowLogsPanelProps {
   events: WorkflowInstanceEvent[];
   nodes: WorkflowNode[];
-  height: number;
-  onResizeHeight: (next: number) => void;
+  /** When omitted the panel has no fixed height (CSS controls it) and the drag handle is hidden. */
+  height?: number;
+  /** Required when `height` is provided; omit together with `height` for tab-owned layouts. */
+  onResizeHeight?: (next: number) => void;
   onClose: () => void;
   /** When true, the step-chips filter row is not rendered (use for single-step runs). */
   hideStepChips?: boolean;
@@ -93,7 +95,7 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   useEffect(() => {
     const onMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
+      if (!dragRef.current || !props.onResizeHeight) return;
       const dy = ev.clientY - dragRef.current.startY;
       const next = props.resizeEdge === 'bottom'
         ? dragRef.current.startHeight + dy
@@ -111,9 +113,10 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [props.onResizeHeight]);
+  }, [props.onResizeHeight, props.resizeEdge]);
 
   const onHandleMouseDown = (ev: React.MouseEvent) => {
+    if (props.height == null) return;
     dragRef.current = { startY: ev.clientY, startHeight: props.height };
     document.body.style.cursor = "row-resize";
     document.body.style.userSelect = "none";
@@ -167,7 +170,7 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     setTimeout(() => setCopyState("idle"), 1500);
   };
 
-  const handle = (
+  const handle = props.height != null ? (
     <div
       className="je-runview__logspanel-handle"
       onMouseDown={onHandleMouseDown}
@@ -175,10 +178,10 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     >
       <span /><span /><span />
     </div>
-  );
+  ) : null;
 
   return (
-    <div className="je-runview__logspanel" style={{ height: props.height }}>
+    <div className="je-runview__logspanel" style={props.height != null ? { height: props.height } : undefined}>
       {props.resizeEdge !== 'bottom' && handle}
 
       <div className="je-runview__logspanel-header">

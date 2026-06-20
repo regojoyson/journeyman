@@ -26,7 +26,7 @@ export const getIssueStep: StepDefinition<GetIssueConfig> = {
   configFields: {
     ref: { label: "Ref", widget: "text", help: "Supports #{issue} placeholder" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: (c, ctx) => summaryValue(c, ctx, "ref") || "(no issue)",
   executor: { kind: "issue-provider", method: "getIssue" },
   outputSchema: getIssueOutputSchema,

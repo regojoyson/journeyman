@@ -88,7 +88,7 @@ export const updateIssueFieldsStep: StepDefinition<UpdateIssueFieldsConfig> = {
   defaultConfig: { ref: "", fields: {} },
   configSchema: updateIssueFieldsConfigSchema,
   ConfigForm: UpdateIssueFieldsConfigForm,
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: (c, ctx) => summaryValue(c, ctx, "ref") || "(no issue)",
   executor: { kind: "issue-provider", method: "updateIssue" },
   outputSchema: updateIssueFieldsOutputSchema,

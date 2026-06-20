@@ -27,4 +27,5 @@ export interface ProviderResolver<T> {
 export type ProviderFactory<T> = (
   key: string | undefined,
   env: Record<string, string>,
+  connection?: import("../types/connection.types.ts").ResolvedConnection,
 ) => T;

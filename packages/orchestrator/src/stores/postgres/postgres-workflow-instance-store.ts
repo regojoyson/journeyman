@@ -104,6 +104,7 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     limit?: number;
     offset?: number;
     provider?: string;
+    excludeAgentRuns?: boolean;
   } = {}): Promise<WorkflowInstance[]> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
     const limitOffset: string[] = [];
@@ -120,6 +121,7 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     provider?: string;
+    excludeAgentRuns?: boolean;
   } = {}): Promise<number> {
     const { sql: baseSql, params } = this.buildListQuery(opts);
     const sql = `SELECT COUNT(*)::int AS n FROM (${baseSql}) sub`;
@@ -132,16 +134,18 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     workflowId?: string;
     status?: WorkflowInstanceStatus;
     provider?: string;
+    excludeAgentRuns?: boolean;
   }): { sql: string; params: any[] } {
     const conds: string[] = [];
     const params: any[] = [];
     let i = 1;
     const nextIdx = () => i++;
 
-    if (opts.workspaceId) { conds.push(`r.workspace_id = $${nextIdx()}`); params.push(opts.workspaceId); }
-    if (opts.workflowId)  { conds.push(`r.workflow_id = $${nextIdx()}`);  params.push(opts.workflowId); }
-    if (opts.status)      { conds.push(`r.status = $${nextIdx()}`);       params.push(opts.status); }
-    if (opts.provider)    { conds.push(`w.provider = $${nextIdx()}`);     params.push(opts.provider); }
+    if (opts.workspaceId)     { conds.push(`r.workspace_id = $${nextIdx()}`); params.push(opts.workspaceId); }
+    if (opts.workflowId)      { conds.push(`r.workflow_id = $${nextIdx()}`);  params.push(opts.workflowId); }
+    if (opts.status)          { conds.push(`r.status = $${nextIdx()}`);       params.push(opts.status); }
+    if (opts.provider)        { conds.push(`w.provider = $${nextIdx()}`);     params.push(opts.provider); }
+    if (opts.excludeAgentRuns){ conds.push(`(r.inputs->>'agentId') IS NULL`); }
 
     const webhookJoin = opts.provider
       ? "LEFT JOIN jm_webhook_events w ON r.webhook_event_id = w.id"

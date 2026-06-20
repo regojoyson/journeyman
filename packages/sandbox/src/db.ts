@@ -112,6 +112,25 @@ export async function markImagePending(db: Queryable, id: string): Promise<void>
   );
 }
 
+/**
+ * Auto-trigger variant of {@link markImagePending} for the run-time readiness
+ * gate. Flips a target to 'pending' ONLY when no build is already queued or
+ * running. When many runs (or parallel branches of one run) detect the same
+ * not-ready image at once, an unconditional update would let a late detector
+ * knock an already-claimed 'building' row back to 'pending' — spawning a
+ * duplicate build on another worker. Guarding on state makes the concurrent
+ * trigger idempotent. Deliberate user/admin rebuilds keep the unconditional
+ * {@link markImagePending} (force-pending is their explicit intent).
+ */
+export async function markImagePendingIfBuildable(db: Queryable, id: string): Promise<void> {
+  await db.query(
+    `UPDATE jm_sandboxes
+        SET image_state = 'pending', image_error = NULL, updated_at = now()
+      WHERE id = $1 AND image_state NOT IN ('pending', 'building')`,
+    [id],
+  );
+}
+
 /** Set a target back to 'none' (its image became empty → use the default box). */
 export async function clearImageState(db: Queryable, id: string): Promise<void> {
   await db.query(

@@ -13,7 +13,7 @@ export class ListPullRequestCommentsStepHandler implements IStepHandler {
     if (!prUrl) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "fetch-pr-comments requires `prUrl`", retryable: false } };
     }
-    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const git = this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Fetch PR comments ${prUrl}`);
     const result = await git.listPRComments({ prUrl, sinceIso, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

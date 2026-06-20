@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { AgentRunEnriched } from "../../api/agents.ts";
 import { formatDuration } from "@journeyman/core";
 import { btnSecondary } from "../../routes/admin-styles.ts";
+import { refLabel } from "@journeyman/runs-list";
 
 interface AgentRunsListProps {
   runs: AgentRunEnriched[];
@@ -39,6 +40,7 @@ function StatusPill({ status }: { status: string }) {
       ...style,
       display: "inline-flex", alignItems: "center", gap: 5,
       fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600,
+      textTransform: "uppercase",
     }}>
       {status === "running" && (
         <span style={{
@@ -130,39 +132,54 @@ export function AgentRunsList(p: AgentRunsListProps) {
                 <td colSpan={7} style={{ padding: "16px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>No runs match the current filters.</td>
               </tr>
             )}
-            {p.runs.map(r => (
-              <tr
-                key={r.id}
-                onClick={() => p.onSelectRun(r.id)}
-                style={{ borderBottom: "1px solid rgb(var(--color-border) / 1)", cursor: "pointer" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgb(var(--color-surface-hover) / 1)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
-              >
-                <td style={{ padding: "10px 6px", fontWeight: 500 }}>{r.agentName}</td>
-                <td style={{ padding: "10px 6px" }}><StatusPill status={r.status} /></td>
-                <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>{r.triggerSource}</td>
-                <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>{fmtRelative(r.startedAt)}</td>
-                <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>
-                  {r.status === "running"
-                    ? `${formatDuration(r.startedAt ? Date.now() - new Date(r.startedAt).getTime() : null)}…`
-                    : formatDuration(r.durationMs)}
-                </td>
-                <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
-                  {r.provider}{r.model ? ` · ${r.model}` : ""}
-                </td>
-                <td style={{ padding: "10px 6px" }}>
-                  {r.status !== "running" && (
-                    <button
-                      type="button"
-                      className={btnSecondary}
-                      onClick={e => { e.stopPropagation(); p.onRerun(r); }}
-                    >
-                      Re-run
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {p.runs.map(r => {
+              const agentRef = refLabel(r.inputs);
+              return (
+                <tr
+                  key={r.id}
+                  onClick={() => p.onSelectRun(r.id)}
+                  style={{ borderBottom: "1px solid rgb(var(--color-border) / 1)", cursor: "pointer" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = "rgb(var(--color-surface-hover) / 1)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
+                >
+                  <td style={{ padding: "10px 6px" }} title={agentRef?.full}>
+                    <div style={{ fontWeight: 500 }}>{r.agentName}</div>
+                    {agentRef && (
+                      <>
+                        <div style={{ fontSize: 10, color: "rgb(var(--color-text-subtle) / 1)", fontFamily: "ui-monospace, monospace", textTransform: "uppercase", letterSpacing: ".04em", marginTop: 2 }}>
+                          {agentRef.keyLabel}
+                        </div>
+                        <div style={{ fontSize: 11, color: "rgb(var(--color-text-subtle) / 1)", fontFamily: "ui-monospace, monospace", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {agentRef.valueText}
+                        </div>
+                      </>
+                    )}
+                  </td>
+                  <td style={{ padding: "10px 6px" }}><StatusPill status={r.status} /></td>
+                  <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>{r.triggerSource}</td>
+                  <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>{fmtRelative(r.startedAt)}</td>
+                  <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)" }}>
+                    {r.status === "running"
+                      ? `${formatDuration(r.startedAt ? Date.now() - new Date(r.startedAt).getTime() : null)}…`
+                      : formatDuration(r.durationMs)}
+                  </td>
+                  <td style={{ padding: "10px 6px", color: "rgb(var(--color-text-subtle) / 1)", fontFamily: "ui-monospace, monospace", fontSize: 11 }}>
+                    {r.provider}{r.model ? ` · ${r.model}` : ""}
+                  </td>
+                  <td style={{ padding: "10px 6px" }}>
+                    {r.status !== "running" && (
+                      <button
+                        type="button"
+                        className={btnSecondary}
+                        onClick={e => { e.stopPropagation(); p.onRerun(r); }}
+                      >
+                        Re-run
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

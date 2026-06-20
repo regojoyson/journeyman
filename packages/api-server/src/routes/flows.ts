@@ -9,7 +9,6 @@ import { findManualTriggerNode } from "@journeyman/core";
 import {
   refreshTriggerIndexOnPublish,
   refreshTriggerIndexOnUnpublish,
-  refreshTriggerIndexOnVersionCreated,
 } from "../services/workflow-trigger-index.ts";
 import { ConductorJsonConverter, WorkflowValidationError } from "@journeyman/orchestrator";
 import { stepCatalog, buildStepConfigValidators } from "@journeyman/steps/catalog";
@@ -388,7 +387,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const warnings = await computeSaveWarnings(c, ctx, body.definition as WorkflowGraph);
 
-    const { workflow, version } = await c.workflows.create({
+    const workflow = await c.workflows.create({
       workspaceId: wsId,
       name: body.name,
       description: body.description,
@@ -396,7 +395,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       createdByUserId: ctx.user.id,
     });
     reply.code(201);
-    return warnings.length ? { workflow, version, warnings } : { workflow, version };
+    return warnings.length ? { workflow, warnings } : { workflow };
   });
 
   app.get("/workspaces/:wsId/workflows", read, async (req) => {
@@ -437,26 +436,20 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (workflow.status === "ready") { reply.code(409); return { error: "workflow_is_ready" }; }
 
     if (body.name !== undefined || body.description !== undefined) {
       await c.workflows.updateMeta(id, { name: body.name, description: body.description });
     }
-    let newVersion = null;
     let warnings: WorkflowSaveWarning[] = [];
     if (body.definition) {
       warnings = await computeSaveWarnings(c, ctx, body.definition as WorkflowGraph);
-      newVersion = await c.workflowVersions.appendVersion({
-        workflowId: id, definition: body.definition as WorkflowGraph, createdByUserId: ctx.user.id,
-      });
-      await refreshTriggerIndexOnVersionCreated(c.workflowTriggers, {
-        workflowId: id,
-        workflowVersionId: newVersion.id,
-        graph: body.definition as WorkflowGraph,
+      await c.workflows.updateDraft(id, {
+        definition: body.definition as WorkflowGraph,
+        updatedByUserId: ctx.user.id,
       });
     }
     const updated = await c.workflows.getById(id);
-    return warnings.length ? { workflow: updated, version: newVersion, warnings } : { workflow: updated, version: newVersion };
+    return warnings.length ? { workflow: updated, warnings } : { workflow: updated };
   });
 
   app.delete("/workspaces/:wsId/workflows/:id", del, async (req, reply) => {
@@ -472,10 +465,28 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const { wsId, id } = req.params as { wsId: string; id: string };
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
-    const version = await c.workflowVersions.getById(workflow.currentVersionId);
+    if (!workflow.publishedVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
+    const version = await c.workflowVersions.getById(workflow.publishedVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }
     return { version };
+  });
+
+  app.get("/workspaces/:wsId/workflows/:id/versions", read, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const workflow = await loadInWorkspace(id, wsId);
+    if (!workflow) { reply.code(404); return { error: "not_found" }; }
+    const versions = await c.workflowVersions.listByWorkflow(id);
+    const list = versions
+      .slice()
+      .sort((a, b) => b.versionNumber - a.versionNumber)
+      .map((v) => ({
+        id: v.id,
+        versionNumber: v.versionNumber,
+        createdAt: v.createdAt,
+        createdByUserId: v.createdByUserId,
+        isPublished: v.id === workflow.publishedVersionId,
+      }));
+    return { versions: list };
   });
 
   app.get("/workspaces/:wsId/workflow_versions/:id", read, async (req, reply) => {
@@ -485,16 +496,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { version };
   });
 
-  app.post("/workspaces/:wsId/workflows/:id/publish", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/:id/promote", write, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId, id } = req.params as { wsId: string; id: string };
 
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
-    if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
 
-    const version = await c.workflowVersions.getById(workflow.currentVersionId);
-    if (!version) { reply.code(500); return { error: "version_missing" }; }
+    const definition = workflow.draftDefinition;
 
     const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
     const visibleSecretNames = new Set(visible.map(v => v.name));
@@ -502,10 +511,10 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const customAiStepDefaults = new Map<string, { defaultTools?: readonly import("@journeyman/core").CanonicalTool[] }>();
     if (c.pool) {
       const customStepIds = new Set<string>();
-      for (const node of version.definition.nodes) {
+      for (const node of definition.nodes) {
         if (node.type === "step" && node.stepType === "custom-ai") {
-          const id2 = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
-          if (typeof id2 === "string" && id2) customStepIds.add(id2);
+          const cid = (node.config as { customStepId?: unknown } | undefined)?.customStepId;
+          if (typeof cid === "string" && cid) customStepIds.add(cid);
         }
       }
       for (const cid of customStepIds) {
@@ -515,39 +524,85 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     }
 
     try {
-      const customStepDefs = await loadCustomStepShapes(c, version.definition);
+      const customStepDefs = await loadCustomStepShapes(c, definition);
       const catalogMap = new Map(stepCatalog.map(p => [
         p.stepType,
         { stepType: p.stepType, inputFields: p.inputFields, outputSchema: p.outputSchema },
       ]));
-      ConductorJsonConverter.validateGraph(version.definition, catalogMap, customStepDefs);
+      ConductorJsonConverter.validateGraph(definition, catalogMap, customStepDefs);
     } catch (e) {
       reply.code(400);
-      if (e instanceof WorkflowValidationError && e.diagnostic) {
-        return { errors: [e.diagnostic] };
-      }
+      if (e instanceof WorkflowValidationError && e.diagnostic) return { errors: [e.diagnostic] };
       return { errors: [{ code: "shape_mismatch", message: e instanceof Error ? e.message : String(e) }] };
     }
 
-    const result = validateForPublish(version.definition, {
-      hasTrigger: hasWorkflowTrigger(version.definition),
+    const result = validateForPublish(definition, {
+      hasTrigger: hasWorkflowTrigger(definition),
       visibleSecretNames,
       stepConfigValidators: buildStepConfigValidators(stepCatalog),
       customAiStepDefaults,
     });
     if (!result.ok) { reply.code(400); return { errors: result.errors.filter(e => !e.severity || e.severity === "error") }; }
 
-    const updated = await c.workflows.setStatus(id, "ready");
-    if (!updated) { reply.code(500); return { error: "update_failed" }; }
-    if (updated.currentVersionId) {
-      await refreshTriggerIndexOnPublish(c.workflowTriggers, {
-        workflowId: updated.id,
-        workflowVersionId: updated.currentVersionId,
-        graph: version.definition,
-      });
-    }
+    const promoted = await c.workflows.promote(id, { createdByUserId: ctx.user.id });
+    if (!promoted) { reply.code(500); return { error: "update_failed" }; }
+
+    await refreshTriggerIndexOnPublish(c.workflowTriggers, {
+      workflowId: promoted.workflow.id,
+      workflowVersionId: promoted.version.id,
+      graph: definition,
+    });
+
     const warnings = result.errors.filter(e => e.severity === "warning");
-    return { workflow: updated, warnings };
+    return { workflow: promoted.workflow, version: promoted.version, warnings };
+  });
+
+  app.post("/workspaces/:wsId/workflows/:id/rollback", write, async (req, reply) => {
+    const ctx = req.runContext!;
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const { versionId } = (req.body ?? {}) as { versionId?: string };
+    if (!versionId) { reply.code(400); return { error: "bad_request", message: "versionId is required" }; }
+
+    const workflow = await loadInWorkspace(id, wsId);
+    if (!workflow) { reply.code(404); return { error: "not_found" }; }
+
+    const target = await c.workflowVersions.getById(versionId);
+    if (!target || target.workflowId !== id) { reply.code(404); return { error: "version_not_found" }; }
+
+    const visible = c.pool ? await listVisibleSecrets(c.pool, ctx) : [];
+    const visibleSecretNames = new Set(visible.map(v => v.name));
+
+    try {
+      const customStepDefs = await loadCustomStepShapes(c, target.definition);
+      const catalogMap = new Map(stepCatalog.map(p => [
+        p.stepType,
+        { stepType: p.stepType, inputFields: p.inputFields, outputSchema: p.outputSchema },
+      ]));
+      ConductorJsonConverter.validateGraph(target.definition, catalogMap, customStepDefs);
+    } catch (e) {
+      reply.code(400);
+      if (e instanceof WorkflowValidationError && e.diagnostic) return { errors: [e.diagnostic] };
+      return { errors: [{ code: "shape_mismatch", message: e instanceof Error ? e.message : String(e) }] };
+    }
+
+    const result = validateForPublish(target.definition, {
+      hasTrigger: hasWorkflowTrigger(target.definition),
+      visibleSecretNames,
+      stepConfigValidators: buildStepConfigValidators(stepCatalog),
+      customAiStepDefaults: new Map(),
+    });
+    if (!result.ok) { reply.code(400); return { errors: result.errors.filter(e => !e.severity || e.severity === "error") }; }
+
+    const updated = await c.workflows.rollback(id, { versionId });
+    if (!updated) { reply.code(500); return { error: "update_failed" }; }
+
+    await refreshTriggerIndexOnPublish(c.workflowTriggers, {
+      workflowId: updated.id,
+      workflowVersionId: versionId,
+      graph: target.definition,
+    });
+
+    return { workflow: updated };
   });
 
   app.post("/workspaces/:wsId/workflows/:id/unpublish", write, async (req, reply) => {
@@ -579,8 +634,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
     if (!assertWorkflowReady(workflow, reply)) return;
-    if (!workflow.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
-    const version = await c.workflowVersions.getById(workflow.currentVersionId);
+    if (!workflow.publishedVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
+    const version = await c.workflowVersions.getById(workflow.publishedVersionId);
     if (!version) { reply.code(500); return { error: "version_missing" }; }
 
     const manualTrigger = findManualTriggerNode(version.definition);
@@ -614,15 +669,12 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     const body = cloneFlowBody.parse(req.body ?? {});
     const src = await loadInWorkspace(id, wsId);
     if (!src) { reply.code(404); return { error: "not_found" }; }
-    if (!src.currentVersionId) { reply.code(409); return { error: "workflow_has_no_versions" }; }
-    const ver = await c.workflowVersions.getById(src.currentVersionId);
-    if (!ver) { reply.code(500); return { error: "version_missing" }; }
 
-    const { workflow } = await c.workflows.create({
+    const workflow = await c.workflows.create({
       workspaceId: wsId,
       name: body.name ?? `${src.name} (copy)`,
       description: src.description ?? undefined,
-      initialDefinition: ver.definition,
+      initialDefinition: src.draftDefinition,
       createdByUserId: ctx.user.id,
     });
     reply.code(201);

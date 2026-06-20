@@ -55,6 +55,14 @@ describe("DockerBackend.checkRunnable", () => {
     await expect(Promise.resolve(b.checkRunnable!(pending))).rejects.toMatchObject({ name: "ImageNotReadyError" });
   });
 
+  it("queues a build + throws ImageNotReadyError when imageState is none (never built)", async () => {
+    const onImagePending = vi.fn(async () => {});
+    const b = new DockerBackend({ makeClient: () => fakeClient, defaultImage: "img:dev", onImagePending });
+    const never = { ...worker({ image: { kind: "ref", imageRef: "x:1" } }), imageState: "none" as const };
+    await expect(Promise.resolve(b.checkRunnable!(never))).rejects.toMatchObject({ name: "ImageNotReadyError" });
+    expect(onImagePending).toHaveBeenCalledWith("w1");
+  });
+
   it("throws ConfigurationError when a recipe image build failed", async () => {
     const b = new DockerBackend(deps);
     const failed = { ...worker({ image: { kind: "ref", imageRef: "x:1" } }), imageState: "failed" as const, imageError: "boom" };
@@ -91,5 +99,19 @@ describe("DockerBackend.checkRunnable", () => {
     await b.checkRunnable!(ready);
     expect(verifyImageFresh).toHaveBeenCalled();
     expect(cfg["__imageRef"]).toBe("built:abc");
+  });
+
+  it("forwards log callback to verifyImageFresh", async () => {
+    const log = vi.fn();
+    const verifyImageFresh = vi.fn(async () => ({ fresh: true }));
+    const b = new DockerBackend({ makeClient: () => fakeClient, defaultImage: "img:dev", verifyImageFresh });
+    const ready = {
+      ...worker({ image: { kind: "ref", imageRef: "x:1" } }),
+      imageState: "ready" as const,
+      imageRef: "jm-built:abc",
+      imageFingerprint: "fp1",
+    };
+    await b.checkRunnable!(ready, log);
+    expect(verifyImageFresh).toHaveBeenCalledWith(expect.objectContaining({ log }));
   });
 });

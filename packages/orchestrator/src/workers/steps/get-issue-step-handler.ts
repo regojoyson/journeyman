@@ -31,10 +31,7 @@ export class GetIssueStepHandler implements IStepHandler {
         },
       };
     }
-    const issueProvider = this.deps.issue(
-      typeof input.provider === "string" ? input.provider : undefined,
-      ctx.env,
-    );
+    const issueProvider = this.deps.issue(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Fetching issue ${ref}`);
     const result = await issueProvider.getIssue({ id: ref, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.issue) {

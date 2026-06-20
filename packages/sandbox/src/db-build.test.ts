@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  markImagePending, claimPendingBuild, commitBuildResult, failBuild,
+  markImagePending, markImagePendingIfBuildable, claimPendingBuild, commitBuildResult, failBuild,
 } from "./db.ts";
 
 function db(rows: any[] = []) {
@@ -14,6 +14,16 @@ describe("build lifecycle DB ops", () => {
     const [sql, params] = d.query.mock.calls[0];
     expect(sql).toContain("image_state = 'pending'");
     expect(sql).toContain("image_error = NULL");
+    expect(params).toEqual(["t1"]);
+  });
+
+  it("markImagePendingIfBuildable guards against overwriting an in-flight build", async () => {
+    const d = db([]);
+    await markImagePendingIfBuildable(d as any, "t1");
+    const [sql, params] = d.query.mock.calls[0];
+    expect(sql).toContain("image_state = 'pending'");
+    // must NOT knock a 'pending' or 'building' row back to 'pending' (dup-build race)
+    expect(sql).toContain("image_state NOT IN ('pending', 'building')");
     expect(params).toEqual(["t1"]);
   });
 

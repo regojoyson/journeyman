@@ -3,19 +3,19 @@ import { formatValue, refLabel } from "./ref-label.ts";
 import { test } from "vitest";
 
 test("ref-label (assertions)", () => {
-  // --- formatValue: primitives render bare (no quotes) ---
+  // --- formatValue: primitives render bare ---
   assert.equal(formatValue("github:owner/repo#5"), "github:owner/repo#5");
   assert.equal(formatValue(42), "42");
   assert.equal(formatValue(true), "true");
 
-  // --- formatValue: objects/arrays render as compact JSON ---
+  // --- formatValue: objects/arrays as compact JSON ---
   assert.equal(formatValue({ id: 42 }), '{"id":42}');
   assert.equal(formatValue(["bug", "p1"]), '["bug","p1"]');
 
   // --- formatValue: per-value clamp at 40 chars with ellipsis ---
   const long = "x".repeat(50);
   const fv = formatValue(long);
-  assert.equal(fv.length, 40);          // 39 chars + "…"
+  assert.equal(fv.length, 40);
   assert.ok(fv.endsWith("…"));
 
   // --- formatValue: unserializable value falls back to "…" ---
@@ -23,42 +23,45 @@ test("ref-label (assertions)", () => {
   circular.self = circular;
   assert.equal(formatValue(circular), "…");
 
-  // --- refLabel: undefined / empty / all-null inputs => dash ---
-  assert.equal(refLabel(undefined).text, "—");
-  assert.equal(refLabel({}).text, "—");
-  assert.equal(refLabel({ a: null, b: undefined }).text, "—");
+  // --- refLabel: undefined / empty / all-null => null ---
+  assert.equal(refLabel(undefined), null);
+  assert.equal(refLabel({}), null);
+  assert.equal(refLabel({ a: null, b: undefined }), null);
 
-  // --- refLabel: flat primitives unchanged from old behavior ---
-  assert.deepEqual(refLabel({ issueRef: "github:owner/repo#5" }), {
-    text: "issueRef=github:owner/repo#5",
-    title: "issueRef=github:owner/repo#5",
+  // --- refLabel: single input ---
+  assert.deepEqual(refLabel({ branch: "main" }), {
+    keyLabel: "branch",
+    valueText: "main",
+    full: "branch: main",
   });
 
-  // --- refLabel: object/array values are now rendered, not dropped ---
-  assert.equal(refLabel({ labels: ["bug", "p1"] }).text, 'labels=["bug","p1"]');
-  assert.equal(refLabel({ payload: { id: 42 } }).text, 'payload={"id":42}');
+  // --- refLabel: multiple inputs joined with " · " ---
+  assert.deepEqual(refLabel({ repo: "acme/api", branch: "main" }), {
+    keyLabel: "repo · branch",
+    valueText: "acme/api · main",
+    full: "repo: acme/api · branch: main",
+  });
 
-  // --- refLabel: mixed primitives + objects keep every key ---
-  {
-    const r = refLabel({ issueRef: "abc", meta: { x: 1 } });
-    assert.ok(r.text.includes("issueRef=abc"));
-    assert.ok(r.text.includes('meta={"x":1}'));
-  }
+  // --- refLabel: string key ---
+  assert.deepEqual(refLabel({ issueRef: "github:owner/repo#5" }), {
+    keyLabel: "issueRef",
+    valueText: "github:owner/repo#5",
+    full: "issueRef: github:owner/repo#5",
+  });
 
-  // --- refLabel: one oversized value does not crowd out other keys ---
-  {
-    const r = refLabel({ big: "y".repeat(80), severity: "high" });
-    // per-value clamp keeps "big" short enough that "severity" still appears
-    // in the full (title) string
-    assert.ok(r.title!.includes("severity=high"));
-    assert.ok(r.title!.includes("big=" + "y".repeat(39) + "…"));
-  }
+  // --- refLabel: object/array values go through formatValue ---
+  const r1 = refLabel({ labels: ["bug", "p1"] });
+  assert.equal(r1!.valueText, '["bug","p1"]');
+  assert.equal(r1!.full, 'labels: ["bug","p1"]');
 
-  // --- refLabel: visible text clamped to 60 chars, full text in title ---
-  {
-    const r = refLabel({ a: "12345678901234567890", b: "12345678901234567890", c: "12345678901234567890", d: "12345678901234567890" });
-    assert.ok(r.text.length <= 60);
-    assert.ok(r.title!.length > r.text.length);
-    assert.ok(r.text.endsWith("…"));
-  }
+  const r2 = refLabel({ payload: { id: 42 } });
+  assert.equal(r2!.valueText, '{"id":42}');
+
+  // --- refLabel: long value clamped at 40 chars by formatValue ---
+  const big = "y".repeat(80);
+  const r3 = refLabel({ big, severity: "high" });
+  assert.equal(r3!.keyLabel, "big · severity");
+  assert.equal(r3!.valueText, "y".repeat(39) + "… · high");
+  assert.ok(r3!.full.includes("severity: high"));
+  assert.ok(r3!.full.includes("big: " + "y".repeat(39) + "…"));
 });

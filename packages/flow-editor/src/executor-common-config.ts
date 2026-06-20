@@ -16,24 +16,19 @@ export interface ExecutorKindCommonConfig {
   provider?: ProviderOption[];
 }
 
-const EDITOR_KINDS = ["coding-cli", "git-provider", "issue-provider", "notification"] as const;
-
 function buildCommonConfig(): Record<ExecutorKind, ExecutorKindCommonConfig> {
-  const out: Record<ExecutorKind, ExecutorKindCommonConfig> = {
-    "coding-cli": {},
-    "git-provider": {},
-    "issue-provider": {},
-    "notification": {},
-    "control": {},
-  };
-  for (const kind of EDITOR_KINDS) {
-    out[kind] = {
+  return {
+    "coding-cli": {
       provider: PROVIDER_CATALOG
-        .filter(p => p.kind === kind)
+        .filter(p => p.kind === "coding-cli")
         .map(p => ({ value: p.value, label: p.label, implemented: p.implemented })),
-    };
-  }
-  return out;
+    },
+    // git, issue, and notification steps use connectionId — no provider dropdown
+    "git-provider":  { provider: [] },
+    "issue-provider": { provider: [] },
+    "notification":  { provider: [] },
+    "control":       {},
+  };
 }
 
 export const executorCommonConfig: Record<ExecutorKind, ExecutorKindCommonConfig> = buildCommonConfig();

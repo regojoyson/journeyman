@@ -10,7 +10,10 @@ import { join, resolve } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { createCodingProvider } from "@journeyman/agent-runtime";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
-import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider } from "@journeyman/ticket-provider";
+import { JiraProvider, GitHubIssuesProvider, GitHubProjectsProvider, LinearProvider, MondayProvider } from "@journeyman/ticket-provider";
+import { getConnection, getConnectionSealed } from "@journeyman/connections";
+import { open } from "@journeyman/secrets";
+import type { ResolvedConnection } from "@journeyman/core";
 import type {
   IIssueProvider, ICodingCLI, IGitProvider, INotificationProvider,
   ProviderFactory, SecretBinding, IEventBus,
@@ -18,12 +21,13 @@ import type {
 import {
   createDefaultRegistry, makeWindowsAgentClient,
   makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
-  markImagePending, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
+  markImagePendingIfBuildable, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
   listReadyImageRefs, listDockerSandboxConnections, resolveKitRefs, registryAuthFromEnv,
 } from "@journeyman/sandbox";
 import { createCodingOperationRunner } from "@journeyman/agent-runtime";
 import { ensureWorkspace } from "./sandbox/ensure-workspace.ts";
-import { ConsoleProvider } from "@journeyman/notification-provider";
+import { ConsoleProvider, EmailProvider } from "@journeyman/notification-provider";
+import type { EmailProviderOptions } from "@journeyman/notification-provider";
 import { resolveBindings, fetchSecretById } from "@journeyman/secrets";
 import { resolveMcpInstances } from "@journeyman/mcp";
 import { resolveSkillPackagesByIds } from "@journeyman/skills";
@@ -34,6 +38,7 @@ import { InMemoryStepRegistry } from "./registry/in-memory-step-registry.ts";
 import { PostgresEventBus } from "./stores/postgres/postgres-event-bus.ts";
 import { WorkerHarness } from "./workers/worker-harness.ts";
 import { resolvePollIntervalMs } from "./workers/poll-interval.ts";
+import { resolveConductorTaskTimeoutSeconds } from "./workers/step-timeouts.ts";
 import { StartFeatureBranchStepHandler } from "./workers/steps/start-feature-branch-step-handler.ts";
 import { CloneReposStepHandler } from "./workers/steps/clone-repos-step-handler.ts";
 import { GetIssueStepHandler } from "./workers/steps/get-issue-step-handler.ts";
@@ -135,8 +140,8 @@ const workerRegistry = createDefaultRegistry({
       if (!preBuilt) await ensureKitImage(client, baseRef, REGISTRY_AUTH);
       return imageRef;
     },
-    onImagePending: async (id) => { if (pool) await markImagePending(pool, id); },
-    verifyImageFresh: async ({ config, storedFingerprint, storedImageRef }) => {
+    onImagePending: async (id) => { if (pool) await markImagePendingIfBuildable(pool, id); },
+    verifyImageFresh: async ({ config, storedFingerprint, storedImageRef, log }) => {
       const connection = (config as Record<string, unknown>)["connection"];
       const client = makeDockerClient(connection as Parameters<typeof makeDockerClient>[0]);
       const { bundle } = await kitRefs();
@@ -145,6 +150,7 @@ const workerRegistry = createDefaultRegistry({
         image: (config as Record<string, unknown>)["image"] as never,
         client,
         bundleRef: bundle,
+        log,
       });
       const present = await client.imageExists(storedImageRef);
       const fresh = present && inputs.fingerprint === storedFingerprint;
@@ -209,14 +215,18 @@ if (pool) {
   }));
 }
 
-const git: ProviderFactory<IGitProvider> = (key, env) => {
-  switch (key ?? "github") {
+const git: ProviderFactory<IGitProvider> = (key, env, connection) => {
+  const provider = connection?.provider ?? key ?? "github";
+  switch (provider) {
     case "github":
-      return new GitHubProvider({ token: env.GITHUB_ACCESS_TOKEN });
+      return new GitHubProvider({ token: connection?.credential ?? env.GITHUB_ACCESS_TOKEN });
     case "gitlab":
-      return new GitLabProvider({ token: env.GITLAB_TOKEN, baseUrl: env.GITLAB_BASE_URL || undefined });
+      return new GitLabProvider({
+        token: connection?.credential ?? env.GITLAB_TOKEN,
+        baseUrl: (connection?.baseUrl ?? env.GITLAB_BASE_URL) || undefined,
+      });
     default: {
-      const err = new Error(`Unknown git provider: ${key}`) as Error & { name: string };
+      const err = new Error(`Unknown git provider: ${provider}`) as Error & { name: string };
       err.name = "ConfigurationError";
       throw err;
     }
@@ -231,20 +241,25 @@ if (pool) {
   registry.register(new AgentRunStepHandler({ coding, git, pool, bindingResolver: (input) => cliBindingResolver(input) }));
 }
 
-const issue: ProviderFactory<IIssueProvider> = (key, env) => {
-  switch (key ?? "jira") {
+const issue: ProviderFactory<IIssueProvider> = (key, env, connection) => {
+  const provider = connection?.provider ?? key ?? "jira";
+  switch (provider) {
     case "jira":
       return new JiraProvider({
-        apiToken: env.JIRA_API_TOKEN,
-        email: env.JIRA_EMAIL,
-        host: env.JIRA_HOST,
+        apiToken: connection?.credential ?? env.JIRA_API_TOKEN,
+        email: (connection?.config?.email as string | undefined) ?? env.JIRA_EMAIL,
+        host: (connection?.baseUrl ?? env.JIRA_HOST ?? "").replace(/^https?:\/\//, ""),
       });
     case "github-issues":
-      return new GitHubIssuesProvider({ token: env.GITHUB_ACCESS_TOKEN });
+      return new GitHubIssuesProvider({ token: connection?.credential ?? env.GITHUB_ACCESS_TOKEN });
     case "github-projects":
-      return new GitHubProjectsProvider({ token: env.GITHUB_ACCESS_TOKEN });
+      return new GitHubProjectsProvider({ token: connection?.credential ?? env.GITHUB_ACCESS_TOKEN });
+    case "linear":
+      return new LinearProvider();
+    case "monday":
+      return new MondayProvider();
     default: {
-      const err = new Error(`Unknown issue provider: ${key}`) as Error & { name: string };
+      const err = new Error(`Unknown issue provider: ${provider}`) as Error & { name: string };
       err.name = "ConfigurationError";
       throw err;
     }
@@ -256,12 +271,59 @@ registry.register(new CreateIssueStepHandler({ issue }));
 registry.register(new UpdateIssueFieldsStepHandler({ issue }));
 registry.register(new CommentOnIssueStepHandler({ issue }));
 
-const notification: ProviderFactory<INotificationProvider> = (key, _env) => {
-  switch (key ?? "console") {
+const notification: ProviderFactory<INotificationProvider> = (key, _env, connection) => {
+  const provider = connection?.provider ?? key ?? "console";
+  switch (provider) {
     case "console":
       return new ConsoleProvider();
+    case "slack":
+      throw Object.assign(new Error("Slack provider not yet implemented"), { name: "ConfigurationError" });
+    case "email": {
+      const cfg = (connection?.config ?? {}) as Record<string, unknown>;
+      const method = cfg.method as string | undefined;
+      if (!method) {
+        throw Object.assign(new Error("Email connection missing config.method"), { name: "ConfigurationError" });
+      }
+      const from = cfg.from as string;
+      const credential = connection?.credential ?? "";
+      let opts: EmailProviderOptions;
+      if (method === "smtp") {
+        opts = {
+          method: "smtp",
+          host: cfg.host as string,
+          port: Number(cfg.port),
+          secure: Boolean(cfg.secure),
+          from,
+          username: cfg.username as string,
+          password: credential,
+        };
+      } else if (method === "resend") {
+        opts = { method: "resend", from, apiKey: credential };
+      } else if (method === "sendgrid") {
+        opts = { method: "sendgrid", from, apiKey: credential };
+      } else if (method === "mailgun") {
+        opts = {
+          method: "mailgun",
+          from,
+          domain: cfg.domain as string,
+          apiKey: credential,
+          region: (cfg.region as "us" | "eu" | undefined) ?? "us",
+        };
+      } else if (method === "ses") {
+        opts = {
+          method: "ses",
+          from,
+          region: cfg.region as string,
+          accessKeyId: cfg.accessKeyId as string,
+          secretAccessKey: credential,
+        };
+      } else {
+        throw Object.assign(new Error(`Unknown email method: ${method}`), { name: "ConfigurationError" });
+      }
+      return new EmailProvider(opts);
+    }
     default: {
-      const err = new Error(`Unknown notification provider: ${key}`) as Error & { name: string };
+      const err = new Error(`Unknown notification provider: ${provider}`) as Error & { name: string };
       err.name = "ConfigurationError";
       throw err;
     }
@@ -274,16 +336,24 @@ registry.register(new SendMessageStepHandler({ notification }));
 // sets the actual count per workflow task — it cannot exceed this cap.
 // Keeping it at 10 gives flows enough headroom while preventing runaway retries.
 async function registerTaskDefs(): Promise<void> {
+  // Conductor reads a task's timeout/response-timeout from its registered TaskDef,
+  // so the backstop must be set HERE (not only on the per-node workflow task).
+  // Size it to outlast the worker's own enforcement — the per-step deadline plus
+  // the in-process image-build wait — so the engine never times out a step the
+  // worker is still legitimately working on (a slow first image build, a long run).
+  // This is per-type so it uses the default (no per-node override); nodes that ask
+  // for a longer step timeout still get it raised on the workflow task itself.
+  const taskTimeoutSeconds = resolveConductorTaskTimeoutSeconds();
   for (const handler of registry.list()) {
     await client.putTaskDef({
       name: handler.stepType,
       retryCount: 10,
-      timeoutSeconds: 600,
+      timeoutSeconds: taskTimeoutSeconds,
       timeoutPolicy: "TIME_OUT_WF",
       retryLogic: "EXPONENTIAL_BACKOFF",
       retryDelaySeconds: 5,
       backoffScaleFactor: 2,
-      responseTimeoutSeconds: 600,
+      responseTimeoutSeconds: taskTimeoutSeconds,
       ownerEmail: "ops@journeyman.local",
     });
   }
@@ -430,6 +500,22 @@ const harness = new WorkerHarness({
     return { slot, value };
   },
   ensureWorkspace: ensureWs,
+  connectionResolver: pool
+    ? async (connectionId: string): Promise<ResolvedConnection> => {
+        const conn = await getConnection(pool, connectionId);
+        if (!conn) throw Object.assign(new Error(`Connection not found: ${connectionId}`), { name: "ConfigurationError" });
+        const sealed = await getConnectionSealed(pool, connectionId);
+        if (!sealed) throw Object.assign(new Error(`Connection credential not found: ${connectionId}`), { name: "ConfigurationError" });
+        return {
+          id: conn.id,
+          category: conn.category,
+          provider: conn.provider,
+          credential: open(sealed),
+          baseUrl: conn.baseUrl,
+          config: conn.config,
+        };
+      }
+    : undefined,
 });
 
 // Spec B: build managed sandbox images ahead of time (this process holds

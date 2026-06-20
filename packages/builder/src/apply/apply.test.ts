@@ -11,7 +11,7 @@ const baseArgs = { workflowName: "PR review", createdBy: "u1", workspaceId: "w1"
 describe("applyBuildPlan", () => {
   it("creates steps, rewrites ids, and creates a draft workflow", async () => {
     const insertStep = vi.fn(async (input: any) => ({ id: `real-${input.name}` }));
-    const createWorkflow = vi.fn(async (_args: CreateWorkflowArgs) => ({ workflowId: "wf-1", versionId: "v-1" }));
+    const createWorkflow = vi.fn(async (_args: CreateWorkflowArgs) => ({ workflowId: "wf-1" }));
     const deleteStep = vi.fn(async () => {});
     const deps: ApplyDeps = { insertStep, deleteStep, createWorkflow };
 
@@ -29,7 +29,7 @@ describe("applyBuildPlan", () => {
     const passedGraph = (createWorkflow.mock.calls[0][0] as CreateWorkflowArgs).initialDefinition;
     expect(passedGraph.nodes[0].config!.customStepId).toBe("real-Review");
     expect(createWorkflow.mock.calls[0][0]).toMatchObject({ workspaceId: "w1", name: "PR review" });
-    expect(res).toEqual({ workflowId: "wf-1", versionId: "v-1", createdStepIds: ["real-Review"], placeholderToRealId: { "tmp-a": "real-Review" } });
+    expect(res).toEqual({ workflowId: "wf-1", createdStepIds: ["real-Review"], placeholderToRealId: { "tmp-a": "real-Review" } });
     expect(deleteStep).not.toHaveBeenCalled();
   });
 
@@ -50,7 +50,7 @@ describe("applyBuildPlan", () => {
 
   it("creates a workspace-scoped workflow", async () => {
     const insertStep = vi.fn(async (_input: any) => ({ id: "real-x" }));
-    const createWorkflow = vi.fn(async (_args: CreateWorkflowArgs) => ({ workflowId: "wf", versionId: "v" }));
+    const createWorkflow = vi.fn(async (_args: CreateWorkflowArgs) => ({ workflowId: "wf" }));
     const deps: ApplyDeps = { insertStep, deleteStep: vi.fn(async (_id: string) => {}), createWorkflow };
 
     const plan = planWith(
@@ -65,7 +65,7 @@ describe("applyBuildPlan", () => {
 
   it("creates the workflow directly when there are no new steps", async () => {
     const insertStep = vi.fn();
-    const createWorkflow = vi.fn(async () => ({ workflowId: "wf", versionId: "v" }));
+    const createWorkflow = vi.fn(async () => ({ workflowId: "wf" }));
     const deps: ApplyDeps = { insertStep, deleteStep: vi.fn(), createWorkflow };
     const plan = planWith([], { schemaVersion: 2, nodes: [], edges: [] });
     const res = await applyBuildPlan(deps, { ...baseArgs, plan });

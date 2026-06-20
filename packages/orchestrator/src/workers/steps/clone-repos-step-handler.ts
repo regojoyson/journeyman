@@ -47,7 +47,7 @@ export class CloneReposStepHandler implements IStepHandler {
 
     const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
       ? new SandboxInstanceGitProvider(ctx.exec)
-      : this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+      : this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
 
     const agentLogLevel = typeof input.agentLogLevel === "string" ? input.agentLogLevel : "light";
     const verbose = agentLogLevel === "medium" || agentLogLevel === "all";
@@ -58,7 +58,7 @@ export class CloneReposStepHandler implements IStepHandler {
       ...(verbose ? { onLog: ctx.log } : {}),
     });
     if (result?.error) {
-      log.error({ result }, "clone-repos failed");
+      ctx.log(`⚠ clone failed: ${result.error}`);
       return {
         kind: "failure",
         failure: { errorClass: "CloneReposFailed", message: String(result.error), retryable: true },

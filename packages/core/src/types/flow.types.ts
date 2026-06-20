@@ -124,6 +124,8 @@ export interface WorkflowNode {
   secretBindings?: Record<string, SecretBinding> | null;
   /** Per-step sandbox override (workspace-independent steps only). Falls back to defaults.sandboxId. */
   sandboxId?: string;
+  /** Connection ID for provider-backed steps (git/ticket/notification). Resolved by the worker before the step runs. */
+  connectionId?: string | null;
   /** Position on canvas — opaque to engine; preserved on round-trip. */
   position?: { x: number; y: number };
   /** Only meaningful on `end` nodes — surfaced as the workflow instance's outcome label. */
@@ -173,10 +175,18 @@ export interface Workflow {
   id: string;
   name: string;
   description: string | null;
-  currentVersionId: string | null;
+  /** The live version that triggers and manual runs use. NULL = nothing published. */
+  publishedVersionId: string | null;
+  /** The single mutable working copy. Always present. Overwritten on each save. */
+  draftDefinition: WorkflowGraph;
+  /** When the draft was last saved. */
+  draftUpdatedAt: Date | null;
+  /** Who last saved the draft. */
+  draftUpdatedByUserId: string | null;
   createdByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Strict mirror of publishedVersionId: 'ready' iff publishedVersionId is set. */
   status: WorkflowStatus;
   /** The workspace this flow belongs to. */
   workspaceId: string;

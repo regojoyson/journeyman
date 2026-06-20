@@ -1,3 +1,4 @@
+import * as net from "node:net";
 import type { FastifyInstance } from "fastify";
 import type { Composition } from "../composition.ts";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
@@ -14,11 +15,145 @@ import {
   agentsUsingConnection,
   DuplicateConnectionError,
 } from "@journeyman/connections";
+import { SESClient, GetSendQuotaCommand } from "@aws-sdk/client-ses";
 import { audit } from "../services/audit.ts";
 
 function gitProviderFor(provider: string, token: string, baseUrl?: string): IGitProvider {
   if (provider === "gitlab") return new GitLabProvider({ token, baseUrl });
   return new GitHubProvider({ token });
+}
+
+async function testTicketConnection(
+  provider: string,
+  token: string,
+  baseUrl?: string,
+  config?: Record<string, unknown>,
+): Promise<{ ok: boolean; note?: string; error?: string }> {
+  if (provider === "jira") {
+    const email = config?.email as string | undefined;
+    if (!email || !baseUrl) return { ok: false, error: "Jira requires host and email" };
+    const host = baseUrl.replace(/^https?:\/\//, "");
+    const encoded = Buffer.from(`${email}:${token}`).toString("base64");
+    try {
+      const r = await fetch(`https://${host}/rest/api/3/myself`, {
+        headers: { Authorization: `Basic ${encoded}`, Accept: "application/json" },
+      });
+      if (!r.ok) return { ok: false, error: `Jira returned ${r.status}` };
+      const data = await r.json() as { displayName?: string };
+      return { ok: true, note: `Connected as ${data.displayName ?? "unknown"}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+  if (provider === "linear") {
+    try {
+      const r = await fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "{ viewer { name } }" }),
+      });
+      if (!r.ok) return { ok: false, error: `Linear returned ${r.status}` };
+      const data = await r.json() as { data?: { viewer?: { name?: string } } };
+      return { ok: true, note: `Connected as ${data.data?.viewer?.name ?? "unknown"}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+  if (provider === "monday") {
+    try {
+      const r = await fetch("https://api.monday.com/v2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "{ me { name } }" }),
+      });
+      if (!r.ok) return { ok: false, error: `Monday returned ${r.status}` };
+      const data = await r.json() as { data?: { me?: { name?: string } }; errors?: { message: string }[] };
+      if (data.errors?.length) return { ok: false, error: data.errors[0].message };
+      return { ok: true, note: `Connected as ${data.data?.me?.name ?? "unknown"}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+  return { ok: false, error: `unknown ticket provider: ${provider}` };
+}
+
+async function testEmailConnection(
+  credential: string,
+  config: Record<string, unknown>,
+): Promise<{ ok: boolean; note?: string; error?: string }> {
+  const method = config.method as string | undefined;
+  if (!method) return { ok: false, error: "missing config.method" };
+
+  if (method === "smtp") {
+    const host = config.host as string;
+    const port = Number(config.port);
+    return new Promise((resolve) => {
+      const sock = net.createConnection({ host, port, timeout: 5000 }, () => {
+        sock.destroy();
+        resolve({ ok: true, note: `Reached ${host}:${port}` });
+      });
+      sock.once("timeout", () => { sock.destroy(); resolve({ ok: false, error: "connection timed out" }); });
+      sock.once("error", (err) => resolve({ ok: false, error: err.message }));
+    });
+  }
+
+  if (method === "resend") {
+    try {
+      const r = await fetch("https://api.resend.com/domains", {
+        headers: { Authorization: `Bearer ${credential}` },
+      });
+      if (!r.ok) return { ok: false, error: `Resend returned ${r.status}` };
+      return { ok: true, note: "Resend API key valid" };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+
+  if (method === "sendgrid") {
+    try {
+      const r = await fetch("https://api.sendgrid.com/v3/user/profile", {
+        headers: { Authorization: `Bearer ${credential}` },
+      });
+      if (!r.ok) return { ok: false, error: `SendGrid returned ${r.status}` };
+      const data = await r.json() as { username?: string };
+      return { ok: true, note: `Connected as ${data.username ?? "unknown"}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+
+  if (method === "mailgun") {
+    const domain = config.domain as string;
+    const region = (config.region as string | undefined) ?? "us";
+    const host = region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
+    const auth = Buffer.from(`api:${credential}`).toString("base64");
+    try {
+      const r = await fetch(`https://${host}/v3/domains/${domain}`, {
+        headers: { Authorization: `Basic ${auth}` },
+      });
+      if (!r.ok) return { ok: false, error: `Mailgun returned ${r.status}` };
+      return { ok: true, note: `Domain ${domain} verified` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "network error" };
+    }
+  }
+
+  if (method === "ses") {
+    const sesRegion = config.region as string;
+    const accessKeyId = config.accessKeyId as string;
+    const client = new SESClient({
+      region: sesRegion,
+      credentials: { accessKeyId, secretAccessKey: credential },
+    });
+    try {
+      const quota = await client.send(new GetSendQuotaCommand({})) as { Max24HourSend?: number };
+      return { ok: true, note: `SES quota: ${quota.Max24HourSend ?? "unknown"}/day` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "SES error" };
+    }
+  }
+
+  return { ok: false, error: `unknown email method: ${method}` };
 }
 
 export function registerConnectionRoutes(app: FastifyInstance, c: Composition): void {
@@ -127,11 +262,20 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     const { wsId, id } = req.params as { wsId: string; id: string };
     const conn = await loadConn(id, wsId);
     if (!conn) { reply.code(404); return { error: "not_found" }; }
-    if (conn.category !== "git") {
-      return { ok: true, note: "Notification delivery is verified in a later phase." };
+    if (conn.category === "notification") {
+      if (conn.provider !== "email") {
+        return { ok: true, note: "Notification delivery is verified in a later phase." };
+      }
+      const sealed = await getConnectionSealed(pool, id);
+      if (!sealed) { reply.code(404); return { error: "not_found" }; }
+      return testEmailConnection(open(sealed), conn.config ?? {});
     }
     const sealed = await getConnectionSealed(pool, id);
     if (!sealed) { reply.code(404); return { error: "not_found" }; }
+    if (conn.category === "ticket") {
+      return testTicketConnection(conn.provider, open(sealed), conn.baseUrl, conn.config);
+    }
+    // git
     const git = gitProviderFor(conn.provider, open(sealed), conn.baseUrl);
     if (!git.listRepos) return { ok: false, error: "provider does not support repo listing" };
     const res = await git.listRepos({ limit: 100 });

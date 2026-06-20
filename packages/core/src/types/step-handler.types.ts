@@ -27,6 +27,8 @@ export interface StepContext {
   signal: AbortSignal;
   /** Resolved env vars for this step, keyed by slot name (from resolveBindings). */
   env: Record<string, string>;
+  /** Resolved connection for this step. Present when node.connectionId is set. */
+  connection?: import("./connection.types.ts").ResolvedConnection;
   /** Frozen copy of workflow.input — values declared on the start node's workflowInputs. */
   workflowInputs: Record<string, unknown>;
   /** Append a step.log event for live UI streaming. */

@@ -17,8 +17,8 @@ function makeApplyDeps(c: Composition): ApplyDeps {
     },
     deleteStep: async (id) => { await deleteCustomAiStep(pool, id); },
     createWorkflow: async (args) => {
-      const { workflow, version } = await c.workflows.create(args);
-      return { workflowId: workflow.id, versionId: version.id };
+      const workflow = await c.workflows.create(args);
+      return { workflowId: workflow.id };
     },
   };
 }
@@ -60,6 +60,6 @@ export function registerBuilderApplyRoute(app: FastifyInstance, c: Composition):
       });
 
       reply.code(201);
-      return { workflowId: result.workflowId, versionId: result.versionId };
+      return { workflowId: result.workflowId };
     });
 }

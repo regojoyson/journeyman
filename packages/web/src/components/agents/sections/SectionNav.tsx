@@ -12,7 +12,15 @@ export const SECTIONS: Array<{ id: SectionId; label: string; icon: string; dange
   { id: "delete", label: "Delete agent", icon: "🗑", danger: true },
 ];
 
-export function SectionNav({ active, onSelect }: { active: SectionId; onSelect: (id: SectionId) => void }) {
+export function SectionNav({
+  active,
+  onSelect,
+  dirtyIds = [],
+}: {
+  active: SectionId;
+  onSelect: (id: SectionId) => void;
+  dirtyIds?: SectionId[];
+}) {
   return (
     <nav className="flex flex-col gap-0.5">
       {SECTIONS.map((s) => {
@@ -35,7 +43,10 @@ export function SectionNav({ active, onSelect }: { active: SectionId; onSelect: 
             ].join(" ")}
           >
             <span className="w-4 text-center opacity-80">{s.icon}</span>
-            {s.label}
+            <span className="flex-1">{s.label}</span>
+            {dirtyIds.includes(s.id) && (
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            )}
           </button>
         );
       })}

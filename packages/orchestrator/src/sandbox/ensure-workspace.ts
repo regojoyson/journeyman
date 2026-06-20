@@ -105,7 +105,7 @@ export async function ensureWorkspace(
     imageError: worker.imageError ?? null,
   };
   const backend = deps.registry.get(resolved.type);
-  if (backend.checkRunnable) await backend.checkRunnable(resolved);
+  if (backend.checkRunnable) await backend.checkRunnable(resolved, log);
 
   const won = await deps.claim({ runId: args.runId, type: worker.type, owner: args.orgId });
   if (!won) {

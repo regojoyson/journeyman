@@ -43,15 +43,3 @@ export async function refreshTriggerIndexOnUnpublish(
 ): Promise<void> {
   await store.setActiveForWorkflow(args.workflowId, null);
 }
-
-/**
- * Recompute trigger rows for a newly-created workflow version without
- * activating them. Activation happens on publish.
- */
-export async function refreshTriggerIndexOnVersionCreated(
-  store: IWorkflowTriggerStore,
-  args: { workflowId: string; workflowVersionId: string; graph: WorkflowGraph },
-): Promise<void> {
-  const rows = rowsFromGraph(args.workflowId, args.workflowVersionId, args.graph);
-  await store.replaceForVersion(args.workflowVersionId, rows);
-}

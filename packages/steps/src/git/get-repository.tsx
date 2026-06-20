@@ -25,13 +25,7 @@ export const getRepositoryStep: StepDefinition<GetRepositoryConfig> = {
     owner: { label: "Owner / org", widget: "text" },
     repo:  { label: "Repository",  widget: "text" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo}` : "",
   executor: { kind: "git-provider", method: "getRepo" },
   comingSoon: true,

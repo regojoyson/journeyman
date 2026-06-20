@@ -8,12 +8,16 @@ import {
 import {
   DuplicateCustomStepError,
   deleteCustomAiStep,
+  disableCustomAiStep,
+  enableCustomAiStep,
   getCustomAiStep,
   insertCustomAiStep,
   listCustomAiSteps,
+  listEnabledCustomAiSteps,
   updateCustomAiStep,
 } from "../db.ts";
 import { toExportV1, fromExportV1, CustomStepImportError } from "../export.ts";
+import { checkCustomStepReadiness } from "../readiness.ts";
 
 const SLOT_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
 const RESERVED_SLOT_NAMES = new Set(["PATH", "HOME", "USER", "SHELL", "PWD"]);
@@ -92,7 +96,7 @@ export async function registerWorkspaceCustomStepRoutes(app: FastifyInstance, po
   // GET /api/workspaces/:wsId/custom-steps/visible (for flow-editor palette)
   app.get("/api/workspaces/:wsId/custom-steps/visible", read, async (req) => {
     const { wsId } = req.params as { wsId: string };
-    return listCustomAiSteps(pool, wsId);
+    return listEnabledCustomAiSteps(pool, wsId);
   });
 
   // POST /api/workspaces/:wsId/custom-steps
@@ -179,11 +183,34 @@ export async function registerWorkspaceCustomStepRoutes(app: FastifyInstance, po
     return payload;
   });
 
+  // POST /api/workspaces/:wsId/custom-steps/:id/enable
+  app.post("/api/workspaces/:wsId/custom-steps/:id/enable", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const step = await getCustomAiStep(pool, id);
+    if (!step || step.workspaceId !== wsId) return reply.code(404).send({ error: "not_found" });
+    const errors = checkCustomStepReadiness(step);
+    if (errors.length) {
+      return reply.code(422).send({ error: "not_ready", errors });
+    }
+    const updated = await enableCustomAiStep(pool, id);
+    return updated;
+  });
+
+  // POST /api/workspaces/:wsId/custom-steps/:id/disable
+  app.post("/api/workspaces/:wsId/custom-steps/:id/disable", write, async (req, reply) => {
+    const { wsId, id } = req.params as { wsId: string; id: string };
+    const step = await getCustomAiStep(pool, id);
+    if (!step || step.workspaceId !== wsId) return reply.code(404).send({ error: "not_found" });
+    const updated = await disableCustomAiStep(pool, id);
+    return updated;
+  });
+
   // PATCH /api/workspaces/:wsId/custom-steps/:id
   app.patch("/api/workspaces/:wsId/custom-steps/:id", write, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const existing = await getCustomAiStep(pool, id);
     if (!existing || existing.workspaceId !== wsId) return reply.code(404).send({ error: "Not found" });
+    if (existing.enabled) return reply.code(409).send({ error: "step_enabled_readonly" });
     try {
       const patchBody = req.body as any;
       const patch = {

@@ -148,6 +148,7 @@ export type {
 } from "./types/flow.types.ts";
 export { WORKFLOW_SCHEMA_VERSION, TRIGGER_NODE_TYPES, isTriggerNode, findTriggerNodes, findManualTriggerNode, workflowInputDefShape, workflowAttributeDefShape } from "./types/flow.types.ts";
 export type { WorkflowTriggerNodeType } from "./types/flow.types.ts";
+export * from "./types/workflow-draft.ts";
 export type {
   TriggerInputMapping,
   TriggerInputMappingType,

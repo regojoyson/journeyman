@@ -17,7 +17,7 @@ export class UpdateIssueFieldsStepHandler implements IStepHandler {
     const status = typeof input.status === "string" ? input.status : undefined;
     const assignee = typeof input.assignee === "string" ? input.assignee : undefined;
     const labels = Array.isArray(input.labels) && input.labels.every((l) => typeof l === "string") ? (input.labels as string[]) : undefined;
-    const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const issueProvider = this.deps.issue(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Update issue ${ref}`);
     const result = await issueProvider.updateIssue({ id: ref, title, description, status, assignee, labels, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

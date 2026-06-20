@@ -29,6 +29,7 @@ export interface DockerBackendDeps {
   verifyImageFresh?: (args: {
     sandboxId: string; config: Record<string, unknown>;
     storedFingerprint: string; storedImageRef: string;
+    log?: (line: string) => void;
   }) => Promise<{ fresh: boolean; reason?: string }>;
 }
 
@@ -54,7 +55,7 @@ export class DockerBackend implements ExecutionEnvironmentBackend {
     }
   }
 
-  async checkRunnable(worker: ResolvedSandbox): Promise<void> {
+  async checkRunnable(worker: ResolvedSandbox, log?: (line: string) => void): Promise<void> {
     const config = (worker.config ?? {}) as Record<string, unknown>;
     const img = config["image"] as { kind?: string; imageRef?: string; content?: string } | undefined;
     const hasRecipe =
@@ -67,6 +68,9 @@ export class DockerBackend implements ExecutionEnvironmentBackend {
       throw configurationError(`sandbox image build failed: ${worker.imageError ?? "see build log"}`);
     }
     if (state === "pending" || state === "building" || state === "none") {
+      // For "none": recipe exists but build was never triggered (e.g. worker was down at create time).
+      // Queue the build now so it starts automatically.
+      if (state === "none" && this.deps.onImagePending) await this.deps.onImagePending(worker.id);
       throw new ImageNotReadyError("sandbox image is not ready yet");
     }
     if (state === "ready" && !worker.imageRef) {
@@ -79,6 +83,7 @@ export class DockerBackend implements ExecutionEnvironmentBackend {
         config,
         storedFingerprint: worker.imageFingerprint ?? "",
         storedImageRef: worker.imageRef ?? "",
+        log,
       });
       if (!v.fresh) {
         if (this.deps.onImagePending) await this.deps.onImagePending(worker.id);

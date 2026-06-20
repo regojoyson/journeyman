@@ -26,7 +26,7 @@ export const transitionIssueStep: StepDefinition<TransitionIssueConfig> = {
     ref: { label: "Ref", widget: "text", help: "Supports #{issue} placeholder" },
     status:    { label: "Target status", widget: "text", help: "e.g. development-started, code-review, completed" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.status || "(no status)",
   executor: { kind: "issue-provider", method: "updateStatus" },
   outputSchema: transitionIssueOutputSchema,

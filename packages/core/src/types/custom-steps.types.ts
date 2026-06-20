@@ -43,6 +43,7 @@ export interface CustomAiStep {
    *   null/undefined — render DEFAULT_CUSTOM_STEP_ICON_ID.
    */
   icon?: string | null;
+  enabled: boolean;
   inputFields: CustomStepInputField[];
   outputMode: CustomStepOutputMode;
   outputFields?: CustomStepOutputField[];

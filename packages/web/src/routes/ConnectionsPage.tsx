@@ -12,6 +12,7 @@ const GIT_PROVIDERS = [
 const CATEGORY_LABELS: Record<ConnectionCategory, string> = {
   git: "🌿 Git",
   notification: "🔔 Notification",
+  ticket: "🎫 Ticket",
 };
 
 export function ConnectionsPage() {
@@ -61,7 +62,7 @@ export function ConnectionsPage() {
         <header className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Connections</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Git accounts and notification channels agents can use.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Git accounts, notification channels, and ticket trackers agents can use.</p>
           </div>
           <button className={btnPrimary} onClick={() => setAdding(true)}>+ Connect</button>
         </header>
@@ -134,12 +135,90 @@ function AddConnectionModal({
   const [label, setLabel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [credential, setCredential] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailMethod, setEmailMethod] = useState<"smtp" | "resend" | "sendgrid" | "mailgun" | "ses">("smtp");
+  const [emailFrom, setEmailFrom] = useState("");
+  const [emailHost, setEmailHost] = useState("");
+  const [emailPort, setEmailPort] = useState("587");
+  const [emailSecure, setEmailSecure] = useState(false);
+  const [emailUsername, setEmailUsername] = useState("");
+  const [emailDomain, setEmailDomain] = useState("");
+  const [emailRegion, setEmailRegion] = useState("us");
+  const [emailAccessKeyId, setEmailAccessKeyId] = useState("");
+
+  const resetEmailFields = () => {
+    setEmailMethod("smtp");
+    setEmailFrom("");
+    setEmailHost("");
+    setEmailPort("587");
+    setEmailSecure(false);
+    setEmailUsername("");
+    setEmailDomain("");
+    setEmailRegion("us");
+    setEmailAccessKeyId("");
+  };
 
   const onSelectCategory = (next: ConnectionCategory) => {
     setCategory(next);
-    setProvider(next === "git" ? "github" : "slack");
+    if (next === "git") setProvider("github");
+    else if (next === "notification") setProvider("slack");
+    else setProvider("jira");
     setBaseUrl("");
+    setEmail("");
+    resetEmailFields();
   };
+
+  const onSelectProvider = (next: string) => {
+    setProvider(next);
+    resetEmailFields();
+  };
+
+  const handleCreate = () => {
+    const config: Record<string, unknown> = {};
+    if (category === "ticket" && provider === "jira") config.email = email;
+    if (category === "notification" && provider === "email") {
+      config.method = emailMethod;
+      config.from = emailFrom.trim();
+      if (emailMethod === "smtp") {
+        config.host = emailHost.trim();
+        config.port = Number(emailPort);
+        config.secure = emailSecure;
+        config.username = emailUsername.trim();
+      }
+      if (emailMethod === "mailgun") {
+        config.domain = emailDomain.trim();
+        config.region = emailRegion;
+      }
+      if (emailMethod === "ses") {
+        config.region = emailRegion.trim();
+        config.accessKeyId = emailAccessKeyId.trim();
+      }
+    }
+    onCreate({
+      category,
+      provider,
+      label: label.trim(),
+      baseUrl: (category === "ticket" && provider !== "jira") ? undefined : (baseUrl || undefined),
+      credential,
+      config: Object.keys(config).length > 0 ? config : undefined,
+    });
+  };
+
+  const credentialLabel =
+    category === "git" ? "Access token (PAT)"
+    : (category === "notification" && provider === "email" && emailMethod === "smtp") ? "Password"
+    : (category === "notification" && provider === "email" && emailMethod === "ses") ? "Secret access key"
+    : (category === "notification" && provider === "email") ? "API key"
+    : "API token";
+
+  const isDisabled =
+    !label.trim() ||
+    !credential ||
+    (category === "ticket" && provider === "jira" && (!baseUrl.trim() || !email.trim())) ||
+    (category === "notification" && provider === "email" && !emailFrom.trim()) ||
+    (category === "notification" && provider === "email" && emailMethod === "smtp" && (!emailHost.trim() || !emailPort || !emailUsername.trim())) ||
+    (category === "notification" && provider === "email" && emailMethod === "mailgun" && !emailDomain.trim()) ||
+    (category === "notification" && provider === "email" && emailMethod === "ses" && (!emailRegion.trim() || !emailAccessKeyId.trim()));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6" onClick={onCancel}>
@@ -151,18 +230,26 @@ function AddConnectionModal({
           <select className={`${selectCls} block mt-1 w-full`} value={category} onChange={(e) => onSelectCategory(e.target.value as ConnectionCategory)}>
             <option value="git">🌿 Git account</option>
             <option value="notification">🔔 Notification channel</option>
+            <option value="ticket">🎫 Ticket tracker</option>
           </select>
         </div>
 
         <div>
           <label className="text-sm font-medium">Provider</label>
-          <select className={`${selectCls} block mt-1 w-full`} value={provider} onChange={(e) => setProvider(e.target.value)}>
+          <select className={`${selectCls} block mt-1 w-full`} value={provider} onChange={(e) => onSelectProvider(e.target.value)}>
             {category === "git" ? (
               GIT_PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)
+            ) : category === "ticket" ? (
+              <>
+                <option value="jira">Jira</option>
+                <option value="linear">Linear</option>
+                <option value="monday">Monday.com</option>
+              </>
             ) : (
               <>
                 <option value="slack">Slack</option>
                 <option value="console">Console</option>
+                <option value="email">Email</option>
               </>
             )}
           </select>
@@ -175,13 +262,98 @@ function AddConnectionModal({
           </div>
         )}
 
+        {category === "ticket" && provider === "jira" && (
+          <>
+            <div>
+              <label className="text-sm font-medium">Host</label>
+              <input className={inputCls} placeholder="acme.atlassian.net" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <input className={inputCls} type="email" placeholder="you@acme.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {category === "notification" && provider === "email" && (
+          <>
+            <div>
+              <label className="text-sm font-medium">Method</label>
+              <select className={`${selectCls} block mt-1 w-full`} value={emailMethod} onChange={(e) => setEmailMethod(e.target.value as typeof emailMethod)}>
+                <option value="smtp">SMTP</option>
+                <option value="resend">Resend</option>
+                <option value="sendgrid">SendGrid</option>
+                <option value="mailgun">Mailgun</option>
+                <option value="ses">AWS SES</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">From address</label>
+              <input className={inputCls} type="email" placeholder="noreply@acme.com" value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} />
+            </div>
+
+            {emailMethod === "smtp" && (
+              <>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium">Host</label>
+                    <input className={inputCls} placeholder="smtp.acme.com" value={emailHost} onChange={(e) => setEmailHost(e.target.value)} />
+                  </div>
+                  <div className="w-24">
+                    <label className="text-sm font-medium">Port</label>
+                    <input className={inputCls} type="number" value={emailPort} onChange={(e) => setEmailPort(e.target.value)} />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={emailSecure} onChange={(e) => setEmailSecure(e.target.checked)} />
+                  Use TLS (secure)
+                </label>
+                <div>
+                  <label className="text-sm font-medium">Username</label>
+                  <input className={inputCls} placeholder="user@acme.com" value={emailUsername} onChange={(e) => setEmailUsername(e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {emailMethod === "mailgun" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Domain</label>
+                  <input className={inputCls} placeholder="mg.acme.com" value={emailDomain} onChange={(e) => setEmailDomain(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Region</label>
+                  <select className={`${selectCls} block mt-1 w-full`} value={emailRegion} onChange={(e) => setEmailRegion(e.target.value)}>
+                    <option value="us">US</option>
+                    <option value="eu">EU</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {emailMethod === "ses" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Region</label>
+                  <input className={inputCls} placeholder="us-east-1" value={emailRegion} onChange={(e) => setEmailRegion(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Access Key ID</label>
+                  <input className={inputCls} placeholder="AKIAIOSFODNN7EXAMPLE" value={emailAccessKeyId} onChange={(e) => setEmailAccessKeyId(e.target.value)} />
+                </div>
+              </>
+            )}
+          </>
+        )}
+
         <div>
           <label className="text-sm font-medium">Label</label>
           <input className={inputCls} placeholder="e.g. acme (work)" value={label} onChange={(e) => setLabel(e.target.value)} />
         </div>
 
         <div>
-          <label className="text-sm font-medium">{category === "git" ? "Access token (PAT)" : "Token / webhook URL"}</label>
+          <label className="text-sm font-medium">{credentialLabel}</label>
           <input className={inputCls} type="password" value={credential} onChange={(e) => setCredential(e.target.value)} />
         </div>
 
@@ -189,8 +361,8 @@ function AddConnectionModal({
           <button className={btnGhost} onClick={onCancel}>Cancel</button>
           <button
             className={btnPrimary}
-            disabled={!label.trim() || !credential}
-            onClick={() => onCreate({ category, provider, label: label.trim(), baseUrl: baseUrl || undefined, credential })}
+            disabled={isDisabled}
+            onClick={handleCreate}
           >
             Connect
           </button>

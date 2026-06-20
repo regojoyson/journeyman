@@ -12,6 +12,7 @@ const sampleStep: CustomAiStep = {
   name: "Analyze Repo",
   description: "Look at the repo",
   icon: "lucide:Sparkles",
+  enabled: false,
   inputFields: [{ name: "repoUrl", type: "string", required: true }],
   outputMode: "structured",
   outputFields: [{ name: "summary", type: "json-object", required: true }],

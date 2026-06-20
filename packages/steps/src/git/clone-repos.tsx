@@ -26,13 +26,7 @@ export const cloneReposStep: StepDefinition<CloneReposConfig> = {
     repos:  { label: "Repos",  widget: "string-list", help: "One owner/repo or URL per row" },
     branch: { label: "Branch", widget: "text",        help: "Optional — defaults to main" },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => {
     const lines = (c.repos ?? "").split("\n").filter(s => s.trim());
     return lines.length ? `${lines.length} repo${lines.length === 1 ? "" : "s"}` : "(no repos)";

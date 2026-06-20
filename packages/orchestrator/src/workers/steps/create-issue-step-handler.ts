@@ -16,7 +16,7 @@ export class CreateIssueStepHandler implements IStepHandler {
     const assignee = typeof input.assignee === "string" ? input.assignee : undefined;
     const projectId = typeof input.projectId === "string" ? input.projectId : undefined;
     const labels = Array.isArray(input.labels) && input.labels.every((l) => typeof l === "string") ? (input.labels as string[]) : undefined;
-    const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const issueProvider = this.deps.issue(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Create issue "${title}"`);
     const result = await issueProvider.createIssue({ title, description, assignee, projectId, labels, sessionId: ctx.workflowInstanceId });
     if (result?.error || !result?.issue) {

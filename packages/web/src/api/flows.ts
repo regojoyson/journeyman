@@ -8,13 +8,13 @@ export interface UnpublishWarning {
   activeTriggers: { webhooks: number; schedules: number };
 }
 
-export async function publishFlow(
+export async function promoteFlow(
   wsId: string,
   workflowId: string,
 ): Promise<{ ok: true; workflow: Workflow; warnings: PublishError[] } | { ok: false; errors: PublishError[] }> {
   try {
     const res = await api<{ workflow: Workflow; warnings?: PublishError[] }>(
-      `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/publish`,
+      `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/promote`,
       { method: "POST", body: "{}" },
     );
     return { ok: true, workflow: res.workflow, warnings: res.warnings ?? [] };
@@ -25,6 +25,41 @@ export async function publishFlow(
     }
     throw e;
   }
+}
+
+export async function rollbackFlow(
+  wsId: string,
+  workflowId: string,
+  versionId: string,
+): Promise<{ ok: true; workflow: Workflow } | { ok: false; errors: PublishError[] }> {
+  try {
+    const res = await api<{ workflow: Workflow }>(
+      `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/rollback`,
+      { method: "POST", body: JSON.stringify({ versionId }) },
+    );
+    return { ok: true, workflow: res.workflow };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 400) {
+      const body = e.body as { errors?: PublishError[] } | null;
+      return { ok: false, errors: body?.errors ?? [] };
+    }
+    throw e;
+  }
+}
+
+export interface WorkflowVersionSummary {
+  id: string;
+  versionNumber: number;
+  createdAt: string;
+  createdByUserId: string | null;
+  isPublished: boolean;
+}
+
+export async function listWorkflowVersions(wsId: string, workflowId: string): Promise<WorkflowVersionSummary[]> {
+  const res = await api<{ versions: WorkflowVersionSummary[] }>(
+    `${wsBase(wsId)}/${encodeURIComponent(workflowId)}/versions`,
+  );
+  return res.versions;
 }
 
 export async function unpublishFlow(
@@ -83,14 +118,14 @@ export async function createFlow(wsId: string, args: {
   name: string;
   description?: string;
   definition: WorkflowGraph;
-}): Promise<{ workflow: Workflow; version: WorkflowVersion }> {
-  return await api<{ workflow: Workflow; version: WorkflowVersion }>(wsBase(wsId), {
+}): Promise<{ workflow: Workflow }> {
+  return await api<{ workflow: Workflow }>(wsBase(wsId), {
     method: "POST", body: JSON.stringify(args),
   });
 }
 
-export async function updateFlowDefinition(wsId: string, workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
-  return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
+export async function updateFlowDefinition(wsId: string, workflowId: string, definition: WorkflowGraph): Promise<{ workflow: Workflow }> {
+  return await api<{ workflow: Workflow }>(
     `${wsBase(wsId)}/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify({ definition }) },
   );
@@ -100,8 +135,8 @@ export async function updateFlowMeta(
   wsId: string,
   workflowId: string,
   meta: { name?: string; description?: string },
-): Promise<{ workflow: Workflow; version: WorkflowVersion | null }> {
-  return await api<{ workflow: Workflow; version: WorkflowVersion | null }>(
+): Promise<{ workflow: Workflow }> {
+  return await api<{ workflow: Workflow }>(
     `${wsBase(wsId)}/${encodeURIComponent(workflowId)}`,
     { method: "PUT", body: JSON.stringify(meta) },
   );

@@ -1,6 +1,6 @@
 import type { Agent, AgentUpdateInput } from "@journeyman/core";
 import { inputCls } from "../../../routes/admin-styles.ts";
-import { SectionShell, FieldLabel } from "./SectionShell.tsx";
+import { SectionShell, FieldLabel, InfoIcon } from "./SectionShell.tsx";
 
 export interface SectionProps {
   a: Agent;
@@ -12,9 +12,9 @@ const numOrUndef = (v: string) => (v ? Number(v) : undefined);
 
 export function BehaviorSection({ a, patch, locked }: SectionProps) {
   return (
-    <SectionShell title="Behavior" description="Execution limits, output mode, and safety overrides.">
+    <SectionShell title="Behavior" description="Max steps stops runaway loops, Timeout caps wall-clock time. Output mode controls what gets stored after each run. Safety limits here override org defaults for this agent only.">
       <div>
-        <FieldLabel>Max steps</FieldLabel>
+        <FieldLabel help="Maximum reasoning steps the agent takes per run">Max steps</FieldLabel>
         <input
           type="number"
           className={inputCls}
@@ -24,7 +24,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
         />
       </div>
       <div>
-        <FieldLabel>Timeout (seconds)</FieldLabel>
+        <FieldLabel help="Run is killed after this many seconds; leave blank for no limit">Timeout (seconds)</FieldLabel>
         <input
           type="number"
           className={inputCls}
@@ -34,7 +34,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
         />
       </div>
       <div>
-        <FieldLabel>Output mode</FieldLabel>
+        <FieldLabel help="How the agent's result is stored after a run">Output mode</FieldLabel>
         <select
           className={inputCls}
           disabled={locked}
@@ -54,7 +54,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
         </p>
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs text-muted-foreground">
-            Max concurrent runs
+            <span className="flex items-center gap-1 mb-1">Max concurrent runs <InfoIcon text="Max simultaneous runs of this agent at once" /></span>
             <input
               type="number"
               className={inputCls}
@@ -64,7 +64,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
             />
           </label>
           <label className="text-xs text-muted-foreground">
-            Daily run cap
+            <span className="flex items-center gap-1 mb-1">Daily run cap <InfoIcon text="Hard limit on runs per calendar day" /></span>
             <input
               type="number"
               className={inputCls}
@@ -74,7 +74,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
             />
           </label>
           <label className="text-xs text-muted-foreground">
-            Budget: max tokens / day
+            <span className="flex items-center gap-1 mb-1">Budget: max tokens / day <InfoIcon text="Total input + output tokens allowed per day" /></span>
             <input
               type="number"
               className={inputCls}
@@ -86,7 +86,7 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
             />
           </label>
           <label className="text-xs text-muted-foreground">
-            Budget: max $ / day
+            <span className="flex items-center gap-1 mb-1">Budget: max $ / day <InfoIcon text="Spend cap in USD per calendar day" /></span>
             <input
               type="number"
               step="0.01"

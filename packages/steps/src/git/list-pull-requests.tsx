@@ -34,13 +34,7 @@ export const listPullRequestsStep: StepDefinition<ListPullRequestsConfig> = {
       ],
     },
   },
-  tabs: { io: "shown", mcp: "hidden", retry: "shown" },
-  slots: [
-    {
-      name: "GITHUB_ACCESS_TOKEN",
-      description: "GitHub PAT with repo and project scopes — used to call the GitHub API.",
-    },
-  ],
+  tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.owner && c.repo ? `${c.owner}/${c.repo} [${c.state}]` : "",
   executor: { kind: "git-provider", method: "listPRs" },
   comingSoon: true,

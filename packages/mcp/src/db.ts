@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { McpBinding, McpInstanceRecord, McpTransport } from "@journeyman/core";
+import type { McpBinding, McpInstanceRecord, McpScope, McpTransport } from "@journeyman/core";
 
 const NAME_RE = /^[a-zA-Z0-9_\- ]{1,64}$/;
 const ENV_RE = /^[A-Z][A-Z0-9_]*$/;
@@ -58,7 +58,8 @@ export function validateUpsert(input: UpsertInput): void {
 function rowToRecord(r: any): McpInstanceRecord {
   return {
     id: r.id,
-    workspaceId: r.workspace_id,
+    scope: r.scope,
+    workspaceId: r.workspace_id ?? null,
     name: r.name,
     description: r.description,
     transport: r.transport,
@@ -108,7 +109,9 @@ export async function listMcpInstances(
   pool: Pool, workspaceId: string,
 ): Promise<McpInstanceRecord[]> {
   const r = await pool.query(
-    `SELECT * FROM jm_mcp_instances WHERE workspace_id = $1 ORDER BY name`,
+    `SELECT * FROM jm_mcp_instances
+      WHERE workspace_id = $1 OR scope = 'global'
+      ORDER BY name`,
     [workspaceId],
   );
   return r.rows.map(rowToRecord);
@@ -118,7 +121,9 @@ export async function getMcpInstance(
   pool: Pool, id: string, workspaceId: string,
 ): Promise<McpInstanceRecord | null> {
   const r = await pool.query(
-    `SELECT * FROM jm_mcp_instances WHERE id = $1 AND workspace_id = $2`,
+    `SELECT * FROM jm_mcp_instances
+      WHERE id = $1
+        AND (workspace_id = $2 OR scope = 'global')`,
     [id, workspaceId],
   );
   return r.rows[0] ? rowToRecord(r.rows[0]) : null;
@@ -184,15 +189,16 @@ export interface VisibleRow {
   name: string;
   description: string | null;
   enabled: boolean;
+  scope: McpScope;
 }
 
 export async function listVisibleMcpInstances(
   pool: Pool, workspaceId: string,
 ): Promise<VisibleRow[]> {
   const r = await pool.query(
-    `SELECT id, name, description, enabled
+    `SELECT id, name, description, enabled, scope
        FROM jm_mcp_instances
-      WHERE workspace_id = $1
+      WHERE (workspace_id = $1 OR scope = 'global')
         AND enabled = true
       ORDER BY name`,
     [workspaceId],
@@ -202,6 +208,7 @@ export async function listVisibleMcpInstances(
     name: row.name,
     description: row.description,
     enabled: row.enabled,
+    scope: row.scope,
   }));
 }
 
@@ -212,8 +219,8 @@ export async function fetchInstancesByIds(
   const r = await pool.query(
     `SELECT * FROM jm_mcp_instances
       WHERE id = ANY($1::uuid[])
-        AND workspace_id = $2
-        AND enabled = true`,
+        AND enabled = true
+        AND (workspace_id = $2 OR scope = 'global')`,
     [ids, workspaceId],
   );
   return r.rows.map(rowToRecord);

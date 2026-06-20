@@ -17,6 +17,8 @@ import { useUpstreamSources, collectCustomStepIds } from "./use-upstream-sources
 import { useStepCatalog } from "../catalogs/use-step-catalog.ts";
 import { useCustomStepDefs } from "../catalogs/use-custom-step-defs.ts";
 import { useNodeWarningsByKey } from "../state/validation-context.tsx";
+import { ConnectionPicker } from "./ConnectionPicker.tsx";
+import { RepoPicker } from "./RepoPicker.tsx";
 
 export interface ConfigTabProps {
   flow: WorkflowGraph;
@@ -302,6 +304,25 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           onChange={e => onChange({ ...node, displayName: e.target.value })}
         />
       </div>
+
+      {catalogEntry?.connectionCategory && (
+        <>
+          <ConnectionPicker
+            category={catalogEntry.connectionCategory}
+            value={node.connectionId}
+            onChange={connectionId => onChange({ ...node, connectionId })}
+            readOnly={readOnly}
+          />
+          {node.stepType === "clone-repos" && node.connectionId && (
+            <RepoPicker
+              connectionId={node.connectionId}
+              value={((config.repos as string | undefined) ?? "").split("\n").filter(Boolean)}
+              onChange={urls => onChange({ ...node, config: { ...config, repos: urls.join("\n") } })}
+              readOnly={readOnly}
+            />
+          )}
+        </>
+      )}
 
       {definition && (
         <ExecutorBlock

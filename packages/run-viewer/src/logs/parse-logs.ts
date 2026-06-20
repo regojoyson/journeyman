@@ -42,8 +42,17 @@ function formatWorkflowEvent(ev: WorkflowInstanceEvent): string {
       return "▶ step started";
     case "step.completed":
       return "✅ step completed";
-    case "step.failed":
-      return `❌ step failed${typeof p.error === "string" ? `: ${p.error}` : ""}`;
+    case "step.failed": {
+      const reason = typeof p.reason === "string" ? p.reason : null;
+      const msg =
+        typeof (p.error as any)?.message === "string"
+          ? (p.error as any).message
+          : typeof p.error === "string"
+          ? p.error
+          : null;
+      const detail = [reason, msg].filter(Boolean).join(" — ");
+      return `❌ step failed${detail ? `: ${detail}` : ""}`;
+    }
     case "step.retrying":
       return `↻ step retrying${typeof p.attempt === "number" ? ` (attempt ${p.attempt})` : ""}`;
     case "step.skipped":

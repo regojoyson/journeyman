@@ -90,9 +90,9 @@ Placeholder panel:
 | Component | Location | Purpose |
 |-----------|---------|---------|
 | `RunSectionNav` | `packages/web/src/components/agents/sections/RunSectionNav.tsx` | Vertical nav with sections: Details, Logs, Tokens & Cost |
-| `RunDetailsPanel` | inline in `AgentRunDetailPage.tsx` or extract if long | Key-value grid |
-| `RunLogsPanel` | inline in `AgentRunDetailPage.tsx` | Wraps `WorkflowLogsPanel` |
-| `RunTokensPanel` | inline in `AgentRunDetailPage.tsx` | Placeholder |
+| `RunDetailsPanel` | inline in `AgentRunDetailPage.tsx` | Key-value grid (simple enough to stay inline) |
+| `RunLogsPanel` | inline in `AgentRunDetailPage.tsx` | Wraps `WorkflowLogsPanel` (one component call) |
+| `RunTokensPanel` | inline in `AgentRunDetailPage.tsx` | Placeholder (purely presentational, ~15 lines) |
 
 `RunSectionNav` follows the exact same pattern as `SectionNav` in `packages/web/src/components/agents/sections/SectionNav.tsx` — same Tailwind classes, same active/hover states.
 

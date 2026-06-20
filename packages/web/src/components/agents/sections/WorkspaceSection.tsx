@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Agent, AgentUpdateInput, Connection, RepoSummary } from "@journeyman/core";
 import { connectionsApi } from "../../../api/connections.ts";
+import { sandboxesApi, type Sandbox } from "../../../api/sandboxes.ts";
 import { CodingModelSelect } from "../../CodingModelSelect.tsx";
 import { inputCls, btnSecondary } from "../../../routes/admin-styles.ts";
 import { SectionShell, FieldLabel } from "./SectionShell.tsx";
@@ -10,14 +11,20 @@ export interface SectionProps {
   patch: (p: AgentUpdateInput) => void;
   locked: boolean;
   wsId: string;
+  orgId: string;
 }
 
-export function WorkspaceSection({ a, patch, locked, wsId }: SectionProps) {
+export function WorkspaceSection({ a, patch, locked, wsId, orgId }: SectionProps) {
+  const [sandboxes, setSandboxes] = useState<Sandbox[]>([]);
   const [gitConnections, setGitConnections] = useState<Connection[]>([]);
   const [repoConnectionId, setRepoConnectionId] = useState<string>(a.repoSelections[0]?.connectionId ?? "");
   const [browsedRepos, setBrowsedRepos] = useState<RepoSummary[] | null>(null);
   const [browseError, setBrowseError] = useState<string | null>(null);
   const browseRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    sandboxesApi.listVisible(orgId).then(setSandboxes).catch(() => setSandboxes([]));
+  }, [orgId]);
 
   useEffect(() => {
     connectionsApi.list(wsId, "git").then(setGitConnections).catch(() => setGitConnections([]));
@@ -74,9 +81,9 @@ export function WorkspaceSection({ a, patch, locked, wsId }: SectionProps) {
   };
 
   return (
-    <SectionShell title="Workspace & Model" description="Where the agent runs and which model it uses.">
+    <SectionShell title="Workspace & Model" description="Choose the AI provider, model, and repositories the agent can access. Workspace tools (bash, file read/write) require at least one repo to be connected.">
       <div>
-        <FieldLabel>Provider</FieldLabel>
+        <FieldLabel help="AI coding engine that runs this agent">Provider</FieldLabel>
         <select
           className={inputCls}
           disabled={locked}
@@ -94,8 +101,25 @@ export function WorkspaceSection({ a, patch, locked, wsId }: SectionProps) {
         <CodingModelSelect provider={a.provider} value={a.model} onChange={(m) => patch({ model: m })} disabled={locked} />
       </div>
 
+      <div>
+        <FieldLabel>Sandbox</FieldLabel>
+        <select
+          className={inputCls}
+          disabled={locked}
+          value={a.sandboxId ?? ""}
+          onChange={(e) => patch({ sandboxId: e.target.value || undefined })}
+        >
+          <option value="">— auto (system default) —</option>
+          {sandboxes.filter((s) => s.enabled).map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} · {s.type}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div ref={browseRef}>
-        <FieldLabel>Git connection</FieldLabel>
+        <FieldLabel help="OAuth connection to your Git host, used to clone repos">Git connection</FieldLabel>
         <div className="flex gap-2">
           <select
             className={inputCls}

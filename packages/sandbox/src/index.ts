@@ -38,7 +38,7 @@ export { pruneBuiltImages } from "./backends/docker/prune-built-images.ts";
 export { runBuildTick, startBuildLoop } from "./build/build-loop.ts";
 export type { BuildTickDeps, StartBuildLoopDeps } from "./build/build-loop.ts";
 export {
-  markImagePending, clearImageState, claimPendingBuild,
+  markImagePending, markImagePendingIfBuildable, clearImageState, claimPendingBuild,
   renewBuildLease, commitBuildResult, failBuild, applyImageStateOnSave,
   listReadyImageRefs, listDockerSandboxConnections,
 } from "./db.ts";

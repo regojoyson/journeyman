@@ -129,7 +129,85 @@ describe("WorkerHarness.processOnce — durations", () => {
   });
 });
 
+describe("WorkerHarness.processOnce — ImageNotReadyError in-process retry", () => {
+  beforeEach(() => { process.env.WORKER_IMAGE_RETRY_DELAY_MS = "0"; });
+  afterEach(() => { delete process.env.WORKER_IMAGE_RETRY_DELAY_MS; });
+
+  it("retries ensureWorkspace and succeeds when image becomes ready on second attempt", async () => {
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask());
+    deps.registry.get.mockReturnValue({ run: vi.fn().mockResolvedValue({ kind: "success", output: {} }), requiresWorkspace: true });
+    const err = Object.assign(new Error("image not ready"), { name: "ImageNotReadyError" });
+    deps.ensureWorkspace
+      .mockRejectedValueOnce(err)   // first attempt fails
+      .mockResolvedValue({           // second attempt succeeds
+        env: { exec: vi.fn().mockResolvedValue({ ok: true }), materialize: vi.fn().mockResolvedValue(undefined) },
+        provisioned: { runId: "wf-1", type: "local", handle: "local:wf-1", workspaceDir: "/tmp/ws" },
+      });
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    expect(deps.ensureWorkspace).toHaveBeenCalledTimes(2);
+    const completed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.completed");
+    expect(completed).toBeDefined();
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({ status: "COMPLETED" }));
+  });
+
+  it("emits a step.log on each wait and fails after all retries exhausted", async () => {
+    process.env.WORKER_IMAGE_RETRY_ATTEMPTS = "2";
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask());
+    deps.registry.get.mockReturnValue({ run: vi.fn(), requiresWorkspace: true });
+    const err = Object.assign(new Error("still building"), { name: "ImageNotReadyError" });
+    deps.ensureWorkspace.mockRejectedValue(err);
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    // 3 total calls: 1 initial + 2 retries
+    expect(deps.ensureWorkspace).toHaveBeenCalledTimes(3);
+    const waitLogs = deps.events.append.mock.calls.filter(
+      (c: any) => c[0].eventType === "step.log" && String(c[0].payload?.line).includes("waiting for image"),
+    );
+    expect(waitLogs.length).toBe(2);
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({ status: "FAILED" }));
+    delete process.env.WORKER_IMAGE_RETRY_ATTEMPTS;
+  });
+});
+
+describe("WorkerHarness.processOnce — image wait honors the step deadline", () => {
+  it("aborts the image wait when a custom timeoutSeconds elapses (not after all retries)", async () => {
+    // Long retry delay so the test would hang if the wait ignored the deadline.
+    process.env.WORKER_IMAGE_RETRY_DELAY_MS = "10000";
+    const deps: any = makeDeps();
+    // 0.05s step deadline — fires during the first image wait.
+    deps.client.pollTask.mockResolvedValue(
+      fakeTask({ inputData: { workflowInstanceId: "wf-1", startedByUserId: "u-1", startedByOrgId: "o-1", timeoutSeconds: 0.05 } }),
+    );
+    deps.registry.get.mockReturnValue({ run: vi.fn(), requiresWorkspace: true });
+    const err = Object.assign(new Error("still building"), { name: "ImageNotReadyError" });
+    deps.ensureWorkspace.mockRejectedValue(err);
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    // Should have bailed during the first wait, not run all 10 default attempts.
+    expect(deps.ensureWorkspace.mock.calls.length).toBeLessThan(3);
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({
+      status: "FAILED",
+      reasonForIncompletion: expect.stringContaining("timeout"),
+    }));
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
+    expect(failed[0].payload).toMatchObject({ reason: "timeout" });
+    delete process.env.WORKER_IMAGE_RETRY_DELAY_MS;
+  });
+});
+
 describe("WorkerHarness.processOnce — ImageNotReadyError fast-fail", () => {
+  beforeEach(() => { process.env.WORKER_IMAGE_RETRY_ATTEMPTS = "0"; process.env.WORKER_IMAGE_RETRY_DELAY_MS = "0"; });
+  afterEach(() => { delete process.env.WORKER_IMAGE_RETRY_ATTEMPTS; delete process.env.WORKER_IMAGE_RETRY_DELAY_MS; });
+
   it("calls completeTask(FAILED) immediately when ensureWorkspace throws ImageNotReadyError", async () => {
     const deps: any = makeDeps();
     deps.client.pollTask.mockResolvedValue(fakeTask());
@@ -146,6 +224,26 @@ describe("WorkerHarness.processOnce — ImageNotReadyError fast-fail", () => {
     }));
     const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
     expect(failed[0].payload).toMatchObject({ reason: "image_not_ready" });
+  });
+
+  it("emits step.log before step.failed for ImageNotReadyError", async () => {
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask());
+    deps.registry.get.mockReturnValue({ run: vi.fn(), requiresWorkspace: true });
+    const err = Object.assign(new Error("fingerprint changed"), { name: "ImageNotReadyError" });
+    deps.ensureWorkspace.mockRejectedValue(err);
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    const allCalls = deps.events.append.mock.calls.map((c: any) => c[0].eventType);
+    const logIdx = allCalls.indexOf("step.log");
+    const failedIdx = allCalls.indexOf("step.failed");
+    expect(logIdx).toBeGreaterThanOrEqual(0);
+    expect(logIdx).toBeLessThan(failedIdx);
+    const logLine = deps.events.append.mock.calls[logIdx][0].payload.line as string;
+    expect(logLine).toContain("image not ready");
+    expect(logLine).toContain("retrying");
   });
 });
 
@@ -171,6 +269,34 @@ describe("WorkerHarness.processOnce — default step timeout", () => {
     expect(failed).toBeDefined();
     expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({
       status: "FAILED",
+    }));
+  });
+
+  it("emits step.log with ⏱ prefix and step.failed with reason timeout on timeout", async () => {
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask());
+    deps.registry.get.mockReturnValue({
+      run: (_input: any, ctx: any) => new Promise<never>((_, reject) => {
+        ctx.signal.addEventListener("abort", () => reject(ctx.signal.reason), { once: true });
+      }),
+    });
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    const logCall = deps.events.append.mock.calls.find(
+      (c: any) => c[0].eventType === "step.log" && String(c[0].payload?.line).includes("timed out"),
+    );
+    expect(logCall).toBeDefined();
+    expect(logCall[0].payload.line).toContain("⏱");
+    expect(logCall[0].payload.line).toContain("1s");
+
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
+    expect(failed[0].payload).toMatchObject({ reason: "timeout" });
+
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({
+      status: "FAILED",
+      reasonForIncompletion: expect.stringContaining("timeout"),
     }));
   });
 });

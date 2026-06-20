@@ -83,7 +83,7 @@ export class OpenPullRequestStepHandler implements IStepHandler {
       };
     }
 
-    const git = this.deps.git(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const git = this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
 
     const pullRequests: Array<{
       id: string; url: string; number: number;

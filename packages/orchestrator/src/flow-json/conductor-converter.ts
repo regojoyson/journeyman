@@ -12,6 +12,7 @@ import { applyWorkflowDefaults } from "./apply-flow-defaults.ts";
 import { dominators } from "./reachability.ts";
 import { validateRefShapeAgainst, labelNode, type CatalogShapeEntry, type CustomStepShapeEntry } from "./validate-ref-shape.ts";
 import { compileSwitchExpression } from "./jsonlogic-to-js.ts";
+import { resolveConductorTaskTimeoutSeconds } from "../workers/step-timeouts.ts";
 
 /**
  * Read-time migration of v1 workflow JSON (with a `start` node and inputs nested
@@ -360,6 +361,9 @@ class ConvertCtx {
     const { resolved: resolvedNode, sources: defaultSources } = applyWorkflowDefaults(node, this.flow.defaults);
     const r = resolvedNode.retry ?? {};
     const enabled = r.enabled === true;
+    const taskTimeoutSeconds = resolveConductorTaskTimeoutSeconds(
+      typeof r.timeoutSeconds === "number" ? { stepTimeoutSeconds: r.timeoutSeconds } : {},
+    );
 
     const task: SimpleTask = {
       type: "SIMPLE",
@@ -382,6 +386,7 @@ class ConvertCtx {
           secretBindings: bindings,
           ...(resolvedNode.model ? { model: resolvedNode.model } : {}),
           ...(resolvedNode.sandboxId ? { sandboxId: resolvedNode.sandboxId } : {}),
+          ...(resolvedNode.connectionId ? { connectionId: resolvedNode.connectionId } : {}),
           _flowDefaultSources: defaultSources,
           _kindProviders: kindProviders,
           workflowInstanceId: "${workflow.input.workflowInstanceId}",
@@ -395,8 +400,12 @@ class ConvertCtx {
       retryLogic: enabled ? mapBackoff(r.backoff ?? "exponential") : "FIXED",
       retryDelaySeconds: enabled ? (r.backoffSeconds ?? 5) : 0,
       backoffScaleFactor: enabled ? (r.backoffMultiplier ?? 2) : 1,
-      timeoutSeconds: r.timeoutSeconds ?? 600,
-      responseTimeoutSeconds: r.timeoutSeconds ?? 600,
+      // Conductor is a backstop, not the primary killer. The worker enforces the
+      // real per-step deadline and may additionally wait for a sandbox image to
+      // build; this sizes the engine task timeout to outlast both so a slow first
+      // build (or a long step) can't be TIMED_OUT out from under the worker.
+      timeoutSeconds: taskTimeoutSeconds,
+      responseTimeoutSeconds: taskTimeoutSeconds,
     };
     return { tasks: [task], nextNodeId: this.successor(resolvedNode.id) };
   }

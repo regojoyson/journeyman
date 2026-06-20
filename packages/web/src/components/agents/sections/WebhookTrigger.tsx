@@ -1,9 +1,11 @@
-import type { AgentInputField } from "@journeyman/core";
+import { useState } from "react";
+import type { AgentInputField, Webhook } from "@journeyman/core";
 import { useWorkspaceWebhooks } from "../../../lib/useWorkspaceWebhooks.ts";
 import { ListensForPicker } from "../../../lib/ListensForPicker.tsx";
 import { AcceptIfBuilder } from "../../../lib/AcceptIfBuilder.tsx";
 import { pathsFromSchema } from "../../../lib/pathsFromSchema.ts";
 import { inputCls } from "../../../routes/admin-styles.ts";
+import { WebhookCreateWizard } from "../../../routes/webhooks/WebhookCreateWizard.tsx";
 
 interface WebhookTriggerProps {
   wsId: string;
@@ -31,7 +33,8 @@ export function WebhookTrigger({
   locked,
   onChange,
 }: WebhookTriggerProps) {
-  const { webhooks, loading } = useWorkspaceWebhooks(wsId);
+  const { webhooks, loading, refresh } = useWorkspaceWebhooks(wsId);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const picked = webhooks.find((w) => w.id === webhookId);
   const knownEventTypes = picked?.knownEventTypes ?? [];
   const knownPaths = pathsFromSchema(picked?.payloadSchema);
@@ -48,27 +51,57 @@ export function WebhookTrigger({
         {loading ? (
           <div className="text-xs text-muted-foreground italic">Loading webhooks…</div>
         ) : webhooks.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No webhooks in this workspace yet.{" "}
-            <a href="/webhooks" className="underline hover:text-foreground">
-              Create one
-            </a>{" "}
-            to use it as a trigger.
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">No webhooks in this workspace yet.</p>
+            {!showCreateWizard && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setShowCreateWizard(true)}
+                className="text-xs underline hover:text-foreground text-muted-foreground"
+              >
+                + Create new webhook
+              </button>
+            )}
+          </div>
         ) : (
-          <select
-            className={inputCls}
-            disabled={locked}
-            value={webhookId}
-            onChange={(e) => emit({ webhookId: e.target.value, listensFor: [], filters: undefined })}
-          >
-            <option value="">— pick a webhook —</option>
-            {webhooks.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.preset})
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              className={inputCls}
+              disabled={locked}
+              value={webhookId}
+              onChange={(e) => emit({ webhookId: e.target.value, listensFor: [], filters: undefined })}
+            >
+              <option value="">— pick a webhook —</option>
+              {webhooks.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({w.preset})
+                </option>
+              ))}
+            </select>
+            {!locked && !showCreateWizard && (
+              <button
+                type="button"
+                onClick={() => setShowCreateWizard(true)}
+                className="text-xs whitespace-nowrap underline hover:text-foreground text-muted-foreground"
+              >
+                + New
+              </button>
+            )}
+          </div>
+        )}
+        {showCreateWizard && (
+          <div className="mt-3 border border-border rounded-lg p-4">
+            <WebhookCreateWizard
+              wsId={wsId}
+              onCancel={() => setShowCreateWizard(false)}
+              onCreated={(w: Webhook) => {
+                setShowCreateWizard(false);
+                refresh();
+                emit({ webhookId: w.id, listensFor: [], filters: undefined });
+              }}
+            />
+          </div>
         )}
       </div>
 

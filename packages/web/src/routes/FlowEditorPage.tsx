@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
 import type { Workflow, WorkflowGraph } from "@journeyman/core";
-import { getFlow, getCurrentWorkflowVersion, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, publishFlow, unpublishFlow, deleteFlow, type UnpublishWarning } from "../api/flows.ts";
+import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, type UnpublishWarning } from "../api/flows.ts";
+import { VersionHistoryPanel } from "../components/VersionHistoryPanel.tsx";
 import { workflowCapabilities } from "../lib/workflow-capabilities.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
 import { builtInSteps } from "@journeyman/steps";
@@ -22,6 +23,7 @@ export function FlowEditorPage() {
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { activeOrgId } = useAuth();
   const { can } = useWorkspace();
   const customStepDefs = useCustomStepPaletteEntries(wsId);
@@ -40,46 +42,12 @@ export function FlowEditorPage() {
     enabled: !!id,
   });
 
-  const versionQ = useQuery({
-    queryKey: ["flow-version-current", id],
-    queryFn: async () => {
-      // eslint-disable-next-line no-console
-      console.log("[FlowEditorPage] fetching current version", { id });
-      const result = await getCurrentWorkflowVersion(wsId, id!);
-      // eslint-disable-next-line no-console
-      console.log("[FlowEditorPage] current version loaded", {
-        id,
-        nodes: result.definition?.nodes?.length,
-        edges: result.definition?.edges?.length,
-      });
-      return result;
-    },
-    enabled: !!id && !!flowQ.data,
-  });
-
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[FlowEditorPage] graph-init effect", {
-      id, hasGraph: !!graph,
-      versionLoaded: !!versionQ.data,
-      flowLoaded: !!flowQ.data,
-      flowLoading: flowQ.isLoading,
-      versionLoading: versionQ.isLoading,
-    });
     if (!id || graph) return;
     const cached = qc.getQueryData<WorkflowGraph>(["flow-graph", id]);
-    if (cached) {
-      // eslint-disable-next-line no-console
-      console.log("[FlowEditorPage] restoring graph from query cache", { id });
-      setGraph(cached);
-      return;
-    }
-    if (versionQ.data) {
-      // eslint-disable-next-line no-console
-      console.log("[FlowEditorPage] setting graph from version data", { id });
-      setGraph(versionQ.data.definition);
-    }
-  }, [id, graph, qc, versionQ.data]);
+    if (cached) { setGraph(cached); return; }
+    if (flowQ.data) setGraph(flowQ.data.draftDefinition);
+  }, [id, graph, qc, flowQ.data]);
 
   useEffect(() => {
     if (!id) return;
@@ -88,14 +56,14 @@ export function FlowEditorPage() {
 
   const saveM = useMutation({
     mutationFn: (next: WorkflowGraph) => updateFlowDefinition(wsId, id!, next),
-    onSuccess: (_, next) => {
+    onSuccess: (res, next) => {
       qc.setQueryData(["flow-graph", id], next);
-      qc.invalidateQueries({ queryKey: ["flow-version-current", id] });
+      qc.setQueryData(["flow", id], res.workflow);
       setDirty(false);
-      setSaveToast({ kind: "success", message: "Flow saved." });
+      setSaveToast({ kind: "success", message: "Draft saved." });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "Could not save the flow.";
+      const msg = err instanceof Error ? err.message : "Could not save the draft.";
       setSaveToast({ kind: "error", message: msg });
     },
   });
@@ -114,13 +82,7 @@ export function FlowEditorPage() {
   });
 
   if (!id) { navigate(`/workspaces/${wsId}/workflows`); return null; }
-  if (flowQ.isLoading || versionQ.isLoading || !graph) {
-    // eslint-disable-next-line no-console
-    console.log("[FlowEditorPage] still loading", {
-      flowLoading: flowQ.isLoading, versionLoading: versionQ.isLoading,
-      flowStatus: flowQ.status, versionStatus: versionQ.status,
-      hasGraph: !!graph,
-    });
+  if (flowQ.isLoading || !graph) {
     return <div style={{ padding: 24, color: "rgb(var(--color-text-muted) / 1)" }}>Loading editor…</div>;
   }
   if (flowQ.isError || !flowQ.data) {
@@ -131,14 +93,27 @@ export function FlowEditorPage() {
   const caps = workflowCapabilities({ can, status: flow.status });
 
   const onPublish = async () => {
-    const res = await publishFlow(wsId, flow.id);
+    const res = await promoteFlow(wsId, flow.id);
     if (res.ok) {
       qc.setQueryData(["flow", id], res.workflow);
       qc.invalidateQueries({ queryKey: ["flows"] });
-      setSaveToast({ kind: "success", message: "Flow published." });
+      qc.invalidateQueries({ queryKey: ["flow-versions", id] });
+      setSaveToast({ kind: "success", message: "Promoted — this version is now live." });
       return { ok: true as const };
     }
     return { ok: false as const, serverErrors: res.errors };
+  };
+
+  const onRollback = async (versionId: string) => {
+    const res = await rollbackFlow(wsId, flow.id, versionId);
+    if (res.ok) {
+      qc.setQueryData(["flow", id], res.workflow);
+      qc.invalidateQueries({ queryKey: ["flows"] });
+      qc.invalidateQueries({ queryKey: ["flow-versions", id] });
+      setSaveToast({ kind: "success", message: "Rolled back — the selected version is now live." });
+    } else {
+      setSaveToast({ kind: "error", message: res.errors[0]?.message ?? "Rollback failed." });
+    }
   };
 
   const onUnpublish = async (confirm: boolean): Promise<UnpublishWarning | null> => {
@@ -164,7 +139,7 @@ export function FlowEditorPage() {
 
   return (
     <>
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0, position: "relative" }}>
         {triggers && triggers.length > 0 ? (
           <div className="jm-trigger-summary" style={{ padding: "6px 12px", fontSize: 12, color: "rgb(var(--color-border-strong) / 1)", flex: "0 0 auto" }}>
             Triggered by:{" "}
@@ -215,6 +190,23 @@ export function FlowEditorPage() {
             exportEnabled={caps.canExport}
           />
         </div>
+        {caps.canPublish && (
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((v) => !v)}
+            style={{ position: "absolute", top: 8, right: 12, zIndex: 5 }}
+          >
+            {historyOpen ? "Hide history" : "Version history"}
+          </button>
+        )}
+        {historyOpen && (
+          <VersionHistoryPanel
+            wsId={wsId}
+            workflowId={flow.id}
+            onRollback={onRollback}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
       </div>
       {saveToast && (
         <StatusToast

@@ -18,8 +18,8 @@ export function registerFormRoutes(app: FastifyInstance, c: Composition): void {
 
     const out: Array<{ workflowId: string; name: string; title: string }> = [];
     for (const wf of workflows) {
-      if (wf.status !== "ready" || !wf.currentVersionId) continue;
-      const v = await c.workflowVersions.getById(wf.currentVersionId);
+      if (wf.status !== "ready" || !wf.publishedVersionId) continue;
+      const v = await c.workflowVersions.getById(wf.publishedVersionId);
       if (!v) continue;
       const schema = resolveFormSchema(wf, v);
       if (!schema) continue;
@@ -32,10 +32,10 @@ export function registerFormRoutes(app: FastifyInstance, c: Composition): void {
     const { id } = req.params as { id: string };
     const wf = await c.workflows.getById(id);
     if (!wf) { reply.code(404); return { error: "not_found" }; }
-    if (wf.status !== "ready" || !wf.currentVersionId) {
+    if (wf.status !== "ready" || !wf.publishedVersionId) {
       reply.code(409); return { error: "workflow_not_ready" };
     }
-    const v = await c.workflowVersions.getById(wf.currentVersionId);
+    const v = await c.workflowVersions.getById(wf.publishedVersionId);
     if (!v) { reply.code(500); return { error: "version_missing" }; }
     const schema = resolveFormSchema(wf, v);
     if (!schema) { reply.code(404); return { error: "no_human_trigger" }; }
@@ -49,10 +49,10 @@ export function registerFormRoutes(app: FastifyInstance, c: Composition): void {
 
     const wf = await c.workflows.getById(id);
     if (!wf) { reply.code(404); return { error: "not_found" }; }
-    if (wf.status !== "ready" || !wf.currentVersionId) {
+    if (wf.status !== "ready" || !wf.publishedVersionId) {
       reply.code(409); return { error: "workflow_not_ready" };
     }
-    const v = await c.workflowVersions.getById(wf.currentVersionId);
+    const v = await c.workflowVersions.getById(wf.publishedVersionId);
     if (!v) { reply.code(500); return { error: "version_missing" }; }
 
     try {

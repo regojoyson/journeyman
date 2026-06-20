@@ -13,7 +13,7 @@ export class CommentOnIssueStepHandler implements IStepHandler {
     if (!ref || !body) {
       return { kind: "failure", failure: { errorClass: "InvalidInput", message: "add-issue-comment requires `ref` and `body`", retryable: false } };
     }
-    const issueProvider = this.deps.issue(typeof input.provider === "string" ? input.provider : undefined, ctx.env);
+    const issueProvider = this.deps.issue(ctx.connection?.provider, ctx.env, ctx.connection);
     ctx.log(`Add comment to issue ${ref}`);
     const result = await issueProvider.addComment({ id: ref, body, sessionId: ctx.workflowInstanceId });
     if (result?.error) {

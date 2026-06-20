@@ -14,6 +14,7 @@ import type { EnsureWorkspaceResult } from "../sandbox/ensure-workspace.ts";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
 import { startHeartbeat } from "./heartbeat.ts";
+import { resolveDefaultStepTimeoutSeconds, resolveImageRetryConfig } from "./step-timeouts.ts";
 
 const baseLog = createLogger("orchestrator:worker");
 
@@ -158,7 +159,7 @@ export class WorkerHarness {
     const abort = new AbortController();
     // Per-step timeout: agents (and any step) may set `timeoutSeconds` in node config; auto-abort when it elapses.
     // Falls back to WORKER_DEFAULT_STEP_TIMEOUT_S (default 1800s) so every step has a safety net.
-    const defaultTimeoutSeconds = Number(process.env.WORKER_DEFAULT_STEP_TIMEOUT_S ?? 1800);
+    const defaultTimeoutSeconds = resolveDefaultStepTimeoutSeconds();
     const timeoutSeconds =
       typeof (stepInput as { timeoutSeconds?: unknown }).timeoutSeconds === "number"
         ? (stepInput as { timeoutSeconds: number }).timeoutSeconds
@@ -394,17 +395,40 @@ export class WorkerHarness {
             ? (stepInput as { agentLogLevel: string }).agentLogLevel
             : "light";
         const provisionVerbose = provisionLogLevel === "medium" || provisionLogLevel === "all";
-        const { env: wsEnv, provisioned } = await this.deps.ensureWorkspace({
-          runId: workflowInstanceId,
-          sandboxId,
-          userId,
-          orgId,
-          log: (line: string) =>
-            this.deps.events
-              .append({ workflowInstanceId, nodeId, eventType: "step.log", payload: { line } })
-              .catch((err) => rlog.error({ err }, "provision log emit failed")),
-          verbose: provisionVerbose,
-        });
+        const provisionLog = (line: string) =>
+          this.deps.events
+            .append({ workflowInstanceId, nodeId, eventType: "step.log", payload: { line } })
+            .catch((err) => rlog.error({ err }, "provision log emit failed"));
+
+        // Retry workspace provisioning in-process when the sandbox image is still building.
+        // This works regardless of whether Conductor retries are configured on the step.
+        const { attempts: imageRetryAttempts, delayMs: imageRetryDelayMs } = resolveImageRetryConfig();
+        let imageAttempt = 0;
+        let wsResult: Awaited<ReturnType<typeof this.deps.ensureWorkspace>>;
+        while (true) {
+          // Honor the step deadline (incl. a custom timeoutSeconds) while waiting for
+          // an image — otherwise a short timeout would be silently ignored until the
+          // build finishes. Throwing the abort reason routes to the timeout branch.
+          if (abort.signal.aborted) throw abort.signal.reason;
+          try {
+            wsResult = await this.deps.ensureWorkspace({
+              runId: workflowInstanceId, sandboxId, userId, orgId,
+              log: provisionLog, verbose: provisionVerbose,
+            });
+            break;
+          } catch (err: any) {
+            if (err?.name === "ImageNotReadyError" && imageAttempt < imageRetryAttempts) {
+              imageAttempt++;
+              const msg = `⏳ waiting for image to be ready (attempt ${imageAttempt}/${imageRetryAttempts})…`;
+              rlog.info({ sandboxId, attempt: imageAttempt }, "waiting for image");
+              await provisionLog(msg);
+              await delayOrAbort(imageRetryDelayMs, abort.signal);
+              continue;
+            }
+            throw err;
+          }
+        }
+        const { env: wsEnv, provisioned } = wsResult!;
         workspaceDir = provisioned.workspaceDir;
         // Local runs: leave exec undefined — handlers run in-process.
         // Non-local (docker, etc.): wire exec so operations go into the container.
@@ -463,6 +487,10 @@ export class WorkerHarness {
       const durationMs = Date.now() - startedAt;
       if (err?.name === "ImageNotReadyError") {
         rlog.info({ message: err.message, durationMs }, "image not ready; failing fast for Conductor retry");
+        await this.deps.events.append({
+          workflowInstanceId, nodeId, eventType: "step.log",
+          payload: { line: `⚠ image not ready: ${err.message}; retrying` },
+        }).catch(() => {});
         await appendStepEvent(this.deps.events, ctx, "step.failed", {
           reason: "image_not_ready",
           error: serializeError(err),
@@ -473,6 +501,25 @@ export class WorkerHarness {
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED",
           reasonForIncompletion: `image_not_ready: ${err.message}`,
+        });
+        return;
+      }
+      if (err?.name === "TimeoutError") {
+        rlog.warn({ durationMs, timeoutSeconds }, "step timed out");
+        await this.deps.events.append({
+          workflowInstanceId, nodeId, eventType: "step.log",
+          payload: { line: `⏱ step timed out after ${timeoutSeconds}s` },
+        }).catch(() => {});
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
+          reason: "timeout",
+          error: serializeError(err),
+          tail: tail.drain(),
+          durationMs,
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
+          status: "FAILED",
+          reasonForIncompletion: `timeout: step timed out after ${timeoutSeconds}s`,
         });
         return;
       }
@@ -508,6 +555,20 @@ export class WorkerHarness {
       stopHeartbeat();
     }
   }
+}
+
+/**
+ * Sleep `ms`, but reject with the abort reason if `signal` aborts first. Used to
+ * make the in-process image-build wait interruptible by the step deadline (the
+ * per-step `timeoutSeconds` or the worker default), so a customized short timeout
+ * isn't ignored while an image is still building.
+ */
+function delayOrAbort(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => { clearTimeout(t); reject(signal.reason); }, { once: true });
+  });
 }
 
 function redactStepInputForEvent(stepInput: Record<string, unknown>): Record<string, unknown> {

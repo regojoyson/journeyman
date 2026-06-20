@@ -84,7 +84,7 @@ Each section passes an updated `description` to `SectionShell`.
 
 | Section | `description` value |
 |---|---|
-| **Instructions & Inputs** | `"Write what this agent should do each run. Use {{variable}} placeholders for values passed in at runtime — they're auto-detected as inputs below."` |
+| **Instructions & Inputs** | `"Describe what this agent should do on each run. Be specific — the more context you give, the better the results."` |
 | **Workspace & Model** | `"Choose the AI provider, model, and repositories the agent can access. Workspace tools (bash, file read/write) require at least one repo to be connected."` |
 | **Triggers** | `"Define what starts a run. Triggers can be combined — schedule + API at the same time. Webhook triggers fire when an external system sends a matching event."` |
 | **Behavior** | `"Max steps stops runaway loops, Timeout caps wall-clock time. Output mode controls what gets stored after each run. Safety limits here override org defaults for this agent only."` |
