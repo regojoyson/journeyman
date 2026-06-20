@@ -110,6 +110,30 @@ const result = await coding.runCustomPrompt({
 Import `resolveAgentLogLevel` from `./agent-log-level.ts`. No change to that helper —
 it stays shared with the workflow-step path.
 
+## Sandbox compatibility (local / docker / windows)
+
+The change works across all sandbox backends with no backend-specific code, because
+it happens at the `runCustomPrompt` call site — above the transport layer.
+
+When a step runs in a sandbox, the handler already uses
+`SandboxInstanceCodingProvider(ctx.exec, provider)`
+(`packages/orchestrator/src/workers/steps/agent-run-step-handler.ts:153`). That
+provider forwards `onLog` onto the `ExecOp` (not into the serialized JSON payload — a
+function can't be serialized), and each backend streams log lines back to `ctx.log`
+over its own transport:
+
+| Backend | Transport for log lines |
+|---|---|
+| local | In-process callback — provider invokes `onLog` directly (`local-execution-environment.ts` → `operation-runner.ts`) |
+| docker | Runner CLI writes NDJSON to stderr; docker client demuxes + parses, calls `onLog` (`docker-execution-environment.ts`, `docker-client.ts`) |
+| windows | Windows agent streams gRPC `ExecEvent.log` messages; env parses `line` + `meta_json`, calls `onLog` (`windows-execution-environment.ts`, `journeyman-agent.proto`) |
+
+All three transports are exercised today by the `custom-ai` and
+`start-feature-branch` step handlers, which pass `{ onLog: ctx.log, agentLogLevel }`
+the same way; each backend has passing tests for log forwarding. Because the agent
+path reuses the identical provider call, no new transport work is required — the
+agent-run handler simply needs to start passing `onLog`/`agentLogLevel` (Change 5).
+
 ## Out of scope (YAGNI)
 
 - Per-run override in the run-now modal — log level stays a per-agent setting,
