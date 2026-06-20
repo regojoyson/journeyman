@@ -8,9 +8,9 @@ describe("SectionNav", () => {
     // renderToStaticMarkup HTML-escapes "&" → "&amp;"
     for (const s of SECTIONS) expect(html).toContain(s.label.replace(/&/g, "&amp;"));
   });
-  it("exposes the seven sections in order ending with run history", () => {
+  it("exposes the eight sections in order ending with delete", () => {
     expect(SECTIONS.map((s) => s.id)).toEqual([
-      "instructions", "workspace", "triggers", "behavior", "permissions", "notifications", "runs",
+      "instructions", "workspace", "triggers", "behavior", "permissions", "notifications", "runs", "delete",
     ]);
   });
 });

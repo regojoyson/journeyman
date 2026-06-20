@@ -61,12 +61,11 @@ export type AgentSkipReason = "paused" | "concurrency" | "daily_cap" | "budget";
 /** Phase 1 fires only "manual"; webhook/api/schedule modeled for later phases. */
 export type AgentTrigger =
   | { type: "schedule"; cron: string; timezone: string; fixedInputs?: Record<string, unknown> }
-  | { type: "api"; tokenHash: string }
+  | { type: "api" }
   | {
       type: "webhook";
       webhookId: string;
-      preset?: "jira" | "github";
-      event?: string;
+      listensFor?: string[];
       filters?: unknown;
       inputsMapping: Record<string, string>;
     };

@@ -147,7 +147,7 @@ export async function ingestForWebhook(
 
     // 6b. No waiters → an agent may own this webhook (Phase 3b). If so, it handles
     //     the event (filter + map + run); otherwise fall through to workflow triggers.
-    const ar = await fireAgentForWebhook(c, { webhookId: webhook.id, rawPayload: input.rawPayload });
+    const ar = await fireAgentForWebhook(c, { webhookId: webhook.id, rawPayload: input.rawPayload, eventType });
     if (ar.fired > 0) {
       void c.webhooks.touchLastEvent(webhook.id);
       await c.webhookEvents.setStatus(event.id, "processed");

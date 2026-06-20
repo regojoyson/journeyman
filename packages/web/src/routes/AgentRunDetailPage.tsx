@@ -194,6 +194,7 @@ export function AgentRunDetailPage() {
             onResizeHeight={setLogHeight}
             onClose={() => {}}
             hideStepChips
+            resizeEdge="bottom"
           />
         </div>
       </div>

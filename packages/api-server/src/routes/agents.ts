@@ -262,7 +262,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
            a.definition->>'provider' AS provider,
            a.definition->>'model'    AS model
          FROM jm_workflow_instances wi
-         LEFT JOIN jm_agents a ON a.id = (wi.inputs->>'agentId')
+         LEFT JOIN jm_agents a ON a.id = (wi.inputs->>'agentId')::uuid
          WHERE ${where}
          ORDER BY wi.started_at DESC NULLS LAST
          LIMIT ${pageSize} OFFSET ${offset}`,

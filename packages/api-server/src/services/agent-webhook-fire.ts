@@ -6,6 +6,8 @@ import { findAgentByWebhookId, runAgentGuarded, wasSkipped } from "@journeyman/a
 export interface FireAgentInput {
   webhookId: string;
   rawPayload: unknown;
+  /** Event type extracted from the inbound payload (e.g. "push", "pull_request"). */
+  eventType?: string | null;
 }
 
 export interface FireAgentResult {
@@ -29,6 +31,13 @@ export async function fireAgentForWebhook(c: Composition, input: FireAgentInput)
     | Extract<(typeof agent.triggers)[number], { type: "webhook" }>
     | undefined;
   if (!trigger) return { fired: 0 };
+
+  // listensFor filter: if the trigger specifies event types, the inbound event must be in the list.
+  if (trigger.listensFor && trigger.listensFor.length > 0 && input.eventType) {
+    if (!trigger.listensFor.includes(input.eventType)) {
+      return { fired: 0, skipped: "filtered" };
+    }
+  }
 
   if (
     trigger.filters &&

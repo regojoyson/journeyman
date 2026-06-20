@@ -11,6 +11,15 @@ async function jsonOrThrow<T>(r: Response): Promise<T> {
   throw new Error((body as any)?.error ?? `HTTP ${r.status}`);
 }
 
+export interface ApiToken {
+  id: string;
+  name: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  disabled_at: string | null;
+  revoked_at: string | null;
+}
+
 export interface AgentRunSummary {
   id: string;
   status: string;
@@ -91,12 +100,26 @@ export const agentsApi = {
     ),
   listApiTokens: (wsId: string, id: string) =>
     fetch(`${wsBase(wsId)}/${id}/triggers/api-token`, { credentials: "include" }).then(
-      jsonOrThrow<Array<{ id: string; name: string; last_used_at: string | null; created_at: string }>>,
+      jsonOrThrow<ApiToken[]>,
     ),
   revokeApiToken: (wsId: string, id: string, tokenId: string) =>
     fetch(`${wsBase(wsId)}/${id}/triggers/api-token/${tokenId}`, { method: "DELETE", credentials: "include" }).then(
       jsonOrThrow<void>,
     ),
+  disableApiToken: (wsId: string, id: string, tokenId: string) =>
+    fetch(`${wsBase(wsId)}/${id}/triggers/api-token/${tokenId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disabled: true }),
+    }).then(jsonOrThrow<void>),
+  enableApiToken: (wsId: string, id: string, tokenId: string) =>
+    fetch(`${wsBase(wsId)}/${id}/triggers/api-token/${tokenId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disabled: false }),
+    }).then(jsonOrThrow<void>),
   getSettings: (orgId: string) =>
     fetch(`/api/orgs/${orgId}/agent-settings`, { credentials: "include" }).then(jsonOrThrow<OrgAgentSettings>),
   updateSettings: (orgId: string, patch: { paused?: boolean; limits?: AgentSafetyLimits }) =>

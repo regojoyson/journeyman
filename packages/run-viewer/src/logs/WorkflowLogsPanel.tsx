@@ -1,3 +1,4 @@
+import "../styles.css";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowInstanceEvent, WorkflowNode } from "@journeyman/core";
 import { parseLogs } from "./parse-logs.ts";
@@ -17,6 +18,12 @@ export interface WorkflowLogsPanelProps {
   onClose: () => void;
   /** When true, the step-chips filter row is not rendered (use for single-step runs). */
   hideStepChips?: boolean;
+  /**
+   * Which edge carries the drag handle.
+   * 'top'    — handle above the toolbar; drag up = expand (default, for fixed-bottom canvas layouts).
+   * 'bottom' — handle below the log list; drag down = expand (for inline scrollable-page layouts).
+   */
+  resizeEdge?: 'top' | 'bottom';
 }
 
 const NEAR_BOTTOM_THRESHOLD = 24;
@@ -88,7 +95,10 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return;
       const dy = ev.clientY - dragRef.current.startY;
-      props.onResizeHeight(dragRef.current.startHeight - dy);
+      const next = props.resizeEdge === 'bottom'
+        ? dragRef.current.startHeight + dy
+        : dragRef.current.startHeight - dy;
+      props.onResizeHeight(next);
     };
     const onUp = () => {
       dragRef.current = null;
@@ -157,15 +167,19 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
     setTimeout(() => setCopyState("idle"), 1500);
   };
 
+  const handle = (
+    <div
+      className="je-runview__logspanel-handle"
+      onMouseDown={onHandleMouseDown}
+      title="Drag to resize"
+    >
+      <span /><span /><span />
+    </div>
+  );
+
   return (
     <div className="je-runview__logspanel" style={{ height: props.height }}>
-      <div
-        className="je-runview__logspanel-handle"
-        onMouseDown={onHandleMouseDown}
-        title="Drag to resize"
-      >
-        <span /><span /><span />
-      </div>
+      {props.resizeEdge !== 'bottom' && handle}
 
       <div className="je-runview__logspanel-header">
         <h3 style={{ margin: 0 }}>
@@ -307,6 +321,8 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
           );
         })}
       </div>
+
+      {props.resizeEdge === 'bottom' && handle}
     </div>
   );
 }

@@ -52,4 +52,38 @@ describe("fireAgentForWebhook", () => {
     expect(res).toEqual({ fired: 0, skipped: "filtered" });
     expect(runAgentMock).not.toHaveBeenCalled();
   });
+
+  it("skips (filtered) when listensFor excludes the inbound event type", async () => {
+    findAgentMock.mockResolvedValueOnce({
+      orgId: "o1",
+      triggers: [{ type: "webhook", webhookId: "wh1", listensFor: ["push"], inputsMapping: {} }],
+    });
+    const res = await fireAgentForWebhook(comp(), {
+      webhookId: "wh1", rawPayload: {}, eventType: "pull_request",
+    });
+    expect(res).toEqual({ fired: 0, skipped: "filtered" });
+    expect(runAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("fires when listensFor includes the inbound event type", async () => {
+    findAgentMock.mockResolvedValueOnce({
+      orgId: "o1",
+      triggers: [{ type: "webhook", webhookId: "wh1", listensFor: ["push"], inputsMapping: {} }],
+    });
+    const res = await fireAgentForWebhook(comp(), {
+      webhookId: "wh1", rawPayload: {}, eventType: "push",
+    });
+    expect(res.fired).toBe(1);
+  });
+
+  it("fires for any event type when listensFor is empty", async () => {
+    findAgentMock.mockResolvedValueOnce({
+      orgId: "o1",
+      triggers: [{ type: "webhook", webhookId: "wh1", listensFor: [], inputsMapping: {} }],
+    });
+    const res = await fireAgentForWebhook(comp(), {
+      webhookId: "wh1", rawPayload: {}, eventType: "any_event",
+    });
+    expect(res.fired).toBe(1);
+  });
 });

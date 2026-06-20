@@ -45,7 +45,7 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
     return { id: rows[0].id, token: plaintext }; // shown once
   });
 
-  // List tokens (metadata only — never the plaintext).
+  // List tokens (metadata only — never the plaintext). Includes revoked for audit trail.
   app.get("/api/workspaces/:wsId/agents/:id/triggers/api-token", write, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const agent = await getAgent(pool, id);
@@ -54,14 +54,16 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
       return;
     }
     const { rows } = await pool.query(
-      `SELECT id, name, last_used_at, created_at FROM jm_agent_api_tokens
-        WHERE agent_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC`,
+      `SELECT id, name, last_used_at, created_at, disabled_at, revoked_at
+        FROM jm_agent_api_tokens
+        WHERE agent_id = $1
+        ORDER BY created_at DESC`,
       [id],
     );
     return rows;
   });
 
-  // Revoke a token.
+  // Revoke a token (permanent).
   app.delete("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", write, async (req, reply) => {
     const { wsId, id, tokenId } = req.params as { wsId: string; id: string; tokenId: string };
     const ctx = ctxOf(req);
@@ -75,7 +77,29 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
     reply.code(204);
   });
 
-  // Fire — authenticated by the per-agent token (NOT the user session). UNCHANGED.
+  // Enable or disable a token (soft toggle — does not affect last_used_at).
+  app.patch("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", write, async (req, reply) => {
+    const { wsId, id, tokenId } = req.params as { wsId: string; id: string; tokenId: string };
+    const body = req.body as { disabled: boolean } | undefined;
+    if (typeof body?.disabled !== "boolean") {
+      reply.code(400).send({ error: "body must be { disabled: boolean }" });
+      return;
+    }
+    const agent = await getAgent(pool, id);
+    if (!agent || agent.workspaceId !== wsId) {
+      reply.code(404).send({ error: "not_found" });
+      return;
+    }
+    await pool.query(
+      `UPDATE jm_agent_api_tokens
+        SET disabled_at = CASE WHEN $1 THEN now() ELSE NULL END
+        WHERE id = $2 AND agent_id = $3 AND revoked_at IS NULL`,
+      [body.disabled, tokenId, id],
+    );
+    reply.code(204);
+  });
+
+  // Fire — authenticated by the per-agent token (NOT the user session).
   app.post("/api/agents/:id/fire", async (req, reply) => {
     const { id } = req.params as { id: string };
     const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim();
@@ -84,7 +108,8 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
       return { error: "missing_token" };
     }
     const tok = await pool.query(
-      `SELECT id FROM jm_agent_api_tokens WHERE agent_id = $1 AND token_hash = $2 AND revoked_at IS NULL`,
+      `SELECT id FROM jm_agent_api_tokens
+        WHERE agent_id = $1 AND token_hash = $2 AND revoked_at IS NULL AND disabled_at IS NULL`,
       [id, hashToken(bearer)],
     );
     if (!tok.rows[0]) {
@@ -98,6 +123,14 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
       reply.code(404);
       return { error: "not_found" };
     }
+
+    // Check that the API trigger is enabled (toggle = presence of { type: "api" } in triggers).
+    const apiTriggerEnabled = agent.triggers.some((t) => t.type === "api");
+    if (!apiTriggerEnabled) {
+      reply.code(403);
+      return { error: "api_trigger_disabled" };
+    }
+
     if (!agent.enabled) {
       reply.code(202);
       return { status: "skipped_disabled" };
