@@ -58,6 +58,7 @@ A committed `.env.example` documents required variables. The `.env` file itself 
 | `JOURNEYMAN_REGISTRY_USERNAME`, `JOURNEYMAN_REGISTRY_TOKEN` | Optional registry credentials (blank for open/local registries). |
 | `JOURNEYMAN_RUNNER_BUNDLE`, `JOURNEYMAN_RUNNER_IMAGE` | Optional fallback kit refs used only when the `kit_images` table has no row yet. |
 | `WORKER_ID`, `RUN_SYNC_INTERVAL_MS`, `CYCLE_VISIT_LIMIT`, `WORKER_POLL_INTERVAL_MS`, `CONDUCTOR_BASE_URL` | Worker / orchestrator. |
+| `WORKER_DEFAULT_STEP_TIMEOUT_S` | Safety-net timeout for steps that do not set `timeoutSeconds` in node config. Default `1800` (30 min). Set lower in test environments to surface hangs faster. |
 | `SLACK_BOT_TOKEN`, `ATLASSIAN_API_TOKEN` | Optional integrations. |
 
 When adding a new env var:

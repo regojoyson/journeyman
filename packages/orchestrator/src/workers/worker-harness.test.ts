@@ -128,3 +128,49 @@ describe("WorkerHarness.processOnce — durations", () => {
     expect(completed[0].payload.durationMs).toBeGreaterThanOrEqual(30);
   });
 });
+
+describe("WorkerHarness.processOnce — ImageNotReadyError fast-fail", () => {
+  it("calls completeTask(FAILED) immediately when ensureWorkspace throws ImageNotReadyError", async () => {
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask());
+    deps.registry.get.mockReturnValue({ run: vi.fn(), requiresWorkspace: true });
+    const err = Object.assign(new Error("image fingerprint changed"), { name: "ImageNotReadyError" });
+    deps.ensureWorkspace.mockRejectedValue(err);
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({
+      status: "FAILED",
+      reasonForIncompletion: expect.stringContaining("image_not_ready"),
+    }));
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
+    expect(failed[0].payload).toMatchObject({ reason: "image_not_ready" });
+  });
+});
+
+describe("WorkerHarness.processOnce — default step timeout", () => {
+  beforeEach(() => { process.env.WORKER_DEFAULT_STEP_TIMEOUT_S = "1"; });
+  afterEach(() => { delete process.env.WORKER_DEFAULT_STEP_TIMEOUT_S; });
+
+  it("aborts step after WORKER_DEFAULT_STEP_TIMEOUT_S when step has no timeoutSeconds", async () => {
+    const deps: any = makeDeps();
+    deps.client.pollTask.mockResolvedValue(fakeTask()); // no timeoutSeconds in inputData
+    deps.registry.get.mockReturnValue({
+      // step never resolves — simulates a hang
+      run: (_input: any, ctx: any) => new Promise<never>((_, reject) => {
+        ctx.signal.addEventListener("abort", () => reject(ctx.signal.reason), { once: true });
+      }),
+    });
+
+    const harness = new WorkerHarness(deps);
+    await harness.processOnce("test-step");
+
+    // The unhandled-error branch fires after abort
+    const failed = deps.events.append.mock.calls.find((c: any) => c[0].eventType === "step.failed");
+    expect(failed).toBeDefined();
+    expect(deps.client.completeTask).toHaveBeenCalledWith(expect.objectContaining({
+      status: "FAILED",
+    }));
+  });
+});

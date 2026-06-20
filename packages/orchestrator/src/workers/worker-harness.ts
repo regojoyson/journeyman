@@ -158,11 +158,11 @@ export class WorkerHarness {
     const abort = new AbortController();
     // Per-step timeout: agents (and any step) may set `timeoutSeconds` in node config; auto-abort when it elapses.
     // Falls back to WORKER_DEFAULT_STEP_TIMEOUT_S (default 1800s) so every step has a safety net.
-    const DEFAULT_STEP_TIMEOUT_S = Number(process.env.WORKER_DEFAULT_STEP_TIMEOUT_S ?? 1800);
+    const defaultTimeoutSeconds = Number(process.env.WORKER_DEFAULT_STEP_TIMEOUT_S ?? 1800);
     const timeoutSeconds =
       typeof (stepInput as { timeoutSeconds?: unknown }).timeoutSeconds === "number"
         ? (stepInput as { timeoutSeconds: number }).timeoutSeconds
-        : DEFAULT_STEP_TIMEOUT_S;
+        : defaultTimeoutSeconds;
     const timeoutHandle =
       timeoutSeconds > 0
         ? setTimeout(() => abort.abort(new DOMException("Step timed out", "TimeoutError")), timeoutSeconds * 1000)
@@ -374,17 +374,19 @@ export class WorkerHarness {
       },
     });
 
-    // Determine whether this step needs a workspace (static flag OR dynamic predicate).
-    const needsWorkspace =
-      handler.requiresWorkspace === true ||
-      (typeof handler.needsWorkspaceFor === "function" &&
-        (await handler.needsWorkspaceFor(stepInput)) === true);
-
     let workspaceDir = "";
     let execFn: ((op: ExecOp) => Promise<import("@journeyman/core").ExecResult>) | undefined;
     let materializeFn: import("@journeyman/core").StepContext["materialize"];
 
     try {
+      // Determine whether this step needs a workspace (static flag OR dynamic predicate).
+      // Evaluated inside try so a throwing needsWorkspaceFor predicate reaches the catch block
+      // and calls completeTask, rather than bubbling uncaught to loop().
+      const needsWorkspace =
+        handler.requiresWorkspace === true ||
+        (typeof handler.needsWorkspaceFor === "function" &&
+          (await handler.needsWorkspaceFor(stepInput)) === true);
+
       if (needsWorkspace) {
         const sandboxId = (stepInput as { sandboxId?: string }).sandboxId;
         const provisionLogLevel =
