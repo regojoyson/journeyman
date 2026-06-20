@@ -130,7 +130,7 @@ Pick a registered webhook, filter to specific event types, map payload fields to
 
 ### UI
 
-**Webhook picker:** Shows the selected webhook's name, preset icon, and inbound URL. "Change ›" link to switch. "＋ Create a new webhook" link for first-time users.
+**Webhook picker:** A `<select>` populated from `GET /api/workspaces/:wsId/webhooks`. Each option shows the webhook's name and preset icon. If no webhooks exist yet, shows an empty state with a "Create a webhook →" link pointing to the Webhooks page. After picking, shows the selected webhook's name, preset icon, and inbound URL with a "Change ›" link to switch.
 
 **Inbound URL row:** `https://your-host/webhooks/in/{tenantToken}` with ⎘ copy button. This is the URL to paste into GitHub/Jira/etc.
 
@@ -189,6 +189,10 @@ At the bottom of the expanded webhook body, a green summary sentence:
 Updates live as the user changes event types and conditions.
 
 ---
+
+### Enable/disable
+
+Toggle off → removes the `{ type: "webhook", ... }` entry from `agent.triggers`. The backend `fireAgentForWebhook` already checks `agent.triggers.find(t => t.type === "webhook" && t.webhookId === ...)` — if the entry is absent, the webhook is silently skipped. No new backend logic needed.
 
 ### Backend notes
 
