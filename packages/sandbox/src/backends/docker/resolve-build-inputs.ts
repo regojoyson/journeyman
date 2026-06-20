@@ -7,6 +7,8 @@ export interface ResolveBuildInputsArgs {
   bundleRef: string;
   tagPrefix?: string;
   log?: (line: string) => void;
+  /** Milliseconds before a mutable-ref pull is abandoned (default 60 000). */
+  pullTimeoutMs?: number;
 }
 
 export interface BuildInputs {
@@ -42,8 +44,14 @@ export async function resolveBuildInputs(args: ResolveBuildInputsArgs): Promise<
   if (args.image?.kind === "ref" && args.image.imageRef?.trim()) {
     const ref = args.image.imageRef.trim();
     if (!isPinned(ref)) {
+      const timeout = args.pullTimeoutMs ?? 60_000;
       try {
-        await args.client.pullImage(ref);
+        await Promise.race([
+          args.client.pullImage(ref),
+          new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error(`pull timed out after ${timeout / 1000}s`)), timeout)
+          ),
+        ]);
       } catch (err) {
         log(`warning: could not pull '${ref}' (${(err as Error).message}); using local copy`);
       }
