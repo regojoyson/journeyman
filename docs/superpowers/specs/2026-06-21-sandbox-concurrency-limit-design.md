@@ -356,6 +356,23 @@ for no limit." Mapping rules:
   should size it accordingly.
 - **Multi-worker safe.** The advisory lock is DB-global, so claims serialize
   correctly across worker processes (each with its own pool to the same DB).
+- **Paused runs hold their slot (decision).** `"paused"` is not a terminal status,
+  so a human-in-the-loop run keeps its `active` instance row — and its slot — for
+  the entire pause (possibly hours/days). This is intended: the workspace is
+  preserved for resume, so it genuinely occupies the host resource the limit
+  protects. We do *not* exclude paused runs from the count (freeing the slot
+  would mean destroying the workspace they resume into). **Operators must size the
+  limit to include expected concurrent paused runs** — otherwise a few long
+  pauses can pin all slots and starve new runs. Per-status accounting is a
+  possible future enhancement.
+- **Noisy neighbor on system sandboxes.** The global count means one org's burst
+  can consume all slots of a `system`-scoped sandbox and starve others — correct
+  for host protection, but worth noting. Per-org sub-limits are out of scope for
+  v1.
+- **Observability.** A capacity-waiting run emits a `⏳ sandbox at capacity` step
+  log and, on budget exhaustion, a `step.failed` with `reason:
+  "sandbox_at_capacity"`. There is no distinct "queued" run status in v1 — those
+  two signals are how operators see waiting/blocked runs.
 - **Burst caveat — head-of-line blocking.** An at-capacity run waiting in-process
   pins its worker's step-type loop (see Wait-and-Retry). This is inherent to the
   serial worker model (the image-not-ready loop has it too); the moderate budget
