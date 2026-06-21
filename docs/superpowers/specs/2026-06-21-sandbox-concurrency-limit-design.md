@@ -333,14 +333,28 @@ for no limit." Mapping rules:
   `run_id`.
 - **`hashtext` lock-key collisions** between two `sandbox_id`s cause only a rare,
   harmless extra serialization — never an incorrect count.
+- **One run = one slot, regardless of fork/parallel fan-out.** Parallel branches
+  of a single run share the `run_id`: the first wins the claim, the rest hit
+  `ON CONFLICT → run_exists=true → false → waitActive` and *join* the same
+  workspace. A branch of an already-admitted run is therefore never
+  capacity-blocked even when the sandbox is full. A **fork** is a new `run_id` →
+  a separate slot. The capacity unit is the run/workspace, not the step.
 
 ## Testing
 
-- **Store:** under limit → admits (`inserted=1` → `true`); at limit + new run →
-  throws `SandboxAtCapacityError` (`inserted=0, run_exists=false`); at limit but
-  run row already exists → returns `false`, not a throw (`run_exists=true`,
-  lost-race path); `limit = 0/null` takes the fast path and never counts;
-  two concurrent claims for the last slot → exactly one wins (advisory lock).
+> **Harness note (dry-run finding).** The sandbox package tests use a `fakeDb`
+> that returns canned rows; there is **no real-Postgres harness**. So advisory
+> locks / CTE atomicity cannot be exercised in a unit test — atomicity is a
+> design/review property here. Unit tests assert the JS branch logic (with canned
+> `{inserted, run_exists}` rows) and the SQL text/params shape, matching the
+> existing test style. A true concurrency test is deferred to an optional
+> integration suite if a real-PG harness is added.
+
+- **Store (unit, `fakeDb`):** branch logic — `{inserted:1}` → `true`;
+  `{inserted:0, run_exists:false}` → throws `SandboxAtCapacityError`;
+  `{inserted:0, run_exists:true}` → `false` (lost-race / parallel-branch path);
+  `limit = 0/null` takes the lock-free fast path (assert it issues the plain
+  claim SQL, not the CTE). Assert the capacity SQL text + params shape.
 - **`ensureWorkspace`:** passes `sandboxId`/`limit` to `claim`; propagates
   `SandboxAtCapacityError`; `claim=false` still routes to `waitActive`; skips the
   gate on the reconnect (active/provisioning) early-return.
