@@ -27,7 +27,10 @@ scoped at the **workspace** level, so a dashboard can be built later.
 
 ## Goals
 
-- Capture token usage for every LLM call made by `custom-ai` and `agent-run` steps.
+- Capture token usage for **every AI operation**, not just the explicit AI steps:
+  `runCustomPrompt` (used by `custom-ai` and `agent-run`) **and** `scanRepos` /
+  `checkoutRepo` (used by `start-feature-branch` and `list-workspace-files`), which also
+  drive the model (Claude `query()`, OpenCode `session.prompt()`).
 - Work for any coding provider (Claude, aisdk, OpenCode, …) and any model/vendor.
 - Record provider + vendor + exact model id on every usage record.
 - Capture usage on **all output modes** (`none`/`text`/`structured`), not just structured.
@@ -54,7 +57,11 @@ scoped at the **workspace** level, so a dashboard can be built later.
 3. **Full token breakdown + raw blob, cost NULL** — store input/output/cache/reasoning token
    columns plus a `raw_usage` JSONB; keep a nullable `cost_usd` column for later.
 4. **Every dimension stamped on every row**, denormalized so dashboards slice without joins.
-5. **Capture on both `custom-ai` and `agent-run` steps.**
+5. **Capture all AI operations** — `runCustomPrompt` (`custom-ai`, `agent-run`) **and**
+   `scanRepos` / `checkoutRepo` (`start-feature-branch`, `list-workspace-files`). The latter
+   two return `ScanReposResult` / `CheckoutRepoResult`, so `usage?: TokenUsage[]` is added to
+   those result types and their runner-dispatch cases too. Same table, same normalization;
+   `step_type` is just the calling step's type.
 6. **Record usage on failure, best-effort** — when the provider still reports usage on the
    error path (Claude's error result, OpenCode `info.tokens`); aisdk throws on hard errors so
    usage may be unavailable there (record nothing then). `outcome` column distinguishes.
@@ -88,8 +95,8 @@ Table **`jm_token_usage`** — one row per (LLM call × model):
 | `agent_name` | text NULL | from `input.displayName` |
 | `triggered_by_user_id` | uuid NULL | `startedByUserId` |
 | `provider` | text | execution engine: `claude` / `aisdk` / `opencode` / … |
-| `vendor` | text NULL | API vendor: `openai` / `anthropic` / `google` / … when known |
-| `model` | text | exact model id (source differs per provider — see below) |
+| `vendor` | text NULL | API vendor: `openai` / `anthropic` / `google` / … (aisdk: from `modelConfig.npm` like `@ai-sdk/openai`, else model-id prefix; opencode: `info.providerID`; claude: `anthropic`) |
+| `model` | text NULL | exact model id (source differs per provider — see below); for `usage_reported=false` rows falls back to the requested `input.model` |
 | `outcome` | text NOT NULL | `success` / `error` / `aborted` |
 | `input_tokens` | bigint NULL | |
 | `output_tokens` | bigint NULL | |
@@ -206,6 +213,10 @@ Object.entries(msg.modelUsage).map(([model, u]) => ({
 4. **Failure path (best-effort):** when the provider reports usage on error/abort (Claude's
    `SDKResultError` carries `usage`/`modelUsage`; OpenCode `info.tokens` present alongside
    `info.error`), still return `usage` so the handler records it with `outcome != success`.
+5. **scanRepos / checkoutRepo:** these also call the model and must extract usage the same
+   way. Add `usage?: TokenUsage[]` to `ScanReposResult` / `CheckoutRepoResult`
+   (`@journeyman/core`) and populate it in all three providers' `scan-repos.ts` /
+   `checkout-repo.ts`.
 
 ### Runner boundary (sandbox coverage)
 
@@ -226,7 +237,8 @@ const coding = ctx.exec
   1. `packages/agent-runtime/src/runner/runner-types.ts` — add `usage?: TokenUsage[]` to
      `RunnerResponse`; `dispatch.ts` (currently
      [returns `{ ok, structured, result }`](../../packages/agent-runtime/src/runner/dispatch.ts) at the
-     `custom-prompt` case) and `run-cli.ts` pass it through.
+     `custom-prompt` case — **and the `scan-repos` / `checkout-repo` cases**) and `run-cli.ts`
+     pass it through.
   2. `packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts` — map `r.usage`
      back onto the returned `RunCustomPromptResult` (currently
      [drops everything but `structured`/`result`](../../packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts)):
@@ -250,10 +262,13 @@ recordTokenUsage(pool, {
 });
 ```
 
-- `custom-ai-step-handler.ts` and `agent-run-step-handler.ts` call it after the coding call
-  returns, on **both** success and failure branches.
+- `custom-ai-step-handler.ts`, `agent-run-step-handler.ts`, **`start-feature-branch-step-handler.ts`,
+  and `list-workspace-files-step-handler.ts`** call it after the coding call returns, on **both**
+  success and failure branches.
+- `outcome` = `aborted` when `ctx.signal.aborted`, else `error` on failure, else `success`.
 - Context on hand: `ctx.workflowInstanceId`, `ctx.nodeId`, `ctx.attempt`, `input.provider`,
-  `input.model`, `input.startedByUserId`, `input.startedByOrgId`, `input.workflowId`.
+  `input.model`, `input.startedByUserId` (→ `triggered_by_user_id`),
+  `input.startedByOrgId` (→ `org_id`; the run row has no org_id column), `input.workflowId`.
 - **`agent_id` from `input.agentId`**, **`agent_name` from `input.displayName`** (agent linkage
   lives in `run.inputs->>'agentId'`, not a column — see
   [postgres-workflow-instance-store.ts:148](../../packages/orchestrator/src/stores/postgres/postgres-workflow-instance-store.ts)).
@@ -293,6 +308,8 @@ read API already sums `cost_usd`.
   - opencode `info.tokens`/`modelID`/`providerID` mapping.
   - Usage attached on **all** output modes (`none`/`text`/`structured`).
   - Usage attached on the **failure path** where the provider reports it.
+  - `scanRepos` / `checkoutRepo` extract usage and surface it on `ScanReposResult` /
+    `CheckoutRepoResult`.
 - **Runner round-trip test** — `RunnerResponse` carries `usage`; `SandboxInstanceCodingProvider`
   maps it back onto `RunCustomPromptResult` (asserts Docker/Windows coverage).
 - **Handler test** — `recordTokenUsage` writes correct rows for: normal multi-model usage; the
@@ -304,13 +321,12 @@ read API already sums `cost_usd`.
 ## Files touched
 
 - `packages/migrations/src/sql/064_token_usage.sql` — new table + indexes.
-- `packages/core/src/types/coding.types.ts` — `TokenUsage`, `RunCustomPromptResult.usage`.
-- `packages/agent-runtime/src/providers/claude/operations/run-custom-prompt.ts` — map `modelUsage`; hoist before output-mode branch; failure path.
-- `packages/agent-runtime/src/providers/aisdk/operations/run-custom-prompt.ts` — map `result.usage`; accumulate the double call; vendor from modelConfig; all output modes.
-- `packages/agent-runtime/src/providers/opencode/operations/run-custom-prompt.ts` — read `info.tokens`/`cost`/`modelID`/`providerID`; all output modes; failure path.
-- `packages/agent-runtime/src/runner/runner-types.ts`, `dispatch.ts`, `run-cli.ts` — thread `usage`.
-- `packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts` — map `r.usage` back.
-- `packages/orchestrator/src/workers/steps/custom-ai-step-handler.ts` — persist usage (success + failure).
-- `packages/orchestrator/src/workers/steps/agent-run-step-handler.ts` — persist usage (success + failure).
+- `packages/core/src/types/coding.types.ts` — `TokenUsage`; `usage` on `RunCustomPromptResult`, `ScanReposResult`, `CheckoutRepoResult`.
+- `packages/agent-runtime/src/providers/claude/operations/{run-custom-prompt,scan-repos,checkout-repo}.ts` — map `modelUsage`; hoist before output-mode branch; failure path.
+- `packages/agent-runtime/src/providers/aisdk/operations/{run-custom-prompt,scan-repos,checkout-repo}.ts` — map `result.usage`; accumulate the double call; vendor from `modelConfig.npm`; all output modes.
+- `packages/agent-runtime/src/providers/opencode/operations/{run-custom-prompt,scan-repos,checkout-repo}.ts` — read `info.tokens`/`cost`/`modelID`/`providerID`; all output modes; failure path.
+- `packages/agent-runtime/src/runner/runner-types.ts`, `dispatch.ts` (custom-prompt + scan-repos + checkout-repo cases), `run-cli.ts` — thread `usage`.
+- `packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts` — map `r.usage` back (all three ops).
+- `packages/orchestrator/src/workers/steps/{custom-ai,agent-run,start-feature-branch,list-workspace-files}-step-handler.ts` — persist usage (success + failure).
 - `packages/orchestrator/src/...` — `recordTokenUsage` writer + a usage store/query module.
 - `packages/api-server/src/...` — usage read routes.
