@@ -62,8 +62,9 @@ maxConcurrentInstances?: number | null;
 ALTER TABLE jm_sandboxes
   ADD COLUMN max_concurrent_instances integer;
 
+-- uuid to match jm_sandboxes.id; nullable (no FK — instances may outlive a sandbox).
 ALTER TABLE jm_sandbox_instances
-  ADD COLUMN sandbox_id text;
+  ADD COLUMN sandbox_id uuid;
 
 -- Speeds up the per-sandbox capacity count.
 CREATE INDEX IF NOT EXISTS idx_jm_sandbox_instances_sandbox_status
@@ -170,6 +171,9 @@ untouched.
   `{ runId, type, owner: orgId, sandboxId: worker.id, limit: worker.maxConcurrentInstances }`.
 - `claim` returning `false` keeps the existing behavior (lost the race →
   `waitActive`). `SandboxAtCapacityError` propagates up unchanged.
+- New `releaseClaim(runId)` dep (→ `markSandboxInstanceDestroyed`) called in the
+  `env.provision()` catch so a provision failure frees its slot immediately
+  (see Slot Lifecycle).
 
 ### `worker-harness.ts` — the in-process wait loop
 
@@ -196,6 +200,29 @@ the wait.
 outer catch, which adds a branch mirroring `ImageNotReadyError`: append a
 `step.failed` event (`reason: "sandbox_at_capacity"`) and `completeTask({ status:
 "FAILED" })`, so Conductor re-queues *if* a retry policy is configured.
+
+## Slot Lifecycle — Freeing Capacity
+
+A `provisioning` or `active` row consumes a slot until it flips to `destroyed`.
+The dry run found that *failed* provisioning currently never frees its slot,
+which would leak capacity under the new count. Required changes:
+
+- **Normal completion (already correct).** On terminal run status `sandboxReaper`
+  destroys the active instance, and `SandboxInstanceReaper` is a periodic backstop
+  — both call `markSandboxInstanceDestroyed`. No change.
+- **Stuck provisioning (fix).** `ProvisioningReaper.failRun`
+  (`api-server/src/composition.ts`) marks only the workflow failed today. Add
+  `await markSandboxInstanceDestroyed(pool, id)` so a crashed/stuck provision
+  frees its slot. `findStuckProvisioningRuns` already finds these rows by
+  `status='provisioning'` + age.
+- **`provision()` failure (fix).** In `ensureWorkspace`, the catch around
+  `env.provision()` runs *after* a won claim, so a failure leaves a
+  `provisioning` row. Add a `releaseClaim(runId)` dep (→
+  `markSandboxInstanceDestroyed`) and call it in that catch, so the slot frees
+  immediately instead of waiting out `PROVISION_TIMEOUT_MS` (~10 min).
+- **Defense in depth (optional).** The count may ignore `provisioning` rows older
+  than `PROVISION_TIMEOUT_MS` (`status='active' OR (status='provisioning' AND
+  created_at > now() - …)`) so even a missed reap can't wedge a sandbox shut.
 
 ## Config Propagation
 
@@ -249,4 +276,7 @@ helper text ("Leave blank for no limit"). Flows into
   (re-calls `ensureWorkspace`) and stops on `abort`; after the retry budget is
   exhausted it completes the task as `FAILED` with a `sandbox_at_capacity`
   step.failed event.
-- **Migration:** applies cleanly; new columns nullable; index created.
+- **Slot freeing:** `ProvisioningReaper.failRun` marks the instance destroyed
+  (slot freed); `ensureWorkspace` releases the claim when `provision()` throws.
+- **Migration:** applies cleanly; new columns nullable; `sandbox_id` is uuid;
+  index created.
