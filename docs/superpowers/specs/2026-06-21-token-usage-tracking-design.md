@@ -73,8 +73,10 @@ scoped at the **workspace** level, so a dashboard can be built later.
 ## Data model
 
 New migration: `packages/migrations/src/sql/064_token_usage.sql`.
-(Read `docs/constitution/DATABASE_ARCHITECTURE.md` before writing it. Note: the runs table is
-`jm_runs` — see migration 001; the workflow-instance store aliases it `r`.)
+(Read `docs/constitution/DATABASE_ARCHITECTURE.md` before writing it. The runs table is
+**`jm_workflow_instances`** — renamed from `jm_runs` in migration 018; node rows are in
+`jm_node_executions` keyed by `workflow_instance_id`. So `jm_token_usage.workflow_instance_id`
+FKs to `jm_workflow_instances(id)`.)
 
 Table **`jm_token_usage`** — one row per (LLM call × model):
 
@@ -265,6 +267,13 @@ recordTokenUsage(pool, {
 - `custom-ai-step-handler.ts`, `agent-run-step-handler.ts`, **`start-feature-branch-step-handler.ts`,
   and `list-workspace-files-step-handler.ts`** call it after the coding call returns, on **both**
   success and failure branches.
+- **Handler wiring:** `custom-ai` and `agent-run` already receive `pool`, but
+  `StartFeatureBranchStepHandler` / `ListWorkspaceFilesStepHandler` are constructed with
+  `{ coding }` only ([cli-worker.ts:204-205](../../packages/orchestrator/src/cli-worker.ts)).
+  Add `pool` to their constructor deps and pass it at registration (pool is already in scope
+  there). `pool` is **optional** — the worker can run without `DATABASE_URL`
+  ([cli-worker.ts:62](../../packages/orchestrator/src/cli-worker.ts)) — so `recordTokenUsage`
+  no-ops when `pool` is absent and never fails a step.
 - `outcome` = `aborted` when `ctx.signal.aborted`, else `error` on failure, else `success`.
 - Context on hand: `ctx.workflowInstanceId`, `ctx.nodeId`, `ctx.attempt`, `input.provider`,
   `input.model`, `input.startedByUserId` (→ `triggered_by_user_id`),
@@ -328,5 +337,6 @@ read API already sums `cost_usd`.
 - `packages/agent-runtime/src/runner/runner-types.ts`, `dispatch.ts` (custom-prompt + scan-repos + checkout-repo cases), `run-cli.ts` — thread `usage`.
 - `packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts` — map `r.usage` back (all three ops).
 - `packages/orchestrator/src/workers/steps/{custom-ai,agent-run,start-feature-branch,list-workspace-files}-step-handler.ts` — persist usage (success + failure).
-- `packages/orchestrator/src/...` — `recordTokenUsage` writer + a usage store/query module.
+- `packages/orchestrator/src/cli-worker.ts` — pass `pool` to `StartFeatureBranchStepHandler` + `ListWorkspaceFilesStepHandler` at registration (lines ~204-205).
+- `packages/orchestrator/src/...` — `recordTokenUsage` writer (no-ops when pool absent) + a usage store/query module.
 - `packages/api-server/src/...` — usage read routes.
