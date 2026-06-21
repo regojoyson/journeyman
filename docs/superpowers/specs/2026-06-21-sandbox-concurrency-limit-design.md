@@ -17,12 +17,22 @@ that one workspace concurrently.
 
 ## Approach
 
-Enforce a single DB-backed gate in `ensureWorkspace`, atomic via a transaction
-with a per-sandbox advisory lock. When a sandbox is at capacity, throw a
-retryable `SandboxAtCapacityError` — the same wait-and-retry path the existing
-`ImageNotReadyError` gate already uses (worker-harness catches it, completes the
-Conductor task as `FAILED`, Conductor re-queues with backoff). The Conductor
-retry loop *is* the queue.
+Enforce a single DB-backed gate in `ensureWorkspace`, atomic via a **single
+SQL statement** that takes a per-sandbox advisory lock, counts, and conditionally
+inserts the claim. When a sandbox is at capacity, throw `SandboxAtCapacityError`.
+
+Wait-and-retry is handled by the **existing in-process retry loop** in
+`worker-harness.ts` (the same loop that already waits on `ImageNotReadyError`):
+it catches the error, sleeps, and re-calls `ensureWorkspace` in place, honoring
+the step's abort/deadline. We extend that loop to also retry on
+`SandboxAtCapacityError`. The in-process loop is the primary queue (works even
+when no Conductor retry policy is configured); the outer-catch `FAILED` branch is
+a fallback for when in-process attempts are exhausted.
+
+> **Dry-run correction.** An earlier draft assumed the wait happened via
+> Conductor re-queue of a `FAILED` task. It does not — the real wait is the
+> in-process `while` loop in `worker-harness.ts` (~L405). The gate must hook
+> that loop, not rely on Conductor retries.
 
 Rejected alternatives:
 
@@ -74,59 +84,118 @@ integer `>= 0`; otherwise throw `InvalidSandboxInputError`.
 New store function in `sandbox-instance-store.ts`:
 
 ```ts
+export class SandboxAtCapacityError extends Error {} // err.name = "SandboxAtCapacityError"
+
 export async function claimSandboxInstanceWithCapacity(
   db: Queryable,
   row: { runId: string; type: string; owner: string; sandboxId: string; limit: number | null },
-): Promise<boolean>
+): Promise<boolean>  // true ⇒ won the claim; false ⇒ lost the race (caller waitActive); throws SandboxAtCapacityError when full
 ```
 
-In **one transaction**:
+**Why not a multi-step transaction.** `Queryable` is just `{ query() }`; on a
+`pg.Pool` consecutive `query()` calls may use different physical connections, so
+`pg_advisory_xact_lock` taken in one call would not be held during a later
+`INSERT`. The whole gate must therefore be **one statement** (its own implicit
+transaction), following the codebase's existing atomic-claim idiom
+(`claimPendingBuild`).
 
-1. `SELECT pg_advisory_xact_lock(hashtext($sandboxId))` — serializes capacity
-   checks for the same sandbox so two workers can't both pass.
-2. If `limit && limit > 0`: count rows where
-   `sandbox_id = $sandboxId AND status IN ('provisioning','active')`.
-   This is a **global** count (the `owner` column is ignored), modelling host
-   capacity. In-flight `provisioning` rows count, so we never overshoot.
-3. If `count >= limit` → `throw new SandboxAtCapacityError(...)`.
-4. Else `INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner,
-   sandbox_id) VALUES (..., 'provisioning', ...) ON CONFLICT (run_id) DO NOTHING
-   RETURNING run_id`. Return `rows.length > 0` (true ⇒ this caller won the claim).
+**Fast path (unlimited).** When `limit == null || limit <= 0`, skip the lock
+entirely and delegate to the plain `claimSandboxInstance` (which now also writes
+`sandbox_id`). This keeps the common case lock-free.
 
-`SandboxAtCapacityError` is a named error class (`err.name =
-"SandboxAtCapacityError"`) exported from the sandbox package.
+**Limited path — single statement:**
 
-`recordSandboxInstance` and `claimSandboxInstance` also begin persisting
-`sandbox_id` (passed through from callers) for consistency.
+```sql
+WITH lk AS (
+  SELECT pg_advisory_xact_lock(hashtext('jm_sbx_cap:' || $4::text)) AS locked
+),
+cap AS (
+  -- cross-joins lk so the count cannot be computed before the lock is held
+  SELECT count(*) AS n
+  FROM jm_sandbox_instances i, lk
+  WHERE i.sandbox_id = $4 AND i.status IN ('provisioning','active')
+),
+ins AS (
+  INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner, sandbox_id)
+  SELECT $1, $2, '', 'provisioning', $3, $4
+  FROM cap
+  WHERE cap.n < $5
+  ON CONFLICT (run_id) DO NOTHING
+  RETURNING run_id
+)
+SELECT (SELECT count(*) FROM ins) AS inserted,
+       EXISTS (SELECT 1 FROM jm_sandbox_instances WHERE run_id = $1) AS run_exists;
+```
+
+Params: `$1 runId, $2 type, $3 owner, $4 sandboxId, $5 limit`. The count is
+**global per sandbox** (the `owner` column is ignored) — it models host capacity.
+In-flight `provisioning` rows count, so we never overshoot. The advisory
+xact-lock serializes concurrent claims for the same sandbox and is released when
+the statement's implicit transaction ends.
+
+**Disambiguating the result** (both "at capacity" and "lost the claim race"
+insert 0 rows — they need opposite handling):
+
+| `inserted` | `run_exists` | Meaning | Return |
+|---|---|---|---|
+| 1 | true | won the claim | `true` |
+| 0 | true | another worker already claimed this run | `false` (caller `waitActive`s) |
+| 0 | false | blocked by capacity | **throw `SandboxAtCapacityError`** |
+
+`claimSandboxInstance` (the unlimited fast path) also begins persisting
+`sandbox_id`. `recordSandboxInstance` has no production callers and is left
+untouched.
+
+## Threading the Limit
+
+- **`ResolvedSandbox`** (`packages/core/src/types/execution-environment.types.ts`)
+  gains `maxConcurrentInstances?: number | null`.
+- **`resolver.ts` `toResolved`** maps it from the `Sandbox` row.
+- **cli-worker `resolveSandbox` dep** ([cli-worker.ts:184](../../packages/orchestrator/src/cli-worker.ts))
+  passes `maxConcurrentInstances` through; the no-pool branch returns
+  `undefined` (no limit).
+- **`EnsureWorkspaceDeps.claim`** signature extends to
+  `{ runId, type, owner, sandboxId, limit }`. cli-worker wires it to
+  `claimSandboxInstanceWithCapacity(pool, row)`; the no-pool branch returns
+  `true` (provision, no limit) exactly as today.
 
 ## Wait-and-Retry Wiring
 
 ### `ensureWorkspace` (`packages/orchestrator/src/sandbox/ensure-workspace.ts`)
 
-- Extend the `resolveSandbox` return shape with `maxConcurrentInstances`.
-- Extend `EnsureWorkspaceDeps.claim` (or add a capacity-aware variant) to accept
-  `{ runId, type, owner, sandboxId, limit }`.
-- The `status === "active"` and `status === "provisioning"` early-returns stay
+- The `status === "active"` / `status === "provisioning"` early-returns stay
   **before** the gate, so a run already holding a slot is never re-gated on a
   later step (reconnect path).
-- After `backend.checkRunnable`, call the capacity-aware claim. A
-  `SandboxAtCapacityError` propagates up unchanged.
+- After `backend.checkRunnable`, call `deps.claim` with
+  `{ runId, type, owner: orgId, sandboxId: worker.id, limit: worker.maxConcurrentInstances }`.
+- `claim` returning `false` keeps the existing behavior (lost the race →
+  `waitActive`). `SandboxAtCapacityError` propagates up unchanged.
 
-### `worker-harness.ts`
+### `worker-harness.ts` — the in-process wait loop
 
-Add a branch mirroring `ImageNotReadyError`:
+The existing loop (~L405) already retries `ensureWorkspace` in-process on
+`ImageNotReadyError`. Extend its catch to also retry on
+`SandboxAtCapacityError`:
 
 ```ts
-if (err?.name === "SandboxAtCapacityError") {
-  // log "sandbox at capacity; retrying"
-  // append step.log + step.failed (reason: "sandbox_at_capacity")
-  // completeTask({ status: "FAILED", reasonForIncompletion: `sandbox_at_capacity: ${err.message}` })
-  return;
+if ((err?.name === "ImageNotReadyError" || err?.name === "SandboxAtCapacityError")
+    && capacityOrImageAttemptsRemain) {
+  // log "⏳ sandbox at capacity; waiting for a free slot (attempt n/N)…"
+  await delayOrAbort(delayMs, abort.signal);  // honors step deadline/abort
+  continue;
 }
 ```
 
-`status: "FAILED"` ⇒ Conductor retries with its configured backoff. That is the
-queue.
+Capacity gets its own retry budget (`SANDBOX_CAPACITY_RETRY_ATTEMPTS`,
+`SANDBOX_CAPACITY_RETRY_DELAY_MS`), defaulting to a generous window since a free
+slot depends on other runs finishing, not a bounded image build. The loop
+already checks `abort.signal.aborted`, so a step `timeoutSeconds` still bounds
+the wait.
+
+**Fallback.** If the in-process budget is exhausted, the error throws to the
+outer catch, which adds a branch mirroring `ImageNotReadyError`: append a
+`step.failed` event (`reason: "sandbox_at_capacity"`) and `completeTask({ status:
+"FAILED" })`, so Conductor re-queues *if* a retry policy is configured.
 
 ## Config Propagation
 
@@ -153,15 +222,31 @@ helper text ("Leave blank for no limit"). Flows into
   the gate, so a run already holding a slot never gets blocked on a later step.
 - **Destroyed instances free slots immediately** — status flips to `destroyed`,
   excluded from the count. The existing reaper handles orphaned/leaked rows.
-- **`limit = 0` / null / undefined ⇒ unlimited** — the gate is skipped entirely.
+- **`limit = 0` / null / undefined ⇒ unlimited** — the lock-free fast path
+  (plain `claimSandboxInstance`) is taken; no advisory lock.
+- **Waiting runs do not consume capacity.** The claim throws *before* inserting a
+  row, so a run blocked on capacity holds no `jm_sandbox_instances` row. It does,
+  however, occupy a Conductor worker slot while it waits in-process — the same
+  trade-off the image-not-ready loop already makes. Active runs free slots as
+  they finish (`destroyed`), so the queue drains.
+- **No bypass path.** `claimSandboxInstance` (via `ensureWorkspace`) is the only
+  live insert into `jm_sandbox_instances`; `recordSandboxInstance` is unused in
+  production. One gate covers everything.
+- **No-pool / local-dev** keeps provisioning unconditionally (the `claim` dep
+  returns `true` when there is no pool), so the limit is a no-op without a DB.
 
 ## Testing
 
-- **Store:** capacity claim rejects at limit, admits under limit; advisory lock
-  serializes two concurrent claims (only one wins the last slot); `limit = 0`
-  skips counting.
-- **`ensureWorkspace`:** throws `SandboxAtCapacityError` when full, proceeds when
-  slots free, skips the gate on the reconnect (active/provisioning) path.
-- **worker-harness:** `SandboxAtCapacityError` → task completed as `FAILED`
-  (retryable), with a `sandbox_at_capacity` step.failed event.
+- **Store:** under limit → admits (`inserted=1` → `true`); at limit + new run →
+  throws `SandboxAtCapacityError` (`inserted=0, run_exists=false`); at limit but
+  run row already exists → returns `false`, not a throw (`run_exists=true`,
+  lost-race path); `limit = 0/null` takes the fast path and never counts;
+  two concurrent claims for the last slot → exactly one wins (advisory lock).
+- **`ensureWorkspace`:** passes `sandboxId`/`limit` to `claim`; propagates
+  `SandboxAtCapacityError`; `claim=false` still routes to `waitActive`; skips the
+  gate on the reconnect (active/provisioning) early-return.
+- **worker-harness:** the in-process loop retries on `SandboxAtCapacityError`
+  (re-calls `ensureWorkspace`) and stops on `abort`; after the retry budget is
+  exhausted it completes the task as `FAILED` with a `sandbox_at_capacity`
+  step.failed event.
 - **Migration:** applies cleanly; new columns nullable; index created.
