@@ -158,8 +158,10 @@ ratio (`cache_read_tokens / (cache_read_tokens + input_tokens)`).
 A standalone package, sibling to `run-viewer`/`runs-list`, routed in `packages/web` at
 `/workspaces/:wsId/usage`. Custom SVG/CSS charts only — no charting library — matching the
 existing `workspace-dashboard` convention (SVG donut/sparkline primitives, flexbox bars).
-Workspace-scoped controls: date-range (24h/7d/30d) and a group-by selector
-(model/agent/workflow/step) driving the breakdown sections.
+Workspace-scoped controls rendered as **segmented pills** (not native `<select>`): a connected
+range toggle (`30d` / `7d` / `24h`) and a second row of group-by chips
+(`Model` / `Agent` / `Workflow` / `Step`), the active option filled with the info color. These
+drive the time window and the breakdown sections.
 
 #### Sections
 
