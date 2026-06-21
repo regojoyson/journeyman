@@ -1,4 +1,5 @@
 // packages/flow-editor/src/properties-panel/trigger-human-panel.tsx
+import type { JSX } from "react";
 import type {
   TriggerHumanConfig,
   TriggerHumanFieldOverride,

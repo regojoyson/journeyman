@@ -20,7 +20,8 @@ import type {
 } from "@journeyman/core";
 import {
   createDefaultRegistry, makeWindowsAgentClient,
-  makeDockerClient, getSandboxInstance, claimSandboxInstance, markSandboxInstanceActive, resolveSandbox,
+  makeDockerClient, getSandboxInstance, claimSandboxInstanceWithCapacity, releaseSandboxClaim,
+  markSandboxInstanceActive, resolveSandbox,
   markImagePendingIfBuildable, startBuildLoop, ensureKitImage, resolveBuildInputs, pruneBuiltImages,
   listReadyImageRefs, listDockerSandboxConnections, resolveKitRefs, registryAuthFromEnv,
 } from "@journeyman/sandbox";
@@ -177,7 +178,8 @@ const ensureWs = (a: {
   ensureWorkspace(
     {
       getSandboxInstance: (id) => (pool ? getSandboxInstance(pool, id) : Promise.resolve(null)),
-      claim: (row) => (pool ? claimSandboxInstance(pool, row) : Promise.resolve(true)),
+      claim: (row) => (pool ? claimSandboxInstanceWithCapacity(pool, row) : Promise.resolve(true)),
+      releaseClaim: (id) => (pool ? releaseSandboxClaim(pool, id) : Promise.resolve()),
       markActive: (id, patch) => (pool ? markSandboxInstanceActive(pool, id, patch) : Promise.resolve()),
       waitActive: (id, ms) =>
         pool ? waitActive(pool, id, ms) : Promise.reject(new Error("no pool")),
@@ -192,6 +194,7 @@ const ensureWs = (a: {
             imageFingerprint: w.imageFingerprint,
             imageRef: w.imageRef,
             imageError: w.imageError,
+            maxConcurrentInstances: w.maxConcurrentInstances,
           };
         }
         return { id: "local", type: "local" as const, config: {} };

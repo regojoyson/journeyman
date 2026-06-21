@@ -1,12 +1,22 @@
 import type { Pool } from "pg";
 import type { IWorkflowInstanceStore, WorkflowInstanceStatus } from "@journeyman/core";
-import { createLogger } from "@journeyman/core";
+import { createLogger, renderNotificationTemplate } from "@journeyman/core";
 import { getAgent } from "@journeyman/agents";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
 import { open } from "@journeyman/secrets";
 import { buildNotificationProvider } from "@journeyman/notification-provider";
 
 const log = createLogger("agent:notify");
+
+/** Human-readable run duration, e.g. "1m 12s". Empty when unknown. */
+function formatDuration(ms?: number | null): string {
+  if (!ms || ms < 0) return "";
+  const total = Math.round(ms / 1000);
+  if (total < 60) return `${total}s`;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return s ? `${m}m ${s}s` : `${m}m`;
+}
 
 export interface NotifyOnTerminalDeps {
   pool: Pool;
@@ -43,10 +53,26 @@ export function makeNotifyOnTerminal(deps: NotifyOnTerminalDeps) {
         credential,
       );
 
+      const vars: Record<string, string> = {
+        agent: agent.name,
+        status,
+        runId: workflowInstanceId,
+        workflow: instance?.workflowNameSnapshot ?? "",
+        duration: formatDuration(instance?.durationMs),
+        failedNode: instance?.failedAtNodeId ?? "",
+      };
+      const tpl = agent.notifications.templates?.[want];
+      const title = tpl?.subject
+        ? renderNotificationTemplate(tpl.subject, vars)
+        : `Agent "${agent.name}" ${status}`;
+      const message = tpl?.body
+        ? renderNotificationTemplate(tpl.body, vars)
+        : `Run ${workflowInstanceId} ${status}.`;
+
       const result = await provider.send({
         channel: agent.notifications.target ?? "",
-        title: `Agent "${agent.name}" ${status}`,
-        message: `Run ${workflowInstanceId} ${status}.`,
+        title,
+        message,
         sessionId: workflowInstanceId,
       });
       if (result && result.success === false) {

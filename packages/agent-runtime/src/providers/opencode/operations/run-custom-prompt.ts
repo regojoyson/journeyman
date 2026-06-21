@@ -33,9 +33,15 @@ function extractText(data: { parts?: Array<{ type?: string; text?: string }> }):
     .join("");
 }
 
-/** Merge MCP system prompts (if any) into one OpenCode `system` string. */
+/**
+ * Build the stable `system` prefix: workspace confinement + MCP system prompts.
+ * Keeping this stable text in `system` (not in the user `parts`) lets the model
+ * server cache it across steps. OpenCode places Anthropic cache breakpoints itself
+ * and other vendors auto-cache, so no explicit marker is needed here.
+ */
 function buildSystem(opts: RunCustomPromptOptions): string | undefined {
   const parts: string[] = [];
+  if (opts.cwd) parts.push(confinementSystemPrompt(opts.cwd));
   for (const m of opts.mcps ?? []) if (m.systemPrompt) parts.push(m.systemPrompt);
   return parts.length ? parts.join("\n\n") : undefined;
 }
@@ -80,7 +86,8 @@ export async function runCustomPrompt(
   }
   const sid = session.data.id;
 
-  const promptText = [opts.cwd ? confinementSystemPrompt(opts.cwd) : "", opts.prompt].filter(Boolean).join("\n\n");
+  // Only the dynamic task in the user part; stable confinement now rides in `system`.
+  const promptText = opts.prompt;
 
   // Best-effort server-side cancellation: when the run is aborted, tell OpenCode to
   // stop the agent loop. Swallow abort's own errors so they never mask the cancellation.

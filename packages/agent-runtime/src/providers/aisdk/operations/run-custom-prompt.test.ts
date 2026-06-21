@@ -101,6 +101,21 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(generateText.mock.calls[0][0].stopWhen).toBe(80);
   });
 
+  it("puts stable text in `system` and only the task in `prompt` (caching prefix)", async () => {
+    generateText.mockResolvedValue({ text: "ok", steps: [] });
+    await runCustomPrompt({ prompt: "the task", outputMode: "text", cwd: "/ws", model: "x", modelConfig: {} } as any);
+    const args = generateText.mock.calls[0][0];
+    expect(typeof args.system).toBe("string");
+    expect(args.system).toContain("WORKSPACE BOUNDARY");
+    expect(args.prompt).toBe("the task"); // dynamic task only — confinement is not inlined
+  });
+
+  it("omits `system` when there is no stable text", async () => {
+    generateText.mockResolvedValue({ text: "ok", steps: [] });
+    await runCustomPrompt({ prompt: "x", outputMode: "text", model: "x", modelConfig: {} } as any);
+    expect(generateText.mock.calls[0][0].system).toBeUndefined();
+  });
+
   it("errors when structured mode has no schema", async () => {
     const r = await runCustomPrompt({ prompt: "hi", outputMode: "structured", model: "x", modelConfig: {} } as any);
     expect(r.error).toMatch(/outputSchema/);

@@ -42,11 +42,7 @@ function TriggerCard({
           role="switch"
           aria-checked={enabled}
         >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
-              enabled ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform duration-200 ${enabled ? "translate-x-4" : "translate-x-0"}`} />{/* theme-colors-allow: knob stays white for contrast on the track */}
         </button>
       </div>
       {enabled && <div className="p-4">{children}</div>}

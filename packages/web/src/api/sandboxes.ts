@@ -32,6 +32,7 @@ export interface Sandbox {
   imageState?: ImageState;
   imageRef?: string | null;
   imageError?: string | null;
+  maxConcurrentInstances?: number | null;
 }
 
 export interface SandboxUpsertBody {
@@ -42,6 +43,7 @@ export interface SandboxUpsertBody {
   config?: Record<string, unknown>;
   tags?: string[];
   enabled?: boolean;
+  maxConcurrentInstances?: number | null;
 }
 
 const orgBase = (orgId: string) => `/api/orgs/${orgId}/sandboxes`;

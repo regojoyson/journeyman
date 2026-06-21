@@ -88,16 +88,81 @@ export async function listActiveSandboxInstances(db: Queryable): Promise<Sandbox
  */
 export async function claimSandboxInstance(
   db: Queryable,
-  row: { runId: string; type: string; owner: string },
+  row: { runId: string; type: string; owner: string; sandboxId?: string | null },
 ): Promise<boolean> {
   const r = await db.query(
-    `INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner)
-     VALUES ($1, $2, '', 'provisioning', $3)
+    `INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner, sandbox_id)
+     VALUES ($1, $2, '', 'provisioning', $3, $4)
      ON CONFLICT (run_id) DO NOTHING
      RETURNING run_id`,
-    [row.runId, row.type, row.owner],
+    [row.runId, row.type, row.owner, row.sandboxId ?? null],
   );
   return r.rows.length > 0;
+}
+
+/** Thrown by claimSandboxInstanceWithCapacity when the sandbox is at its concurrency limit. */
+export class SandboxAtCapacityError extends Error {
+  constructor(message = "sandbox at capacity") {
+    super(message);
+    this.name = "SandboxAtCapacityError";
+  }
+}
+
+/**
+ * Claim a sandbox slot atomically. With no limit, delegates to claimSandboxInstance
+ * (lock-free). With a limit, a single advisory-locked statement counts active+
+ * provisioning rows for the sandbox and inserts only if under the cap.
+ *
+ * Returns true if THIS caller won the claim, false if another worker already
+ * holds this run (caller should waitActive). Throws SandboxAtCapacityError when
+ * the sandbox is full.
+ */
+export async function claimSandboxInstanceWithCapacity(
+  db: Queryable,
+  row: { runId: string; type: string; owner: string; sandboxId: string; limit: number | null },
+): Promise<boolean> {
+  if (row.limit == null || row.limit <= 0) {
+    return claimSandboxInstance(db, row);
+  }
+  const { rows } = await db.query(
+    `WITH lk AS (
+       SELECT pg_advisory_xact_lock(hashtext('jm_sbx_cap:' || $4::text)) AS locked
+     ),
+     cap AS (
+       SELECT count(*) AS n
+       FROM jm_sandbox_instances i, lk
+       WHERE i.sandbox_id = $4 AND i.status IN ('provisioning','active')
+     ),
+     ins AS (
+       INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner, sandbox_id)
+       SELECT $1, $2, '', 'provisioning', $3, $4
+       FROM cap
+       WHERE cap.n < $5
+       ON CONFLICT (run_id) DO NOTHING
+       RETURNING run_id
+     )
+     SELECT (SELECT count(*) FROM ins) AS inserted,
+            EXISTS (SELECT 1 FROM jm_sandbox_instances WHERE run_id = $1) AS run_exists`,
+    [row.runId, row.type, row.owner, row.sandboxId, row.limit],
+  );
+  const inserted = Number(rows[0]?.inserted ?? 0);
+  const runExists = Boolean(rows[0]?.run_exists);
+  if (inserted > 0) return true;       // won the claim
+  if (runExists) return false;         // another worker holds this run → waitActive
+  throw new SandboxAtCapacityError();  // blocked by capacity
+}
+
+/**
+ * Release an un-provisioned claim (provision failed before reaching 'active').
+ * DELETEs the row so the slot frees immediately AND a Conductor retry can
+ * re-claim cleanly. The handle='' guard guarantees we never remove a live unit.
+ */
+export async function releaseSandboxClaim(db: Queryable, runId: string): Promise<void> {
+  await db.query(
+    `DELETE FROM jm_sandbox_instances
+       WHERE run_id = $1 AND status = 'provisioning' AND handle = ''`,
+    [runId],
+  );
 }
 
 /** Mark a previously claimed sandbox active with its real handle/volume/connection. */

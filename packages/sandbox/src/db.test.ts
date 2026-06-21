@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Queryable } from "./db.ts";
 import {
   insertSandbox,
+  updateSandbox,
   listSandboxes,
   getSandbox,
   deleteSandbox,
@@ -77,5 +78,30 @@ describe("sandboxes db store", () => {
     expect(db.calls[0].text).not.toMatch(/scope = 'user'/i);
     expect(db.calls[0].params).toEqual(["w1", "o1"]);
     expect(rec?.id).toBe("w1");
+  });
+});
+
+describe("db maxConcurrentInstances wiring", () => {
+  it("insertSandbox sends max_concurrent_instances as a value", async () => {
+    const db = fakeDb([row]);
+    await insertSandbox(db, {
+      scope: "org", orgId: "o1", name: "n", type: "docker",
+      executionMode: "per-instance", createdBy: "u1", maxConcurrentInstances: 4,
+    });
+    expect(db.calls[0].text).toMatch(/max_concurrent_instances/);
+    expect(db.calls[0].params).toContain(4);
+  });
+
+  it("updateSandbox sets the column only when provided", async () => {
+    const db = fakeDb([{ id: "x" }]);
+    await updateSandbox(db, { id: "x", orgId: "o1", maxConcurrentInstances: null });
+    expect(db.calls[0].text).toMatch(/max_concurrent_instances = \$1/);
+    expect(db.calls[0].params?.[0]).toBeNull();
+  });
+
+  it("updateSandbox omits the column when not provided", async () => {
+    const db = fakeDb([{ id: "x" }]);
+    await updateSandbox(db, { id: "x", orgId: "o1", name: "renamed" });
+    expect(db.calls[0].text).not.toMatch(/max_concurrent_instances/);
   });
 });

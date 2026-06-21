@@ -86,4 +86,30 @@ describe("AgentRunStepHandler", () => {
     const res = await h.run({ provider: "claude" } as any, ctx());
     expect(res.kind).toBe("failure");
   });
+
+  it("defaults caching to true and forwards it to runCustomPrompt", async () => {
+    const runCustomPrompt = vi.fn().mockResolvedValue({ result: "done" });
+    const h = new AgentRunStepHandler({
+      coding: () => ({ runCustomPrompt }),
+      git: () => ({ cloneRepos: vi.fn().mockResolvedValue({ repos: [] }) }),
+      pool: {} as any,
+      bindingResolver: vi.fn().mockResolvedValue({}),
+    } as any);
+    await h.run({ instructions: "hi", provider: "claude", outputMode: "text" } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ caching: true }));
+  });
+
+  it("honors caching=false (boolean and stringified) from input", async () => {
+    const runCustomPrompt = vi.fn().mockResolvedValue({ result: "done" });
+    const h = new AgentRunStepHandler({
+      coding: () => ({ runCustomPrompt }),
+      git: () => ({ cloneRepos: vi.fn().mockResolvedValue({ repos: [] }) }),
+      pool: {} as any,
+      bindingResolver: vi.fn().mockResolvedValue({}),
+    } as any);
+    await h.run({ instructions: "hi", provider: "claude", outputMode: "text", caching: false } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ caching: false }));
+    await h.run({ instructions: "hi", provider: "claude", outputMode: "text", caching: "false" } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenLastCalledWith(expect.objectContaining({ caching: false }));
+  });
 });

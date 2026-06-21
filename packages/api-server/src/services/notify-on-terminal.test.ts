@@ -101,6 +101,45 @@ describe("makeNotifyOnTerminal", () => {
     expect(slackSendMock).not.toHaveBeenCalled();
   });
 
+  it("renders a custom success template with placeholders", async () => {
+    getAgentMock.mockResolvedValue({
+      name: "Nightly Sync",
+      notifications: {
+        on: ["success"],
+        connectionId: "c1",
+        target: "#ops",
+        templates: { success: { subject: "✅ {agent}", body: "Run {runId} in {duration} ({workflow})" } },
+      },
+    });
+    getConnectionMock.mockResolvedValue({ category: "notification", provider: "slack", config: { method: "token" } });
+    getConnectionSealedMock.mockResolvedValue({ ciphertext: Buffer.from("x"), iv: Buffer.from("y"), authTag: Buffer.from("z") });
+
+    const notify = makeNotifyOnTerminal(deps(vi.fn().mockResolvedValue({
+      inputs: { agentId: "a1" }, workflowNameSnapshot: "Nightly ETL", durationMs: 72000, failedAtNodeId: null,
+    })));
+    await notify("wi1", "completed");
+
+    const arg = slackSendMock.mock.calls[0][0];
+    expect(arg.title).toBe("✅ Nightly Sync");
+    expect(arg.message).toBe("Run wi1 in 1m 12s (Nightly ETL)");
+  });
+
+  it("falls back to default text when no template is set", async () => {
+    getAgentMock.mockResolvedValue({
+      name: "Dev Agent",
+      notifications: { on: ["success"], connectionId: "c1", target: "#ops" },
+    });
+    getConnectionMock.mockResolvedValue({ category: "notification", provider: "slack", config: { method: "token" } });
+    getConnectionSealedMock.mockResolvedValue({ ciphertext: Buffer.from("x"), iv: Buffer.from("y"), authTag: Buffer.from("z") });
+
+    const notify = makeNotifyOnTerminal(deps(vi.fn().mockResolvedValue({ inputs: { agentId: "a1" } })));
+    await notify("wi1", "completed");
+
+    const arg = slackSendMock.mock.calls[0][0];
+    expect(arg.title).toBe('Agent "Dev Agent" completed');
+    expect(arg.message).toBe("Run wi1 completed.");
+  });
+
   it("skips when the connection is not a notification connection", async () => {
     getAgentMock.mockResolvedValue({ name: "A", notifications: { on: ["success"], connectionId: "c1" } });
     getConnectionMock.mockResolvedValue({ category: "git", provider: "github" });

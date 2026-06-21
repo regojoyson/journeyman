@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      "/api/analytics": {
+        target: process.env.VITE_ANALYTICS_TARGET ?? "http://localhost:4002",
+        changeOrigin: true,
+      },
       "/api":          { target: API_TARGET, changeOrigin: true },
       "/admin": {
         target: API_TARGET, changeOrigin: true,

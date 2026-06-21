@@ -50,6 +50,17 @@ COPY . .
 EXPOSE 4000
 CMD ["npm", "run", "start", "-w", "@journeyman/api-server"]
 
+# ---------- runtime-analytics ----------
+FROM node:22-alpine AS runtime-analytics
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apk add --no-cache ca-certificates curl
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY . .
+EXPOSE 4002
+CMD ["npm", "run", "start", "-w", "@journeyman/analytics"]
+
 # ---------- runtime-worker ----------
 FROM node:22-alpine AS runtime-worker
 WORKDIR /app

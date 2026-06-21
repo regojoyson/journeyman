@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type JSX } from "react";
 import type { WorkflowGraph } from "@journeyman/core";
 import type { WizardMeta } from "../wizard-state.ts";
 

@@ -122,6 +122,27 @@ services:
       conductor:
         condition: service_started
 
+  analytics:
+    image: journeyman/analytics:dev
+    # env_file carries the same identity/JWT secret api-server uses, so the
+    # analytics service verifies auth tokens with the same key.
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
+      IDENTITY_ENFORCE: "true"
+      NODE_ENV: production
+      # Dedicated var — the shared PORT (4000) belongs to api-server.
+      ANALYTICS_PORT: "4002"
+    ports: ["6002:4002"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4002/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+
   worker:
     image: journeyman/worker:dev
     env_file: .env.production

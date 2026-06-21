@@ -39,9 +39,11 @@ journeyman/                  ← repo root
     ├── flow-editor/         ← visual canvas editor (drag-drop, properties panel)
     ├── run-viewer/          ← read-only execution canvas with live status
     ├── runs-list/           ← sortable/filterable run history table
+    ├── workspace-dashboard/ ← workspace stats dashboard page (live + trends + agents)
     ├── theme/               ← shared UI theme
     │
     ├── api-server/          ← Fastify HTTP gateway (REST + SSE)
+    ├── analytics/           ← standalone workspace stats service (read-only; powers the dashboard)
     ├── orchestrator/        ← Conductor adapter + worker harness
     ├── sandbox/             ← execution-environment registry + local/docker backends
     ├── identity/            ← JWT auth, bcrypt, user/org/role management
@@ -79,6 +81,7 @@ journeyman/                  ← repo root
 | `@journeyman/flow-editor` | Canvas editor component: drag-drop nodes, properties panel, MCP/skills config. |
 | `@journeyman/run-viewer` | Read-only execution canvas with live per-node status. |
 | `@journeyman/runs-list` | Sortable/filterable run history table. |
+| `@journeyman/workspace-dashboard` | Workspace dashboard page — live snapshot + historical trends + agent stats bands. Consumes `@journeyman/analytics`. See [docs/dashboard.md](docs/dashboard.md). |
 | `@journeyman/theme` | Shared UI theme primitives. |
 
 ### Backend
@@ -86,6 +89,7 @@ journeyman/                  ← repo root
 | Package | Scope |
 |---|---|
 | `@journeyman/api-server` | Fastify HTTP gateway with REST and SSE endpoints. |
+| `@journeyman/analytics` | Standalone Fastify service (port `4002`) for workspace stats — read-only aggregate queries over existing tables, reusing `@journeyman/identity` for auth. Powers the dashboard; `api-server` is untouched. See [docs/dashboard.md](docs/dashboard.md). |
 | `@journeyman/orchestrator` | Conductor adapter, worker harness, pluggable flow + run stores. |
 | `@journeyman/sandbox` | DB-backed execution-environment registry (user/org scope) with local + Docker backends, resolver, and CRUD routes. Provisions the workspace a step runs in. |
 | `@journeyman/identity` | JWT auth, bcrypt passwords, user/org/role management. |
@@ -270,6 +274,7 @@ npm run k8s:reset
 | Canonical tool model (`CANONICAL_TOOLS`) + per-provider `tool-mapping.ts` | Implemented |
 | `@journeyman/sandbox` — execution-environment registry (local + Docker backends), resolver, routes | Implemented |
 | `StepDefinition.supportsMcp` flag | Removed (replaced by `tabs.mcp`) |
+| `@journeyman/analytics` service + `@journeyman/workspace-dashboard` page (`/api/analytics/workspaces/:wsId/{live,overview}`) | Implemented (standalone Fastify on `4002`, read-only aggregates; workspace dashboard at `/workspaces/:wsId/dashboard`) |
 
 ## Adding a New Provider
 

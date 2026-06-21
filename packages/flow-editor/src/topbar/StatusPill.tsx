@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { WorkflowStatus } from "@journeyman/core";
 
 export function StatusPill({ status }: { status: WorkflowStatus }): JSX.Element {

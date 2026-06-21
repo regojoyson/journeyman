@@ -14,7 +14,7 @@ import type { EnsureWorkspaceResult } from "../sandbox/ensure-workspace.ts";
 import type { ConductorClient } from "../engines/conductor/conductor-client.ts";
 import { VisitCounter } from "./visit-counter.ts";
 import { startHeartbeat } from "./heartbeat.ts";
-import { resolveDefaultStepTimeoutSeconds, resolveImageRetryConfig } from "./step-timeouts.ts";
+import { resolveDefaultStepTimeoutSeconds, resolveImageRetryConfig, resolveCapacityRetryConfig } from "./step-timeouts.ts";
 
 const baseLog = createLogger("orchestrator:worker");
 
@@ -404,6 +404,8 @@ export class WorkerHarness {
         // This works regardless of whether Conductor retries are configured on the step.
         const { attempts: imageRetryAttempts, delayMs: imageRetryDelayMs } = resolveImageRetryConfig();
         let imageAttempt = 0;
+        const { attempts: capacityRetryAttempts, delayMs: capacityRetryDelayMs } = resolveCapacityRetryConfig();
+        let capacityAttempt = 0;
         let wsResult: Awaited<ReturnType<typeof this.deps.ensureWorkspace>>;
         while (true) {
           // Honor the step deadline (incl. a custom timeoutSeconds) while waiting for
@@ -417,6 +419,14 @@ export class WorkerHarness {
             });
             break;
           } catch (err: any) {
+            if (err?.name === "SandboxAtCapacityError" && capacityAttempt < capacityRetryAttempts) {
+              capacityAttempt++;
+              const msg = `⏳ sandbox at capacity; waiting for a free slot (attempt ${capacityAttempt}/${capacityRetryAttempts})…`;
+              rlog.info({ sandboxId, attempt: capacityAttempt }, "waiting for capacity");
+              await provisionLog(msg);
+              await delayOrAbort(capacityRetryDelayMs, abort.signal);
+              continue;
+            }
             if (err?.name === "ImageNotReadyError" && imageAttempt < imageRetryAttempts) {
               imageAttempt++;
               const msg = `⏳ waiting for image to be ready (attempt ${imageAttempt}/${imageRetryAttempts})…`;
@@ -501,6 +511,25 @@ export class WorkerHarness {
           workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
           status: "FAILED",
           reasonForIncompletion: `image_not_ready: ${err.message}`,
+        });
+        return;
+      }
+      if (err?.name === "SandboxAtCapacityError") {
+        rlog.info({ message: err.message, durationMs }, "sandbox at capacity; failing for re-queue");
+        await this.deps.events.append({
+          workflowInstanceId, nodeId, eventType: "step.log",
+          payload: { line: `⚠ sandbox at capacity: ${err.message}; will retry if a retry policy is set` },
+        }).catch(() => {});
+        await appendStepEvent(this.deps.events, ctx, "step.failed", {
+          reason: "sandbox_at_capacity",
+          error: serializeError(err),
+          tail: tail.drain(),
+          durationMs,
+        });
+        await this.deps.client.completeTask({
+          workflowInstanceId: conductorWorkflowId, taskId: task.taskId,
+          status: "FAILED",
+          reasonForIncompletion: `sandbox_at_capacity: ${err.message}`,
         });
         return;
       }

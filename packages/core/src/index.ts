@@ -135,6 +135,8 @@ export type { ExecutorKind as CoreExecutorKind } from "./registries/provider-cat
 export * from "./registries/builder-availability.ts";
 export * from "./registries/notification-fields.ts";
 export * from "./registries/notification-scaffolds.ts";
+export * from "./registries/notification-templates.ts";
+export * from "./registries/notification-presets.ts";
 export * from "./registries/opencode-slots.ts";
 export { codingModelKeySlot } from "./registries/coding-model-key-slot.ts";
 export { AISDK_PROVIDER_PACKAGES, isAiSdkPackage, type AiSdkPackage } from "./registries/aisdk-packages.ts";
@@ -187,6 +189,7 @@ export type {
   NodeExecution, NodeExecutionStatus,
 } from "./types/workflow-instance.types.ts";
 export { isTerminalStatus, TERMINAL_STATUSES } from "./types/workflow-instance.types.ts";
+export type * from "./types/analytics.types.ts";
 export type {
   StepContext, StepFailure, StepInput, StepOutput,
   OutputSchema,

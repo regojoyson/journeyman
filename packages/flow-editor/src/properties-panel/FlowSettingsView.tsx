@@ -22,6 +22,13 @@ function getCycleVisits(node: WorkflowNode): number {
 function setCycleVisits(node: WorkflowNode, n: number): WorkflowNode {
   return { ...node, config: { ...(node.config ?? {}), maxCycleVisits: n } };
 }
+function getCaching(node: WorkflowNode): boolean {
+  const cfg = (node.config ?? {}) as { caching?: boolean };
+  return cfg.caching !== false; // default on
+}
+function setCaching(node: WorkflowNode, on: boolean): WorkflowNode {
+  return { ...node, config: { ...(node.config ?? {}), caching: on } };
+}
 function getRunInputs(node: WorkflowNode): WorkflowInputDef[] {
   return getStartWorkflowInputs(node.config);
 }
@@ -67,6 +74,21 @@ export function FlowSettingsView({ startNode, onChange, readOnly }: FlowSettings
           disabled={readOnly}
           onChange={e => onChange(setCycleVisits(startNode, Number(e.target.value) || 1))}
         />
+      </div>
+
+      <div className="je-props__field">
+        <label>
+          <input
+            type="checkbox"
+            checked={getCaching(startNode)}
+            disabled={readOnly}
+            onChange={e => onChange(setCaching(startNode, e.target.checked))}
+          />{" "}
+          Prompt caching
+        </label>
+        <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)" }}>
+          On by default. Reuses the stable prompt prefix across steps to cut token cost. Turn off for debugging.
+        </div>
       </div>
 
       <div className="je-props__field">

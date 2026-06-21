@@ -25,17 +25,30 @@ export interface AgentPermissions {
   allowedTools: CanonicalTool[];
 }
 
+export interface AgentNotificationTemplate {
+  subject?: string;
+  body?: string;
+}
+
 export interface AgentNotifications {
   on: Array<"success" | "failure">;
   /** Phase 2+: the notification Connection to deliver through (delivery lands in Phase 4). */
   connectionId?: string;
   target?: string;
+  /** Optional per-outcome message templates with {placeholder} substitution.
+   *  A blank/absent subject or body falls back to the default text. */
+  templates?: {
+    success?: AgentNotificationTemplate;
+    failure?: AgentNotificationTemplate;
+  };
 }
 
 export interface AgentBehavior {
   maxTurns?: number;
   timeoutSeconds?: number;
   retry?: RetryPolicy;
+  /** Prompt caching for this agent's run. Defaults to true when omitted. */
+  caching?: boolean;
 }
 
 /**

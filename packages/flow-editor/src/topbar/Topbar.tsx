@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type JSX } from "react";
 import type { WorkflowGraph, WorkflowSaveWarning, WorkflowStatus } from "@journeyman/core";
 import { StatusPill } from "./StatusPill.tsx";
 import {

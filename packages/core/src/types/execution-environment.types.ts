@@ -108,6 +108,8 @@ export interface ResolvedSandbox {
   imageFingerprint?: string | null;
   imageRef?: string | null;
   imageError?: string | null;
+  /** Max concurrent instances for this sandbox (host-capacity cap). null/0 = unlimited. */
+  maxConcurrentInstances?: number | null;
 }
 
 /** A pluggable worker *type*. Registered by name; callers never change. */

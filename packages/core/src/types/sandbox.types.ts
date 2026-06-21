@@ -26,6 +26,8 @@ export interface Sandbox {
   imageRef: string | null;
   imageError: string | null;
   imageBuiltAt: Date | null;
+  /** Max concurrent provisioning+active instances for this sandbox. null/0 = unlimited. */
+  maxConcurrentInstances?: number | null;
 }
 
 export interface CreateSandboxArgs {
@@ -39,6 +41,7 @@ export interface CreateSandboxArgs {
   tags?: string[];
   enabled?: boolean;
   createdBy: string | null;
+  maxConcurrentInstances?: number | null;
 }
 
 export interface UpdateSandboxArgs {
@@ -50,4 +53,5 @@ export interface UpdateSandboxArgs {
   config?: Record<string, unknown>;
   tags?: string[];
   enabled?: boolean;
+  maxConcurrentInstances?: number | null;
 }

@@ -15,6 +15,17 @@ export interface SandboxInputShape {
   type?: unknown;
   executionMode?: unknown;
   connectivity?: unknown;
+  maxConcurrentInstances?: unknown;
+}
+
+/** Validate an optional per-sandbox concurrency cap. null/0 = unlimited. Throws InvalidSandboxInputError. */
+export function validateMaxConcurrentInstances(v: unknown): void {
+  if (v === undefined || v === null) return;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 10000) {
+    throw new InvalidSandboxInputError(
+      `maxConcurrentInstances must be an integer between 0 and 10000 (got ${String(v)})`,
+    );
+  }
 }
 
 /** Validate the shape of a create/update worker request body. Throws InvalidSandboxInputError. */
@@ -50,6 +61,7 @@ export function validateSandboxInput(input: SandboxInputShape): void {
       );
     }
   }
+  validateMaxConcurrentInstances(input.maxConcurrentInstances);
 }
 
 /** Map a jm_sandboxes DB row (snake_case) to a Sandbox (camelCase). */
@@ -73,5 +85,6 @@ export function rowToSandbox(r: Record<string, any>): Sandbox {
     imageRef: r.image_ref ?? null,
     imageError: r.image_error ?? null,
     imageBuiltAt: r.image_built_at ?? null,
+    maxConcurrentInstances: r.max_concurrent_instances ?? null,
   };
 }

@@ -76,7 +76,8 @@ export async function runCustomPrompt(
 
   const mcpServers = opts.mcps?.length ? toMcpServerConfigs(opts.mcps) : undefined;
   const mcpPromptSuffix = opts.mcps?.length ? mergeSystemPrompts(opts.mcps) : "";
-  const mcpKeys = mcpServers ? Object.keys(mcpServers) : [];
+  // Sorted for a deterministic tool/prompt prefix → stable prompt-cache key across steps.
+  const mcpKeys = mcpServers ? Object.keys(mcpServers).sort() : [];
   const mcpToolNames = mcpKeys.map((k) => `mcp__${k}`);
   const plugins = opts.skills?.length ? toSdkPluginConfigs(opts.skills) : undefined;
   const skillPromptSuffix = opts.skills?.length ? buildSkillSystemPrompt(opts.skills) : "";
@@ -87,7 +88,15 @@ export async function runCustomPrompt(
   const tools = [...baseTools, ...mcpToolNames, ...skillToolNames];
 
   const confinement = opts.cwd ? confinementSystemPrompt(opts.cwd) : "";
-  const fullPrompt = [confinement, opts.prompt, mcpPromptSuffix, skillPromptSuffix].filter(Boolean).join("\n\n");
+  // Prompt caching: stable text (confinement + MCP/skill instructions) goes in the
+  // systemPrompt prefix; only the dynamic task stays in the user prompt. Blocks before
+  // SYSTEM_PROMPT_DYNAMIC_BOUNDARY are cross-session cacheable. When caching is off we
+  // omit the boundary (no explicit cross-session marker). Empty stable ⇒ no systemPrompt.
+  const stableBlocks = [confinement, mcpPromptSuffix, skillPromptSuffix].filter(Boolean);
+  const cachingEnabled = opts.caching !== false;
+  const systemPromptBlocks = stableBlocks.length
+    ? (cachingEnabled ? [...stableBlocks, "SYSTEM_PROMPT_DYNAMIC_BOUNDARY"] : stableBlocks)
+    : undefined;
 
   // Capture the engine's stderr. The SDK surfaces a bare "Claude Code process
   // exited with code N" on a non-zero exit and discards the child's stderr — the
@@ -113,6 +122,7 @@ export async function runCustomPrompt(
     stderr: captureStderr,
     ...(cliPath ? { pathToClaudeCodeExecutable: cliPath } : {}),
     settings: { allowedMcpServers: mcpKeys.map((k) => ({ serverName: k })) },
+    ...(systemPromptBlocks ? { systemPrompt: systemPromptBlocks } : {}),
     ...(mcpServers ? { mcpServers } : {}),
     ...(plugins?.length ? { plugins } : {}),
     ...(opts.cwd ? { cwd: opts.cwd, additionalDirectories: [], hooks: buildWorkspaceHook(opts.cwd) } : {}),
@@ -139,7 +149,7 @@ export async function runCustomPrompt(
   };
 
   try {
-    for await (const msg of query({ prompt: fullPrompt, options: queryOptions as any })) {
+    for await (const msg of query({ prompt: opts.prompt, options: queryOptions as any })) {
       logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
       if ((msg as any).type === "result") {
         const m = msg as any;

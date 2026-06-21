@@ -32,7 +32,7 @@ function CreateStepModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
       <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
         <h2 className="text-base font-semibold">New custom step</h2>
         <p className="text-xs text-muted-foreground">You can configure everything else after creation.</p>

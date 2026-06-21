@@ -1,12 +1,13 @@
 # Agent Notification Message Templates Design
 
 **Date:** 2026-06-21
-**Status:** Draft — NOT yet implemented
+**Status:** Implemented (2026-06-21)
 **Follows:** [2026-06-21-notification-providers-end-to-end-design.md](2026-06-21-notification-providers-end-to-end-design.md)
 
-> **Amendment before implementation (2026-06-21):** two things changed after this was written.
-> (1) The `console` provider was **removed** ([2026-06-21-notification-ux-hardening-design.md](2026-06-21-notification-ux-hardening-design.md)) — ignore the `console` rows below; only Slack and Email remain.
-> (2) The workflow send-message step now uses **plain-text scaffolds** (`NOTIFICATION_SCAFFOLDS`), which are distinct from the placeholder-driven agent presets specced here. When implementing, reconcile the preset shape with the already-shipped `notification-scaffolds.ts` rather than duplicating concepts.
+> **Implementation notes:**
+> - The `console` provider was **removed** ([2026-06-21-notification-ux-hardening-design.md](2026-06-21-notification-ux-hardening-design.md)) — ignore the `console` rows below; only Slack and Email remain.
+> - Preset shape reconciliation: agent presets (`NOTIFICATION_PRESETS`, per-outcome, placeholder-driven) are intentionally **separate** from the step's `NOTIFICATION_SCAFFOLDS` (single, plain-text, no renderer). They serve different surfaces — kept distinct rather than merged.
+> - Shipped: `AgentNotifications.templates`; `notification-templates.ts` (`renderNotificationTemplate` + `NOTIFICATION_PLACEHOLDERS`); `notification-presets.ts`; render-with-fallback in `notify-on-terminal.ts`; preset picker + per-outcome subject/body editors in `NotificationsSection.tsx`. Tests: renderer (5), presets (3), notify-on-terminal template + fallback (2).
 
 ## Summary
 

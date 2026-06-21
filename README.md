@@ -38,12 +38,14 @@ Journeyman watches for tickets (Jira, Linear, GitHub Issues, Monday) and runs co
 | `@journeyman/flow-editor` | Visual canvas editor component (drag-drop nodes, properties panel, MCP/skills config) |
 | `@journeyman/run-viewer` | Read-only execution canvas with live per-node status |
 | `@journeyman/runs-list` | Sortable, filterable run history table |
+| `@journeyman/workspace-dashboard` | Workspace dashboard page — live snapshot + historical trends + agent stats |
 
 ### Backend
 
 | Package | Description |
 |---|---|
 | `@journeyman/api-server` | Fastify HTTP gateway with REST and SSE endpoints |
+| `@journeyman/analytics` | Standalone Fastify service for workspace stats — read-only aggregate queries behind the dashboard ([docs](docs/dashboard.md)) |
 | `@journeyman/orchestrator` | Conductor adapter, worker harness, pluggable flow and run stores |
 | `@journeyman/identity` | JWT auth, bcrypt passwords, user/org/role management |
 | `@journeyman/secrets` | User- and org-scoped secret vault with AES encryption |
@@ -93,8 +95,9 @@ npm run migrate
 #    its digests in the DB). Needed for docker-workspace sandboxes.
 npm run build:kit
 
-# 6. Start API server, worker, and web UI
+# 6. Start API server, analytics service, worker, and web UI
 npm run start:api-server
+npm run start:analytics    # workspace dashboard stats API (port 4002) — see docs/dashboard.md
 npm run start:worker
 npm run dev:web
 ```
@@ -143,6 +146,7 @@ Human Task and Webhook Wait are **separate** node types — one is person-driven
 | [Steps](docs/steps.md) | Built-in step catalog and the `IStepHandler` interface |
 | [Custom Steps](docs/custom-steps.md) | Register user-defined AI steps with custom prompts and tools |
 | [Providers](docs/providers.md) | Configure coding, git, ticket, and notification providers |
+| [Workspace Dashboard](docs/dashboard.md) | Live + historical workspace stats; the `@journeyman/analytics` service, its API, and how to run it |
 | [Triggers](docs/triggers.md) | API, GitHub, GitLab, and Jira webhook trigger sources |
 | [Artifacts](docs/artifacts.md) | Shared artifact bag: how data flows between steps |
 | [Management API](docs/management-api.md) | Full REST + SSE API reference |
@@ -218,16 +222,17 @@ Design / specification: [`docs/superpowers/specs/2026-05-19-deployment-design.md
 
 ### Container images
 
-A single multi-stage [`Dockerfile`](Dockerfile) produces four images via the `--target` flag:
+A single multi-stage [`Dockerfile`](Dockerfile) produces five images via the `--target` flag:
 
 | Image | Stage | Purpose |
 |---|---|---|
 | `journeyman/api-server:dev` | `runtime-api` | Fastify REST + SSE on port `4000` |
+| `journeyman/analytics:dev` | `runtime-analytics` | Workspace stats API on port `4002` ([docs](docs/dashboard.md)) |
 | `journeyman/worker:dev` | `runtime-worker` | Orchestrator worker (no exposed port) |
-| `journeyman/web:dev` | `runtime-web` | nginx serving the React build on port `8080`; proxies `/api` to `api-server:4000` |
+| `journeyman/web:dev` | `runtime-web` | nginx serving the React build on port `8080`; proxies `/api` to `api-server:4000` and `/api/analytics` to `analytics:4002` |
 | `journeyman/migrations:dev` | `runtime-migrations` | One-shot DB schema migrator |
 
-Build all four:
+Build all five:
 
 ```bash
 npm run images:build      # ./scripts/build-images.sh
@@ -246,6 +251,7 @@ The same env contract drives both deployments. Required at runtime:
 | `JM_SECRET_ENCRYPTION_KEY` | AES key for the secrets vault (`openssl rand -hex 32`) |
 | `LOG_LEVEL` | pino log level (default `info`) |
 | `PORT` | api-server listen port (default `4000`) |
+| `ANALYTICS_PORT` | analytics service listen port (default `4002`; dedicated so it never collides with `PORT`) |
 
 Optional: `ANTHROPIC_API_KEY`, `GITHUB_ACCESS_TOKEN`, `JM_GLOBAL_*` secrets, and the `BUILDER_LLM_*` keys that power the conversational [Builder](docs/setup.md#builder-llm-optional) page — see [`.env.example`](.env.example) for the full list.
 
@@ -347,15 +353,16 @@ Port map (host → container) — a **6000 series** so it never clashes with the
 
 | Host | Service | Notes |
 |---|---|---|
-| 6080 | web (nginx) | UI; also proxies `/api` to api-server |
+| 6080 | web (nginx) | UI; also proxies `/api` to api-server and `/api/analytics` to analytics |
 | 6000 | api-server | REST + SSE |
+| 6002 | analytics | workspace dashboard stats API |
 | 6008 | conductor | Conductor REST |
 | 6005 | conductor | UI |
 | 6032 | postgres | dev access |
 | 6079 | redis | dev access |
 | — | docker (dind) | internal only (`tcp://docker:2375`) — runs docker-workspace jobs |
 
-The `migrations` service runs once, exits 0, and gates `api-server` + `worker` via `depends_on: service_completed_successfully`.
+The `migrations` service runs once, exits 0, and gates `api-server`, `analytics`, and `worker` via `depends_on: service_completed_successfully`.
 
 ### Path 2: Kubernetes (any conforming cluster)
 
@@ -379,7 +386,7 @@ npm run images:build
 
 # 2. Make images visible to the cluster (only some runtimes need this):
 #    Docker Desktop k8s / Rancher Desktop / k3s on this host  → nothing
-#    kind     → kind load docker-image journeyman/api-server:dev journeyman/worker:dev journeyman/web:dev journeyman/migrations:dev
+#    kind     → kind load docker-image journeyman/api-server:dev journeyman/analytics:dev journeyman/worker:dev journeyman/web:dev journeyman/migrations:dev
 #    minikube → minikube image load journeyman/api-server:dev   (repeat per image)
 
 # 3. Seed dev secrets for the local overlay

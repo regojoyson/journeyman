@@ -34,7 +34,7 @@ describe("filterGroups", () => {
 describe("navHref", () => {
   it("builds workspace-scoped hrefs", () => {
     const ws = NAV_GROUPS[0];
-    expect(navHref(ws, ws.items[0], "w1", "o1")).toBe("/workspaces/w1/workflows");
+    expect(navHref(ws, ws.items[0], "w1", "o1")).toBe("/workspaces/w1/dashboard");
   });
   it("builds org-scoped hrefs", () => {
     const org = NAV_GROUPS.find((g) => g.id === "organization")!;

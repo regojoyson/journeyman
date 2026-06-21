@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TAG="${TAG:-dev}"
-TARGETS=("api-server:runtime-api" "worker:runtime-worker" "web:runtime-web" "migrations:runtime-migrations")
+TARGETS=("api-server:runtime-api" "analytics:runtime-analytics" "worker:runtime-worker" "web:runtime-web" "migrations:runtime-migrations")
 
 for spec in "${TARGETS[@]}"; do
   name="${spec%%:*}"

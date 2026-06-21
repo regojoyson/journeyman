@@ -23,6 +23,7 @@ function baseDeps(registry: IExecutionEnvironmentRegistry, over: Record<string, 
   return {
     getSandboxInstance: vi.fn().mockResolvedValue(null),
     claim: vi.fn().mockResolvedValue(true),
+    releaseClaim: vi.fn().mockResolvedValue(undefined),
     markActive: vi.fn().mockResolvedValue(undefined),
     waitActive: vi.fn(),
     resolveSandbox: vi.fn().mockResolvedValue({ id: "w1", type: "docker", config: { connection: { host: "tcp://docker:2375" } } }),
@@ -127,5 +128,31 @@ describe("ensureWorkspace (registry-driven)", () => {
       ensureWorkspace(deps as never, { ...args, log: (l: string) => lines.push(l) }),
     ).rejects.toThrow(/daemon down/);
     expect(lines.some((l) => /provisioning failed/i.test(l))).toBe(true);
+  });
+
+  it("passes sandboxId and limit to claim", async () => {
+    const { registry } = fakeRegistry();
+    const deps = baseDeps(registry, {
+      resolveSandbox: vi.fn().mockResolvedValue({ id: "w1", type: "docker", config: {}, maxConcurrentInstances: 3 }),
+    });
+    await ensureWorkspace(deps as never, args);
+    expect(deps.claim).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: "r", sandboxId: "w1", limit: 3 }),
+    );
+  });
+
+  it("propagates SandboxAtCapacityError from claim", async () => {
+    const { registry } = fakeRegistry();
+    const err = Object.assign(new Error("full"), { name: "SandboxAtCapacityError" });
+    const deps = baseDeps(registry, { claim: vi.fn().mockRejectedValue(err) });
+    await expect(ensureWorkspace(deps as never, args)).rejects.toMatchObject({ name: "SandboxAtCapacityError" });
+  });
+
+  it("releases the claim when provision() fails", async () => {
+    const { registry, env } = fakeRegistry();
+    env.provision = vi.fn().mockRejectedValue(new Error("boom"));
+    const deps = baseDeps(registry, {});
+    await expect(ensureWorkspace(deps as never, args)).rejects.toThrow("boom");
+    expect(deps.releaseClaim).toHaveBeenCalledWith("r");
   });
 });

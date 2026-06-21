@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 
 const PILL_STYLE: Record<string, CSSProperties> = {
-  running:   { background: "rgba(74,158,255,.15)",  color: "#4a9eff" },
-  completed: { background: "rgba(16,185,129,.15)",  color: "#10b981" },
-  failed:    { background: "rgba(239,68,68,.15)",   color: "#ef4444" },
-  cancelled: { background: "rgba(161,161,170,.15)", color: "#a1a1aa" },
-  paused:    { background: "rgba(253,203,110,.15)", color: "#fbbf24" },
+  running:   { background: "rgb(var(--color-info) / .15)",        color: "rgb(var(--color-info))" },
+  completed: { background: "rgb(var(--color-success) / .15)",     color: "rgb(var(--color-success))" },
+  failed:    { background: "rgb(var(--color-danger) / .15)",      color: "rgb(var(--color-danger))" },
+  cancelled: { background: "rgb(var(--color-text-subtle) / .15)", color: "rgb(var(--color-text-subtle))" },
+  paused:    { background: "rgb(var(--color-warning) / .15)",     color: "rgb(var(--color-warning))" },
 };
 
 export function StatusPill({ status }: { status: string }) {
@@ -20,7 +20,7 @@ export function StatusPill({ status }: { status: string }) {
       {status === "running" && (
         <span style={{
           width: 5, height: 5, borderRadius: "50%",
-          background: "#4a9eff", flexShrink: 0,
+          background: "rgb(var(--color-info))", flexShrink: 0,
           animation: "jePulse 1.4s infinite",
         }} />
       )}

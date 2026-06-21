@@ -17,12 +17,13 @@ Docker engine so AI coding jobs can run in isolated containers.
 Host ports use a **6000 series** to avoid clashing with the dev infra stack
 (`infra/compose.dev.yml`) and common local services. Only host-side ports change —
 container ports stay standard, so all in-network URLs (`postgres:5432`, `api-server:4000`,
-`conductor:8080`) are unchanged.
+`analytics:4002`, `conductor:8080`) are unchanged.
 
 | Service | Image | Role | Host port | Container |
 |---|---|---|---|---|
-| `web` | nginx + built SPA | serves the UI, proxies `/api` → api-server | **6080** | 8080 |
+| `web` | nginx + built SPA | serves the UI, proxies `/api` → api-server, `/api/analytics` → analytics | **6080** | 8080 |
 | `api-server` | `journeyman/api-server` | Fastify REST + SSE gateway | **6000** | 4000 |
+| `analytics` | `journeyman/analytics` | workspace dashboard stats API ([docs](dashboard.md)) | **6002** | 4002 |
 | `worker` | `journeyman/worker` | executes flow steps and AI coding jobs | — | — |
 | `dockerproxy` | `alpine/socat` | bridges the host Docker socket to TCP for the worker | — (internal `2375`) | 2375 |
 | `conductor` | orkes-conductor | durable workflow engine | **6008**, **6005** (UI) | 8080, 5000 |

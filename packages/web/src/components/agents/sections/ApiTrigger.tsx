@@ -86,7 +86,7 @@ export function ApiTrigger({ agentId, wsId, inputs }: ApiTriggerProps) {
 
       {/* One-time reveal banner */}
       {revealedToken && (
-        <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/30 p-3 space-y-2">
+        <div className="rounded-lg border border-success/40 bg-success/10 p-3 space-y-2">
           <p className="text-xs font-medium text-emerald-400">✓ Token issued — copy it now, it won't be shown again</p>
           <div className="flex items-center gap-2 font-mono text-xs break-all">
             <span className="flex-1 text-foreground">{revealedToken.plaintext}</span>
@@ -137,7 +137,7 @@ export function ApiTrigger({ agentId, wsId, inputs }: ApiTriggerProps) {
                         Disabled
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-950/40 text-emerald-400">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-success/10 text-success">
                         Active
                       </span>
                     )}
@@ -222,7 +222,7 @@ export function ApiTrigger({ agentId, wsId, inputs }: ApiTriggerProps) {
         >
           <span className="flex items-center gap-2">
             📋 Usage example
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-950/40 text-blue-400">curl</span>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-info/10 text-info">curl</span>
           </span>
           <span className="text-xs">{showCurl ? "▴" : "▾"}</span>
         </button>
@@ -245,7 +245,7 @@ export function ApiTrigger({ agentId, wsId, inputs }: ApiTriggerProps) {
                 type="button"
                 className={`absolute top-2 right-2 text-[11px] border rounded px-2 py-1 transition-colors ${
                   curlCopied
-                    ? "border-emerald-700/40 bg-emerald-950/30 text-emerald-400"
+                    ? "border-success/40 bg-success/10 text-success"
                     : "border-border text-muted-foreground hover:text-foreground hover:border-ring"
                 }`}
                 onClick={handleCopyCurl}

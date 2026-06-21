@@ -70,6 +70,7 @@ When adding a new env var:
 
 ```bash
 npm run start:api-server     # Fastify gateway
+npm run start:analytics      # workspace dashboard stats service (port 4002) — see docs/dashboard.md
 npm run start:worker         # tsx packages/orchestrator/src/cli-worker.ts
 npm run dev:web              # web UI in dev mode
 npm run build:web            # web UI production build

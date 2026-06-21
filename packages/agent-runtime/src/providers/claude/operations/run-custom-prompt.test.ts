@@ -58,3 +58,30 @@ describe("runCustomPrompt — tool wiring into query()", () => {
     expect(captured.options?.settingSources).toEqual([]);
   });
 });
+
+describe("runCustomPrompt — prompt caching (systemPrompt prefix)", () => {
+  it("puts stable text in systemPrompt with the dynamic boundary when caching is on (default)", async () => {
+    await runCustomPrompt({ prompt: "the task", outputMode: "text", cwd: "/ws" });
+    const sp = captured.options?.systemPrompt as string[] | undefined;
+    expect(Array.isArray(sp)).toBe(true);
+    // stable confinement is in the cacheable prefix...
+    expect(sp!.some((b) => b.includes("WORKSPACE BOUNDARY"))).toBe(true);
+    // ...and the boundary marker terminates the cacheable prefix.
+    expect(sp![sp!.length - 1]).toBe("SYSTEM_PROMPT_DYNAMIC_BOUNDARY");
+    // only the dynamic task rides in the user prompt — stable text is NOT inlined.
+    expect(captured.prompt).toBe("the task");
+  });
+
+  it("omits the boundary marker when caching is off", async () => {
+    await runCustomPrompt({ prompt: "the task", outputMode: "text", cwd: "/ws", caching: false });
+    const sp = captured.options?.systemPrompt as string[] | undefined;
+    expect(Array.isArray(sp)).toBe(true);
+    expect(sp).not.toContain("SYSTEM_PROMPT_DYNAMIC_BOUNDARY");
+    expect(sp!.some((b) => b.includes("WORKSPACE BOUNDARY"))).toBe(true);
+  });
+
+  it("omits systemPrompt entirely when there is no stable text", async () => {
+    await runCustomPrompt({ prompt: "just answer", outputMode: "text" });
+    expect("systemPrompt" in (captured.options ?? {})).toBe(false);
+  });
+});

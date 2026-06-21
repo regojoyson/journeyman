@@ -1,4 +1,5 @@
 // packages/flow-editor/src/inputs-tab/InputsTab.tsx
+import type { JSX } from "react";
 import type { WorkflowGraph, WorkflowInputDef, WorkflowAttributeDef } from "@journeyman/core";
 import { AttributeValueField } from "./AttributeValueField.tsx";
 

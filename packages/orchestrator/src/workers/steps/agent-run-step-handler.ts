@@ -167,8 +167,15 @@ export class AgentRunStepHandler implements IStepHandler {
 
     ctx.log(`Running agent "${(input.displayName as string) ?? "agent"}" (${outputMode})`);
     const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
+    // Prompt caching: on by default; the agent's behavior.caching (carried as input.caching by
+    // compileAgentToGraph) can turn it off; JM_DISABLE_PROMPT_CACHE overrides globally. Resolved
+    // worker-side; read defensively (boolean or stringified "false").
+    const envKill = process.env.JM_DISABLE_PROMPT_CACHE;
+    const cacheDisabledByEnv = !!envKill && envKill !== "0" && envKill.toLowerCase() !== "false";
+    const caching = !cacheDisabledByEnv && input.caching !== false && input.caching !== "false";
     const result = await coding.runCustomPrompt({
       prompt: instructions,
+      caching,
       outputMode,
       outputSchema: outputMode === "structured" ? (input.outputSchema as Record<string, unknown> | undefined) : undefined,
       cwd,

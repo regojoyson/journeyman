@@ -11,6 +11,13 @@ spec:
     - host: journeyman.local
       http:
         paths:
+          - path: /api/analytics
+            pathType: Prefix
+            backend:
+              service:
+                name: analytics
+                port:
+                  number: 4002
           - path: /api
             pathType: Prefix
             backend:

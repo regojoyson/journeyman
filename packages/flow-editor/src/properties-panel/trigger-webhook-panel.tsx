@@ -1,5 +1,5 @@
 // packages/flow-editor/src/properties-panel/trigger-webhook-panel.tsx
-import { useMemo } from "react";
+import { useMemo, type JSX } from "react";
 import type {
   TriggerInputMapping,
   TriggerInputMappingType,

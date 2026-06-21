@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type JSX } from "react";
 import type { WorkflowGraph, PublishError, StepConfigValidator } from "@journeyman/core";
 import { validateForPublish } from "@journeyman/core";
 import { useStepRegistry } from "../state/step-registry-context.tsx";

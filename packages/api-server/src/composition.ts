@@ -178,6 +178,8 @@ export function buildComposition(cfg: CompositionConfig): Composition {
           .append({ workflowInstanceId: id, eventType: "step.log", payload: { line: "Run failed: sandbox provisioning timed out" } })
           .catch(() => undefined);
         await workflowInstances.setStatus(id, "failed", { completedAt: new Date() });
+        // Free the capacity slot held by the stuck provisioning row.
+        await markSandboxInstanceDestroyed(pool!, id).catch(() => undefined);
       },
     });
     provisioningReaperStop = provisioningReaper.start(Number(process.env.PROVISION_REAP_INTERVAL_MS ?? 60_000));

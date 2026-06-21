@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { WorkflowGraph } from "@journeyman/core";
 import type { WizardMeta, WizardMode } from "../wizard-state.ts";
 

@@ -44,7 +44,8 @@ export {
 } from "./db.ts";
 export {
   recordSandboxInstance, getSandboxInstance, markSandboxInstanceDestroyed, listActiveSandboxInstances,
-  claimSandboxInstance, markSandboxInstanceActive,
+  claimSandboxInstance, claimSandboxInstanceWithCapacity, releaseSandboxClaim, SandboxAtCapacityError,
+  markSandboxInstanceActive,
 } from "./sandbox-instance-store.ts";
 export type { SandboxInstanceRecord, RecordSandboxInstanceArgs } from "./sandbox-instance-store.ts";
 export { SandboxInstanceReaper } from "./sandbox-instance-reaper.ts";

@@ -11,7 +11,11 @@ export interface EnsureWorkspaceDeps {
     volume?: string | null;
     connection?: unknown;
   } | null>;
-  claim(row: { runId: string; type: string; owner: string }): Promise<boolean>;
+  claim(row: {
+    runId: string; type: string; owner: string; sandboxId: string; limit: number | null;
+  }): Promise<boolean>;
+  /** Delete an un-provisioned claim row so a failed provision frees its slot. */
+  releaseClaim(runId: string): Promise<void>;
   markActive(
     runId: string,
     patch: {
@@ -36,6 +40,7 @@ export interface EnsureWorkspaceDeps {
     imageFingerprint?: string | null;
     imageRef?: string | null;
     imageError?: string | null;
+    maxConcurrentInstances?: number | null;
   }>;
   /** The per-process backend registry — selects/gates/provisions/tears down. */
   registry: IExecutionEnvironmentRegistry;
@@ -103,11 +108,18 @@ export async function ensureWorkspace(
     imageFingerprint: worker.imageFingerprint ?? null,
     imageRef: worker.imageRef ?? null,
     imageError: worker.imageError ?? null,
+    maxConcurrentInstances: worker.maxConcurrentInstances ?? null,
   };
   const backend = deps.registry.get(resolved.type);
   if (backend.checkRunnable) await backend.checkRunnable(resolved, log);
 
-  const won = await deps.claim({ runId: args.runId, type: worker.type, owner: args.orgId });
+  const won = await deps.claim({
+    runId: args.runId,
+    type: worker.type,
+    owner: args.orgId,
+    sandboxId: worker.id,
+    limit: worker.maxConcurrentInstances ?? null,
+  });
   if (!won) {
     // Another worker claimed it between our getSandboxInstance() and claim() calls.
     log("Waiting for workspace…");
@@ -132,6 +144,7 @@ export async function ensureWorkspace(
     return { env, provisioned };
   } catch (err) {
     log(`Workspace provisioning failed: ${(err as Error).message}`);
+    await deps.releaseClaim(args.runId).catch(() => {});
     throw err;
   }
 }

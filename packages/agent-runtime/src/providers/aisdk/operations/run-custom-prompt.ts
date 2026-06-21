@@ -121,12 +121,18 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     const hasTools = Object.keys(tools).length > 0;
 
     const confinement = opts.cwd ? confinementSystemPrompt(opts.cwd) : "";
-    const prompt = [confinement, opts.prompt, buildSkillMenu(skills)].filter(Boolean).join("\n\n");
+    // Prompt caching: stable text goes in `system` (a consistent prefix the model
+    // server caches automatically for MiniMax/OpenAI/Gemini); only the task stays
+    // dynamic. aisdk has no MCP system-prompt merge today, so `system` = confinement
+    // + skill menu. (Explicit Anthropic cacheControl is deferred.)
+    const system = [confinement, buildSkillMenu(skills)].filter(Boolean).join("\n\n") || undefined;
+    const userPrompt = opts.prompt;
 
     const maxSteps = opts.maxSteps && opts.maxSteps > 0 ? opts.maxSteps : DEFAULT_STEP_BUDGET;
     const result: any = await generateText({
       model,
-      prompt,
+      ...(system ? { system } : {}),
+      prompt: userPrompt,
       ...(hasTools ? { tools } : {}),
       stopWhen: stepCountIs(maxSteps),
       // AI SDK 6 stable option is `output` (was `experimental_output`); result is on `result.output`.
@@ -154,8 +160,9 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
       log.warn({ sessionId }, "agent loop produced no structured output; forcing a final JSON turn");
       const forced: any = await generateText({
         model,
+        ...(system ? { system } : {}),
         messages: [
-          { role: "user", content: prompt },
+          { role: "user", content: userPrompt },
           ...((result.response?.messages as unknown[]) ?? []),
           { role: "user", content: FORCE_JSON_INSTRUCTION },
         ],

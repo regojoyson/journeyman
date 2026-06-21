@@ -1,4 +1,5 @@
 // packages/flow-editor/src/properties-panel/trigger-manual-panel.tsx
+import type { JSX } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 
 export interface TriggerManualPanelProps {

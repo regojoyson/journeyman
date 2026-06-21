@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { WorkflowAttributeDef } from "@journeyman/core";
 
 type AttrType = WorkflowAttributeDef["type"];

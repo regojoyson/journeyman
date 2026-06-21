@@ -74,6 +74,14 @@ describe("opencode runCustomPrompt", () => {
     expect(r.error).toBe("boom");
   });
 
+  it("puts confinement in `system` and only the task in `parts` (caching prefix)", async () => {
+    let captured: any;
+    const client = fakeClient((p) => { captured = p; return { data: { info: {}, parts: [] } }; });
+    await runCustomPrompt(client, cfg, { prompt: "the task", outputMode: "text", model: "openai/gpt-4o", cwd: "/workspace" });
+    expect(captured.system).toContain("WORKSPACE BOUNDARY");
+    expect(captured.parts).toEqual([{ type: "text", text: "the task" }]); // confinement is not inlined into the user part
+  });
+
   it("errors when no model is resolvable", async () => {
     const client = fakeClient(() => ({ data: { info: {}, parts: [] } }));
     const r = await runCustomPrompt(client, { mode: "managed" } as OpenCodeProviderConfig, { prompt: "x", outputMode: "text" });

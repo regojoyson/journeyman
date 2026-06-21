@@ -8,18 +8,19 @@ export interface Queryable {
 }
 
 const COLS =
-  "id, scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by, created_at, updated_at, image_state, image_fingerprint, image_ref, image_error, image_built_at";
+  "id, scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by, created_at, updated_at, image_state, image_fingerprint, image_ref, image_error, image_built_at, max_concurrent_instances";
 
 export async function insertSandbox(db: Queryable, input: CreateSandboxArgs): Promise<Sandbox> {
   const { rows } = await db.query(
     `INSERT INTO jm_sandboxes
-       (scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10)
+       (scope, org_id, name, type, execution_mode, connectivity, config, tags, enabled, created_by, max_concurrent_instances)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,$11)
      RETURNING ${COLS}`,
     [
       input.scope, input.orgId, input.name, input.type, input.executionMode,
       input.connectivity ?? null, JSON.stringify(input.config ?? {}),
       JSON.stringify(input.tags ?? []), input.enabled ?? true, input.createdBy,
+      input.maxConcurrentInstances ?? null,
     ],
   );
   return rowToSandbox(rows[0]);
@@ -56,6 +57,7 @@ export async function updateSandbox(db: Queryable, input: UpdateSandboxArgs): Pr
   if (input.config !== undefined) set("config", JSON.stringify(input.config), "::jsonb");
   if (input.tags !== undefined) set("tags", JSON.stringify(input.tags), "::jsonb");
   if (input.enabled !== undefined) set("enabled", input.enabled);
+  if (input.maxConcurrentInstances !== undefined) set("max_concurrent_instances", input.maxConcurrentInstances);
   if (sets.length === 0) return true;
   sets.push("updated_at = now()");
   params.push(input.id, input.orgId);

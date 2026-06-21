@@ -61,6 +61,19 @@ export function BehaviorSection({ a, patch, locked }: SectionProps) {
         </select>
       </div>
 
+      <div>
+        <FieldLabel help="Reuse the stable prompt prefix across steps to cut token cost. On by default; turn off for debugging.">Prompt caching</FieldLabel>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            disabled={locked}
+            checked={a.behavior.caching !== false}
+            onChange={(e) => patch({ behavior: { ...a.behavior, caching: e.target.checked } })}
+          />
+          Enabled
+        </label>
+      </div>
+
       <div className="pt-4 border-t">
         <p className="text-sm font-medium">Safety limits (override org defaults)</p>
         <p className="text-xs text-muted-foreground mb-3">

@@ -75,6 +75,14 @@ export interface RunCustomPromptOptions {
    * repo can need a few hundred. Providers apply their own default when omitted.
    */
   maxSteps?: number;
+  /**
+   * Prompt caching toggle. Defaults to true when omitted. When false, providers
+   * omit explicit cache markers (Claude's SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+   * aisdk-Anthropic cacheControl). The stable-prefix/dynamic-suffix prompt
+   * structure is applied regardless — auto-caching vendors (MiniMax/OpenAI/Gemini)
+   * cannot be switched off client-side.
+   */
+  caching?: boolean;
 }
 
 /** Normalized per-(call×model) token usage. Every provider maps its native shape to this. */

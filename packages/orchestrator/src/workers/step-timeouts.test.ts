@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveImageRetryConfig,
+  resolveCapacityRetryConfig,
   resolveDefaultStepTimeoutSeconds,
   resolveImageWaitBudgetSeconds,
   resolveConductorTaskTimeoutSeconds,
@@ -9,6 +10,20 @@ import {
   DEFAULT_IMAGE_RETRY_DELAY_MS,
   DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
 } from "./step-timeouts.ts";
+
+// Default capacity wait budget folded into the Conductor backstop: 5 × 10_000ms = 50s.
+const CAP = 50;
+
+describe("resolveCapacityRetryConfig", () => {
+  it("defaults to a moderate budget", () => {
+    expect(resolveCapacityRetryConfig({})).toEqual({ attempts: 5, delayMs: 10_000 });
+  });
+  it("reads env overrides", () => {
+    expect(resolveCapacityRetryConfig({
+      SANDBOX_CAPACITY_RETRY_ATTEMPTS: "2", SANDBOX_CAPACITY_RETRY_DELAY_MS: "1000",
+    } as NodeJS.ProcessEnv)).toEqual({ attempts: 2, delayMs: 1000 });
+  });
+});
 
 describe("resolveImageRetryConfig", () => {
   it("defaults when unset", () => {
@@ -56,16 +71,16 @@ describe("resolveImageWaitBudgetSeconds", () => {
 
 describe("resolveConductorTaskTimeoutSeconds", () => {
   it("is a backstop larger than image wait + step work (defaults)", () => {
-    // 1800 (step) + 300 (image wait) + 120 (margin)
+    // 1800 (step) + 300 (image wait) + 50 (capacity wait) + 120 (margin)
     expect(resolveConductorTaskTimeoutSeconds({ env: {} })).toBe(
-      DEFAULT_STEP_TIMEOUT_SECONDS + 300 + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
+      DEFAULT_STEP_TIMEOUT_SECONDS + 300 + CAP + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
     );
   });
 
   it("raises the backstop when a per-step override exceeds the worker default", () => {
-    // a long-running node (3600s of work) gets image-wait headroom on top
+    // a long-running node (3600s of work) gets image-wait + capacity headroom on top
     expect(resolveConductorTaskTimeoutSeconds({ stepTimeoutSeconds: 3600, env: {} })).toBe(
-      3600 + 300 + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
+      3600 + 300 + CAP + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
     );
   });
 
@@ -73,7 +88,7 @@ describe("resolveConductorTaskTimeoutSeconds", () => {
     // worker still enforces ≥ default, so the backstop must too
     for (const override of [600, 0]) {
       expect(resolveConductorTaskTimeoutSeconds({ stepTimeoutSeconds: override, env: {} })).toBe(
-        DEFAULT_STEP_TIMEOUT_SECONDS + 300 + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
+        DEFAULT_STEP_TIMEOUT_SECONDS + 300 + CAP + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
       );
     }
   });
@@ -85,6 +100,6 @@ describe("resolveConductorTaskTimeoutSeconds", () => {
         stepTimeoutSeconds: 3600,
         env: { WORKER_IMAGE_RETRY_ATTEMPTS: "20" },
       }),
-    ).toBe(3600 + 600 + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS);
+    ).toBe(3600 + 600 + CAP + DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS);
   });
 });

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics
+spec:
+  selector:
+    app: analytics
+  ports:
+    - port: 4002
+      targetPort: 4002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics
+  template:
+    metadata:
+      labels:
+        app: analytics
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - 'until pg_isready -h postgres -U postgres; do echo "waiting for postgres"; sleep 2; done'
+      containers:
+        - name: analytics
+          image: journeyman/analytics:dev
+          ports:
+            - containerPort: 4002
+          envFrom:
+            - configMapRef:
+                name: journeyman-config
+            - secretRef:
+                name: journeyman-secrets
+          # journeyman-config injects PORT=4000 (api-server's). The analytics
+          # service ignores PORT and binds its own dedicated ANALYTICS_PORT.
+          env:
+            - name: ANALYTICS_PORT
+              value: "4002"
+          readinessProbe:
+            tcpSocket:
+              port: 4002
+            initialDelaySeconds: 10
+            periodSeconds: 5

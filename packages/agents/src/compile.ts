@@ -66,6 +66,7 @@ export function compileAgentToGraph(
           outputFields: agent.outputFields ?? [],
           maxSteps: agent.behavior.maxTurns,
           timeoutSeconds: agent.behavior.timeoutSeconds,
+          caching: agent.behavior.caching ?? true,
         },
       },
       { id: "end-1", type: "end", displayName: "Done", position: { x: 720, y: 200 } },

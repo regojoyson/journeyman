@@ -5,7 +5,7 @@ import {
   insertSandbox, listSandboxes, getSandbox, updateSandbox, deleteSandbox, listVisibleSandboxes,
   applyImageStateOnSave, markImagePending,
 } from "../db.ts";
-import { validateSandboxInput, InvalidSandboxInputError } from "../sandbox-record.ts";
+import { validateSandboxInput, validateMaxConcurrentInstances, InvalidSandboxInputError } from "../sandbox-record.ts";
 import { SANDBOX_CATALOG } from "../sandbox-catalog.ts";
 import { runWorkerConnectionTest } from "../test-connection.ts";
 import { makeDockerClient } from "../backends/docker/docker-client.ts";
@@ -60,6 +60,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
         executionMode: body.executionMode, connectivity: body.connectivity ?? null,
         config: body.config ?? {}, tags: body.tags ?? [],
         enabled: body.enabled ?? true, createdBy: ctx.user.id,
+        maxConcurrentInstances: body.maxConcurrentInstances ?? null,
       });
       await applyImageStateOnSave(pool, rec.id, rec.type, rec.config);
       reply.code(201);
@@ -82,10 +83,17 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const body = req.body as any;
+    try {
+      validateMaxConcurrentInstances(body.maxConcurrentInstances);
+    } catch (err) {
+      if (err instanceof InvalidSandboxInputError) return reply.code(400).send({ error: err.message });
+      throw err;
+    }
     const ok = await updateSandbox(pool, {
       id, orgId, name: body.name, executionMode: body.executionMode,
       connectivity: body.connectivity, config: body.config,
       tags: body.tags, enabled: body.enabled,
+      maxConcurrentInstances: body.maxConcurrentInstances,
     });
     if (!ok) return reply.code(404).send({ error: "Not found" });
     const rec = await getSandbox(pool, id, orgId);

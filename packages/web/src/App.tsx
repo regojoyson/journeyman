@@ -5,6 +5,7 @@ import { FlowEditorPage } from "./routes/FlowEditorPage.tsx";
 import { NewFlowPage } from "./routes/NewFlowPage.tsx";
 import { RunsListPage } from "./routes/RunsListPage.tsx";
 import { RunDetailPage } from "./routes/RunDetailPage.tsx";
+import { DashboardPage } from "./routes/DashboardPage.tsx";
 import { SecretsPage } from "./routes/SecretsPage.tsx";
 import { McpsPage } from "./routes/McpsPage.tsx";
 import { SkillsPage } from "./routes/SkillsPage.tsx";
@@ -52,6 +53,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route path="/" element={<HomeRedirect />} />
 
+        <Route path="/workspaces/:wsId/dashboard" element={<DashboardPage />} />
         <Route path="/workspaces/:wsId/workflows" element={<FlowsListPage />} />
         <Route path="/workspaces/:wsId/workflows/new" element={<NewFlowPage />} />
         <Route path="/workspaces/:wsId/workflows/:id/edit" element={<FlowEditorPage />} />

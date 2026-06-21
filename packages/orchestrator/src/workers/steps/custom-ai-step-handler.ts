@@ -213,8 +213,16 @@ export class CustomAiStepHandler implements IStepHandler {
 
     const agentLogLevel = resolveAgentLogLevel(input.agentLogLevel);
     const maxSteps = typeof input.maxSteps === "number" && input.maxSteps > 0 ? input.maxSteps : undefined;
+    // Prompt caching: on by default; a per-workflow flag (input.caching) can turn it off, and
+    // the JM_DISABLE_PROMPT_CACHE env kill-switch overrides globally. Resolved here on the
+    // worker side — the env var does not reach the sandboxed runner. Read defensively: the flag
+    // may arrive as a literal boolean or, via the engine, as the string "false".
+    const envKill = process.env.JM_DISABLE_PROMPT_CACHE;
+    const cacheDisabledByEnv = !!envKill && envKill !== "0" && envKill.toLowerCase() !== "false";
+    const caching = !cacheDisabledByEnv && input.caching !== false && input.caching !== "false";
     const result = await coding.runCustomPrompt({
       prompt,
+      caching,
       outputMode: step.outputMode,
       outputSchema: step.outputMode === "structured"
         ? outputFieldsToJsonSchema(step.outputFields ?? [])

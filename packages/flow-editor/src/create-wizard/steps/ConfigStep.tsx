@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { WorkflowDefaults } from "@journeyman/core";
 import { DefaultsExecutorSection } from "../../flow-config/DefaultsExecutorSection.tsx";
 import { DefaultsModelSection } from "../../flow-config/DefaultsModelSection.tsx";

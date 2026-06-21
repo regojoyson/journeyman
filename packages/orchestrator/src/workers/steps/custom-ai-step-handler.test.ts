@@ -55,3 +55,43 @@ describe("CustomAiStepHandler model-owned key", () => {
     );
   });
 });
+
+describe("CustomAiStepHandler prompt caching flag", () => {
+  const make = () => {
+    const runCustomPrompt = vi.fn().mockResolvedValue({ result: "ok" });
+    const h = new CustomAiStepHandler({
+      coding: () => ({ runCustomPrompt }),
+      pool: {} as any,
+      bindingResolver: vi.fn().mockResolvedValue({}),
+    } as any);
+    return { h, runCustomPrompt };
+  };
+  const baseInput = { customStepId: "cs1", provider: "aisdk", outputMode: "text", tools: [] };
+
+  it("defaults caching to true", async () => {
+    const { h, runCustomPrompt } = make();
+    await h.run({ ...baseInput } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ caching: true }));
+  });
+
+  it("honors input.caching=false and the stringified 'false'", async () => {
+    const { h, runCustomPrompt } = make();
+    await h.run({ ...baseInput, caching: false } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ caching: false }));
+    await h.run({ ...baseInput, caching: "false" } as any, ctx());
+    expect(runCustomPrompt).toHaveBeenLastCalledWith(expect.objectContaining({ caching: false }));
+  });
+
+  it("JM_DISABLE_PROMPT_CACHE env kill-switch forces caching off", async () => {
+    const prev = process.env.JM_DISABLE_PROMPT_CACHE;
+    process.env.JM_DISABLE_PROMPT_CACHE = "1";
+    try {
+      const { h, runCustomPrompt } = make();
+      await h.run({ ...baseInput, caching: true } as any, ctx());
+      expect(runCustomPrompt).toHaveBeenCalledWith(expect.objectContaining({ caching: false }));
+    } finally {
+      if (prev === undefined) delete process.env.JM_DISABLE_PROMPT_CACHE;
+      else process.env.JM_DISABLE_PROMPT_CACHE = prev;
+    }
+  });
+});

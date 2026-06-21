@@ -378,9 +378,19 @@ class ConvertCtx {
             if (cfg?.provider) kindProviders[kind] = cfg.provider;
           }
         }
+        // Workflow-level prompt-caching toggle (Flow settings → start-node config), injected as
+        // a LITERAL boolean per step so it reaches the handler as `input.caching` with its type
+        // intact (a `${...}` ref would be stringified by the engine). Default on.
+        let flowCaching = true;
+        try {
+          // Same host as workflowRetry: the manual trigger for v2, falling back to the start node.
+          const host = findManualTriggerNode(this.flow) ?? this.startNode();
+          flowCaching = (host.config as { caching?: boolean } | undefined)?.caching !== false;
+        } catch { /* no host resolvable → default on */ }
         return {
           ...(resolvedNode.config ?? {}),
           ...resolveInputs(resolvedNode.inputs),
+          caching: flowCaching,
           provider: resolvedNode.executorConfig?.provider,
           retry: resolvedNode.retry ?? {},
           secretBindings: bindings,

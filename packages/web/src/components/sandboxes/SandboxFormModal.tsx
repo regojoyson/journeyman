@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Info, Tag, Server } from "lucide-react";
+import { Info, Tag, Server, Gauge } from "lucide-react";
 import { btnGhost, btnPrimary, card, inputCls, selectCls } from "../../routes/admin-styles.ts";
 import {
   sandboxesApi, type Sandbox, type SandboxType, type SandboxUpsertBody, type SandboxTypeDescriptor,
@@ -19,6 +19,9 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
   const editing = Boolean(props.worker);
   const [name, setName] = useState(props.worker?.name ?? "");
   const [type, setType] = useState<SandboxType>(props.worker?.type ?? "local");
+  const [maxConcurrent, setMaxConcurrent] = useState<string>(
+    props.worker?.maxConcurrentInstances != null ? String(props.worker.maxConcurrentInstances) : "",
+  );
   const [types, setTypes] = useState<SandboxTypeDescriptor[]>([]);
   const [config, setConfig] = useState<Record<string, unknown>>(() =>
     (sandboxTypeForms[props.worker?.type ?? "local"]?.readConfig(props.worker?.config ?? {}) ?? {}) as Record<string, unknown>,
@@ -74,12 +77,14 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
       executionMode: type === "docker" ? "per-instance" : "shared",
       connectivity: type === "docker" ? "push" : null,
       config: builtConfig,
+      maxConcurrentInstances: maxConcurrent.trim() === "" ? null : Number(maxConcurrent),
     };
     try {
       if (editing) {
         const patch: Partial<SandboxUpsertBody> = {
           name: body.name, executionMode: body.executionMode, connectivity: body.connectivity,
           config: body.config,
+          maxConcurrentInstances: body.maxConcurrentInstances,
         };
         await sandboxesApi.updateOrg(props.orgId, props.worker!.id, patch);
       } else {
@@ -119,6 +124,12 @@ export function SandboxFormModal(props: SandboxFormModalProps) {
                 </option>
               ))}
             </select>
+          </Field>
+
+          <Field icon={Gauge} label="Max concurrent instances"
+            hint={<>Most runs that may use this sandbox at once. Leave blank for no limit.</>}>
+            <input className={inputCls} type="number" min={0} placeholder="No limit"
+              value={maxConcurrent} onChange={(e) => setMaxConcurrent(e.target.value)} />
           </Field>
 
           {ConfigForm

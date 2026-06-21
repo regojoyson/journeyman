@@ -6,8 +6,8 @@ Linked from [AGENTS.md](../../AGENTS.md). Provider-agnostic guide to where thing
 
 | Layer | Role | Key packages |
 |---|---|---|
-| Web UI | Visual canvas editor, run monitoring, history | `web`, `flow-editor`, `run-viewer`, `runs-list`, `theme` |
-| API Gateway | Fastify REST + SSE; auth, validation, webhook ingest | `api-server`, `identity`, `secrets`, `webhooks` |
+| Web UI | Visual canvas editor, run monitoring, history | `web`, `flow-editor`, `run-viewer`, `runs-list`, `workspace-dashboard`, `theme` |
+| API Gateway | Fastify REST + SSE; auth, validation, webhook ingest. `analytics` is a separate read-only stats service. | `api-server`, `analytics`, `identity`, `secrets`, `webhooks` |
 | Orchestrator | Conductor adapter, worker harness, durable execution, sandbox provisioning | `orchestrator`, `sandbox`, `migrations` |
 | Steps & Providers | Per-node logic — AI coding, git, tickets, notifications | `steps`, `custom-steps`, `agent-runtime`, `coding-models`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `mcp`, `skills` |
 | Storage | Persistence + queue | PostgreSQL, Redis (`@journeyman/migrations` owns schema) |
@@ -22,13 +22,13 @@ Linked from [AGENTS.md](../../AGENTS.md). Provider-agnostic guide to where thing
 | **UI** | `web`, `flow-editor`, `run-viewer`, `runs-list`, `steps` | UI + shared |
 | **Backend** | `api-server`, `orchestrator`, `agent-runtime`, `sandbox`, `git-provider`, `github-api`, `ticket-provider`, `notification-provider`, `secrets`, `migrations`, `webhooks` | backend + shared |
 
-**Not yet tracked by the boundary script** (logically backend): `coding-models`, `mcp`, `skills`, `custom-steps`. These are backend packages by design but the boundary check does not scan them. `theme` is logically UI-only but also not tracked.
+**Not yet tracked by the boundary script** (logically backend): `coding-models`, `mcp`, `skills`, `custom-steps`, `analytics`. These are backend packages by design but the boundary check does not scan them. `theme` and `workspace-dashboard` are logically UI-only but also not tracked.
 
 **Subpath override:** `@journeyman/steps/catalog` is treated as **shared** (pure-data `*.meta.ts`, no React), so backend packages may import it even though `steps` itself is UI-bucket.
 
 Run `npm run check:boundaries` to validate. If you add a package, update `PKG_LAYER` in the script.
 
-## Monorepo layout (23 active packages, all at `0.1.0`)
+## Monorepo layout (25 active packages, all at `0.1.0`)
 
 ```
 journeyman/
@@ -45,9 +45,11 @@ journeyman/
     ├── flow-editor/         ← visual canvas editor (drag-drop, properties) [UI]
     ├── run-viewer/          ← read-only execution canvas with live status   [UI]
     ├── runs-list/           ← sortable/filterable run history table         [UI]
+    ├── workspace-dashboard/ ← workspace stats dashboard page                [UI, not boundary-tracked]
     ├── theme/               ← shared UI theme primitives                    [UI, not boundary-tracked]
     │
     ├── api-server/          ← Fastify HTTP gateway (REST + SSE)             [backend]
+    ├── analytics/           ← standalone workspace stats service (read-only) [backend, not boundary-tracked]
     ├── orchestrator/        ← Conductor adapter + worker harness            [backend]
     ├── sandbox/             ← execution-environment registry + local/docker backends [backend]
     ├── secrets/             ← user/org secret vault (AES-256-GCM)          [backend]

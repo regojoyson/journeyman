@@ -19,6 +19,7 @@ function toResolved(w: Sandbox): ResolvedSandbox {
     imageFingerprint: w.imageFingerprint,
     imageRef: w.imageRef,
     imageError: w.imageError,
+    maxConcurrentInstances: w.maxConcurrentInstances ?? null,
   };
 }
 

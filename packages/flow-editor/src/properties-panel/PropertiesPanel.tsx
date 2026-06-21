@@ -1,5 +1,5 @@
 // packages/flow-editor/src/properties-panel/PropertiesPanel.tsx
-import { useState } from "react";
+import { useState, type JSX } from "react";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 
 function NodeIdButton({ id }: { id: string }): JSX.Element {

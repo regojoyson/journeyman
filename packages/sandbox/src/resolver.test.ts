@@ -31,6 +31,7 @@ describe("resolveSandbox", () => {
       imageFingerprint: null,
       imageRef: null,
       imageError: null,
+      maxConcurrentInstances: null,
     });
   });
 

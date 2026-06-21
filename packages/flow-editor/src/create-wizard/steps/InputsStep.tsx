@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { WorkflowGraph, WorkflowInputDef, WorkflowAttributeDef } from "@journeyman/core";
 import { InputsTab } from "../../inputs-tab/InputsTab.tsx";
 import { inputNameWarnings } from "../wizard-state.ts";

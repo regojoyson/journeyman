@@ -12,6 +12,7 @@ resources:
   - conductor.yaml
   - migrations-job.yaml
   - api-server.yaml
+  - analytics.yaml
   - worker.yaml
   - web.yaml
   - ingress.yaml

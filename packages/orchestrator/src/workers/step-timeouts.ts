@@ -22,6 +22,10 @@ export const DEFAULT_IMAGE_RETRY_ATTEMPTS = 10;
 export const DEFAULT_IMAGE_RETRY_DELAY_MS = 30_000;
 /** Default headroom (s) added on top of (image wait + step work) for the Conductor backstop. */
 export const DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS = 120;
+/** Default in-process capacity-wait retry attempts (moderate — long waits pin the serial worker). */
+export const DEFAULT_CAPACITY_RETRY_ATTEMPTS = 5;
+/** Default delay (ms) between capacity-wait retries when SANDBOX_CAPACITY_RETRY_DELAY_MS is unset/invalid. */
+export const DEFAULT_CAPACITY_RETRY_DELAY_MS = 10_000;
 
 /** Parse an env value as a finite number ≥ min, else fall back. */
 function num(raw: string | undefined, fallback: number, min: number): number {
@@ -37,6 +41,24 @@ export function resolveImageRetryConfig(
     attempts: num(env.WORKER_IMAGE_RETRY_ATTEMPTS, DEFAULT_IMAGE_RETRY_ATTEMPTS, 0),
     delayMs: num(env.WORKER_IMAGE_RETRY_DELAY_MS, DEFAULT_IMAGE_RETRY_DELAY_MS, 0),
   };
+}
+
+/** In-process capacity-wait retry config (attempts may be 0 to fast-fail to Conductor re-queue). */
+export function resolveCapacityRetryConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): { attempts: number; delayMs: number } {
+  return {
+    attempts: num(env.SANDBOX_CAPACITY_RETRY_ATTEMPTS, DEFAULT_CAPACITY_RETRY_ATTEMPTS, 0),
+    delayMs: num(env.SANDBOX_CAPACITY_RETRY_DELAY_MS, DEFAULT_CAPACITY_RETRY_DELAY_MS, 0),
+  };
+}
+
+/** Worst-case time (s) the worker may spend waiting for a free sandbox slot. */
+export function resolveCapacityWaitBudgetSeconds(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const { attempts, delayMs } = resolveCapacityRetryConfig(env);
+  return Math.ceil((attempts * delayMs) / 1000);
 }
 
 /** Per-step deadline (s) the worker harness enforces via its abort timer. */
@@ -82,5 +104,5 @@ export function resolveConductorTaskTimeoutSeconds(
     DEFAULT_CONDUCTOR_TIMEOUT_MARGIN_SECONDS,
     0,
   );
-  return step + resolveImageWaitBudgetSeconds(env) + margin;
+  return step + resolveImageWaitBudgetSeconds(env) + resolveCapacityWaitBudgetSeconds(env) + margin;
 }

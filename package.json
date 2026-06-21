@@ -25,6 +25,7 @@
     "k8s:reset": "kubectl delete -k deploy/k8s/overlays/local --ignore-not-found && kubectl -n journeyman delete pvc --all --ignore-not-found",
     "migrate": "DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@localhost:5433/journeyman} npm run migrate -w @journeyman/migrations",
     "start:api-server": "npm start -w @journeyman/api-server",
+    "start:analytics": "npm start -w @journeyman/analytics",
     "start:worker": "tsx packages/orchestrator/src/cli-worker.ts",
     "dev:web": "npm run dev -w @journeyman/web",
     "build:web": "npm run build -w @journeyman/web",

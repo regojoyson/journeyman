@@ -19,6 +19,7 @@ function def(overrides: Partial<CustomAiStep>): CustomAiStep {
     workspaceId: "w",
     name: "Step",
     description: "",
+    enabled: true,
     inputFields: [],
     outputMode: "none",
     promptTemplate: "",

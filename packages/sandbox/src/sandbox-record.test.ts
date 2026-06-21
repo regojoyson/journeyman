@@ -1,5 +1,32 @@
 import { describe, it, expect } from "vitest";
-import { validateSandboxInput, rowToSandbox, InvalidSandboxInputError } from "./sandbox-record.ts";
+import {
+  validateSandboxInput, validateMaxConcurrentInstances, rowToSandbox, InvalidSandboxInputError,
+} from "./sandbox-record.ts";
+
+describe("validateMaxConcurrentInstances", () => {
+  it("accepts undefined, null, 0, and positive integers", () => {
+    expect(() => validateMaxConcurrentInstances(undefined)).not.toThrow();
+    expect(() => validateMaxConcurrentInstances(null)).not.toThrow();
+    expect(() => validateMaxConcurrentInstances(0)).not.toThrow();
+    expect(() => validateMaxConcurrentInstances(5)).not.toThrow();
+    expect(() => validateMaxConcurrentInstances(10000)).not.toThrow();
+  });
+
+  it("rejects negatives, non-integers, non-numbers, and out-of-range", () => {
+    expect(() => validateMaxConcurrentInstances(-1)).toThrow();
+    expect(() => validateMaxConcurrentInstances(1.5)).toThrow();
+    expect(() => validateMaxConcurrentInstances("5")).toThrow();
+    expect(() => validateMaxConcurrentInstances(10001)).toThrow();
+    expect(() => validateMaxConcurrentInstances(NaN)).toThrow();
+  });
+});
+
+describe("rowToSandbox maxConcurrentInstances", () => {
+  it("maps the column, defaulting to null", () => {
+    expect(rowToSandbox({ max_concurrent_instances: 3 }).maxConcurrentInstances).toBe(3);
+    expect(rowToSandbox({}).maxConcurrentInstances).toBeNull();
+  });
+});
 
 describe("validateSandboxInput", () => {
   const ok = { name: "Java builder", type: "docker", executionMode: "per-instance" };
@@ -73,6 +100,7 @@ describe("rowToSandbox", () => {
       imageRef: null,
       imageError: null,
       imageBuiltAt: null,
+      maxConcurrentInstances: null,
     });
   });
 
