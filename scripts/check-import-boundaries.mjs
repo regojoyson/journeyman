@@ -36,7 +36,7 @@ const PKG_LAYER = {
 
   "@journeyman/api-server": "backend",
   "@journeyman/api-context": "backend",
-  "@journeyman/api-http": "backend",
+  "@journeyman/api-app": "backend",
   "@journeyman/api-webhooks": "backend",
   "@journeyman/api-control-plane": "backend",
   "@journeyman/orchestrator": "backend",

@@ -1,5 +1,5 @@
 {
-  "name": "@journeyman/api-http",
+  "name": "@journeyman/api-app",
   "version": "0.1.0",
   "description": "Authenticated UI REST + SSE routes (flows, agents, runs, forms, human-tasks, triggers, steps).",
   "private": true,

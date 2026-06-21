@@ -50,7 +50,7 @@ COPY . .
 # One image, three entrypoints. Default = the HTTP service; compose/k8s override
 # `command` for the webhooks and control-plane services.
 EXPOSE 4000
-CMD ["npm", "run", "start:http", "-w", "@journeyman/api-server"]
+CMD ["npm", "run", "start:app", "-w", "@journeyman/api-server"]
 
 # ---------- runtime-analytics ----------
 FROM node:22-alpine AS runtime-analytics

@@ -64,8 +64,8 @@ are never tagged.
 
 ### The hook
 
-A single Fastify `onResponse` hook is registered once in `buildHttpServer()`
-([packages/api-server/src/server-http.ts](../../../packages/api-server/src/server-http.ts)),
+A single Fastify `onResponse` hook is registered once in `buildAppServer()`
+([packages/api-server/src/server-app.ts](../../../packages/api-server/src/server-app.ts)),
 after the route plugins are registered, with access to the shared `c.pool`.
 
 On every response it runs:
@@ -176,9 +176,9 @@ Integration tests (one per representative family, reusing the existing test-DB p
 
 ## Files Touched (anticipated)
 
-- `packages/api-server/src/server-http.ts` — register the audit `onResponse` hook.
+- `packages/api-server/src/server-app.ts` — register the audit `onResponse` hook.
 - New: a small hook module in `api-server` (e.g. `src/audit-hook.ts`) + the Fastify type augmentation.
-- `packages/api-http/src/routes/*.ts` — add `config.audit` tags (flows, forms, workflow-triggers,
+- `packages/api-app/src/routes/*.ts` — add `config.audit` tags (flows, forms, workflow-triggers,
   connections [update], agents/agent-triggers [migrate]).
 - `packages/custom-steps`, `packages/mcp`, `packages/skills`, `packages/sandbox`,
   `packages/secrets`, `packages/coding-models` route files — add `config.audit` tags and, on create

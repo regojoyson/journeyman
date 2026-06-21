@@ -25,7 +25,7 @@ images:
 # NOTE: api-control-plane is intentionally absent — it MUST stay at 1 replica
 # (its background timers double-fire with more than one instance).
 replicas:
-  - name: api-http
+  - name: api-app
     count: 2
   - name: api-webhooks
     count: 2

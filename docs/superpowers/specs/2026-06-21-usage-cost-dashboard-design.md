@@ -128,7 +128,7 @@ Chosen because the pricing table is versioned and the dashboard must be fast and
 
 The dashboard reads exclusively from the standalone analytics service
 (`@journeyman/analytics`), consistent with the existing workspace dashboard. The richer
-api-http `/usage` routes are left untouched.
+api-app `/usage` routes are left untouched.
 
 New `packages/analytics/src/db/usage.ts` querying `jm_token_usage`, reusing/extending the
 `@journeyman/orchestrator` query builders (`buildUsageTotalsQuery`,

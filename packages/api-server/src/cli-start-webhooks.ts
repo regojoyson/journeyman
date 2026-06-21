@@ -9,7 +9,7 @@ loadEnv();
 
 const composition = buildComposition(compositionConfig());
 const server = await buildWebhookServer(composition);
-// Dedicated default port so it doesn't collide with api-http's PORT=4000
+// Dedicated default port so it doesn't collide with api-app's PORT=4000
 // when both read the same env (k8s configMap / .env set PORT=4000).
 const port = Number(process.env.WEBHOOKS_PORT ?? 4001);
 await server.listen({ port, host: "0.0.0.0" });

@@ -456,7 +456,7 @@ export async function registerCodingModelRoutes(app: FastifyInstance, pool: Pool
 }
 ```
 
-(No change needed in `api-server/src/server-http.ts` — it already calls `registerCodingModelRoutes(app, c.pool)`.)
+(No change needed in `api-server/src/server-app.ts` — it already calls `registerCodingModelRoutes(app, c.pool)`.)
 
 - [ ] **Step 3: Typecheck + boundaries**
 

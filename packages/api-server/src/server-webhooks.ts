@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import sensible from "@fastify/sensible";
 import { ZodError } from "zod";
 import type { Composition } from "@journeyman/api-context";
-import { registerHealthRoutes } from "@journeyman/api-http";
+import { registerHealthRoutes } from "@journeyman/api-app";
 import { registerWebhookRoutes } from "@journeyman/api-webhooks";
 
 export async function buildWebhookServer(c: Composition): Promise<FastifyInstance> {

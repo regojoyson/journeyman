@@ -83,10 +83,10 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # ── api-http: authenticated UI REST + SSE (the bulk of /api/*) ──────────────
-  api-http:
+  # ── api-app: authenticated UI REST + SSE (the bulk of /api/*) ──────────────
+  api-app:
     image: journeyman/api-server:dev
-    command: ["npm", "run", "start:http", "-w", "@journeyman/api-server"]
+    command: ["npm", "run", "start:app", "-w", "@journeyman/api-server"]
     env_file: .env.production
     # Lets the Builder LLM reach a host service (e.g. LM Studio); Docker Desktop
     # maps host.docker.internal automatically, the alias makes Linux engines too.
@@ -224,7 +224,7 @@ services:
     image: journeyman/web:dev
     ports: ["6080:8080"]
     depends_on:
-      api-http:
+      api-app:
         condition: service_healthy
 
 volumes:

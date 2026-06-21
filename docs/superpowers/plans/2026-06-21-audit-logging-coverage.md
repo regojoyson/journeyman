@@ -45,7 +45,7 @@
 | `packages/api-context/src/services/audit-entry.ts` | Pure: build an `AuditEntryInput` from request facts | **Create** |
 | `packages/api-context/src/services/audit-entry.test.ts` | Unit tests for the pure function | **Create** |
 | `packages/api-context/src/index.ts` | Package exports | Export `buildAuditEntry`, `AuditTag` |
-| `packages/api-server/src/server-http.ts` | Register the `onResponse` hook | Modify |
+| `packages/api-server/src/server-app.ts` | Register the `onResponse` hook | Modify |
 | Route files (workflows, custom-steps, mcp, skills, sandbox, secrets×2, coding-models, connections, agents, agent-triggers, identity×5) | Add `config.audit` tags (+`req.auditTargetId` on creates); migrate existing inline `audit()` calls | Modify |
 
 ---
@@ -236,7 +236,7 @@ export { buildAuditEntry, type AuditTag, type BuildAuditEntryArgs } from "./serv
 ## Task 3: Register the central `onResponse` hook
 
 **Files:**
-- Modify: `packages/api-server/src/server-http.ts`
+- Modify: `packages/api-server/src/server-app.ts`
 
 - [ ] **Step 1: Import `buildAuditEntry` alongside the Composition import**
 
@@ -283,7 +283,7 @@ The hook is a no-op for: non-2xx responses, routes without a `config.audit` tag,
 ## Task 4: Tag workflow routes
 
 **Files:**
-- Modify: `packages/api-http/src/routes/flows.ts`
+- Modify: `packages/api-app/src/routes/flows.ts`
 
 The route options `write` / `del` are defined at lines 297-298. For each mutating route below, replace its options arg with the spread form shown, and for create/clone add the `req.auditTargetId` line inside the handler.
 
@@ -486,7 +486,7 @@ These routes use inline `{ preHandler: requireAuth(...) }`. Add `config` to each
 ## Task 12: Close the connection-update gap + migrate existing connection audit
 
 **Files:**
-- Modify: `packages/api-http/src/routes/connections.ts`
+- Modify: `packages/api-app/src/routes/connections.ts`
 
 This file already calls `audit()` inline for create (line 206) and delete (line 257). To keep exactly ONE audit path, migrate those to config and add the missing update tag. After this, the `audit` import becomes unused — remove it.
 
@@ -523,7 +523,7 @@ At the top of the file (import line 19 per inventory), remove `audit` from the `
 ## Task 13: Migrate agent audit to config + tag agent-settings
 
 **Files:**
-- Modify: `packages/api-http/src/routes/agents.ts`
+- Modify: `packages/api-app/src/routes/agents.ts`
 
 All seven mutating agent routes already call `audit()` inline. Migrate each to a `config.audit` tag and move any `detail`/created-id into `req.auditDetail` / `req.auditTargetId`. Then drop the now-unused `audit` import (keep `listAudit`, still used by the GET audit route).
 
@@ -582,7 +582,7 @@ Change the import at line 20 from `import { audit, listAudit } from "@journeyman
 ## Task 14: Migrate agent-token audit + close the toggle gap
 
 **Files:**
-- Modify: `packages/api-http/src/routes/agent-triggers.ts`
+- Modify: `packages/api-app/src/routes/agent-triggers.ts`
 
 Issue (line 43) and revoke (line 76) already audit inline; the toggle PATCH (line 81) does not. Migrate the two and tag the third, then drop the unused `audit` import.
 
@@ -665,8 +665,8 @@ Expected: PASS — including the new `audit-entry.test.ts` (7 tests) and the exi
 
 - [ ] **Step 4: Sanity-grep for leftover inline audit calls**
 
-Run: `grep -rn "await audit(" packages/api-http packages/api-webhooks packages/api-context | grep -v "audit-entry"`
-Expected: NO matches in `api-http`/`api-webhooks` route files (all migrated to config). Matches only inside `api-context` service internals, if any.
+Run: `grep -rn "await audit(" packages/api-app packages/api-webhooks packages/api-context | grep -v "audit-entry"`
+Expected: NO matches in `api-app`/`api-webhooks` route files (all migrated to config). Matches only inside `api-context` service internals, if any.
 
 ---
 

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Split the monolithic `@journeyman/api-server` (~4,800 LOC) into four focused packages and run them as **three independent processes** — `api-http` (UI REST + SSE), `api-webhooks` (public webhook receiver), and `api-control-plane` (singleton background timers) — sharing one Postgres + Conductor.
+**Goal:** Split the monolithic `@journeyman/api-server` (~4,800 LOC) into four focused packages and run them as **three independent processes** — `api-app` (UI REST + SSE), `api-webhooks` (public webhook receiver), and `api-control-plane` (singleton background timers) — sharing one Postgres + Conductor.
 
-**Architecture:** A thin composition root (`@journeyman/api-server`) wires concrete adapters and exposes three `cli-start-*` entrypoints. Three cluster packages (`api-http`, `api-webhooks`, `api-control-plane`) hold the route/loop logic; a shared kernel (`api-context`) holds the `Composition` contract, schemas, SSE, audit, and cross-cluster pure services. One Docker image, three commands. nginx routes `/webhooks/in/*` to the webhook service and everything else under `/api/*` to the HTTP service; the control-plane takes no ingress.
+**Architecture:** A thin composition root (`@journeyman/api-server`) wires concrete adapters and exposes three `cli-start-*` entrypoints. Three cluster packages (`api-app`, `api-webhooks`, `api-control-plane`) hold the route/loop logic; a shared kernel (`api-context`) holds the `Composition` contract, schemas, SSE, audit, and cross-cluster pure services. One Docker image, three commands. nginx routes `/webhooks/in/*` to the webhook service and everything else under `/api/*` to the HTTP service; the control-plane takes no ingress.
 
 **Tech Stack:** TypeScript (NodeNext, `tsx`), Fastify 5, `pg`, npm workspaces, Conductor, Docker Compose + Kubernetes (kustomize), nginx.
 
@@ -35,10 +35,10 @@ This is ~90% **mechanical relocation** (move files between packages, re-point im
 | `@journeyman/api-context` | backend | `Composition` interface + `CompositionConfig`; `sse/sse-stream`; `schemas/*`; services: `audit`, `human-task-timeout`, `parse-duration`, `resolve-human-task`, `match-human-tasks`, `recompute-wait-status`, `engine-reconciler`, `listens-for` |
 | `@journeyman/api-webhooks` | backend | routes: `webhooks` (receiver), `webhooks-management`, `webhook-presets`; services: `webhook-ingest`, `webhook-trigger-fire`, `webhook-secret-lookup`, `webhook-test-delivery`, `agent-webhook-fire`, `jsonpath`, `workflow-trigger-index` |
 | `@journeyman/api-control-plane` | backend | services: `agent-scheduler`, `webhook-wait-sweeper`, `notify-on-terminal`, `notify-on-human-task-pause`, `agent-metrics`, `agent-alerts`; **new** `start-control-plane.ts` |
-| `@journeyman/api-http` | backend | routes: `health`, `flows`, `agents`, `connections`, `workflow-instances`, `usage`, `human-tasks`, `forms`, `steps`, `agent-triggers`, `workflow-triggers`, `builder-apply`, `builder-chat`, `proposed-custom-steps`; services: `form-submission`, `assert-flow-ready` |
-| `@journeyman/api-server` (slimmed root) | backend | `composition.ts` (pure wiring), `server-http.ts`, `server-webhooks.ts`, `cli-start-http.ts`, `cli-start-webhooks.ts`, `cli-start-control-plane.ts`, `index.ts` |
+| `@journeyman/api-app` | backend | routes: `health`, `flows`, `agents`, `connections`, `workflow-instances`, `usage`, `human-tasks`, `forms`, `steps`, `agent-triggers`, `workflow-triggers`, `builder-apply`, `builder-chat`, `proposed-custom-steps`; services: `form-submission`, `assert-flow-ready` |
+| `@journeyman/api-server` (slimmed root) | backend | `composition.ts` (pure wiring), `server-app.ts`, `server-webhooks.ts`, `cli-start-app.ts`, `cli-start-webhooks.ts`, `cli-start-control-plane.ts`, `index.ts` |
 
-**Dependency direction (one-way):** `api-server` (root) → {`api-http`, `api-webhooks`, `api-control-plane`} → `api-context` → `@journeyman/core`, `@journeyman/identity`, `@journeyman/orchestrator`, `@journeyman/sandbox`.
+**Dependency direction (one-way):** `api-server` (root) → {`api-app`, `api-webhooks`, `api-control-plane`} → `api-context` → `@journeyman/core`, `@journeyman/identity`, `@journeyman/orchestrator`, `@journeyman/sandbox`.
 
 > **Boundary note (be honest):** `check:boundaries` enforces *layers* (ui/backend/shared), and all five packages are `backend`, so the checker will **not** mechanically forbid a cluster importing another cluster. The one-way rule is maintained **by construction**: only the root package imports cluster packages and decides per-entrypoint registration. Reviewers should watch for accidental cluster→cluster imports; they won't fail CI automatically.
 
@@ -123,12 +123,12 @@ No code moves yet. Create empty, compilable packages and register them in the wo
 export {};
 ```
 
-### Task 0.2: Create `api-webhooks`, `api-control-plane`, `api-http` skeletons
+### Task 0.2: Create `api-webhooks`, `api-control-plane`, `api-app` skeletons
 
 **Files:**
 - Create: `packages/api-webhooks/{package.json,tsconfig.json,src/index.ts}`
 - Create: `packages/api-control-plane/{package.json,tsconfig.json,src/index.ts}`
-- Create: `packages/api-http/{package.json,tsconfig.json,src/index.ts}`
+- Create: `packages/api-app/{package.json,tsconfig.json,src/index.ts}`
 
 - [ ] **Step 1: Write the three `tsconfig.json` files** — each is byte-identical to the `api-context` tsconfig in Task 0.1 Step 2.
 
@@ -195,11 +195,11 @@ export {};
 
 > The exact dependency list (e.g. whether `notification-provider`/`cron-parser` are needed) is finalized when files move in Phases 2–4; add any package that a relocated file imports and remove unused ones. The Phase 6 typecheck will surface a missing dep as a resolution error.
 
-- [ ] **Step 4: Write `packages/api-http/package.json`**
+- [ ] **Step 4: Write `packages/api-app/package.json`**
 
 ```json
 {
-  "name": "@journeyman/api-http",
+  "name": "@journeyman/api-app",
   "version": "0.1.0",
   "description": "Authenticated UI REST + SSE routes (flows, agents, runs, forms, human-tasks, triggers, steps).",
   "private": true,
@@ -237,7 +237,7 @@ export {};
 }
 ```
 
-> **[dry-run fix B1]** The api-http route files import these delegated packages directly (e.g. `flows.ts` → orchestrator/coding-models/custom-steps/secrets/steps; `builder-chat.ts` → builder/mcp/sandbox/skills/steps; `connections.ts` → connections/git-provider/secrets; `agents.ts` → agents). Without them the package won't typecheck.
+> **[dry-run fix B1]** The api-app route files import these delegated packages directly (e.g. `flows.ts` → orchestrator/coding-models/custom-steps/secrets/steps; `builder-chat.ts` → builder/mcp/sandbox/skills/steps; `connections.ts` → connections/git-provider/secrets; `agents.ts` → agents). Without them the package won't typecheck.
 
 - [ ] **Step 5: Write a placeholder `src/index.ts`** in each of the three packages:
 
@@ -256,7 +256,7 @@ export {};
 ```javascript
   "@journeyman/api-server": "backend",
   "@journeyman/api-context": "backend",
-  "@journeyman/api-http": "backend",
+  "@journeyman/api-app": "backend",
   "@journeyman/api-webhooks": "backend",
   "@journeyman/api-control-plane": "backend",
 ```
@@ -441,8 +441,8 @@ Then in each hit, replace e.g. `import { resolveHumanTask } from "../services/re
 - `services/webhook-test-delivery.ts` (+ `webhook-test-delivery.eventtype.test.ts`) → `packages/api-webhooks/src/services/`
 - `services/agent-webhook-fire.ts` (+ `agent-webhook-fire.test.ts`) → `packages/api-webhooks/src/services/`
 - `services/jsonpath.ts` (+ `jsonpath.test.ts`) → `packages/api-webhooks/src/services/`
-- **[dry-run fix B2]** `services/workflow-trigger-index.ts` does **NOT** belong here — its only importer is `routes/flows.ts` (api-http). It moves to `api-http` in Task 4.1, not here.
-- `routes/flows.webhook-required-mapping.test.ts` → **stays with flows** (Phase 4, api-http) — do **not** move here.
+- **[dry-run fix B2]** `services/workflow-trigger-index.ts` does **NOT** belong here — its only importer is `routes/flows.ts` (api-app). It moves to `api-app` in Task 4.1, not here.
+- `routes/flows.webhook-required-mapping.test.ts` → **stays with flows** (Phase 4, api-app) — do **not** move here.
 
 - [ ] **Step 1: `git mv` each file/test** into the matching `packages/api-webhooks/src/{routes,services}/` folder.
 
@@ -464,7 +464,7 @@ Then in each hit, replace e.g. `import { resolveHumanTask } from "../services/re
 // Registered ONLY by the api-webhooks service entrypoint.
 export { registerWebhookRoutes } from "./routes/webhooks.ts";
 
-// Authenticated UI management — paths under /api/...; registered by the api-http
+// Authenticated UI management — paths under /api/...; registered by the api-app
 // service entrypoint (they share the /api prefix with the rest of the UI API).
 export { registerWebhookManagementRoutes } from "./routes/webhooks-management.ts";
 export { registerWebhookPresetRoutes } from "./routes/webhook-presets.ts";
@@ -510,18 +510,18 @@ export { makeRecordTerminalMetrics } from "./services/agent-metrics.ts";
 
 ---
 
-## Phase 4 — Extract the HTTP package (`api-http`)
+## Phase 4 — Extract the HTTP package (`api-app`)
 
 ### Task 4.1: Move UI routes and their two local services
 
 **Files (move source → dest; tests too):**
-- `routes/health.ts`, `routes/flows.ts` (+ `flows.webhook-required-mapping.test.ts`), `routes/agents.ts`, `routes/connections.ts`, `routes/workflow-instances.ts`, `routes/usage.ts`, `routes/human-tasks.ts`, `routes/forms.ts`, `routes/steps.ts`, `routes/agent-triggers.ts`, `routes/workflow-triggers.ts`, `routes/builder-apply.ts`, `routes/builder-chat.ts`, `routes/proposed-custom-steps.ts` (+ `proposed-custom-steps.test.ts`) → `packages/api-http/src/routes/`
-- `services/form-submission.ts` → `packages/api-http/src/services/`
-- `services/assert-flow-ready.ts` → `packages/api-http/src/services/`
-- **[dry-run fix B2]** `services/workflow-trigger-index.ts` → `packages/api-http/src/services/` (only `flows.ts` imports it; self-contained — core/pg only).
+- `routes/health.ts`, `routes/flows.ts` (+ `flows.webhook-required-mapping.test.ts`), `routes/agents.ts`, `routes/connections.ts`, `routes/workflow-instances.ts`, `routes/usage.ts`, `routes/human-tasks.ts`, `routes/forms.ts`, `routes/steps.ts`, `routes/agent-triggers.ts`, `routes/workflow-triggers.ts`, `routes/builder-apply.ts`, `routes/builder-chat.ts`, `routes/proposed-custom-steps.ts` (+ `proposed-custom-steps.test.ts`) → `packages/api-app/src/routes/`
+- `services/form-submission.ts` → `packages/api-app/src/services/`
+- `services/assert-flow-ready.ts` → `packages/api-app/src/services/`
+- **[dry-run fix B2]** `services/workflow-trigger-index.ts` → `packages/api-app/src/services/` (only `flows.ts` imports it; self-contained — core/pg only).
 - **[dry-run note]** `routes/proposed-custom-steps.ts` is **not** an HTTP route — it exports the pure helper `shapesFromProposedSteps` (used by `flows.ts`). Move it (it's fine under `routes/` for minimal churn, or rename to `services/`), but do **not** register it as a route (see Task 4.2).
 
-- [ ] **Step 1: `git mv` each file/test** into `packages/api-http/src/{routes,services}/`.
+- [ ] **Step 1: `git mv` each file/test** into `packages/api-app/src/{routes,services}/`.
 
 - [ ] **Step 2: Repoint imports in moved files.**
   - `Composition` type → `from "@journeyman/api-context";`
@@ -530,12 +530,12 @@ export { makeRecordTerminalMetrics } from "./services/agent-metrics.ts";
   - sibling services (`./form-submission.ts`, `./assert-flow-ready.ts`) → relative.
   - `registerStepsRoutes` etc. unchanged in signature.
 
-### Task 4.2: Write `api-http` barrel exports
+### Task 4.2: Write `api-app` barrel exports
 
 **Files:**
-- Modify: `packages/api-http/src/index.ts`
+- Modify: `packages/api-app/src/index.ts`
 
-- [ ] **Step 1: Write `packages/api-http/src/index.ts`** re-exporting every registrar the HTTP entrypoint needs:
+- [ ] **Step 1: Write `packages/api-app/src/index.ts`** re-exporting every registrar the HTTP entrypoint needs:
 
 ```typescript
 export { registerHealthRoutes } from "./routes/health.ts";
@@ -587,14 +587,14 @@ The current `buildComposition` (lines 86–263) **starts** the `SandboxInstanceR
 
 - [ ] **Step 2: Export the reaper/sweeper building blocks `startControlPlane` will need.** `buildComposition` already exposes `pool`, `orchestrator`, `events`, `workflowInstances`, and `sandboxInstanceRoutesDeps` (which carries `destroy` + `isRunActive`) on the `Composition`. `startControlPlane` rebuilds `listActive`/`markDestroyed`/`findStuck` from `pool`. No extra exports needed beyond what the (now pure) `Composition` already carries. Verify by reading `startControlPlane` (Task 5.3) against the `Composition` fields.
 
-### Task 5.2: Split `server.ts` into `server-http.ts` and `server-webhooks.ts`
+### Task 5.2: Split `server.ts` into `server-app.ts` and `server-webhooks.ts`
 
 **Files:**
-- Create: `packages/api-server/src/server-http.ts`
+- Create: `packages/api-server/src/server-app.ts`
 - Create: `packages/api-server/src/server-webhooks.ts`
 - Delete: `packages/api-server/src/server.ts` (after the two builders replace it)
 
-- [ ] **Step 1: Write `packages/api-server/src/server-http.ts`** — the UI API + all delegated routes + webhook **management** routes, but **no** `startAgentScheduler` and **no** webhook receiver:
+- [ ] **Step 1: Write `packages/api-server/src/server-app.ts`** — the UI API + all delegated routes + webhook **management** routes, but **no** `startAgentScheduler` and **no** webhook receiver:
 
 ```typescript
 import Fastify, { type FastifyInstance } from "fastify";
@@ -608,7 +608,7 @@ import {
   registerHumanTaskRoutes, registerFormRoutes, registerStepsRoutes,
   registerAgentTriggerRoutes, registerWorkflowTriggersRoute,
   registerBuilderApplyRoute, registerBuilderChatRoute,
-} from "@journeyman/api-http";
+} from "@journeyman/api-app";
 import { registerWebhookManagementRoutes, registerWebhookPresetRoutes } from "@journeyman/api-webhooks";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
@@ -619,7 +619,7 @@ import { registerSkillRoutes } from "@journeyman/skills";
 import { registerCustomStepRoutes } from "@journeyman/custom-steps";
 import { registerCodingModelRoutes } from "@journeyman/coding-models";
 
-export async function buildHttpServer(c: Composition): Promise<FastifyInstance> {
+export async function buildAppServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
@@ -670,7 +670,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import sensible from "@fastify/sensible";
 import { ZodError } from "zod";
 import type { Composition } from "@journeyman/api-context";
-import { registerHealthRoutes } from "@journeyman/api-http";
+import { registerHealthRoutes } from "@journeyman/api-app";
 import { registerWebhookRoutes } from "@journeyman/api-webhooks";
 
 export async function buildWebhookServer(c: Composition): Promise<FastifyInstance> {
@@ -836,7 +836,7 @@ export { startControlPlane } from "./start-control-plane.ts";
 ### Task 5.4: Write the three entrypoints + root `index.ts`
 
 **Files:**
-- Create: `packages/api-server/src/cli-start-http.ts`
+- Create: `packages/api-server/src/cli-start-app.ts`
 - Create: `packages/api-server/src/cli-start-webhooks.ts`
 - Create: `packages/api-server/src/cli-start-control-plane.ts`
 - Delete: `packages/api-server/src/cli-start.ts`
@@ -880,23 +880,23 @@ export function compositionConfig() {
 }
 ```
 
-- [ ] **Step 2: Write `packages/api-server/src/cli-start-http.ts`**
+- [ ] **Step 2: Write `packages/api-server/src/cli-start-app.ts`**
 
 ```typescript
 #!/usr/bin/env node
 import { createLogger } from "@journeyman/core";
 import { loadEnv, compositionConfig } from "./_env.ts";
 import { buildComposition } from "./composition.ts";
-import { buildHttpServer } from "./server-http.ts";
+import { buildAppServer } from "./server-app.ts";
 
-const log = createLogger("api-http:cli");
+const log = createLogger("api-app:cli");
 loadEnv();
 
 const composition = buildComposition(compositionConfig());
-const server = await buildHttpServer(composition);
+const server = await buildAppServer(composition);
 const port = Number(process.env.PORT ?? 4000);
 await server.listen({ port, host: "0.0.0.0" });
-log.info({ port }, "api-http listening");
+log.info({ port }, "api-app listening");
 
 const shutdown = async () => { await server.close(); await composition.shutdown(); process.exit(0); };
 process.on("SIGINT", shutdown);
@@ -917,7 +917,7 @@ loadEnv();
 
 const composition = buildComposition(compositionConfig());
 const server = await buildWebhookServer(composition);
-// Dedicated default port so it doesn't collide with api-http's PORT=4000
+// Dedicated default port so it doesn't collide with api-app's PORT=4000
 // when both read the same env (k8s configMap / .env set PORT=4000).
 const port = Number(process.env.WEBHOOKS_PORT ?? 4001);
 await server.listen({ port, host: "0.0.0.0" });
@@ -967,7 +967,7 @@ git rm packages/api-server/src/cli-start.ts
 ```typescript
 export { buildComposition } from "./composition.ts";
 export type { Composition, CompositionConfig } from "@journeyman/api-context";
-export { buildHttpServer } from "./server-http.ts";
+export { buildAppServer } from "./server-app.ts";
 export { buildWebhookServer } from "./server-webhooks.ts";
 ```
 
@@ -980,23 +980,23 @@ export { buildWebhookServer } from "./server-webhooks.ts";
 
 ```json
     "@journeyman/api-context": "*",
-    "@journeyman/api-http": "*",
+    "@journeyman/api-app": "*",
     "@journeyman/api-webhooks": "*",
     "@journeyman/api-control-plane": "*",
 ```
 
-(Leave the existing delegated-route deps — `identity`, `secrets`, `mcp`, `builder`, `sandbox`, `skills`, `custom-steps`, `coding-models`, `orchestrator`, etc. — they're still imported by `server-http.ts` and `composition.ts`. Remove `@journeyman/webhooks` only if `composition.ts` no longer imports it directly.)
+(Leave the existing delegated-route deps — `identity`, `secrets`, `mcp`, `builder`, `sandbox`, `skills`, `custom-steps`, `coding-models`, `orchestrator`, etc. — they're still imported by `server-app.ts` and `composition.ts`. Remove `@journeyman/webhooks` only if `composition.ts` no longer imports it directly.)
 
 - [ ] **Step 2: Replace the `bin` and `scripts`** blocks:
 
 ```json
   "bin": {
-    "journeyman-api-http": "./src/cli-start-http.ts",
+    "journeyman-api-app": "./src/cli-start-app.ts",
     "journeyman-api-webhooks": "./src/cli-start-webhooks.ts",
     "journeyman-api-control-plane": "./src/cli-start-control-plane.ts"
   },
   "scripts": {
-    "start:http": "tsx src/cli-start-http.ts",
+    "start:app": "tsx src/cli-start-app.ts",
     "start:webhooks": "tsx src/cli-start-webhooks.ts",
     "start:control-plane": "tsx src/cli-start-control-plane.ts",
     "typecheck": "tsc --noEmit",
@@ -1021,7 +1021,7 @@ Expected: no errors.
 - [ ] **Step 1: Replace `start:api-server`** with three scripts:
 
 ```json
-    "start:api-http": "npm run start:http -w @journeyman/api-server",
+    "start:api-app": "npm run start:app -w @journeyman/api-server",
     "start:api-webhooks": "npm run start:webhooks -w @journeyman/api-server",
     "start:api-control-plane": "npm run start:control-plane -w @journeyman/api-server",
 ```
@@ -1036,7 +1036,7 @@ The image bundles the whole repo (tsx runs sources), so all three entrypoints al
 - [ ] **Step 1: Change the `runtime-api` `CMD`** (line ~51) to:
 
 ```dockerfile
-CMD ["npm", "run", "start:http", "-w", "@journeyman/api-server"]
+CMD ["npm", "run", "start:app", "-w", "@journeyman/api-server"]
 ```
 
 No new Docker stages are needed — `scripts/build-images.sh` continues to build only `api-server:runtime-api`.
@@ -1046,12 +1046,12 @@ No new Docker stages are needed — `scripts/build-images.sh` continues to build
 **Files:**
 - Modify: `compose.deploy.yml` (replace the single `api-server:` block, lines 86–124)
 
-- [ ] **Step 1: Replace the `api-server:` service** with `api-http`, `api-webhooks`, and `api-control-plane`. All three reuse `image: journeyman/api-server:dev`, share the same `env_file`/`environment`/`volumes`/`depends_on`, and override `command`. `api-control-plane` runs a single replica (compose default).
+- [ ] **Step 1: Replace the `api-server:` service** with `api-app`, `api-webhooks`, and `api-control-plane`. All three reuse `image: journeyman/api-server:dev`, share the same `env_file`/`environment`/`volumes`/`depends_on`, and override `command`. `api-control-plane` runs a single replica (compose default).
 
 ```yaml
-  api-http:
+  api-app:
     image: journeyman/api-server:dev
-    command: ["npm", "run", "start:http", "-w", "@journeyman/api-server"]
+    command: ["npm", "run", "start:app", "-w", "@journeyman/api-server"]
     env_file: .env.production
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -1122,23 +1122,23 @@ No new Docker stages are needed — `scripts/build-images.sh` continues to build
       conductor: { condition: service_started }
 ```
 
-- [ ] **Step 2: Update the `web` service `depends_on`** (was `api-server`) to wait on `api-http`:
+- [ ] **Step 2: Update the `web` service `depends_on`** (was `api-server`) to wait on `api-app`:
 
 ```yaml
   web:
     image: journeyman/web:dev
     ports: ["6080:8080"]
     depends_on:
-      api-http:
+      api-app:
         condition: service_healthy
 ```
 
-### Task 6.4: nginx — route the public receiver to api-webhooks, the rest to api-http
+### Task 6.4: nginx — route the public receiver to api-webhooks, the rest to api-app
 
 **Files:**
 - Modify: `nginx/web.conf`
 
-- [ ] **Step 1: Point the `/api/` block upstream at `api-http`** (line ~17): change `set $upstream_api "http://api-server:4000";` to `set $upstream_api "http://api-http:4000";`.
+- [ ] **Step 1: Point the `/api/` block upstream at `api-app`** (line ~17): change `set $upstream_api "http://api-server:4000";` to `set $upstream_api "http://api-app:4000";`.
 
 - [ ] **Step 2: Point the `/webhooks/in/` block at `api-webhooks`** (line ~43): change `set $upstream_webhook "http://api-server:4000";` to `set $upstream_webhook "http://api-webhooks:4001";`.
 
@@ -1151,33 +1151,33 @@ No new Docker stages are needed — `scripts/build-images.sh` continues to build
 - Modify: `deploy/k8s/base/ingress.yaml`
 - Modify: `deploy/k8s/base/kustomization.yaml` (if it lists `api-server.yaml` by name, keep the filename or rename consistently)
 
-- [ ] **Step 1: Rewrite `deploy/k8s/base/api-server.yaml`** with three pairs. `api-control-plane` has `replicas: 1` (singleton — non-negotiable) and a health Service on 4003; `api-http`/`api-webhooks` may scale. Each container overrides `command`/`args` and shares `journeyman-config` + `journeyman-secrets`:
+- [ ] **Step 1: Rewrite `deploy/k8s/base/api-server.yaml`** with three pairs. `api-control-plane` has `replicas: 1` (singleton — non-negotiable) and a health Service on 4003; `api-app`/`api-webhooks` may scale. Each container overrides `command`/`args` and shares `journeyman-config` + `journeyman-secrets`:
 
 ```yaml
 apiVersion: v1
 kind: Service
-metadata: { name: api-http }
+metadata: { name: api-app }
 spec:
-  selector: { app: api-http }
+  selector: { app: api-app }
   ports: [{ port: 4000, targetPort: 4000 }]
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: api-http }
+metadata: { name: api-app }
 spec:
   replicas: 1
-  selector: { matchLabels: { app: api-http } }
+  selector: { matchLabels: { app: api-app } }
   template:
-    metadata: { labels: { app: api-http } }
+    metadata: { labels: { app: api-app } }
     spec:
       initContainers:
         - name: wait-for-postgres
           image: postgres:16-alpine
           command: ["sh","-c","until pg_isready -h postgres -U postgres; do echo waiting; sleep 2; done"]
       containers:
-        - name: api-http
+        - name: api-app
           image: journeyman/api-server:dev
-          command: ["npm","run","start:http","-w","@journeyman/api-server"]
+          command: ["npm","run","start:app","-w","@journeyman/api-server"]
           ports: [{ containerPort: 4000 }]
           envFrom:
             - configMapRef: { name: journeyman-config }
@@ -1232,9 +1232,9 @@ spec:
           readinessProbe: { tcpSocket: { port: 4003 }, initialDelaySeconds: 10, periodSeconds: 5 }
 ```
 
-> If `journeyman-config` sets `PORT=4000`, that's correct for `api-http`; `api-webhooks`/`control-plane` use their dedicated `WEBHOOKS_PORT`/`CONTROL_PLANE_PORT` so they don't collide. Confirm the configMap doesn't force a single `PORT` that would break the webhooks listener — the entrypoints read `WEBHOOKS_PORT`/`CONTROL_PLANE_PORT`, not `PORT`, so this is safe.
+> If `journeyman-config` sets `PORT=4000`, that's correct for `api-app`; `api-webhooks`/`control-plane` use their dedicated `WEBHOOKS_PORT`/`CONTROL_PLANE_PORT` so they don't collide. Confirm the configMap doesn't force a single `PORT` that would break the webhooks listener — the entrypoints read `WEBHOOKS_PORT`/`CONTROL_PLANE_PORT`, not `PORT`, so this is safe.
 
-- [ ] **Step 2: Update `deploy/k8s/base/ingress.yaml`** — `/api` → `api-http:4000`, add `/webhooks/in` → `api-webhooks:4001`, keep `/api/analytics` first:
+- [ ] **Step 2: Update `deploy/k8s/base/ingress.yaml`** — `/api` → `api-app:4000`, add `/webhooks/in` → `api-webhooks:4001`, keep `/api/analytics` first:
 
 ```yaml
         paths:
@@ -1246,13 +1246,13 @@ spec:
             backend: { service: { name: api-webhooks, port: { number: 4001 } } }
           - path: /api
             pathType: Prefix
-            backend: { service: { name: api-http, port: { number: 4000 } } }
+            backend: { service: { name: api-app, port: { number: 4000 } } }
           - path: /
             pathType: Prefix
             backend: { service: { name: web, port: { number: 8080 } } }
 ```
 
-- [ ] **Step 3: Check `kustomization.yaml`** references. If it lists resources by filename, the path `api-server.yaml` still exists (now holding three pairs) — no rename needed. If anything references a `Service`/`Deployment` named `api-server` by name (e.g. other manifests), update those references to `api-http`.
+- [ ] **Step 3: Check `kustomization.yaml`** references. If it lists resources by filename, the path `api-server.yaml` still exists (now holding three pairs) — no rename needed. If anything references a `Service`/`Deployment` named `api-server` by name (e.g. other manifests), update those references to `api-app`.
 
 Run: `grep -rn "api-server" deploy/k8s`
 Expected after edits: only image references `journeyman/api-server:dev` remain; no `name: api-server` Service/Deployment references.
@@ -1286,7 +1286,7 @@ Expected: same pass/fail baseline as before the split (the suite moved with its 
 - [ ] **Step 5: Smoke-check the three entrypoints boot** (optional but recommended; needs `npm run infra:up` + a migrated DB)
 
 ```bash
-PORT=4000 npm run start:api-http &            # expect "api-http listening" on 4000, GET /healthz → ok
+PORT=4000 npm run start:api-app &            # expect "api-app listening" on 4000, GET /healthz → ok
 WEBHOOKS_PORT=4001 npm run start:api-webhooks &   # expect "api-webhooks listening" on 4001
 CONTROL_PLANE_PORT=4003 npm run start:api-control-plane &  # expect "api-control-plane running" + loop logs
 ```
@@ -1295,12 +1295,12 @@ Expected: each logs its listen line; `curl localhost:4000/healthz`, `curl localh
 
 ### Task 7.2: Final self-check against the design
 
-- [ ] **Step 1: Confirm the singleton invariant** — only `cli-start-control-plane.ts` calls `startControlPlane`, and neither `server-http.ts` nor `server-webhooks.ts` starts any timer/scheduler/reaper/syncer.
+- [ ] **Step 1: Confirm the singleton invariant** — only `cli-start-control-plane.ts` calls `startControlPlane`, and neither `server-app.ts` nor `server-webhooks.ts` starts any timer/scheduler/reaper/syncer.
 
 Run: `grep -rn "startControlPlane\|startAgentScheduler\|new WorkflowInstanceSyncer\|Reaper\|WebhookWaitSweeper" packages/api-server/src`
-Expected: matches appear **only** in `cli-start-control-plane.ts` (the call) — not in `server-http.ts`, `server-webhooks.ts`, `cli-start-http.ts`, or `cli-start-webhooks.ts`.
+Expected: matches appear **only** in `cli-start-control-plane.ts` (the call) — not in `server-app.ts`, `server-webhooks.ts`, `cli-start-app.ts`, or `cli-start-webhooks.ts`.
 
-- [ ] **Step 2: Confirm `api-server/src` is slim** — only `composition.ts`, `server-http.ts`, `server-webhooks.ts`, `cli-start-*.ts`, `_env.ts`, `index.ts` remain (no `routes/`, no `services/`, no `schemas/`, no `sse/`).
+- [ ] **Step 2: Confirm `api-server/src` is slim** — only `composition.ts`, `server-app.ts`, `server-webhooks.ts`, `cli-start-*.ts`, `_env.ts`, `index.ts` remain (no `routes/`, no `services/`, no `schemas/`, no `sse/`).
 
 Run: `find packages/api-server/src -type f`
 Expected: the six/seven files above only.
@@ -1310,7 +1310,7 @@ Expected: the six/seven files above only.
 ## Known behavior nuances (document, don't fix)
 
 1. **In-memory human-task timers are now control-plane-local.** `schedule()` runs in the control-plane (via the syncer→engine-reconciler path); `cancel()` calls from the http/webhooks processes hit an *empty* in-memory map and are no-ops. The scheduled timer still fires in the control-plane, but the late resolution is absorbed by the existing **first-wins** cancellation (`applyFirstWinsCancellation`) — net effect is one harmless rejected resolve attempt at timeout. No correctness loss; the durable `WebhookWaitSweeper` remains the backstop.
-2. **`api-webhooks` service serves *only* the public receiver.** Webhook *management/presets* (authed, under `/api/...`) run in `api-http` because they share the `/api` prefix; isolating them by path isn't possible without splitting the `/api/workspaces/:wsId/...` namespace. The isolation goal (protect the UI API from public webhook bursts) is still met — the public, untrusted, bursty surface (`/webhooks/in/*`) is the isolated one.
+2. **`api-webhooks` service serves *only* the public receiver.** Webhook *management/presets* (authed, under `/api/...`) run in `api-app` because they share the `/api` prefix; isolating them by path isn't possible without splitting the `/api/workspaces/:wsId/...` namespace. The isolation goal (protect the UI API from public webhook bursts) is still met — the public, untrusted, bursty surface (`/webhooks/in/*`) is the isolated one.
 3. **One image, three commands.** No per-service Docker stage; `build-images.sh` is unchanged. Promoting/scaling a service is a deploy concern only.
 
 ---
@@ -1333,4 +1333,4 @@ Dependency adjustments made as a result:
 
 - **Spec coverage:** package split (Phases 1–4) ✓; thin root + pure composition (5.1) ✓; 3 entrypoints (5.4) ✓; control-plane singleton + timer consolidation (5.3, 7.2) ✓; nginx/compose/k8s/Dockerfile (Phase 6) ✓; constraints — no commits / master / typecheck-at-end (Working Agreements + Phase 7) ✓.
 - **Placeholder scan:** the only deliberate placeholder is the `_unused` import in Task 5.3 Step 3, explicitly called out to be deleted after copying exact import sources from the original files; barrel-export symbol names are flagged "confirm against the moved file" because the exact exported identifiers must be read from source, not guessed.
-- **Type consistency:** `Composition` is defined once (api-context, Task 1.2) and imported everywhere; `startControlPlane(c: Composition): () => void` matches its test (5.3) and its single caller (5.4 Step 4); `buildHttpServer`/`buildWebhookServer` signatures match their entrypoints.
+- **Type consistency:** `Composition` is defined once (api-context, Task 1.2) and imported everywhere; `startControlPlane(c: Composition): () => void` matches its test (5.3) and its single caller (5.4 Step 4); `buildAppServer`/`buildWebhookServer` signatures match their entrypoints.

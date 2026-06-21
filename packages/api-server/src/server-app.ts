@@ -10,7 +10,7 @@ import {
   registerHumanTaskRoutes, registerFormRoutes, registerStepsRoutes,
   registerAgentTriggerRoutes, registerWorkflowTriggersRoute,
   registerBuilderApplyRoute, registerBuilderChatRoute,
-} from "@journeyman/api-http";
+} from "@journeyman/api-app";
 import { registerWebhookManagementRoutes, registerWebhookPresetRoutes } from "@journeyman/api-webhooks";
 import { registerIdentityRoutes } from "@journeyman/identity";
 import { registerSecretsRoutes } from "@journeyman/secrets";
@@ -21,7 +21,7 @@ import { registerSkillRoutes } from "@journeyman/skills";
 import { registerCustomStepRoutes } from "@journeyman/custom-steps";
 import { registerCodingModelRoutes } from "@journeyman/coding-models";
 
-export async function buildHttpServer(c: Composition): Promise<FastifyInstance> {
+export async function buildAppServer(c: Composition): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
