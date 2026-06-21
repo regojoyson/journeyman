@@ -93,13 +93,15 @@ const CATALOG: McpCatalogEntry[] = [
 
   // Tickets
   {
-    id: "jira",
-    label: "Jira",
+    id: "jira-apitoken",
+    label: "Jira (API Token)",
     source: "provided",
-    transport: "http",
-    url: "https://mcp.atlassian.com/jira",
-    requiredEnv: ["JIRA_API_TOKEN", "JIRA_EMAIL"],
-    description: "Atlassian Jira via HTTP MCP. Requires JIRA_API_TOKEN + JIRA_EMAIL.",
+    transport: "stdio",
+    command: "uvx",
+    args: ["mcp-atlassian"],
+    requiredEnv: ["JIRA_URL", "JIRA_USERNAME", "JIRA_API_TOKEN"],
+    description:
+      "Jira Cloud/Server via email + API token using sooperset/mcp-atlassian. Requires JIRA_URL (e.g. https://your-org.atlassian.net), JIRA_USERNAME (your email), JIRA_API_TOKEN.",
     category: "tickets",
   },
   {
