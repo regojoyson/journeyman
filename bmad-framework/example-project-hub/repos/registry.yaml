@@ -1,0 +1,20 @@
+# Shopfront — code repos
+
+repos:
+  api:
+    url: github.com/shopfront/api
+    purpose: Core backend — catalog, cart, checkout, orders (REST)
+    tech: Node.js / Fastify / PostgreSQL
+    owners: [ "@backend" ]
+
+  web:
+    url: github.com/shopfront/web
+    purpose: Customer-facing storefront
+    tech: React / Next.js / TypeScript
+    owners: [ "@frontend" ]
+
+  search-svc:
+    url: github.com/shopfront/search-svc
+    purpose: Search indexing + query service
+    tech: Go / OpenSearch
+    owners: [ "@search" ]

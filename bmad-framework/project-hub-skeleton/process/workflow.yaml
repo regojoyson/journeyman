@@ -1,0 +1,54 @@
+# THE STANDARD — engine-agnostic process definition.
+# Any engine (Journeyman = reference) reads this to know which agent runs when,
+# and which transitions a human must approve.
+
+# ---------------------------------------------------------------------------
+# ZONE 1 — Hub-driven (Epics). Tracked by the epic's `phase:` frontmatter.
+# Transitions happen via Hub PRs; no Jira issues exist yet.
+# ---------------------------------------------------------------------------
+epic_phases:
+  discovery:
+    agents: [analyst, architect]   # product + technical tracks
+    iterative: true                # multi-round collaboration before lock
+    gate: [po, pm, architect]      # prioritize & approve
+    next: design
+  design:
+    agents: [ux-expert]
+    gate: [po]
+    next: grooming
+  grooming:
+    agents: [pm, po]               # PRD + shard into stories; SM checks readiness
+    gate: [po, pm]
+    on_approve: mirror_stories_to_jira   # <-- the handoff into Zone 2
+    next: done
+
+# ---------------------------------------------------------------------------
+# ZONE 2 — Jira-driven (Stories). Keyed by Jira status (exact names).
+#   agent: runs on entry to this status
+#   gate:  none | <role> | on-flag   (on-flag = escalate only if the agent flags an issue)
+#   auto_next: status to move to automatically when the agent finishes cleanly
+# ---------------------------------------------------------------------------
+story_statuses:
+  "NEW":                        { agent: ~,            gate: none, auto_next: "PM SCOPING" }
+  "PM SCOPING":                 { agent: pm,           gate: po }
+  "ARCHITECTURE SCOPING":       { agent: architect,    gate: architect }
+  "READY FOR DEVELOPMENT":      { agent: ~,            gate: none }   # queue (key gate lives at entry)
+  "IN PROGRESS":                { agent: dev,          gate: none, auto_next: "AWAITING CODE REVIEW" }
+  "AWAITING CODE REVIEW":       { agent: ~,            gate: none, auto_next: "IN CODE REVIEW" }
+  "IN CODE REVIEW":             { agent: code-review,  gate: on-flag }
+  "READY FOR TESTING":          { agent: ~,            gate: none, auto_next: "TESTING" }
+  "TESTING":                    { agent: qa,           gate: on-flag }
+  "PRE-RELEASE VERIFICATION":   { agent: release,      gate: po }
+  "TO BE DEPLOYED":             { agent: deploy,       gate: none }
+  "POST-RELEASE VERIFICATION":  { agent: prod-verify,  gate: [qa, po] }
+  "READY FOR RELEASE":          { agent: ~,            gate: none, auto_next: "DONE" }
+  "DONE":                       { agent: ~,            gate: none }   # terminal
+
+# ---------------------------------------------------------------------------
+# Cross-cutting policy
+# ---------------------------------------------------------------------------
+policy:
+  notify_every_phase: true        # Slack / Jira comment on every agent run
+  block_gates: ["READY FOR DEVELOPMENT", "PRE-RELEASE VERIFICATION"]  # the "key" gates
+  escalate_on_flag: true          # any agent flag opens a human gate
+  reject_loops_back: true         # rejected gate re-runs the phase agent with feedback

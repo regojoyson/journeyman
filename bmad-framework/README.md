@@ -45,11 +45,21 @@ enter the dev workflow.
 
 ## What's in this folder
 
-| File | What it's for |
+| File / folder | What it's for |
 |---|---|
 | [`workflow-diagram.svg`](./workflow-diagram.svg) | The shareable, one-page diagram |
 | [`SETUP.md`](./SETUP.md) | Step-by-step guide to stand the workflow up |
+| [`project-hub-skeleton/`](./project-hub-skeleton/) | Copy-me starting point for a real Project Hub repo (BMAD-aligned, with conventions, templates, agent personas, and `workflow.yaml`) |
+| [`example-project-hub/`](./example-project-hub/) | A filled-in example ("Shopfront") showing real PRD, ADR, epic, UX, architecture, and two mid-flight stories |
 | `README.md` | This overview |
+
+## Skeleton vs example
+
+- **[`project-hub-skeleton/`](./project-hub-skeleton/)** — empty templates + the rules. Copy
+  it into a new repo to start. Begin at its [`README`](./project-hub-skeleton/README.md) and
+  [`CONVENTIONS.md`](./project-hub-skeleton/CONVENTIONS.md).
+- **[`example-project-hub/`](./example-project-hub/)** — the same structure, filled in for a
+  fictional store, so you can see what "good" looks like before you write your own.
 
 ## Full design
 

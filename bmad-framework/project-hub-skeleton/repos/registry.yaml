@@ -1,0 +1,22 @@
+# Registry of every code repo in this project.
+# Stories reference these short names in their `repos:` frontmatter, and the engine
+# uses `url` to clone them into the sandbox.
+
+repos:
+  # short-name:
+  #   url: github.com/<org>/<repo>
+  #   purpose: <one line>
+  #   tech: <stack>
+  #   owners: [ "@team-or-person" ]
+
+  api:
+    url: github.com/<org>/api
+    purpose: <backend services & REST API>
+    tech: <node>
+    owners: [ "@backend" ]
+
+  web:
+    url: github.com/<org>/web
+    purpose: <frontend web app>
+    tech: <react>
+    owners: [ "@frontend" ]
