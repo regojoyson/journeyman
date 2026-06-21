@@ -189,19 +189,25 @@ The existing loop (~L405) already retries `ensureWorkspace` in-process on
 `SandboxAtCapacityError`:
 
 ```ts
-if ((err?.name === "ImageNotReadyError" || err?.name === "SandboxAtCapacityError")
-    && capacityOrImageAttemptsRemain) {
+// separate counter from imageAttempt — distinct budgets
+if (err?.name === "SandboxAtCapacityError" && capacityAttempt < capacityRetryAttempts) {
+  capacityAttempt++;
   // log "⏳ sandbox at capacity; waiting for a free slot (attempt n/N)…"
-  await delayOrAbort(delayMs, abort.signal);  // honors step deadline/abort
+  await delayOrAbort(capacityRetryDelayMs, abort.signal);  // honors step deadline/abort
   continue;
 }
 ```
 
-Capacity gets its own retry budget (`SANDBOX_CAPACITY_RETRY_ATTEMPTS`,
-`SANDBOX_CAPACITY_RETRY_DELAY_MS`), defaulting to a generous window since a free
-slot depends on other runs finishing, not a bounded image build. The loop
-already checks `abort.signal.aborted`, so a step `timeoutSeconds` still bounds
-the wait.
+Capacity uses its **own counter and budget** (`SANDBOX_CAPACITY_RETRY_ATTEMPTS`,
+`SANDBOX_CAPACITY_RETRY_DELAY_MS`), separate from `imageAttempt`, defaulting to a
+generous window since a free slot depends on other runs finishing, not a bounded
+image build. The loop already checks `abort.signal.aborted`, so a step
+`timeoutSeconds` still bounds the wait.
+
+**Bounded, not infinite.** The wait is capped by this budget *and* the step
+timeout/abort. Past that the run fails (and re-queues only if the flow/step has a
+retry policy). An unbounded queue is not achievable with the in-process loop —
+this is the accepted behavior.
 
 **Fallback.** If the in-process budget is exhausted, the error throws to the
 outer catch, which adds a branch mirroring `ImageNotReadyError`: append a
@@ -224,12 +230,35 @@ which would leak capacity under the new count. Required changes:
   `status='provisioning'` + age.
 - **`provision()` failure (fix).** In `ensureWorkspace`, the catch around
   `env.provision()` runs *after* a won claim, so a failure leaves a
-  `provisioning` row. Add a `releaseClaim(runId)` dep (→
-  `markSandboxInstanceDestroyed`) and call it in that catch, so the slot frees
-  immediately instead of waiting out `PROVISION_TIMEOUT_MS` (~10 min).
+  `provisioning` row. Add a `releaseClaim(runId)` dep and call it in that catch
+  to free the slot immediately (instead of waiting out `PROVISION_TIMEOUT_MS`
+  ~10 min). **`releaseClaim` must DELETE the row, not mark it `destroyed`** — see
+  "Leftover rows poison retry" below. New store fn
+  `releaseSandboxClaim(db, runId)`:
+  `DELETE FROM jm_sandbox_instances WHERE run_id=$1 AND status='provisioning' AND handle=''`
+  (the `handle=''` guard guarantees it can only remove an un-provisioned claim,
+  never a live instance).
 - **Defense in depth (optional).** The count may ignore `provisioning` rows older
   than `PROVISION_TIMEOUT_MS` (`status='active' OR (status='provisioning' AND
   created_at > now() - …)`) so even a missed reap can't wedge a sandbox shut.
+
+### Leftover rows poison retry (dry-run finding)
+
+`ensureWorkspace` early-returns only for `status='active'` / `'provisioning'`;
+the claim is `INSERT … ON CONFLICT (run_id) DO NOTHING → false → waitActive`.
+Because `ON CONFLICT` fires on the `run_id` PK **regardless of status**, *any*
+leftover row for that run (e.g. a `destroyed` one) makes a Conductor retry of the
+same run fall through to `claim → false → waitActive`, which then polls for an
+`active` that never comes and times out (~5 min) before failing. It would also
+make capacity's `run_exists` read `true` and misclassify the block as a
+lost-race.
+
+`run_id` is a unique workflow-instance id (never reused), and the only mid-run
+row that can be left behind by a *retryable* failure is the un-provisioned claim
+from `provision()` failing. **Deleting** it on release (rather than marking it
+`destroyed`) removes the poison so the retry re-claims cleanly.
+`ProvisioningReaper.failRun` keeps `markSandboxInstanceDestroyed` — that run is
+terminal and won't retry, and the destroyed row preserves audit history.
 
 ## Config Propagation
 
@@ -244,6 +273,15 @@ which would leak capacity under the new count. Required changes:
 - **Types:** `Sandbox`, `CreateSandboxArgs`, `UpdateSandboxArgs`,
   `ResolvedSandbox`, and the web `SandboxUpsertBody` gain the field.
 - `resolveSandbox` → `toResolved` surfaces it to `ensureWorkspace`.
+- **Exports (`packages/sandbox/src/index.ts`):** add
+  `claimSandboxInstanceWithCapacity`, `releaseSandboxClaim`, and
+  `SandboxAtCapacityError` (the index lists instance-store exports explicitly).
+- **`EnsureWorkspaceDeps`:** `claim` signature →
+  `{ runId, type, owner, sandboxId, limit }`; add a `releaseClaim(runId)` dep.
+  The `ensure-workspace` test fakes and the cli-worker wiring update to match
+  (no-pool branch: `claim` → `true`, `releaseClaim` → no-op).
+- **`reason` string is free-form** — there is no `StepFailedReason` enum, so
+  `"sandbox_at_capacity"` needs no type change.
 
 ## UI
 
@@ -312,6 +350,9 @@ for no limit." Mapping rules:
   step.failed event.
 - **Slot freeing:** `ProvisioningReaper.failRun` marks the instance destroyed
   (slot freed); `ensureWorkspace` releases the claim when `provision()` throws.
+- **Retry after release:** after `releaseSandboxClaim` DELETEs the row, a fresh
+  `ensureWorkspace` for the same run re-claims cleanly (no `ON CONFLICT`
+  dead-lock); `releaseSandboxClaim` never deletes a row with a non-empty handle.
 - **Validation:** `validateMaxConcurrentInstances` rejects negatives,
   non-integers, and out-of-range values; accepts `null`/`0`; runs on both POST
   and PATCH. Clearing via `null` round-trips through `updateSandbox`.
