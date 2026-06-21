@@ -93,15 +93,14 @@ const CATALOG: McpCatalogEntry[] = [
 
   // Tickets
   {
-    id: "jira-apitoken",
-    label: "Jira (API Token)",
+    id: "atlassian",
+    label: "Atlassian",
     source: "provided",
-    transport: "stdio",
-    command: "uvx",
-    args: ["mcp-atlassian"],
-    requiredEnv: ["JIRA_URL", "JIRA_USERNAME", "JIRA_API_TOKEN"],
+    transport: "http",
+    url: "https://mcp.atlassian.com/v1/mcp",
+    requiredEnv: ["AUTHORIZATION"],
     description:
-      "Jira Cloud/Server via email + API token using sooperset/mcp-atlassian. Requires JIRA_URL (e.g. https://your-org.atlassian.net), JIRA_USERNAME (your email), JIRA_API_TOKEN.",
+      "Jira, Confluence, Bitbucket, and JSM via the Atlassian hosted MCP. Bind AUTHORIZATION to either: Basic base64(email:api_token) for personal API tokens — run btoa('you@example.com:your_api_token') in a browser console to get the value; or Bearer api_key for service account keys. Email is required for full access. Requires API token auth enabled by your Atlassian org admin.",
     category: "tickets",
   },
   {

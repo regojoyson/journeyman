@@ -34,8 +34,12 @@ export function toMcpServerConfigs(
 export function buildHeaders(env: Record<string, string>): Record<string, string> {
   const headers: Record<string, string> = {};
   for (const [k, v] of Object.entries(env)) {
-    if (k === "AUTHORIZATION") headers["Authorization"] = `Bearer ${v}`;
-    else headers[k] = v;
+    if (k === "AUTHORIZATION") {
+      headers["Authorization"] =
+        v.startsWith("Basic ") || v.startsWith("Bearer ") ? v : `Bearer ${v}`;
+    } else {
+      headers[k] = v;
+    }
   }
   return headers;
 }
