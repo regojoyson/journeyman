@@ -122,6 +122,13 @@ Indexes:
 - `(workspace_id, provider, model)`
 - `(workspace_id, vendor)`
 
+**Idempotency (Conductor is at-least-once).** A node maps to one terminal LLM call, so
+`(workflow_instance_id, node_id, attempt, provider, model)` is unique per delivery (multi-model
+calls produce distinct `model`s — still unique). Add a `UNIQUE` constraint on that tuple and
+insert with `ON CONFLICT DO NOTHING`. This makes a redelivered task (same `attempt`) a no-op
+instead of a double-count. The writer returns whether rows were actually inserted, so the
+agent-counter rollup (below) only fires on a real insert.
+
 Hierarchy captured on every row:
 
 ```
@@ -289,6 +296,22 @@ recordTokenUsage(pool, {
   constant for the whole instance). Both are nullable, so a missed lookup is non-fatal.
 - Writing usage **must never fail the step** — wrap in try/catch, log on error.
 
+## Relationship to the existing agent usage counter
+
+`packages/agents/src/safety.ts` already has `addUsage(pool, orgId, agentId, tokens, costUsd)`
+that upserts into `jm_agent_run_counters` (which has `tokens BIGINT` / `cost_usd NUMERIC`
+columns), wired to the agent safety/budget rails (`jm_org_agent_settings.daily_run_cap` /
+`budget`). It is currently **dead code — never called** (comment: "called by the worker on
+terminal — 4c").
+
+`jm_token_usage` is the detailed source of truth; `jm_agent_run_counters` is a per-agent/day
+rollup the budget system reads. **Feed both:** when an *agent* run records usage and rows were
+actually inserted (see idempotency above), also call `addUsage(pool, orgId, agentId,
+sum(totalTokens), 0)`. `cost_usd` passes `0` this phase (tokens-only); the later pricing phase
+fills it. `addUsage` already upserts additively, so guarding the call on a real insert prevents
+redelivery double-counts. This revives the dormant agent budget feature at the cost of one extra
+call in the agent-run path; non-agent runs skip it.
+
 ## Read API (workspace-scoped, no UI)
 
 New routes in `@journeyman/api-server`, registered like existing workspace routes (Fastify;
@@ -330,8 +353,10 @@ read API already sums `cost_usd`.
 - **Runner round-trip test** — `RunnerResponse` carries `usage`; `SandboxInstanceCodingProvider`
   maps it back onto `RunCustomPromptResult` (asserts Docker/Windows coverage).
 - **Handler test** — `recordTokenUsage` writes correct rows for: normal multi-model usage; the
-  `usage_reported=false` path; `outcome` for success vs error; and that a write failure does not
-  fail the step.
+  `usage_reported=false` path; `outcome` for success vs error; that a write failure does not fail
+  the step; that a redelivered task (same instance/node/attempt/model) inserts **no** duplicate
+  rows (`ON CONFLICT DO NOTHING`); and that the agent-counter `addUsage` rollup fires once per
+  real insert (not on redelivery).
 - **API test** — aggregation grouping per dimension (incl. `vendor`); date-range filtering;
   workspace isolation enforced by `makeRequireWorkspacePermission` (a non-member, or a member of
   a different workspace, gets 403 — not another workspace's data).
@@ -347,5 +372,6 @@ read API already sums `cost_usd`.
 - `packages/orchestrator/src/sandbox/sandbox-instance-coding-provider.ts` — map `r.usage` back (all three ops).
 - `packages/orchestrator/src/workers/steps/{custom-ai,agent-run,start-feature-branch,list-workspace-files}-step-handler.ts` — persist usage (success + failure).
 - `packages/orchestrator/src/cli-worker.ts` — pass `pool` to `StartFeatureBranchStepHandler` + `ListWorkspaceFilesStepHandler` at registration (lines ~204-205).
-- `packages/orchestrator/src/...` — `recordTokenUsage` writer (no-ops when pool absent) + a usage store/query module.
+- `packages/orchestrator/src/...` — `recordTokenUsage` writer (no-ops when pool absent; `ON CONFLICT DO NOTHING`; returns inserted-row count) + a usage store/query module.
+- `packages/agents/src/safety.ts` — already has `addUsage()`; wire it from the agent-run path (guarded on a real insert). No change to the function itself.
 - `packages/api-server/src/...` — usage read routes.
