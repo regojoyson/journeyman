@@ -56,7 +56,8 @@ enter the dev workflow.
 ## Skeleton vs example
 
 - **[`project-hub-skeleton/`](./project-hub-skeleton/)** — empty templates + the rules. Copy
-  it into a new repo to start. Begin at its [`README`](./project-hub-skeleton/README.md) and
+  it into a new repo to start. Begin at its [`README`](./project-hub-skeleton/README.md),
+  [`FOLDER-GUIDE.md`](./project-hub-skeleton/FOLDER-GUIDE.md) (what each folder is for), and
   [`CONVENTIONS.md`](./project-hub-skeleton/CONVENTIONS.md).
 - **[`example-project-hub/`](./example-project-hub/)** — the same structure, filled in for a
   fictional store, so you can see what "good" looks like before you write your own.

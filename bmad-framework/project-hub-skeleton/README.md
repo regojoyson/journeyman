@@ -28,7 +28,8 @@ project-hub/
 ## First steps
 
 1. Copy this folder into a new repo named e.g. `project-hub`.
-2. Read [`CONVENTIONS.md`](./CONVENTIONS.md) — it defines the frontmatter every doc needs.
+2. Read [`FOLDER-GUIDE.md`](./FOLDER-GUIDE.md) — what each folder is for + the order they fill.
+3. Read [`CONVENTIONS.md`](./CONVENTIONS.md) — it defines the frontmatter every doc needs.
 3. Fill [`repos/registry.yaml`](./repos/registry.yaml) with your real repos.
 4. Seed [`process/agents/`](./process/agents/) from BMAD (see [../SETUP.md](../SETUP.md) Step 2).
 5. Create your first epic by copying [`epics/EPIC-template/`](./epics/EPIC-template/).
