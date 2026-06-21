@@ -12,6 +12,7 @@ export interface WorkspaceDetailContext {
 
 const TABS = [
   { to: "overview", label: "Overview" },
+  { to: "members", label: "Members" },
   { to: "settings", label: "Settings" },
 ];
 

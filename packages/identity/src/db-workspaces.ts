@@ -176,3 +176,66 @@ export async function updateWorkspaceMemberRole(
     [workspaceId, userId, role],
   );
 }
+
+/** One page of workspace members joined to users, plus the total count. */
+export async function listWorkspaceMembersPage(
+  db: Queryable,
+  workspaceId: string,
+  page: { limit: number; offset: number },
+): Promise<{
+  items: Array<{ userId: string; username: string; displayName: string | null; role: WorkspaceRole; createdAt: Date }>;
+  total: number;
+}> {
+  const r = await db.query(
+    `SELECT wm.user_id, wm.role, wm.created_at, u.username, u.display_name,
+            COUNT(*) OVER() AS total
+       FROM jm_workspace_members wm
+       JOIN jm_users u ON u.id = wm.user_id
+      WHERE wm.workspace_id = $1
+      ORDER BY u.username ASC
+      LIMIT $2 OFFSET $3`,
+    [workspaceId, page.limit, page.offset],
+  );
+  const total = r.rows[0] ? Number(r.rows[0].total) : 0;
+  return {
+    total,
+    items: r.rows.map((row) => ({
+      userId: row.user_id,
+      username: row.username,
+      displayName: row.display_name ?? null,
+      role: row.role as WorkspaceRole,
+      createdAt: new Date(row.created_at),
+    })),
+  };
+}
+
+/** Org members who are NOT yet in the workspace, for the associate picker. Optional username/displayName search. */
+export async function listAddableOrgMembers(
+  db: Queryable,
+  orgId: string,
+  workspaceId: string,
+  q?: string,
+): Promise<Array<{ userId: string; username: string; displayName: string | null }>> {
+  const term = q && q.trim() ? q.trim() : null;
+  const r = await db.query(
+    `SELECT u.id AS user_id, u.username, u.display_name
+       FROM jm_memberships m
+       JOIN jm_users u ON u.id = m.user_id
+      WHERE m.org_id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM jm_workspace_members wm
+           WHERE wm.workspace_id = $2 AND wm.user_id = u.id
+        )
+        AND ($3::text IS NULL
+             OR u.username ILIKE '%' || $3 || '%'
+             OR u.display_name ILIKE '%' || $3 || '%')
+      ORDER BY u.username ASC
+      LIMIT 50`,
+    [orgId, workspaceId, term],
+  );
+  return r.rows.map((row) => ({
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name ?? null,
+  }));
+}

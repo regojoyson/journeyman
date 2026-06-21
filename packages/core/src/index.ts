@@ -42,6 +42,7 @@ export * from "./types/identity.types.ts";
 export type * from "./types/workspace.types.ts";
 export { WORKSPACE_PERMISSIONS } from "./types/workspace.types.ts";
 export { ROLE_GRANTS, roleGrants, resolvePermissions, evaluateCan } from "./workspace-permissions.ts";
+export { canAccessOrg } from "./org-scope.ts";
 // Logger
 export {
   createLogger, type Logger,

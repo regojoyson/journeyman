@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
+import { canAccessOrg } from "@journeyman/core";
 import {
   DuplicateSecretError, deleteSecret, insertOrgSecret, listOrgSecrets, updateSecret,
 } from "../db.ts";
@@ -12,7 +13,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     { preHandler: requireAuth({ role: "admin" }) },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const rows = await listOrgSecrets(pool, orgId);
       return rows.map(r => ({
         id: r.id, name: r.name, description: r.description,
@@ -24,7 +25,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.create", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { name?: string; value?: string; description?: string };
       if (!body?.name || !body?.value) return reply.code(400).send({ error: "Missing name or value" });
       try {
@@ -47,7 +48,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.update", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { value?: string; description?: string | null };
       const ok = await updateSecret(pool, {
         id, orgId, workspaceId: null,
@@ -61,7 +62,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.delete", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const ok = await deleteSecret(pool, id, orgId, null);
       if (!ok) return reply.code(404).send({ error: "Not found" });
       return { ok: true };

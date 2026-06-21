@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "../middleware.ts";
+import { canAccessOrg } from "@journeyman/core";
 import {
   adminUpdateUserProfile, countActiveAdminsInOrg, findMembership, isOrgAdmin,
   listUsersInOrg, setUserStatus, updateUserPassword,
@@ -15,7 +16,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }) },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       return listUsersInOrg(pool, orgId);
     });
 
@@ -24,7 +25,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
       if (ctx.user.id === userId) return reply.code(400).send({ error: "Cannot change your own status" });
       const body = req.body as { status?: "active" | "disabled" };
       if (body?.status !== "active" && body?.status !== "disabled") {
@@ -45,7 +46,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
       if (ctx.user.id === userId) return reply.code(400).send({ error: "Use self-service to change your own password" });
       const m = await findMembership(pool, userId, orgId);
       if (!m) return reply.code(404).send({ error: "Not a member" });
@@ -59,7 +60,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "user.update_profile", targetType: "user", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const m = await findMembership(pool, userId, orgId);
       if (!m) return reply.code(404).send({ error: "Not a member" });
       const body = req.body as { displayName?: string | null };

@@ -8,6 +8,8 @@ import {
   getWorkspaceMember,
   listWorkspaceMembers,
   updateWorkspace,
+  listWorkspaceMembersPage,
+  listAddableOrgMembers,
 } from "./db-workspaces.ts";
 
 type Call = { text: string; params?: unknown[] };
@@ -91,5 +93,47 @@ describe("workspace store", () => {
     const db = fakeDb(() => ({ rows: [] }));
     const rec = await updateWorkspace(db, { workspaceId: "missing", orgId: "o1", name: "X", slug: "x" });
     expect(rec).toBeNull();
+  });
+
+  it("listWorkspaceMembersPage passes limit/offset and reads COUNT(*) OVER() as total", async () => {
+    const db = fakeDb(() => ({
+      rows: [
+        { user_id: "u1", role: "maintainer", created_at: "2026-06-18T00:00:00Z", username: "amy", display_name: "Amy Ray", total: "2" },
+        { user_id: "u2", role: "contributor", created_at: "2026-06-17T00:00:00Z", username: "ben", display_name: "Ben Lo", total: "2" },
+      ],
+    }));
+    const res = await listWorkspaceMembersPage(db, "w1", { limit: 20, offset: 0 });
+    expect(res.total).toBe(2);
+    expect(res.items).toHaveLength(2);
+    expect(res.items[0]).toEqual({
+      userId: "u1", username: "amy", displayName: "Amy Ray", role: "maintainer",
+      createdAt: new Date("2026-06-18T00:00:00Z"),
+    });
+    expect(db.calls[0].text).toMatch(/count\(\*\) over\(\)/i);
+    expect(db.calls[0].text).toMatch(/where wm\.workspace_id = \$1/i);
+    expect(db.calls[0].params).toEqual(["w1", 20, 0]);
+  });
+
+  it("listWorkspaceMembersPage returns total 0 for an empty workspace", async () => {
+    const db = fakeDb(() => ({ rows: [] }));
+    const res = await listWorkspaceMembersPage(db, "w1", { limit: 20, offset: 40 });
+    expect(res.total).toBe(0);
+    expect(res.items).toEqual([]);
+  });
+
+  it("listAddableOrgMembers excludes existing members and orders by username", async () => {
+    const db = fakeDb(() => ({ rows: [{ user_id: "u3", username: "cara", display_name: "Cara Wu" }] }));
+    const rows = await listAddableOrgMembers(db, "o1", "w1");
+    expect(rows).toEqual([{ userId: "u3", username: "cara", displayName: "Cara Wu" }]);
+    expect(db.calls[0].text).toMatch(/not exists/i);
+    expect(db.calls[0].text).toMatch(/order by u\.username asc/i);
+    expect(db.calls[0].params).toEqual(["o1", "w1", null]);
+  });
+
+  it("listAddableOrgMembers passes the search term when provided", async () => {
+    const db = fakeDb(() => ({ rows: [] }));
+    await listAddableOrgMembers(db, "o1", "w1", "ca");
+    expect(db.calls[0].params).toEqual(["o1", "w1", "ca"]);
+    expect(db.calls[0].text).toMatch(/ilike/i);
   });
 });

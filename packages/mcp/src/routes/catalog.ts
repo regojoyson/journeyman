@@ -100,7 +100,7 @@ const CATALOG: McpCatalogEntry[] = [
     url: "https://mcp.atlassian.com/v1/mcp",
     requiredEnv: ["AUTHORIZATION"],
     description:
-      "Jira, Confluence, Bitbucket, and JSM via the Atlassian hosted MCP. Bind AUTHORIZATION to either: Basic base64(email:api_token) for personal API tokens — run btoa('you@example.com:your_api_token') in a browser console to get the value; or Bearer api_key for service account keys. Email is required for full access. Requires API token auth enabled by your Atlassian org admin.",
+      "Jira, Confluence, Bitbucket, and JSM via the Atlassian hosted MCP. Bind AUTHORIZATION to the full header value — for personal API tokens: 'Basic ' + btoa('you@example.com:your_api_token') (include the 'Basic ' prefix); for service account keys: 'Bearer your_api_key'. Email is required for full access. Requires API token auth enabled by your Atlassian org admin.",
     category: "tickets",
   },
   {

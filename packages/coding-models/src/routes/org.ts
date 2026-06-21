@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import type { CodingModelConfig } from "@journeyman/core";
+import { canAccessOrg } from "@journeyman/core";
 import { makeRequireAuth } from "@journeyman/identity";
 import { getOrgSecretMeta } from "@journeyman/secrets";
 import {
@@ -43,7 +44,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }) },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       return listCodingModelsByOrg(pool, orgId);
     },
   );
@@ -53,7 +54,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.create", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const b = req.body as any;
       if (!b?.provider || !b?.modelId || !b?.label) {
         return reply.code(400).send({ error: "provider, modelId, label required" });
@@ -101,7 +102,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.update", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const existing = await getCodingModel(pool, orgId, id);
       if (!existing) return reply.code(404).send({ error: "Not found" });
       const patch = req.body as Record<string, unknown> | undefined;
@@ -153,7 +154,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.delete", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const ok = await deleteCodingModel(pool, orgId, id);
       if (!ok) return reply.code(404).send({ error: "Not found" });
       reply.code(204);

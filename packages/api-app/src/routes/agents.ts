@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Composition } from "@journeyman/api-context";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import {
@@ -16,6 +16,7 @@ import {
   DuplicateAgentError,
 } from "@journeyman/agents";
 import type { AgentCreateInput } from "@journeyman/core";
+import { canAccessOrg } from "@journeyman/core";
 import { syncScheduleState, clearScheduleState } from "@journeyman/api-context";
 import { listAudit } from "@journeyman/api-context";
 
@@ -47,14 +48,6 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
 
   const read = { preHandler: [requireAuth(), requirePerm("resource.read")] };
   const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
-
-  const wrongOrg = (ctx: { org: { id: string } }, orgId: string, reply: FastifyReply) => {
-    if (ctx.org.id !== orgId) {
-      reply.code(403).send({ error: "wrong_org" });
-      return true;
-    }
-    return false;
-  };
 
   // List agents — workspace-scoped
   app.get("/api/workspaces/:wsId/agents", read, async (req) => {
@@ -295,7 +288,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   app.get("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (ctx.org.id !== orgId) {
+    if (!canAccessOrg(ctx, orgId)) {
       reply.code(403).send({ error: "wrong_org" });
       return;
     }
@@ -305,7 +298,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   app.put("/api/orgs/:orgId/agent-settings", { preHandler: requireAuth(), config: { audit: { action: "org_settings.update", targetType: "org_settings" } } }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (ctx.org.id !== orgId) {
+    if (!canAccessOrg(ctx, orgId)) {
       reply.code(403).send({ error: "wrong_org" });
       return;
     }
@@ -322,7 +315,7 @@ export function registerAgentRoutes(app: FastifyInstance, c: Composition): void 
   app.get("/api/orgs/:orgId/audit", { preHandler: requireAuth() }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = ctxOf(req);
-    if (ctx.org.id !== orgId) {
+    if (!canAccessOrg(ctx, orgId)) {
       reply.code(403).send({ error: "wrong_org" });
       return;
     }

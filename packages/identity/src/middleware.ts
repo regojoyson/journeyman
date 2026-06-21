@@ -66,7 +66,7 @@ export function makeRequireAuth(deps: RequireAuthDeps) {
           isPlatformAdmin = !!claims.pa;
         }
 
-        if (opts.role === "admin" && role !== "admin") {
+        if (opts.role === "admin" && role !== "admin" && !isPlatformAdmin) {
           throw new ForbiddenError("Admin role required");
         }
 

@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import type { Role } from "@journeyman/core";
+import { canAccessOrg } from "@journeyman/core";
 import { makeRequireAuth } from "../middleware.ts";
 import {
   countActiveAdminsInOrg, createInvite, deleteMembership, isOrgAdmin,
@@ -16,7 +17,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     { preHandler: requireAuth() },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       return listMembershipsForOrg(pool, orgId);
     });
 
@@ -24,7 +25,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.invite", targetType: "membership" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { username?: string; role?: Role; tempPassword?: string; displayName?: string };
       if (!body?.username || !body?.role) return reply.code(400).send({ error: "Missing username or role" });
       if (body.role !== "admin" && body.role !== "member") return reply.code(400).send({ error: "Bad role" });
@@ -44,7 +45,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.remove", targetType: "membership", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       if (await isOrgAdmin(pool, orgId, userId)) {
         const remaining = await countActiveAdminsInOrg(pool, orgId);
         if (remaining <= 1) return reply.code(409).send({ error: "Cannot remove last admin" });
@@ -57,7 +58,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.update_role", targetType: "membership", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { role?: Role };
       if (body?.role !== "admin" && body?.role !== "member") return reply.code(400).send({ error: "Bad role" });
       if (body.role === "member" && await isOrgAdmin(pool, orgId, userId)) {

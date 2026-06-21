@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "@journeyman/identity";
+import { canAccessOrg } from "@journeyman/core";
 import {
   deleteModelPricing, getModelPricing, insertModelPricing,
   listModelPricingByOrg, updateModelPricing,
@@ -14,7 +15,7 @@ export async function registerOrgModelPricingRoutes(app: FastifyInstance, pool: 
     { preHandler: requireAuth({ role: "admin" }) },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       return listModelPricingByOrg(pool, orgId);
     },
   );
@@ -24,7 +25,7 @@ export async function registerOrgModelPricingRoutes(app: FastifyInstance, pool: 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "model_pricing.create", targetType: "model_pricing" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const b = req.body as any;
       if (!b?.provider || !b?.model) {
         return reply.code(400).send({ error: "provider, model required" });
@@ -46,7 +47,7 @@ export async function registerOrgModelPricingRoutes(app: FastifyInstance, pool: 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "model_pricing.update", targetType: "model_pricing" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const updated = await updateModelPricing(pool, orgId, id, req.body as any);
       if (!updated) return reply.code(404).send({ error: "Not found" });
       return updated;
@@ -58,7 +59,7 @@ export async function registerOrgModelPricingRoutes(app: FastifyInstance, pool: 
     { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "model_pricing.delete", targetType: "model_pricing" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
-      if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(req.runContext!, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const ok = await deleteModelPricing(pool, orgId, id);
       if (!ok) return reply.code(404).send({ error: "Not found" });
       reply.code(204);

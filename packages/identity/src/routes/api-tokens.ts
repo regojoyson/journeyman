@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { makeRequireAuth } from "../middleware.ts";
+import { canAccessOrg } from "@journeyman/core";
 import { newApiToken } from "../tokens.ts";
 import { insertApiToken, listApiTokens, revokeApiToken } from "../db.ts";
 
@@ -12,7 +13,7 @@ export async function registerApiTokenRoutes(app: FastifyInstance, pool: Pool) {
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const filterUserId = ctx.role === "admin" ? null : ctx.user.id;
       return listApiTokens(pool, orgId, filterUserId);
     });
@@ -22,7 +23,7 @@ export async function registerApiTokenRoutes(app: FastifyInstance, pool: Pool) {
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
       const body = req.body as { name?: string; expiresAt?: string };
       if (!body?.name) return reply.code(400).send({ error: "Missing name" });
       const { plaintext, hash } = newApiToken();
@@ -41,7 +42,7 @@ export async function registerApiTokenRoutes(app: FastifyInstance, pool: Pool) {
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
       if (ctx.role !== "admin") {
         const own = await listApiTokens(pool, orgId, ctx.user.id);
         if (!own.find((t: any) => t.id === id)) return reply.code(403).send({ error: "Not your token" });

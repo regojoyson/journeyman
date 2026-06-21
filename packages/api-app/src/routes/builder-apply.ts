@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { makeRequireAuth } from "@journeyman/identity";
+import { canAccessOrg } from "@journeyman/core";
 import { insertCustomAiStep, deleteCustomAiStep } from "@journeyman/custom-steps";
 import {
   applyBuildPlan, buildApplyArgs, requiredGapsRemaining,
@@ -41,7 +42,7 @@ export function registerBuilderApplyRoute(app: FastifyInstance, c: Composition):
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       const ctx = req.runContext!;
-      if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
+      if (!canAccessOrg(ctx, orgId)) return reply.code(403).send({ error: "Wrong org" });
 
       const session = await getBuilderSession(c.pool!, id, orgId, ctx.user.id);
       if (!session) return reply.code(404).send({ error: "Not found" });
