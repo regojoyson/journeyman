@@ -199,15 +199,27 @@ if (err?.name === "SandboxAtCapacityError" && capacityAttempt < capacityRetryAtt
 ```
 
 Capacity uses its **own counter and budget** (`SANDBOX_CAPACITY_RETRY_ATTEMPTS`,
-`SANDBOX_CAPACITY_RETRY_DELAY_MS`), separate from `imageAttempt`, defaulting to a
-generous window since a free slot depends on other runs finishing, not a bounded
-image build. The loop already checks `abort.signal.aborted`, so a step
-`timeoutSeconds` still bounds the wait.
+`SANDBOX_CAPACITY_RETRY_DELAY_MS`), separate from `imageAttempt`. The loop already
+checks `abort.signal.aborted`, so a step `timeoutSeconds` also bounds the wait.
+
+**Budget must be MODERATE, not generous (dry-run finding).** The worker poll loop
+is **serial per step type** (`worker-harness.ts` `loop()` `await`s `processOnce`
+before polling again), so an in-process wait **pins the whole worker** for that
+step type — head-of-line blocking. Unlike an image build (bounded, and one build
+serves every waiter), a capacity wait is unbounded and per-run, so a generous
+in-process wait is actively harmful during bursts: it idles scarce workers. So:
+
+- Default the capacity budget **modestly** (smooth short blips, ~tens of
+  seconds), then throw → outer catch → `completeTask("FAILED")`, which
+  **releases the worker** so Conductor can re-queue and the worker can pick up
+  other runs.
+- **Reliable queueing under sustained load needs a Conductor retry policy** on
+  the workspace step (re-queue with backoff is the only mechanism that frees the
+  worker between attempts; the in-process loop alone cannot). Document this;
+  don't over-tune the in-process budget.
 
 **Bounded, not infinite.** The wait is capped by this budget *and* the step
-timeout/abort. Past that the run fails (and re-queues only if the flow/step has a
-retry policy). An unbounded queue is not achievable with the in-process loop —
-this is the accepted behavior.
+timeout/abort. Past that the run fails (re-queues only with a retry policy).
 
 **Fallback.** If the in-process budget is exhausted, the error throws to the
 outer catch, which adds a branch mirroring `ImageNotReadyError`: append a
@@ -333,6 +345,21 @@ for no limit." Mapping rules:
   `run_id`.
 - **`hashtext` lock-key collisions** between two `sandbox_id`s cause only a rare,
   harmless extra serialization — never an incorrect count.
+- **Counting model is exact.** Docker `provision()` creates one container +
+  volume per `runId`, so instance rows are 1:1 with runs and counting rows =
+  counting real containers. The `executionMode: "shared"` that `ensureWorkspace`
+  hardcodes is cosmetic — each run still gets its own unit.
+- **Limit only binds below fleet worker-concurrency.** The worker loop is serial
+  per step type, so fleet workspace-concurrency ≈ worker-process count. If
+  `limit ≥` that, the worker pool is the real constraint and the gate rarely
+  fires; the limit matters most when set *below* fleet concurrency. Operators
+  should size it accordingly.
+- **Multi-worker safe.** The advisory lock is DB-global, so claims serialize
+  correctly across worker processes (each with its own pool to the same DB).
+- **Burst caveat — head-of-line blocking.** An at-capacity run waiting in-process
+  pins its worker's step-type loop (see Wait-and-Retry). This is inherent to the
+  serial worker model (the image-not-ready loop has it too); the moderate budget
+  + Conductor re-queue keep it from collapsing throughput under bursts.
 - **One run = one slot, regardless of fork/parallel fan-out.** Parallel branches
   of a single run share the `run_id`: the first wins the claim, the rest hit
   `ON CONFLICT → run_exists=true → false → waitActive` and *join* the same
