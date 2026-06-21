@@ -77,8 +77,15 @@ instances **per sandbox record** rather than per `type`.
 
 ### Validation (`packages/sandbox/src/sandbox-record.ts`)
 
-In `validateSandboxInput`: if `maxConcurrentInstances` is present, it must be an
-integer `>= 0`; otherwise throw `InvalidSandboxInputError`.
+Extract `validateMaxConcurrentInstances(v)`: when present, `v` must be `null` or
+an integer `0 <= v <= 10000` (reject negatives, non-integers, NaN, and
+fat-finger huge values); otherwise throw `InvalidSandboxInputError`. `0`/`null` =
+unlimited.
+
+- Called inside `validateSandboxInput` (the POST path).
+- **Also called directly in the PATCH route** — the PATCH handler currently runs
+  *no* validation (`validateSandboxInput` is POST-only), so the field validator
+  must be invoked there explicitly.
 
 ## Counting + Atomic Gate
 
@@ -226,19 +233,35 @@ which would leak capacity under the new count. Required changes:
 
 ## Config Propagation
 
-- `createSandbox` / `updateSandbox` (store + routes in `packages/sandbox`) read
-  and write `max_concurrent_instances`.
-- The resolver / `resolveSandbox` surfaces `maxConcurrentInstances` to
-  `ensureWorkspace`.
-- `SandboxUpsertBody` (web API client) gains `maxConcurrentInstances`.
+- **`db.ts`:** add `max_concurrent_instances` to the shared `COLS` constant (so
+  every `SELECT … RETURNING` surfaces it and `rowToSandbox` maps it); add it to
+  the `insertSandbox` column list + values; add an `updateSandbox` `set()` branch.
+  Because `set()` skips `undefined`, sending **`null` explicitly clears** the
+  limit (back to unlimited) — omitting it leaves it unchanged.
+- **Routes (`routes/index.ts`):** POST and PATCH both pass
+  `maxConcurrentInstances: body.maxConcurrentInstances`. PATCH additionally calls
+  `validateMaxConcurrentInstances` (it runs no validation today).
+- **Types:** `Sandbox`, `CreateSandboxArgs`, `UpdateSandboxArgs`,
+  `ResolvedSandbox`, and the web `SandboxUpsertBody` gain the field.
+- `resolveSandbox` → `toResolved` surfaces it to `ensureWorkspace`.
 
 ## UI
 
 A generic **"Max concurrent instances"** number input in the top, type-agnostic
 section of `packages/web/src/components/sandboxes/SandboxFormModal.tsx` — not the
-per-type config forms, since it applies to every type. Empty ⇒ unlimited, with
-helper text ("Leave blank for no limit"). Flows into
-`SandboxUpsertBody.maxConcurrentInstances`.
+per-type config forms, since it applies to every type. Helper text: "Leave blank
+for no limit." Mapping rules:
+
+- Empty string ⇒ send **`null`** (not `0`, not omitted) so an existing limit can
+  be cleared on edit.
+- The create `body` *and* the edit `patch` objects must both include the field
+  (the patch object lists fields explicitly).
+
+> **Scope note (dry-run finding).** All sandbox CRUD routes are org-scoped
+> (`/api/orgs/:orgId/sandboxes`, `updateSandbox … WHERE org_id = $`), so the UI
+> can only set the limit on **org-scoped** sandboxes. System-scoped sandboxes
+> (`org_id = null`) get their limit via seed/CLI. The *column* and the *gate*
+> apply to every sandbox regardless of scope.
 
 ## Decisions / Edge Cases
 
@@ -261,6 +284,17 @@ helper text ("Leave blank for no limit"). Flows into
   production. One gate covers everything.
 - **No-pool / local-dev** keeps provisioning unconditionally (the `claim` dep
   returns `true` when there is no pool), so the limit is a no-op without a DB.
+- **Lowering the limit below the live count** never kills running instances —
+  new claims simply wait until the count drops below the new limit.
+- **Limit is read fresh per run** (`resolveSandbox` fetches it at each
+  provisioning), so changes apply to subsequent claims with no stale caching.
+- **Pre-migration instance rows** have `sandbox_id = NULL` and are not counted
+  for any sandbox (transient under-count; they drain as those runs finish).
+- **Deleted sandbox with live instances** → orphaned `sandbox_id` (no FK); the
+  count is unaffected, no new claims arrive, and reapers still tear down by
+  `run_id`.
+- **`hashtext` lock-key collisions** between two `sandbox_id`s cause only a rare,
+  harmless extra serialization — never an incorrect count.
 
 ## Testing
 
@@ -278,5 +312,9 @@ helper text ("Leave blank for no limit"). Flows into
   step.failed event.
 - **Slot freeing:** `ProvisioningReaper.failRun` marks the instance destroyed
   (slot freed); `ensureWorkspace` releases the claim when `provision()` throws.
+- **Validation:** `validateMaxConcurrentInstances` rejects negatives,
+  non-integers, and out-of-range values; accepts `null`/`0`; runs on both POST
+  and PATCH. Clearing via `null` round-trips through `updateSandbox`.
+- **API/UI:** create and edit both persist the field; empty input clears it.
 - **Migration:** applies cleanly; new columns nullable; `sandbox_id` is uuid;
   index created.
