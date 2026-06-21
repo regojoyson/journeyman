@@ -78,11 +78,13 @@ New migration: `packages/migrations/src/sql/064_token_usage.sql`.
 `jm_node_executions` keyed by `workflow_instance_id`. So `jm_token_usage.workflow_instance_id`
 FKs to `jm_workflow_instances(id)`.)
 
-Table **`jm_token_usage`** — one row per (LLM call × model):
+Table **`jm_token_usage`** — one row per (LLM call × model). Follow existing migration
+conventions: `CREATE TABLE IF NOT EXISTS`, `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`,
+snake_case columns, `TIMESTAMPTZ NOT NULL DEFAULT now()`, FKs `ON DELETE CASCADE`.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | uuid PK | |
+| `id` | uuid PK | `DEFAULT gen_random_uuid()` |
 | `workspace_id` | uuid FK → `jm_workspaces` | top-level scope, always set |
 | `org_id` | uuid | denormalized for org-level rollups |
 | `workflow_id` | uuid NULL | workflow **template** — stats per workflow across all runs |
@@ -278,28 +280,34 @@ recordTokenUsage(pool, {
 - Context on hand: `ctx.workflowInstanceId`, `ctx.nodeId`, `ctx.attempt`, `input.provider`,
   `input.model`, `input.startedByUserId` (→ `triggered_by_user_id`),
   `input.startedByOrgId` (→ `org_id`; the run row has no org_id column), `input.workflowId`.
-- **`agent_id` from `input.agentId`**, **`agent_name` from `input.displayName`** (agent linkage
-  lives in `run.inputs->>'agentId'`, not a column — see
-  [postgres-workflow-instance-store.ts:148](../../packages/orchestrator/src/stores/postgres/postgres-workflow-instance-store.ts)).
-- `workspace_id`, `workflow_version_id`, `workflow_name` come from one run-row lookup by
-  `ctx.workflowInstanceId`.
+- **Most fields are already on the step input — no per-call DB lookup.** The worker injects
+  `workspaceId`, `workflowId`, `startedByUserId`, `startedByOrgId` into every step's input
+  ([conductor-converter.ts:393-396](../../packages/orchestrator/src/flow-json/conductor-converter.ts)).
+  `agent_id` from `input.agentId`, `agent_name` from `input.displayName`.
+- **Only `workflow_version_id` and `workflow_name` are not in input** — fetch them with a single
+  lookup on `jm_workflow_instances` by `ctx.workflowInstanceId`, cached per run (they are
+  constant for the whole instance). Both are nullable, so a missed lookup is non-fatal.
 - Writing usage **must never fail the step** — wrap in try/catch, log on error.
 
 ## Read API (workspace-scoped, no UI)
 
-New routes in `@journeyman/api-server`, under the workspace namespace, mirroring existing
-workspace-scoped route patterns:
+New routes in `@journeyman/api-server`, registered like existing workspace routes (Fastify;
+the global `/api` prefix is applied at registration, so the route paths are
+`/workspaces/:wsId/...`). **Auth is mandatory and matches the existing pattern** — every route
+uses `read = { preHandler: [requireAuth(), requirePerm("resource.read")] }` where
+`requirePerm = makeRequireWorkspacePermission({ pool })`. That guard enforces the caller is a
+member of `:wsId` with read permission, so a user cannot read another workspace's usage by
+guessing the id. Every query is *also* constrained to `:wsId` in SQL (defence in depth).
 
-- `GET /api/workspaces/:wsId/usage`
+- `GET /workspaces/:wsId/usage`
   Filters: `from`, `to`, `provider`, `vendor`, `model`, `agentId`, `workflowId`,
   `instanceId`, `outcome`. Returns aggregated token totals + row count for the filtered set.
 
-- `GET /api/workspaces/:wsId/usage/by/:dimension`
+- `GET /workspaces/:wsId/usage/by/:dimension`
   `dimension ∈ { model | provider | vendor | agent | workflow | workflow_version | step | day }`.
   Returns grouped token totals — the queries a dashboard will consume.
 
-Responses sum token columns and `cost_usd` (NULL today, live once pricing lands). All queries
-are constrained to `:wsId` for tenant isolation.
+Responses sum token columns and `cost_usd` (NULL today, live once pricing lands).
 
 ## Forward-compat for cost
 
@@ -325,7 +333,8 @@ read API already sums `cost_usd`.
   `usage_reported=false` path; `outcome` for success vs error; and that a write failure does not
   fail the step.
 - **API test** — aggregation grouping per dimension (incl. `vendor`); date-range filtering;
-  workspace isolation (one workspace cannot read another's usage).
+  workspace isolation enforced by `makeRequireWorkspacePermission` (a non-member, or a member of
+  a different workspace, gets 403 — not another workspace's data).
 
 ## Files touched
 
