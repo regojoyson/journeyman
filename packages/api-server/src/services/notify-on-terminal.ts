@@ -1,9 +1,12 @@
 import type { Pool } from "pg";
 import type { IWorkflowInstanceStore, WorkflowInstanceStatus } from "@journeyman/core";
+import { createLogger } from "@journeyman/core";
 import { getAgent } from "@journeyman/agents";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
 import { open } from "@journeyman/secrets";
 import { buildNotificationProvider } from "@journeyman/notification-provider";
+
+const log = createLogger("agent:notify");
 
 export interface NotifyOnTerminalDeps {
   pool: Pool;
@@ -40,14 +43,18 @@ export function makeNotifyOnTerminal(deps: NotifyOnTerminalDeps) {
         credential,
       );
 
-      await provider.send({
+      const result = await provider.send({
         channel: agent.notifications.target ?? "",
         title: `Agent "${agent.name}" ${status}`,
         message: `Run ${workflowInstanceId} ${status}.`,
         sessionId: workflowInstanceId,
       });
-    } catch {
-      // never let a notification failure affect the run
+      if (result && result.success === false) {
+        log.warn({ workflowInstanceId, agentId, provider: conn.provider, error: result.error }, "agent notification delivery failed — ignored");
+      }
+    } catch (err: any) {
+      // never let a notification failure affect the run — log and ignore
+      log.warn({ workflowInstanceId, error: err?.message ?? String(err) }, "agent notification errored — ignored");
     }
   };
 }

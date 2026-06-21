@@ -1,3 +1,5 @@
+import type { McpCatalogEntry } from "@journeyman/flow-editor";
+
 export type McpTransport = "stdio" | "http" | "sse";
 
 export interface McpBinding { envVar: string; secretName: string }
@@ -18,18 +20,7 @@ export interface McpInstance {
   updatedAt: string;
 }
 
-export interface CatalogEntry {
-  id: string;
-  label: string;
-  source: "builtin" | "provided";
-  transport: McpTransport;
-  command?: string;
-  args?: string[];
-  url?: string;
-  requiredEnv?: string[];
-  description?: string;
-  category?: string;
-}
+export type CatalogEntry = McpCatalogEntry;
 
 export interface UpsertBody {
   name: string;
@@ -110,7 +101,4 @@ export const mcpApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "invoke", tool, args }),
     }).then(jsonOrThrow<TestOutcome>),
-
-  catalog: () =>
-    fetch("/api/mcp-catalog", { credentials: "include" }).then(jsonOrThrow<CatalogEntry[]>),
 };

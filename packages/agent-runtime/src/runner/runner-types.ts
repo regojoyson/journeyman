@@ -1,3 +1,5 @@
+import type { TokenUsage } from "@journeyman/core";
+
 /** Request piped to the runner (stdin) or passed to an in-process dispatch. */
 export interface RunnerRequest {
   /** Operation id: "custom-prompt" | "scan-repos" | "checkout-repo". */
@@ -16,4 +18,6 @@ export interface RunnerResponse {
   /** Text payload for text-mode custom prompts. */
   result?: string;
   error?: string;
+  /** Token usage for custom-prompt ops (scan/checkout carry usage inside `structured`). */
+  usage?: TokenUsage[];
 }

@@ -63,3 +63,7 @@ export { PostgresWorkflowTriggerStore } from "./stores/postgres/postgres-workflo
 export { ProvisioningReaper } from "./sandbox/provisioning-reaper.ts";
 export type { ProvisioningReaperDeps } from "./sandbox/provisioning-reaper.ts";
 export { findStuckProvisioningRuns } from "./stores/postgres/provisioning-queries.ts";
+export { recordTokenUsage } from "./usage/record-token-usage.ts";
+export type { RecordTokenUsageArgs } from "./usage/record-token-usage.ts";
+export { buildUsageAggregateQuery, buildUsageTotalsQuery, DIMENSION_COLUMNS } from "./usage/usage-queries.ts";
+export type { UsageDimension, UsageFilters } from "./usage/usage-queries.ts";

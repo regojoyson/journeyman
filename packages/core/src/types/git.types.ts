@@ -1,5 +1,5 @@
 import type { SessionOptions, SessionResult } from "./session.types.ts";
-import type { AgentLogLevel, CodingCliLogFn } from "./coding.types.ts";
+import type { AgentLogLevel, CodingCliLogFn, TokenUsage } from "./coding.types.ts";
 import type { CodingModelConfig } from "./coding-models.types.ts";
 
 // ---------------------------------------------------------------------------
@@ -55,6 +55,7 @@ export type RepoInfo = {
 export type ScanReposResult = SessionResult & {
   repos: RepoInfo[];
   error?: string;
+  usage?: TokenUsage[];
 };
 
 export type CheckoutRepoOptions = SessionOptions & {
@@ -85,6 +86,7 @@ export type CheckoutRepoResult = SessionResult & {
   repos: CheckoutResult[];
   newBranch: string;
   error?: string;
+  usage?: TokenUsage[];
 };
 
 // ---------------------------------------------------------------------------

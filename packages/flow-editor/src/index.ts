@@ -24,7 +24,6 @@ export { formatRefShort, friendlyRef, humanizeTemplate, summaryValue } from "./s
 export { executorCommonConfig, defaultProviderFor } from "./executor-common-config.ts";
 export { StepRegistry } from "./state/step-registry.ts";
 export { defaultControlCatalog } from "./palette/built-in-categories.ts";
-export { defaultMcpCatalog } from "./catalogs/built-in-mcp-catalog.ts";
 export { nodeTypes, edgeTypes } from "./canvas/node-registry.ts";
 export { StepRegistryProvider } from "./state/step-registry-context.tsx";
 export { OrgIdProvider, useOrgId, WsIdProvider, useWsId } from "./state/org-context.tsx";

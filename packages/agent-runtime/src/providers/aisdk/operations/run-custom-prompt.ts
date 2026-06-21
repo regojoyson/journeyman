@@ -1,6 +1,7 @@
 import { generateText, stepCountIs } from "ai";
 import { createLogger } from "@journeyman/core";
-import type { RunCustomPromptOptions, RunCustomPromptResult } from "@journeyman/core";
+import type { RunCustomPromptOptions, RunCustomPromptResult, TokenUsage } from "@journeyman/core";
+import { aiSdkUsageToTokenUsage, accumulateUsage, vendorFromConfig } from "../utils/usage.ts";
 import { resolveModel } from "../model.ts";
 import { aiSdkToolIds } from "../tool-mapping.ts";
 import { buildBuiltinTools } from "../tools/index.ts";
@@ -137,8 +138,12 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     logFinal(true, undefined, opts.onLog, level);
     log.info({ sessionId }, "runCustomPrompt done");
 
-    if (opts.outputMode === "none") return { sessionId };
-    if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "" };
+    const vendor = vendorFromConfig(opts.modelConfig, opts.model);
+    const usageRows: TokenUsage[] = aiSdkUsageToTokenUsage(result.usage, opts.model ?? "", vendor);
+    const usage = () => accumulateUsage(usageRows);
+
+    if (opts.outputMode === "none") return { sessionId, usage: usage() };
+    if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "", usage: usage() };
 
     let structured = tryReadStructured(result);
 
@@ -158,14 +163,15 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
         ...(opts.signal ? { abortSignal: opts.signal } : {}),
         onStepFinish: makeStepLogger(opts.onLog, level),
       } as any);
+      usageRows.push(...aiSdkUsageToTokenUsage(forced.usage, opts.model ?? "", vendor));
       structured = tryReadStructured(forced);
     }
 
     if (structured === undefined) {
       const text = finalAssistantText(result);
-      return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}` };
+      return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}`, usage: usage() };
     }
-    return { sessionId, structured };
+    return { sessionId, structured, usage: usage() };
   } catch (err) {
     const error = describeError(err);
     logFinal(false, error, opts.onLog, level);

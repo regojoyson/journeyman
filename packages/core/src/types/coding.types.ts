@@ -77,9 +77,29 @@ export interface RunCustomPromptOptions {
   maxSteps?: number;
 }
 
+/** Normalized per-(call×model) token usage. Every provider maps its native shape to this. */
+export interface TokenUsage {
+  /** Execution engine: "claude" | "aisdk" | "opencode" | … */
+  provider: string;
+  /** Underlying API vendor: "anthropic" | "openai" | "google" | … when known. */
+  vendor?: string;
+  /** Exact model id reported by the provider. */
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  reasoningTokens?: number;
+  totalTokens?: number;
+  /** Full provider usage blob for forensics / future fields. */
+  raw?: unknown;
+}
+
 export interface RunCustomPromptResult {
   result?: string;
   structured?: unknown;
   error?: string;
   sessionId?: string;
+  /** One entry per model used in the call. Empty/undefined ⇒ provider reported nothing. */
+  usage?: TokenUsage[];
 }

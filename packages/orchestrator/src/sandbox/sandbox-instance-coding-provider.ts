@@ -33,9 +33,10 @@ export class SandboxInstanceCodingProvider implements ICodingCLI {
       ...(opts.signal ? { signal: opts.signal } : {}),
       ...(opts.onLog ? { onLog: opts.onLog } : {}),
     });
-    if (!r.ok) return { error: r.error ?? "sandbox exec failed" };
-    if (typeof r.structured === "string") return { result: r.structured };
-    return { structured: r.structured };
+    const usage = (r as { usage?: RunCustomPromptResult["usage"] }).usage;
+    if (!r.ok) return { error: r.error ?? "sandbox exec failed", usage };
+    if (typeof r.structured === "string") return { result: r.structured, usage };
+    return { structured: r.structured, usage };
   }
 
   async scanRepos(opts: ScanReposOptions): Promise<ScanReposResult> {

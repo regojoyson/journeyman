@@ -1,5 +1,4 @@
 import type { INotificationProvider } from "@journeyman/core";
-import { ConsoleProvider } from "./providers/console/index.ts";
 import { SlackProvider } from "./providers/slack/index.ts";
 import { EmailProvider, type EmailProviderOptions } from "./providers/email/index.ts";
 
@@ -19,8 +18,6 @@ export function buildNotificationProvider(
   credential: string,
 ): INotificationProvider {
   switch (provider) {
-    case "console":
-      return new ConsoleProvider();
     case "slack":
       return config.method === "webhook"
         ? new SlackProvider({ method: "webhook", webhookUrl: credential })

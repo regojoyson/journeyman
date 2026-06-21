@@ -1,13 +1,13 @@
 import type { FastifyInstance } from "fastify";
 
 /**
- * Static catalog of well-known MCP servers. Mirrors the entries available in
- * `@journeyman/flow-editor`'s `defaultMcpCatalog`, but lives here to avoid
- * pulling JSX-bearing flow-editor sources into the server-side typecheck.
+ * The single source of truth for the static catalog of well-known MCP servers.
+ * Served verbatim by `GET /api/mcp-catalog`.
  *
- * The "Add MCP from catalog" UI calls `GET /api/mcp-catalog` and uses the
- * returned entries to pre-fill the create form. The optional `category` field
- * powers grouping/filtering in the picker.
+ * Both frontend surfaces consume this endpoint: the "Add MCP from catalog"
+ * modal and the flow-editor canvas's MCP picker (via `FlowEditorPage`). The
+ * frontend no longer keeps its own copy of this data. The optional `category`
+ * field powers grouping/filtering in the picker.
  */
 interface McpCatalogEntry {
   id: string;
@@ -156,6 +156,29 @@ const CATALOG: McpCatalogEntry[] = [
     url: "https://mcp.slack.com",
     requiredEnv: ["SLACK_BOT_TOKEN"],
     description: "Slack via HTTP MCP. Requires SLACK_BOT_TOKEN.",
+    category: "communication",
+  },
+  {
+    id: "resend",
+    label: "Resend",
+    source: "provided",
+    transport: "stdio",
+    command: "npx",
+    args: ["-y", "resend-mcp"],
+    requiredEnv: ["RESEND_API_KEY"],
+    description: "Send transactional email via Resend. Requires RESEND_API_KEY.",
+    category: "communication",
+  },
+  {
+    id: "smtp",
+    label: "SMTP Email",
+    source: "provided",
+    transport: "stdio",
+    command: "npx",
+    args: ["-y", "mcp-mail-server"],
+    requiredEnv: ["SMTP_HOST", "SMTP_PORT", "EMAIL_USER", "EMAIL_PASS"],
+    description:
+      "Send email over any SMTP server. Requires SMTP_HOST, SMTP_PORT, EMAIL_USER, EMAIL_PASS (optional SMTP_SECURE).",
     category: "communication",
   },
 

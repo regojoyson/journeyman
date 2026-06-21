@@ -6,6 +6,7 @@ export const sendMessageConfigSchema = z.object({
   title: z.string().optional(),
   message: z.string().min(1),
   blocks: z.string().optional(),
+  required: z.boolean().optional(),
 });
 
 export const SEND_MESSAGE_STEP_TYPE = "send-message";
@@ -16,7 +17,7 @@ export const SEND_MESSAGE_DESCRIPTION =
 
 export const sendMessageOutputSchema: OutputSchema = {
   delivered: { type: "boolean" },
-  channelId: { type: "string" },
+  messageId: { type: "string" },
 };
 
 export const sendMessageInputFields: InputFields = {

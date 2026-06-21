@@ -82,7 +82,7 @@ export class DockerExecutionEnvironment implements IExecutionEnvironment {
       try {
         const parsed = JSON.parse(text) as ExecResult & { result?: string };
         // The runner envelope carries text-mode output in `result`; flatten into `structured`.
-        return { ok: parsed.ok, structured: parsed.structured ?? parsed.result, error: parsed.error };
+        return { ok: parsed.ok, structured: parsed.structured ?? parsed.result, error: parsed.error, usage: parsed.usage };
       } catch {
         // fall through
       }

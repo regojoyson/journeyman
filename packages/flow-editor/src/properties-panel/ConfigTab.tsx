@@ -1,7 +1,7 @@
 // packages/flow-editor/src/properties-panel/ConfigTab.tsx
 import { useState, useEffect, useMemo } from "react";
 import type { WorkflowDefaults, WorkflowGraph, WorkflowNode, WorkflowInputValue } from "@journeyman/core";
-import { codingModelKeySlot, notificationFields } from "@journeyman/core";
+import { codingModelKeySlot, notificationFields, NOTIFICATION_SCAFFOLDS } from "@journeyman/core";
 import type { McpCatalog } from "../types.ts";
 import { useStepRegistry } from "../state/step-registry-context.tsx";
 import { ExecutorBlock } from "./ExecutorBlock.tsx";
@@ -63,6 +63,11 @@ function notificationConfigFields(
       help: f.help,
     };
   }
+  out.required = {
+    label: "Required — fail the step if delivery fails",
+    widget: "checkbox",
+    help: "When off (default), a failed or unconfigured notification is logged and ignored; the step still succeeds.",
+  };
   return out;
 }
 
@@ -344,6 +349,28 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
               onChange={urls => onChange({ ...node, config: { ...config, repos: urls.join("\n") } })}
               readOnly={readOnly}
             />
+          )}
+          {isNotificationStep && (
+            <div className="je-props__field">
+              <label>Start from a template</label>
+              <select
+                value=""
+                disabled={readOnly}
+                onChange={e => {
+                  const s = NOTIFICATION_SCAFFOLDS.find(x => x.id === e.target.value);
+                  if (!s) return;
+                  onChange({ ...node, config: { ...config, title: s.subject, message: s.body } });
+                }}
+              >
+                <option value="">— custom —</option>
+                {NOTIFICATION_SCAFFOLDS.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+              <div className="je-props__field-help">
+                Fills Subject &amp; Message with starter text. Insert dynamic values with @ to reference an earlier step.
+              </div>
+            </div>
           )}
         </>
       )}

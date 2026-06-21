@@ -1,8 +1,16 @@
 # Notification Providers End-to-End Design
 
 **Date:** 2026-06-21
-**Status:** Draft
+**Status:** Implemented
 **Follows:** [2026-06-20-email-notification-connection-design.md](2026-06-20-email-notification-connection-design.md)
+
+> **Later amendment:** the `console` provider described below was subsequently **removed**
+> (see [2026-06-21-notification-ux-hardening-design.md](2026-06-21-notification-ux-hardening-design.md)).
+> Wherever this document mentions `console` — the build-provider `case`, the `?? "console"`
+> fallback, the catalog default, the notify-on-terminal console branch — that path no longer
+> exists; `buildNotificationProvider` now throws for any unknown provider, and `slack` is the
+> notification default. The rest of this spec (sessionId fix, shared factory, agent+step wiring,
+> provider-aware inputs) is accurate.
 
 ## Summary
 

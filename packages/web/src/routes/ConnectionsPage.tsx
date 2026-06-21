@@ -248,7 +248,6 @@ function AddConnectionModal({
             ) : (
               <>
                 <option value="slack">Slack</option>
-                <option value="console">Console</option>
                 <option value="email">Email</option>
               </>
             )}

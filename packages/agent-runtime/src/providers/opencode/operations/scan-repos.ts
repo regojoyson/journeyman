@@ -2,6 +2,7 @@
 import { createLogger } from "@journeyman/core";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
+import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { resolveOpenCodeModel } from "../model.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
@@ -69,15 +70,16 @@ export async function scanRepos(
 
   const info = result.data.info;
   logSessionEvent(log, sessionId, info);
+  const usage = openCodeInfoToTokenUsage(info as never);
 
   if (info.error) {
     const error = typeof info.error === "string" ? info.error : JSON.stringify(info.error);
     log.error({ sessionId, error }, "scanRepos failed");
-    return { ...EMPTY, error };
+    return { ...EMPTY, error, usage };
   }
-  if (!info.structured) return EMPTY;
+  if (!info.structured) return { ...EMPTY, usage };
 
-  const output = { ...(info.structured as ScanReposResult), sessionId };
+  const output = { ...(info.structured as ScanReposResult), sessionId, usage };
   log.info({
     sessionId,
     repoCount: output.repos.length,

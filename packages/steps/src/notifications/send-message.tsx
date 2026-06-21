@@ -13,6 +13,7 @@ interface SendMessageConfig {
   title?: string;
   message: string;
   blocks?: string;
+  required?: boolean;
 }
 
 export const sendMessageStep: StepDefinition<SendMessageConfig> = {
@@ -22,17 +23,17 @@ export const sendMessageStep: StepDefinition<SendMessageConfig> = {
   description: SEND_MESSAGE_DESCRIPTION,
   color: "#fd79a8",
   icon: "💬",
-  defaultConfig: { channel: "", title: "", message: "", blocks: "" },
+  defaultConfig: { channel: "", title: "", message: "", blocks: "", required: false },
   configSchema: sendMessageConfigSchema,
   configFields: {
-    channel: { label: "Channel / target", widget: "text", help: "e.g. #deploys (Slack)" },
-    title:   { label: "Subject", widget: "text", help: "Subject line (used by email)" },
-    message: { label: "Message", widget: "textarea", help: "Supports placeholders like #{issue}" },
-    blocks:  { label: "Rich blocks (optional)", widget: "code", help: "Provider-specific rich formatting JSON" },
+    channel:  { label: "Channel / target", widget: "text", help: "e.g. #deploys (Slack)" },
+    title:    { label: "Subject", widget: "text", help: "Subject line (used by email)" },
+    message:  { label: "Message", widget: "textarea", help: "Supports placeholders like #{issue}" },
+    blocks:   { label: "Rich blocks (optional)", widget: "code", help: "Provider-specific rich formatting JSON" },
+    required: { label: "Required — fail the step if delivery fails", widget: "checkbox", help: "When off (default), a failed or unconfigured notification is logged and ignored; the step still succeeds." },
   },
   tabs: { io: "hidden", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => c.channel || "(no channel)",
   executor: { kind: "notification", method: "send" },
   outputSchema: sendMessageOutputSchema,
-  comingSoon: true,
 };

@@ -1,6 +1,7 @@
 import { createLogger } from "@journeyman/core";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { logOpenCodeTranscript, logSessionEvent } from "../utils/sdk-logger.ts";
+import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
 import { resolveOpenCodeModel } from "../model.ts";
@@ -114,8 +115,9 @@ export async function runCustomPrompt(
   // Dump the model transcript (text + tool calls) to the UI log, gated by level.
   logOpenCodeTranscript((res.data as { parts?: unknown }).parts as never, opts.onLog, opts.agentLogLevel ?? "all");
 
-  const info = res.data.info as { error?: unknown; structured?: unknown };
+  const info = res.data.info as { error?: unknown; structured?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
   logSessionEvent(log, sessionId, info as never, opts.onLog);
+  const usage = openCodeInfoToTokenUsage(info as never);
 
   if (info.error) {
     if (info.error && typeof info.error === "object" && (info.error as { name?: string }).name === "MessageAbortedError") {
@@ -123,25 +125,25 @@ export async function runCustomPrompt(
     }
     const error = typeof info.error === "string" ? info.error : JSON.stringify(info.error);
     log.error({ sessionId, error }, "runCustomPrompt failed");
-    return { sessionId, error };
+    return { sessionId, error, usage };
   }
 
-  if (opts.outputMode === "none") return { sessionId };
-  if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never) };
+  if (opts.outputMode === "none") return { sessionId, usage };
+  if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never), usage };
 
   // structured: validate → salvage from text → fail clearly.
   const schema = opts.outputSchema as Record<string, unknown>;
   const valid = validateStructured(info.structured, schema);
-  if (valid.ok) return { sessionId, structured: valid.value };
+  if (valid.ok) return { sessionId, structured: valid.value, usage };
 
   const text = extractText(res.data as never);
   const salvaged = salvageStructured(text, schema);
   if (salvaged) {
     log.warn({ sessionId, reason: valid.reason }, "structured salvaged from text");
-    return { sessionId, structured: salvaged };
+    return { sessionId, structured: salvaged, usage };
   }
 
   const error = `model did not return valid structured output (${valid.reason}). Model said: ${text.slice(0, 500) || "(no text)"}`;
   log.error({ sessionId, error }, "runCustomPrompt structured invalid");
-  return { sessionId, error };
+  return { sessionId, error, usage };
 }

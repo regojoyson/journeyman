@@ -22,6 +22,6 @@ export function createCodingOperationRunner(deps: CodingOperationRunnerDeps): Op
       ...(op.onLog ? { onLog: op.onLog } : {}),
       ...(op.signal ? { signal: op.signal } : {}),
     });
-    return { ok: res.ok, structured: res.structured ?? res.result, error: res.error };
+    return { ok: res.ok, structured: res.structured ?? res.result, error: res.error, usage: res.usage };
   };
 }

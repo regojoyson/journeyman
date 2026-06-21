@@ -1,6 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { modelUsageToTokenUsage } from "../utils/usage.ts";
 import { resolveSession } from "../utils/session.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { buildWorkspaceHook } from "../utils/workspace-hook.ts";
@@ -92,12 +93,13 @@ export async function scanRepos(opts: ScanReposOptions): Promise<ScanReposResult
   })) {
     logSdkMessage(msg);
     if (msg.type === "result") {
+      const usage = modelUsageToTokenUsage((msg as any).modelUsage);
       if (msg.subtype !== "success") {
         const error = (msg as any).errors?.[0] ?? msg.subtype;
         log.error({ sessionId, error }, "scanRepos failed");
-        return { repos: [], error, sessionId };
+        return { repos: [], error, sessionId, usage };
       }
-      output = { ...(msg.structured_output as ScanReposResult), sessionId };
+      output = { ...(msg.structured_output as ScanReposResult), sessionId, usage };
     }
   }
 

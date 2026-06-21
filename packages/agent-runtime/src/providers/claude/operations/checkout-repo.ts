@@ -1,6 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createLogger } from "@journeyman/core";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { modelUsageToTokenUsage } from "../utils/usage.ts";
 import { resolveSession } from "../utils/session.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { buildWorkspaceHook } from "../utils/workspace-hook.ts";
@@ -159,12 +160,13 @@ export async function checkoutRepo(opts: CheckoutRepoOptions): Promise<CheckoutR
   })) {
     logSdkMessage(msg, opts.onLog, opts.agentLogLevel ?? "all");
     if (msg.type === "result") {
+      const usage = modelUsageToTokenUsage((msg as any).modelUsage);
       if (msg.subtype !== "success") {
         const error = (msg as any).errors?.[0] ?? msg.subtype;
         log.error({ sessionId, error }, "checkoutRepo failed");
-        return { repos: [], newBranch: "", error, sessionId };
+        return { repos: [], newBranch: "", error, sessionId, usage };
       }
-      output = { ...(msg.structured_output as CheckoutRepoResult), sessionId };
+      output = { ...(msg.structured_output as CheckoutRepoResult), sessionId, usage };
     }
   }
 

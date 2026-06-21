@@ -11,6 +11,7 @@ import { registerAgentTriggerRoutes } from "./routes/agent-triggers.ts";
 import { startAgentScheduler } from "./services/agent-scheduler.ts";
 import { registerStepsRoutes } from "./routes/steps.ts";
 import { registerWorkflowInstanceRoutes } from "./routes/workflow-instances.ts";
+import { registerUsageRoutes } from "./routes/usage.ts";
 import { registerWebhookRoutes } from "./routes/webhooks.ts";
 import { registerWebhookManagementRoutes } from "./routes/webhooks-management.ts";
 import { registerWebhookPresetRoutes } from "./routes/webhook-presets.ts";
@@ -72,6 +73,7 @@ export async function buildServer(c: Composition): Promise<FastifyInstance> {
   await app.register(async (s) => {
     registerWorkflowRoutes(s, c);
     registerWorkflowInstanceRoutes(s, c);
+    registerUsageRoutes(s, c);
     registerHumanTaskRoutes(s, c);
     registerFormRoutes(s, c);
     registerWorkflowTriggersRoute(s, c);

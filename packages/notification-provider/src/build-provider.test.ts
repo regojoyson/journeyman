@@ -1,14 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { buildNotificationProvider } from "./build-provider.ts";
-import { ConsoleProvider } from "./providers/console/index.ts";
 import { SlackProvider } from "./providers/slack/index.ts";
 import { EmailProvider } from "./providers/email/index.ts";
 
 describe("buildNotificationProvider", () => {
-  it("builds a ConsoleProvider", () => {
-    expect(buildNotificationProvider("console", {}, "")).toBeInstanceOf(ConsoleProvider);
-  });
-
   it("builds a SlackProvider for token method", () => {
     expect(buildNotificationProvider("slack", { method: "token" }, "xoxb-1")).toBeInstanceOf(SlackProvider);
   });
@@ -42,7 +37,8 @@ describe("buildNotificationProvider", () => {
     expect(() => buildNotificationProvider("email", { method: "carrier-pigeon" }, "secret")).toThrow(/Unknown email method/);
   });
 
-  it("throws ConfigurationError for an unknown provider", () => {
+  it("throws ConfigurationError for an unknown provider (incl. removed console)", () => {
     expect(() => buildNotificationProvider("teams", {}, "")).toThrow(/Unknown notification provider/);
+    expect(() => buildNotificationProvider("console", {}, "")).toThrow(/Unknown notification provider/);
   });
 });

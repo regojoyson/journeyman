@@ -44,8 +44,8 @@ export async function dispatchOperation(
         ...base,
         ...(hooks.onLog ? { onLog: hooks.onLog } : {}),
       } as Parameters<ICodingCLI["runCustomPrompt"]>[0]);
-      if (r.error) return { ok: false, error: r.error };
-      return { ok: true, structured: r.structured, result: r.result };
+      if (r.error) return { ok: false, error: r.error, usage: r.usage };
+      return { ok: true, structured: r.structured, result: r.result, usage: r.usage };
     }
     case "scan-repos": {
       const r = await provider.scanRepos(base as Parameters<ICodingCLI["scanRepos"]>[0]);

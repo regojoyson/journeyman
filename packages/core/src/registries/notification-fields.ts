@@ -24,11 +24,8 @@ export function notificationFields(provider?: string): NotificationField[] {
     case "slack":
       return [
         { key: "channel", label: "Channel / user", help: "Channel (#alerts) or user ID. Ignored for incoming webhooks.", placeholder: "#alerts or U01234", required: true },
+        { key: "title", label: "Subject (optional)", help: "Shown as a bold first line above the message.", placeholder: "Deployment update" },
         { key: "message", label: "Message", help: "Message text to post.", required: true },
-      ];
-    case "console":
-      return [
-        { key: "message", label: "Message", help: "Text written to the console log.", required: true },
       ];
     default:
       return [

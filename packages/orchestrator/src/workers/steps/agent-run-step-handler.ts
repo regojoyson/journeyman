@@ -26,6 +26,8 @@ import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { getConnection, getConnectionSealed } from "@journeyman/connections";
 import { open, fetchSecretById } from "@journeyman/secrets";
 import { findCodingModel } from "@journeyman/coding-models";
+import { addUsage } from "@journeyman/agents";
+import { recordTokenUsage } from "../../usage/record-token-usage.ts";
 
 const log = createLogger("worker:agent-run");
 
@@ -181,6 +183,33 @@ export class AgentRunStepHandler implements IStepHandler {
       ...(maxSteps ? { maxSteps } : {}),
       ...(agentLogLevel !== "none" ? { onLog: ctx.log, agentLogLevel } : {}),
     });
+
+    const outcome: "success" | "error" | "aborted" =
+      ctx.signal.aborted ? "aborted" : result.error ? "error" : "success";
+    const agentId = typeof input.agentId === "string" ? input.agentId : null;
+    let versionId: string | null = null;
+    let wfName: string | null = null;
+    try {
+      const wi = await this.deps.pool.query(
+        "SELECT workflow_version_id, workflow_name_snapshot FROM jm_workflow_instances WHERE id = $1",
+        [ctx.workflowInstanceId],
+      );
+      versionId = wi.rows[0]?.workflow_version_id ?? null;
+      wfName = wi.rows[0]?.workflow_name_snapshot ?? null;
+    } catch { /* non-fatal */ }
+    const insertedRows = await recordTokenUsage(this.deps.pool, {
+      workspaceId: typeof input.workspaceId === "string" ? input.workspaceId : null,
+      orgId, workflowId, workflowVersionId: versionId, workflowName: wfName,
+      workflowInstanceId: ctx.workflowInstanceId, nodeId: ctx.nodeId, stepType: this.stepType,
+      stepName: typeof input.displayName === "string" ? input.displayName : null, attempt: ctx.attempt,
+      agentId, agentName: typeof input.displayName === "string" ? input.displayName : null,
+      triggeredByUserId: userId, outcome, provider: provider ?? "claude",
+      requestedModel: model ?? null, usage: result.usage ?? [],
+    });
+    if (insertedRows > 0 && agentId && orgId) {
+      const totalTokens = (result.usage ?? []).reduce((s, u) => s + (u.totalTokens ?? 0), 0);
+      await addUsage(this.deps.pool, orgId, agentId, totalTokens, 0).catch(() => undefined);
+    }
 
     if (result.error) {
       log.error({ err: result.error }, "agent-run failed");

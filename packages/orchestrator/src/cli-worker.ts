@@ -201,8 +201,8 @@ const ensureWs = (a: {
     a,
   );
 
-registry.register(new StartFeatureBranchStepHandler({ coding }));
-registry.register(new ListWorkspaceFilesStepHandler({ coding }));
+registry.register(new StartFeatureBranchStepHandler({ coding, ...(pool ? { pool } : {}) }));
+registry.register(new ListWorkspaceFilesStepHandler({ coding, ...(pool ? { pool } : {}) }));
 registry.register(new JoinFinalizeStepHandler());
 if (pool) {
   // cliBindingResolver is declared later in this file; wrap in a thunk so the
@@ -271,7 +271,7 @@ registry.register(new UpdateIssueFieldsStepHandler({ issue }));
 registry.register(new CommentOnIssueStepHandler({ issue }));
 
 const notification: ProviderFactory<INotificationProvider> = (key, _env, connection) => {
-  const provider = connection?.provider ?? key ?? "console";
+  const provider = connection?.provider ?? key ?? "";
   return buildNotificationProvider(
     provider,
     (connection?.config ?? {}) as Record<string, unknown>,

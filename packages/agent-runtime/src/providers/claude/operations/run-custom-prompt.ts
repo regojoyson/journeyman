@@ -6,6 +6,7 @@ import { createLogger } from "@journeyman/core";
 import { toMcpServerConfigs, mergeSystemPrompts } from "@journeyman/mcp/sdk-adapter";
 import { toSdkPluginConfigs, buildSkillSystemPrompt } from "@journeyman/skills/sdk-adapter";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
+import { modelUsageToTokenUsage } from "../utils/usage.ts";
 import { resolveSession } from "../utils/session.ts";
 import { claudeNativeTools } from "../tool-mapping.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
@@ -142,18 +143,19 @@ export async function runCustomPrompt(
       logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
       if ((msg as any).type === "result") {
         const m = msg as any;
+        const usage = modelUsageToTokenUsage(m.modelUsage);
         if (m.subtype !== "success") {
           const error = withStderr(m.errors?.[0] ?? m.subtype ?? "unknown failure");
           log.error({ sessionId, error }, "runCustomPrompt failed");
-          return { sessionId, error };
+          return { sessionId, error, usage };
         }
         if (opts.outputMode === "none") {
-          out = { sessionId };
+          out = { sessionId, usage };
         } else if (opts.outputMode === "text") {
           const text = typeof m.result === "string" ? m.result : (m.text ?? "");
-          out = { sessionId, result: text };
+          out = { sessionId, result: text, usage };
         } else {
-          out = { sessionId, structured: m.structured_output };
+          out = { sessionId, structured: m.structured_output, usage };
         }
       }
     }

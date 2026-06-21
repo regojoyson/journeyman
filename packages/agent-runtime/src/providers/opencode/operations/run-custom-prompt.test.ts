@@ -62,10 +62,10 @@ describe("opencode runCustomPrompt", () => {
     expect(r.result).toBe("hello world");
   });
 
-  it("none mode returns just the sessionId", async () => {
+  it("none mode returns the sessionId and usage", async () => {
     const client = fakeClient(() => ({ data: { info: {}, parts: [] } }));
     const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "none", sessionId: "abc" });
-    expect(r).toEqual({ sessionId: "abc" });
+    expect(r).toEqual({ sessionId: "abc", usage: [] });
   });
 
   it("surfaces info.error", async () => {

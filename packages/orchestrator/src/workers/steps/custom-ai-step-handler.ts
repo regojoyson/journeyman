@@ -20,6 +20,7 @@ import { fetchSecretById } from "@journeyman/secrets";
 import { resolveAgentLogLevel } from "./agent-log-level.ts";
 import { SandboxInstanceCodingProvider } from "../../sandbox/sandbox-instance-coding-provider.ts";
 import { placeSkills } from "../skill-placement.ts";
+import { recordTokenUsage } from "../../usage/record-token-usage.ts";
 
 const log = createLogger("worker:custom-ai");
 
@@ -229,6 +230,29 @@ export class CustomAiStepHandler implements IStepHandler {
       ...(model ? { model } : {}),
       ...(modelConfig ? { modelConfig } : {}),
       ...(maxSteps ? { maxSteps } : {}),
+    });
+
+    const outcome: "success" | "error" | "aborted" =
+      ctx.signal.aborted ? "aborted" : result.error ? "error" : "success";
+    let versionId: string | null = null;
+    let wfName: string | null = null;
+    try {
+      const wi = await this.deps.pool.query(
+        "SELECT workflow_version_id, workflow_name_snapshot FROM jm_workflow_instances WHERE id = $1",
+        [ctx.workflowInstanceId],
+      );
+      versionId = wi.rows[0]?.workflow_version_id ?? null;
+      wfName = wi.rows[0]?.workflow_name_snapshot ?? null;
+    } catch { /* non-fatal */ }
+    await recordTokenUsage(this.deps.pool, {
+      workspaceId: typeof input.workspaceId === "string" ? input.workspaceId : null,
+      orgId, workflowId, workflowVersionId: versionId, workflowName: wfName,
+      workflowInstanceId: ctx.workflowInstanceId, nodeId: ctx.nodeId, stepType: this.stepType,
+      stepName: step.name ?? null, attempt: ctx.attempt,
+      agentId: typeof input.agentId === "string" ? input.agentId : null,
+      agentName: typeof input.displayName === "string" ? input.displayName : null,
+      triggeredByUserId: userId, outcome, provider: provider ?? "claude",
+      requestedModel: model ?? null, usage: result.usage ?? [],
     });
 
     if (result.error) {

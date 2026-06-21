@@ -1,7 +1,7 @@
 # Console Notification Provider — Design Spec
 
 **Date:** 2026-04-21
-**Status:** Approved
+**Status:** Superseded (2026-06-21) — the console notification provider was removed entirely. See [2026-06-21-notification-ux-hardening-design.md](2026-06-21-notification-ux-hardening-design.md). This document is retained for history only and no longer describes the codebase.
 
 ---
 

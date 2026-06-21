@@ -66,6 +66,8 @@ export interface ExecResult {
   ok: boolean;
   structured?: unknown;
   error?: string;
+  /** Token usage for custom-prompt ops, threaded back from the runner. */
+  usage?: import("./coding.types.ts").TokenUsage[];
 }
 
 /**

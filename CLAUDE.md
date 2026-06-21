@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Journeyman** is a configurable, step-based AI pipeline that automates ticket → code → PR workflows. It's an npm workspaces monorepo built around a provider-pattern: AI coding CLIs (Claude, OpenCode, Gemini, Codex), git hosts (GitHub, GitLab), ticket trackers (Jira, Linear, Monday, GitHub Issues/Projects), and notification channels (Slack, Console) are all swappable behind interfaces defined in `@journeyman/core`.
+**Journeyman** is a configurable, step-based AI pipeline that automates ticket → code → PR workflows. It's an npm workspaces monorepo built around a provider-pattern: AI coding CLIs (Claude, OpenCode, Gemini, Codex), git hosts (GitHub, GitLab), ticket trackers (Jira, Linear, Monday, GitHub Issues/Projects), and notification channels (Slack, Email) are all swappable behind interfaces defined in `@journeyman/core`.
 
 A visual canvas editor (n8n-style) lets users drag-and-drop step nodes, wire conditional branches, and configure retry/MCP/skills per node. Durable execution is backed by Conductor, with step retries and human-in-the-loop pause/resume.
 
@@ -57,7 +57,7 @@ journeyman/                  ← repo root
     ├── git-provider/        ← GitHub/GitLab REST API providers
     ├── github-api/          ← shared Octokit client (REST + GraphQL)
     ├── ticket-provider/     ← Jira/Linear/Monday/GitHub Issues/Projects
-    ├── notification-provider/ ← Slack, Console
+    ├── notification-provider/ ← Slack, Email
     │
     ├── mcp/                 ← MCP instance registry + Claude SDK adapter
     └── skills/              ← Skill package management + Claude SDK adapter
@@ -109,7 +109,7 @@ journeyman/                  ← repo root
 | `@journeyman/git-provider` | Remote REST ops (create PR/MR, list repos). Providers: `GitHubProvider`, `GitLabProvider`. |
 | `@journeyman/github-api` | Shared Octokit client (`@octokit/rest` + `@octokit/graphql` with retry/throttling). `createGitHubClient({ token })` → `{ rest, graphql }`. |
 | `@journeyman/ticket-provider` | Issue tracker CRUD (`IIssueProvider`). Providers: `JiraProvider`, `LinearProvider`, `MondayProvider`, `GitHubIssuesProvider`, `GitHubProjectsProvider`. |
-| `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`, `ConsoleProvider`. |
+| `@journeyman/notification-provider` | Notification delivery. Providers: `SlackProvider`, `EmailProvider`. |
 
 ### Integrations
 
@@ -262,7 +262,7 @@ npm run k8s:reset
 | `GitHubProjectsProvider` | Implemented (GraphQL ProjectV2 via `@journeyman/github-api`) |
 | `GitLabProvider` / `JiraProvider` / `LinearProvider` / `MondayProvider` | Stub |
 | `SlackProvider` (notifications) | Implemented (token → chat.postMessage; webhook → incoming webhook) |
-| `ConsoleProvider` (notifications) | Implemented |
+| `EmailProvider` (notifications) | Implemented (SMTP/Resend/SendGrid/Mailgun/SES) |
 | `retryable` step flag (`FlowStepDefinition`; gates `POST /retry`) | Implemented |
 | `@journeyman/mcp` — registry, CRUD (user + org routes), `resolveMcpInstances`, `toMcpServerConfigs` / `mergeSystemPrompts` subpath | Implemented |
 | `runCustomPrompt` consumes `mcps?: ResolvedMcpInstance[]`, `skills?: ResolvedSkillPackage[]`, `tools?: CanonicalTool[]` | Implemented |

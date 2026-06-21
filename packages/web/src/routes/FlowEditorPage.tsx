@@ -6,10 +6,10 @@ import type { Workflow, WorkflowGraph } from "@journeyman/core";
 import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, listWorkflowVersions, type UnpublishWarning } from "../api/flows.ts";
 import { workflowCapabilities } from "../lib/workflow-capabilities.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
+import { mcpApi } from "../api/mcp.ts";
 import { builtInSteps } from "@journeyman/steps";
 import { useCustomStepPaletteEntries } from "../flow-editor-integration/useCustomStepPaletteEntries.ts";
 import { defaultControlCatalog } from "../catalogs/built-in-control-catalog.ts";
-import { defaultMcpCatalog } from "../catalogs/built-in-mcp-catalog.ts";
 import { StatusToast } from "../components/StatusToast.tsx";
 import { useAuth } from "../AuthContext.tsx";
 import { useWorkspace } from "../WorkspaceContext.tsx";
@@ -44,6 +44,11 @@ export function FlowEditorPage() {
     queryKey: ["flow-versions", id],
     queryFn: () => listWorkflowVersions(wsId, id!),
     enabled: !!id,
+  });
+
+  const catalogQ = useQuery({
+    queryKey: ["mcp-catalog"],
+    queryFn: () => mcpApi.listCatalog(),
   });
 
   useEffect(() => {
@@ -181,7 +186,7 @@ export function FlowEditorPage() {
             wsId={wsId}
             steps={[...builtInSteps, ...customStepDefs]}
             controlCatalog={defaultControlCatalog}
-            mcpCatalog={defaultMcpCatalog}
+            mcpCatalog={catalogQ.data ?? []}
             onChange={(next) => { setGraph(next); setDirty(true); }}
             onSave={caps.canEdit ? async (next) => { await saveM.mutateAsync(next); } : undefined}
             onValidate={async (next) => await validateFlowDefinition(wsId, next)}
