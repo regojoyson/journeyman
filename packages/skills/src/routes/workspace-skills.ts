@@ -27,7 +27,7 @@ export async function registerWorkspaceSkillRoutes(app: FastifyInstance, pool: P
     return listSkillPackages(pool, wsId);
   });
 
-  app.post("/api/workspaces/:wsId/skill-packages", write, async (req, reply) => {
+  app.post("/api/workspaces/:wsId/skill-packages", { ...write, config: { audit: { action: "skill.install", targetType: "skill_package" } } }, async (req, reply) => {
     const { wsId } = req.params as { wsId: string };
     const body = req.body as any;
     try {
@@ -39,6 +39,8 @@ export async function registerWorkspaceSkillRoutes(app: FastifyInstance, pool: P
         shareCloneWith: body.shareCloneWith ?? undefined,
       });
       if (!body.shareCloneWith) void runInstall(pool, rec.id, rec.name, rec.gitUrl, undefined);
+      req.auditTargetId = rec.id;
+      req.auditDetail = { name: rec.name };
       reply.code(201);
       return rec;
     } catch (err) {
@@ -68,7 +70,7 @@ export async function registerWorkspaceSkillRoutes(app: FastifyInstance, pool: P
     return rec;
   });
 
-  app.delete("/api/workspaces/:wsId/skill-packages/:id", del, async (req, reply) => {
+  app.delete("/api/workspaces/:wsId/skill-packages/:id", { ...del, config: { audit: { action: "skill.uninstall", targetType: "skill_package" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const rec = await getSkillPackage(pool, id, wsId);
     if (!rec) return reply.code(404).send({ error: "Not found" });
@@ -83,7 +85,7 @@ export async function registerWorkspaceSkillRoutes(app: FastifyInstance, pool: P
     return { ok: true };
   });
 
-  app.put("/api/workspaces/:wsId/skill-packages/:id/enabled-skills", write, async (req, reply) => {
+  app.put("/api/workspaces/:wsId/skill-packages/:id/enabled-skills", { ...write, config: { audit: { action: "skill.update_enabled", targetType: "skill_package" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const body = req.body as any;
     const ok = await updateEnabledSkills(pool, id, wsId, body.enabledSkills ?? []);

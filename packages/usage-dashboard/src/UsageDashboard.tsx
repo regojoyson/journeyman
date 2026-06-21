@@ -1,0 +1,151 @@
+import type {
+  AnalyticsWindow, UsageSummary, UsageTimeseriesPoint, UsageBreakdownRow,
+  UsageWaste, UsageInstanceDetail, UsageDimensionKey,
+} from "@journeyman/core";
+import { Card, Bars, HBars, COLORS } from "./widgets.tsx";
+import { formatUsd, formatTokens, pctDelta } from "./format.ts";
+import { detectVersionRegression } from "./regression.ts";
+
+export interface UsageDashboardProps {
+  window: AnalyticsWindow;
+  onWindowChange: (w: AnalyticsWindow) => void;
+  groupBy: UsageDimensionKey;
+  onGroupByChange: (d: UsageDimensionKey) => void;
+  summary: UsageSummary | null;
+  timeseries: UsageTimeseriesPoint[];
+  breakdown: UsageBreakdownRow[];
+  waste: UsageWaste | null;
+  instance: UsageInstanceDetail | null;
+  onSelectInstance?: (id: string) => void;
+  workspaceName?: string;
+  loading?: boolean;
+}
+
+const WINDOWS: AnalyticsWindow[] = ["30d", "7d", "24h"];
+const GROUPS: UsageDimensionKey[] = ["model", "agent", "workflow", "workflow_version", "step"];
+
+export function UsageDashboard(p: UsageDashboardProps) {
+  const s = p.summary;
+  const costDelta = s ? pctDelta(s.costUsd ?? 0, s.previous.costUsd ?? 0) : null;
+  const maxCost = Math.max(1, ...p.breakdown.map((b) => b.costUsd ?? 0));
+
+  // Version regression: when grouping by workflow_version, order versions chronologically
+  // (by first appearance) and flag when the newest version's $/run jumped >25% over the prior one.
+  const regression = p.groupBy === "workflow_version"
+    ? detectVersionRegression(
+        [...p.breakdown]
+          .sort((a, b) => (a.firstSeen ?? "").localeCompare(b.firstSeen ?? ""))
+          .map((b) => ({ label: b.label, costPerRun: b.costPerRun })),
+        0.25,
+      )
+    : null;
+
+  return (
+    <div style={{ fontSize: 14 }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Usage &amp; cost</h2>
+          <div style={{ opacity: 0.6, fontSize: 13 }}>workspace · {p.workspaceName ?? "—"}</div>
+        </div>
+        {/* Segmented pill range toggle (Option A from the spec) */}
+        <div style={{ display: "inline-flex", border: "1px solid rgba(127,127,127,.25)", borderRadius: 8, padding: 2 }}>
+          {WINDOWS.map((w) => (
+            <button key={w} onClick={() => p.onWindowChange(w)}
+              style={{ border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+                background: w === p.window ? COLORS.BLUE : "transparent",
+                color: w === p.window ? "#031227" : "inherit" }}>{w}</button>
+          ))}
+        </div>
+      </header>
+
+      {/* Group-by pill row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, opacity: 0.6 }}>Group by</span>
+        {GROUPS.map((g) => (
+          <button key={g} onClick={() => p.onGroupByChange(g)}
+            style={{ border: "1px solid rgba(127,127,127,.25)", borderRadius: 999, padding: "4px 12px",
+              cursor: "pointer", fontSize: 12,
+              background: g === p.groupBy ? COLORS.BLUE : "transparent",
+              color: g === p.groupBy ? "#031227" : "inherit" }}>{g}</button>
+        ))}
+      </div>
+
+      {s && s.unpricedRows > 0 && (
+        <div style={{ fontSize: 12, background: "rgba(255,194,75,.12)", borderRadius: 8, padding: "8px 12px", marginBottom: 16 }}>
+          {s.unpricedRows} usage rows are unpriced (no matching model price). Set pricing in admin → coding models.
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <Kpi label="Total cost" value={formatUsd(s?.costUsd ?? null)}
+          sub={costDelta === null ? undefined : `${costDelta >= 0 ? "+" : ""}${costDelta}% vs prev`} />
+        <Kpi label="Total tokens" value={s ? formatTokens(s.totalTokens) : "—"} />
+        <Kpi label="Avg cost / run" value={formatUsd(s?.costPerRun ?? null)} sub={s ? `${s.runs} runs` : undefined} />
+        <Kpi label="Cache hit ratio" value={s ? `${Math.round(s.cacheReadHitRatio * 100)}%` : "—"} />
+      </div>
+
+      <Card title="Cost over time" cap="daily · USD">
+        <Bars bars={p.timeseries.map((t) => ({ label: t.day, value: t.costUsd ?? 0 }))} />
+      </Card>
+
+      <div style={{ marginTop: 16 }}>
+        <Card title={`Cost by ${p.groupBy}`}>
+          <HBars rows={p.breakdown.map((b) => ({
+            label: b.label, frac: (b.costUsd ?? 0) / maxCost, valueText: formatUsd(b.costUsd),
+            title: `${b.label} · ${formatUsd(b.costUsd)} · ${b.runs} runs`,
+          }))} />
+        </Card>
+      </div>
+
+      {regression?.regressed && (
+        <div style={{ marginTop: 16, background: "rgba(255,106,106,.12)", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>
+          Version regression — {regression.latest} costs {regression.increasePct}% more per run than {regression.prior}.
+        </div>
+      )}
+
+      {p.waste && p.waste.costUsd !== null && (
+        <div style={{ marginTop: 16, background: "rgba(255,106,106,.12)", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>
+          Wasted spend — {formatUsd(p.waste.costUsd)} on failed / retried runs
+          {p.waste.fractionOfTotalCost !== null && ` (${Math.round(p.waste.fractionOfTotalCost * 100)}% of total)`}.
+          {p.waste.topAgent?.agentName && ` ${p.waste.topAgent.agentName} accounts for ${formatUsd(p.waste.topAgent.costUsd)}.`}
+        </div>
+      )}
+
+      {p.onSelectInstance && (
+        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <span style={{ opacity: 0.6 }}>Drill into a run</span>
+          <input placeholder="workflow instance id"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") p.onSelectInstance!((e.target as HTMLInputElement).value.trim());
+            }}
+            style={{ flex: "0 1 320px" }} />
+        </div>
+      )}
+
+      {p.instance && (
+        <div style={{ marginTop: 16 }}>
+          <Card title={`Run drill-in — ${p.instance.instanceId.slice(0, 8)}`} cap={`${formatUsd(p.instance.costUsd)} · ${formatTokens(p.instance.totalTokens)} tokens`}>
+            {p.instance.steps.map((st) => (
+              <div key={`${st.nodeId}-${st.attempt}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid rgba(127,127,127,.12)" }}>
+                <span>{st.stepType}{st.stepName ? ` · ${st.stepName}` : ""}{st.attempt > 1 ? ` · attempt ${st.attempt}` : ""}</span>
+                <span style={{ opacity: 0.6 }}>{formatTokens(st.totalTokens)}</span>
+                <span>{formatUsd(st.costUsd)}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div style={{ background: "rgba(127,127,127,.05)", borderRadius: 8, padding: 14 }}>
+      <div style={{ fontSize: 13, opacity: 0.6 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 500 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, opacity: 0.6 }}>{sub}</div>}
+    </div>
+  );
+}

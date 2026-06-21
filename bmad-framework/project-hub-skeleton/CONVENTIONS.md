@@ -46,6 +46,21 @@ created: YYYY-MM-DD
   **Jira**, not here.
 - `id` is the anchor and is permanent. `jiraKey` is written back once and never edited.
 
+## Jira ticket fields & the key
+
+Jira stays thin but carries **pointer fields** so agents/devs resolve context instantly,
+and the **key is the universal identifier** across Jira ↔ Hub ↔ GitLab.
+
+| Field | Example | Purpose |
+|---|---|---|
+| Key (auto) | `PROJ-123` | the unique id — story `jiraKey:`, branch `PROJ-123-<slug>`, MR `[PROJ-123] …`, commit `PROJ-123: …` |
+| Hub Path | `epics/EPIC-x/stories/STORY-x.md` | locate the full story doc |
+| Epic | `EPIC-x` | the parent epic |
+| Repos | `api, web` | repos the story touches |
+| MR Links | GitLab MR urls | the code merge requests |
+
+The key is the join across all three systems — use it in every branch, MR title, and commit.
+
 ## Naming
 
 - Epics: `EPIC-<kebab-slug>` (e.g. `EPIC-product-search`).

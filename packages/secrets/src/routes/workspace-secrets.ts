@@ -21,7 +21,7 @@ export async function registerWorkspaceSecretRoutes(app: FastifyInstance, pool: 
     });
 
   app.post("/api/workspaces/:wsId/secrets",
-    { preHandler: [requireAuth(), requirePerm("resource.write")] },
+    { preHandler: [requireAuth(), requirePerm("resource.write")], config: { audit: { action: "secret.create", targetType: "secret" } } },
     async (req, reply) => {
       const { wsId } = req.params as { wsId: string };
       const ctx = req.runContext!;
@@ -32,6 +32,8 @@ export async function registerWorkspaceSecretRoutes(app: FastifyInstance, pool: 
           orgId: ctx.workspace!.orgId, workspaceId: wsId, name: body.name, value: body.value,
           description: body.description ?? null, createdBy: ctx.user.id,
         });
+        req.auditTargetId = rec.id;
+        req.auditDetail = { name: rec.name };
         reply.code(201);
         return { id: rec.id, name: rec.name, description: rec.description, createdAt: rec.createdAt };
       } catch (err) {
@@ -42,7 +44,7 @@ export async function registerWorkspaceSecretRoutes(app: FastifyInstance, pool: 
     });
 
   app.patch("/api/workspaces/:wsId/secrets/:id",
-    { preHandler: [requireAuth(), requirePerm("resource.write")] },
+    { preHandler: [requireAuth(), requirePerm("resource.write")], config: { audit: { action: "secret.update", targetType: "secret" } } },
     async (req, reply) => {
       const { wsId, id } = req.params as { wsId: string; id: string };
       const ctx = req.runContext!;
@@ -56,7 +58,7 @@ export async function registerWorkspaceSecretRoutes(app: FastifyInstance, pool: 
     });
 
   app.delete("/api/workspaces/:wsId/secrets/:id",
-    { preHandler: [requireAuth(), requirePerm("resource.delete")] },
+    { preHandler: [requireAuth(), requirePerm("resource.delete")], config: { audit: { action: "secret.delete", targetType: "secret" } } },
     async (req, reply) => {
       const { wsId, id } = req.params as { wsId: string; id: string };
       const ctx = req.runContext!;

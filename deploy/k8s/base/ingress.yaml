@@ -18,11 +18,18 @@ spec:
                 name: analytics
                 port:
                   number: 4002
+          - path: /webhooks/in
+            pathType: Prefix
+            backend:
+              service:
+                name: api-webhooks
+                port:
+                  number: 4001
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: api-server
+                name: api-http
                 port:
                   number: 4000
           - path: /

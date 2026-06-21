@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { makeRequireAuth } from "@journeyman/identity";
 import { isTriggerNode } from "@journeyman/core";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 interface TriggerSummary {
   id: string;

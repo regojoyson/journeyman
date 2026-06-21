@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { listPresets } from "@journeyman/webhooks";
 import { makeRequireAuth } from "@journeyman/identity";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 export function registerWebhookPresetRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });

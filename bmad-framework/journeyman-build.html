@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building it in Journeyman — agents vs workflows, prompts, wiring</title>
+<style>
+  @page { size: A4; margin: 13mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#f3f4f6; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; line-height:1.55; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrap { max-width:1080px; margin:0 auto; padding:26px; }
+  .card { background:#fff; border-radius:16px; padding:28px 32px; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:20px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em; background:#f4f4f6; padding:1px 5px; border-radius:4px; }
+  pre { background:#0f172a; color:#e2e8f0; border-radius:10px; padding:16px 18px; font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+  pre .c { color:#7dd3fc; } pre .k { color:#fca5a5; } pre .m { color:#94a3b8; }
+  h1 { font-size:24px; margin:0 0 4px; color:#111827; }
+  h2 { font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:#9ca3af; margin:0 0 14px; }
+  h3 { font-size:15px; margin:20px 0 8px; color:#111827; }
+  h3:first-child { margin-top:0; }
+  .sub { color:#6b7280; font-size:14px; margin:0 0 20px; }
+  .counts { display:flex; gap:14px; flex-wrap:wrap; }
+  .count { flex:1; min-width:150px; border:1px solid #eef0f2; border-radius:12px; padding:14px 16px; }
+  .count .big { font-size:30px; font-weight:800; color:#111827; line-height:1; }
+  .count .lbl { font-size:12px; color:#6b7280; margin-top:5px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid #f1f1f3; vertical-align:top; }
+  th { color:#9ca3af; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; }
+  .z1 td:first-child { border-left:3px solid #a855f7; }
+  .z2 td:first-child { border-left:3px solid #3b82f6; }
+  .badge { display:inline-block; font-size:10.5px; font-weight:700; border-radius:8px; padding:2px 8px; white-space:nowrap; }
+  .b-agent { background:#dcfce7; color:#15803d; }
+  .b-wf { background:#ede9fe; color:#6d28d9; }
+  .chip { display:inline-block; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:7px; padding:2px 7px; font-size:11px; margin:2px 3px 2px 0; font-family:ui-monospace,Menlo,monospace; }
+  .chip.ai { background:#ede9fe; border-color:#ddd6fe; color:#6d28d9; }
+  .chip.gate { background:#fef3c7; border-color:#fde68a; color:#b45309; }
+  .arrow { color:#9ca3af; }
+  .pill { display:inline-block; font-size:10px; font-weight:700; border-radius:9px; padding:1px 7px; }
+  .new { color:#b45309; background:#fef3c7; } .reuse { color:#15803d; background:#dcfce7; }
+  .two { display:flex; gap:18px; flex-wrap:wrap; }
+  .half { flex:1; min-width:300px; border:1px solid #eef0f2; border-radius:12px; padding:16px 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h1>Building it in Journeyman</h1>
+    <p class="sub">Each phase is built as an <b>Agent</b> (one self-contained AI runner) <i>or</i> a <b>Workflow</b> (runs several BMAD agents). Rule: <b>a human gate is just a Jira transition outside the flow — so a phase is a Workflow only when it runs more than one BMAD agent. Everything else is an Agent.</b></p>
+    <div class="counts">
+      <div class="count"><div class="big" style="color:#15803d">9</div><div class="lbl"><b>Agents</b> — one autonomous runner<br>clones, runs a persona, opens PRs, advances</div></div>
+      <div class="count"><div class="big" style="color:#6d28d9">2</div><div class="lbl"><b>Workflows</b> — run several agents<br>Discovery (2) · Grooming (3)</div></div>
+      <div class="count"><div class="big">12</div><div class="lbl">BMAD personas<br>read from <code>bmad-core/</code> — reused by both</div></div>
+      <div class="count"><div class="big">2</div><div class="lbl">new code pieces<br>Hub↔Jira sync · Zone-1 trigger</div></div>
+    </div>
+  </div>
+
+  <!-- RULE -->
+  <div class="card">
+    <h2>Agent vs Workflow — when to use which</h2>
+    <div class="two">
+      <div class="half">
+        <span class="badge b-agent">AGENT</span> &nbsp;<b>one BMAD agent</b>
+        <p style="font-size:13px;color:#4b5563;margin:8px 0">One agent does the whole phase: it clones the Hub (+repos), adopts the BMAD persona, does the work, writes its output, and either advances the Jira status (clean) or stops &amp; notifies (flagged). Has its own trigger + notifications.</p>
+        <div>
+          <span class="chip">trigger: status</span><span class="arrow">→</span>
+          <span class="chip ai">agent: persona + clone + work + advance</span>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">e.g. Implementation, Code Review, Testing, Deploy</p>
+      </div>
+      <div class="half">
+        <span class="badge b-wf">WORKFLOW</span> &nbsp;<b>several BMAD agents</b>
+        <p style="font-size:13px;color:#4b5563;margin:8px 0">Runs <b>more than one BMAD agent</b> — in parallel (fork/join) or in sequence. Built on the canvas from <code>cloneRepos</code> + several <code>custom-ai</code> steps. A human gate is <i>not</i> a reason (that's just an external Jira transition / Hub-MR merge).</p>
+        <div>
+          <span class="chip">cloneRepos</span><span class="arrow">→</span>
+          <span class="chip ai">custom-ai: agent 1</span><span class="arrow">→</span>
+          <span class="chip ai">custom-ai: agent 2</span><span class="arrow">→</span>
+          <span class="chip">open Hub MR (GitLab MCP)</span>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">only Discovery (analyst ‖ architect) and Grooming (pm → po → sm)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <div class="card">
+    <h2>The 11 phases — 9 Agents + 2 Workflows</h2>
+    <table>
+      <tr><th>Zone</th><th>Phase</th><th>Build as</th><th>Why</th><th>What runs</th><th>Gate</th></tr>
+      <tr class="z1"><td>1</td><td><b>Discovery</b></td><td><span class="badge b-wf">Workflow</span></td><td>two role-agents in parallel + iterative</td><td>cloneRepos(Hub) → <b>fork</b>[bmad-analyst ‖ bmad-architect] → join → open Hub MR (GitLab MCP)</td><td><span class="chip gate">PO/PM/Arch</span></td></tr>
+      <tr class="z1"><td>1</td><td><b>Design</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent writes the spec</td><td>bmad-ux → writes <code>ux/design-spec.md</code> → Hub PR</td><td><span class="chip gate">PO/Designer</span></td></tr>
+      <tr class="z1"><td>1</td><td><b>Grooming</b></td><td><span class="badge b-wf">Workflow</span></td><td>fan-out: a Jira issue per story</td><td>cloneRepos(Hub) → bmad-pm → bmad-po(shard) → Hub MR (GitLab MCP) → <b>createIssue ×N</b> (Jira MCP) + jiraKey writeback</td><td><span class="chip gate">PO/PM</span></td></tr>
+      <tr class="z2"><td>2</td><td><b>PM Scoping</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent refines context</td><td>bmad-pm → advance</td><td>auto</td></tr>
+      <tr class="z2"><td>2</td><td><b>Architecture Scoping</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent writes the design</td><td>bmad-architect → Hub PR</td><td><span class="chip gate">Architect</span></td></tr>
+      <tr class="z2"><td>2</td><td><b>Implementation</b></td><td><span class="badge b-agent">Agent</span></td><td>one Dev agent does it all (no human step)</td><td>bmad-dev → clones repos, codes, opens an MR per repo (GitLab MCP), advances (Jira MCP)</td><td>on-flag</td></tr>
+      <tr class="z2"><td>2</td><td><b>Code Review</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent reviews + comments</td><td>bmad-code-review → comment → advance/flag</td><td>on-flag</td></tr>
+      <tr class="z2"><td>2</td><td><b>Testing</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent tests + gates</td><td>bmad-qa → results → advance/flag</td><td>on-flag</td></tr>
+      <tr class="z2"><td>2</td><td><b>Pre-release</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent prepares the release</td><td>bmad-release → notes → notify</td><td><span class="chip gate">PO</span></td></tr>
+      <tr class="z2"><td>2</td><td><b>Deploy</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent triggers CI/CD</td><td>bmad-deploy → advance</td><td>auto</td></tr>
+      <tr class="z2"><td>2</td><td><b>Post-release</b></td><td><span class="badge b-agent">Agent</span></td><td>one agent verifies prod</td><td>bmad-prod-verify → advance / rollback</td><td><span class="chip gate">QA/PO</span></td></tr>
+    </table>
+    <p class="sub" style="margin:10px 0 0">A blocking gate is usually just <b>a human performing the next Jira transition</b> (or merging the Hub PR) — so single-agent phases stay agents; they don't need a workflow just to pause. Statuses with no agent (NEW, READY FOR DEVELOPMENT, AWAITING/READY-FOR-…) are plain auto/queue transitions.</p>
+  </div>
+
+  <!-- PERSONAS -->
+  <div class="card">
+    <h2>The 12 BMAD personas (used by the agents &amp; the workflow steps)</h2>
+    <table>
+      <tr><th>Persona</th><th>Read from</th><th>Phase</th><th>Tools</th><th>Writes</th></tr>
+      <tr><td><b>bmad-analyst</b></td><td><code>bmad-core/agents/analyst.md</code></td><td>Discovery <span class="badge b-wf" style="font-size:9px">WF</span></td><td>read-file, write-file, web-search</td><td>epic.md (feature)</td></tr>
+      <tr><td><b>bmad-architect</b></td><td><code>bmad-core/agents/architect.md</code></td><td>Discovery <span class="badge b-wf" style="font-size:9px">WF</span> · Arch-Scoping <span class="badge b-agent" style="font-size:9px">AG</span></td><td>read-file, write-file, bash</td><td>epic.md (tech), architecture.md, adr/</td></tr>
+      <tr><td><b>bmad-ux</b></td><td><code>bmad-core/agents/ux-expert.md</code></td><td>Design <span class="badge b-agent" style="font-size:9px">AG</span></td><td>read-file, write-file, web-fetch</td><td>ux/design-spec.md</td></tr>
+      <tr><td><b>bmad-pm</b></td><td><code>bmad-core/agents/pm.md</code></td><td>Grooming <span class="badge b-wf" style="font-size:9px">WF</span> · PM-Scoping <span class="badge b-agent" style="font-size:9px">AG</span></td><td>read-file, write-file</td><td>prd.md, epic refine</td></tr>
+      <tr><td><b>bmad-po</b></td><td><code>bmad-core/agents/po.md</code></td><td>Grooming <span class="badge b-wf" style="font-size:9px">WF</span></td><td>read-file, write-file</td><td>stories/STORY-*.md</td></tr>
+      <tr><td><b>bmad-sm</b></td><td><code>bmad-core/agents/sm.md</code></td><td>Solution sizing</td><td>read-file, write-file</td><td>story detail + points</td></tr>
+      <tr><td><b>bmad-dev</b></td><td><code>bmad-core/agents/dev.md</code></td><td>Implementation <span class="badge b-agent" style="font-size:9px">AG</span></td><td>bash, read-file, write-file, edit-file, search</td><td>code → repos, story DoD</td></tr>
+      <tr><td><b>bmad-code-review</b></td><td><code>bmad-core/agents/code-review.md</code></td><td>Code Review <span class="badge b-agent" style="font-size:9px">AG</span></td><td>read-file, search, bash</td><td>PR comments</td></tr>
+      <tr><td><b>bmad-qa</b></td><td><code>bmad-core/agents/qa.md</code></td><td>Testing <span class="badge b-agent" style="font-size:9px">AG</span></td><td>bash, read-file, write-file, search</td><td>test results, gate verdict</td></tr>
+      <tr><td><b>bmad-release</b></td><td><code>bmad-core/agents/release.md</code></td><td>Pre-release <span class="badge b-agent" style="font-size:9px">AG</span></td><td>read-file, write-file, bash</td><td>release notes</td></tr>
+      <tr><td><b>bmad-deploy</b></td><td><code>bmad-core/agents/deploy.md</code></td><td>Deploy <span class="badge b-agent" style="font-size:9px">AG</span></td><td>bash</td><td>deploy run</td></tr>
+      <tr><td><b>bmad-prod-verify</b></td><td><code>bmad-core/agents/prod-verify.md</code></td><td>Post-release <span class="badge b-agent" style="font-size:9px">AG</span></td><td>bash, web-fetch, read-file</td><td>verification report</td></tr>
+    </table>
+    <p class="sub" style="margin:10px 0 0">Same persona text whether it runs as a standalone <b>Agent</b> or as a <code>custom-ai</code> step inside a <b>Workflow</b> — only the wrapper differs.</p>
+  </div>
+
+  <!-- PROMPTS -->
+  <div class="card">
+    <h2>The prompt — one template, reused</h2>
+    <p class="sub">Whether Agent or Workflow step, the persona is loaded the same way. Only <code>agentFile</code>, <code>task</code>, and the paths change.</p>
+
+    <h3 style="margin-top:0">Workspace layout (what the agent sees)</h3>
+    <p class="sub" style="margin:0 0 8px">Everything is cloned into <b>one workspace dir</b> as sibling folders — the Hub is <code>project-hub/</code> and <code>bmad-core/</code> lives inside it:</p>
+<pre><span class="m"># {{workspaceDir}} — the run directory; each clone is a sibling</span>
+{{workspaceDir}}/
+├── <span class="c">project-hub/</span>            <span class="m"># the Project Hub clone</span>
+│   ├── bmad-core/          <span class="m"># the BMAD agents / tasks / templates</span>
+│   ├── epics/ · product/ · technical/ · process/
+│   └── repos/registry.yaml
+├── <span class="c">api/</span>                    <span class="m"># a code repo (from the story's repos:)</span>
+├── <span class="c">web/</span>                    <span class="m"># another code repo</span>
+└── <span class="c">search-svc/</span>             <span class="m"># …only the repos this story needs</span></pre>
+
+<pre><span class="m"># prompt (shared)</span>
+You are running in the workspace <span class="c">{{workspaceDir}}</span>. It holds several repos as
+sibling folders: <span class="k">project-hub/</span> (the Hub — with <span class="k">bmad-core/</span> inside) and the
+code repos this story needs (e.g. <span class="k">api/</span>, <span class="k">web/</span>).
+
+<span class="k">ROLE</span>  Adopt the BMAD agent at <span class="k">project-hub/bmad-core/agents/{{agentFile}}</span> fully.
+<span class="k">TASK</span>  {{task}}
+<span class="k">READ FIRST</span>
+  - <span class="k">project-hub/</span>{{contextPath}}     <span class="m"># the epic folder / the story file</span>
+  - any tasks/templates/checklists it references under project-hub/bmad-core/.
+<span class="k">WRITE</span>
+  - Hub artifacts → under <span class="k">project-hub/…</span>          (committed as a Hub PR)
+  - code          → into the sibling repo folders named in the story's `repos:`
+
+<span class="k">RULES</span>
+  - Load BMAD from project-hub/bmad-core — persona + its dependencies live there.
+  - Touch ONLY the sibling repo folders listed in the story's `repos:` frontmatter.
+  - If blocked/ambiguous, STOP: set needsHumanReview=true with a clear question.
+  - NEVER edit Jira status or the `status:` frontmatter — the engine owns that.</pre>
+
+    <div style="margin-top:14px;padding:14px 16px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:12px;font-size:13.5px;color:#3730a3">
+      <b>The real, copy-paste prompts — 9 agents + 5 workflow nodes (12 personas) —
+      live in <code>PROMPTS.md</code></b> — each with its tools, MCPs (Jira + GitLab), and exact
+      <code>project-hub/</code> + sibling-repo paths. All run with <b>no output</b> — they act
+      via the MCPs. Paste them straight into the matching <code>custom-ai</code> step.
+    </div>
+  </div>
+
+  <!-- CONNECT -->
+  <div class="card">
+    <h2>How to connect &amp; configure</h2>
+
+    <h3>1 · Triggers</h3>
+    <table>
+      <tr><th>Zone</th><th>Trigger source</th><th>Runs</th></tr>
+      <tr><td>2 (stories)</td><td><b>Jira webhook</b> on status-change <span class="pill reuse">reuse</span></td><td>the Agent/Workflow mapped to <code>(Story, status)</code></td></tr>
+      <tr><td>1 (epics)</td><td><b>GitLab Hub MR-merge webhook</b> <span class="pill new">new</span></td><td>the Agent/Workflow for the epic's new <code>phase:</code></td></tr>
+    </table>
+
+    <h3>1b · The Jira ticket — thin, but carries pointers + the key</h3>
+    <p class="sub" style="margin:0 0 8px">The ticket stays light but holds breadcrumbs so any agent/human jumps to context fast; the <b>key is the unique identifier</b> across Jira ↔ Hub ↔ GitLab.</p>
+    <table>
+      <tr><th>Field</th><th>Example</th><th>Used for</th></tr>
+      <tr><td><b>Key</b> (auto)</td><td><code>PROJ-123</code></td><td>the id — story <code>jiraKey:</code>, branch <code>PROJ-123-…</code>, MR <code>[PROJ-123] …</code>, commits</td></tr>
+      <tr><td><b>Hub Path</b></td><td><code>epics/…/stories/STORY-…md</code></td><td>resolves <code>{{storyPath}}</code></td></tr>
+      <tr><td><b>Epic</b></td><td><code>EPIC-product-search</code></td><td>resolves <code>{{epicPath}}</code></td></tr>
+      <tr><td><b>Repos</b></td><td><code>api, web</code></td><td>which repos to clone</td></tr>
+      <tr><td><b>MR Links</b></td><td>GitLab MR urls</td><td>the code merge requests</td></tr>
+    </table>
+    <p class="sub" style="margin:6px 0 0">The flow reads Hub Path / Epic / Repos from the ticket (Jira MCP) to fill the template vars; agents write MR urls back into MR Links.</p>
+
+    <h3>2 · Cloning (the workspace)</h3>
+    <p class="sub" style="margin:0">One <b>workspace dir</b>, each repo a <b>sibling folder</b>: clone the Hub → <code>project-hub/</code> (brings <code>bmad-core/</code> + all context), plus the story's <code>repos:</code> (resolved via <code>project-hub/repos/registry.yaml</code>) → <code>api/</code>, <code>web/</code>, … Agents set this as their <b>repo selection</b>; workflows use the <code>cloneRepos</code> step. The Hub is cloned for <i>every</i> phase; code repos only for phases that touch code.</p>
+
+    <h3>3 · Gates (human-in-the-loop)</h3>
+    <p class="sub" style="margin:0"><b>Block gates</b> = a human performs the next <b>Jira transition</b> (or merges the Hub PR) — that transition is itself the trigger for the next phase. <b>On-flag</b> = the agent's <code>needsHumanReview</code> stops it and notifies. No special pause node needed for single agents; the 3 workflows can use a <b>pause</b> node if they need a mid-flow approval.</p>
+
+    <h3>4 · Notify (every phase)</h3>
+    <p class="sub" style="margin:0">Agents use their built-in <b>notifications</b> (on success/failure → Slack/Jira); workflows add <code>sendMessage</code> / <code>commentOnIssue</code>.</p>
+
+    <h3>5 · Advancing the status</h3>
+    <p class="sub" style="margin:0">A clean Agent advances by transitioning the issue (give it a Jira <b>MCP/connection</b>); a Workflow uses the <code>transitionIssue</code> step. On-flag → no advance, human takes over.</p>
+
+    <h3>6 · Secrets</h3>
+    <p class="sub" style="margin:0">Attach the <b>Jira MCP</b> and <b>GitLab MCP</b> to the agents (that's how they transition issues, comment, and open MRs). Store Jira / GitLab / Slack tokens in the <b>secrets vault</b>, bound to the agents/steps. Coding provider = <b>Claude</b> via <code>runCustomPrompt</code>.</p>
+
+    <h3>7 · The two new components <span class="pill new">build once</span></h3>
+    <p class="sub" style="margin:0"><b>(a) Hub↔Jira sync</b> — create issues from story docs + write <code>jiraKey</code> back; echo Jira status into frontmatter; push Hub content to the issue. <br><b>(b) Zone-1 trigger</b> — a GitLab webhook receiver that turns an epic Hub-MR-merge into a run (epics have no Jira issue).</p>
+  </div>
+
+  <div class="card">
+    <h2>Build order</h2>
+    <p class="sub" style="margin:0">1) Hub repo + <code>bmad-core</code> + <code>workflow.yaml</code> · 2) the 9 <b>Agents</b> (one persona each) + their Jira triggers · 3) the 2 <b>Workflows</b> (Discovery, Grooming) · 4) the Hub↔Jira sync · 5) the Zone-1 trigger · 6) dry-run one epic end to end.</p>
+  </div>
+
+</div>
+</body>
+</html>

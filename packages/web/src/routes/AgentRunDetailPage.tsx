@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { agentsApi } from "../api/agents.ts";
-import { getRun, openWorkflowInstanceEventStream } from "../api/runs.ts";
+import { cancelRun, getRun, openWorkflowInstanceEventStream, pauseRun, resumeRun, rerunRun } from "../api/runs.ts";
 import type { WorkflowInstanceDetail } from "../api/runs.ts";
 import type { Agent } from "@journeyman/core";
 import type { WorkflowInstanceEvent } from "@journeyman/core";
@@ -9,6 +9,8 @@ import { formatDuration, isTerminalStatus } from "@journeyman/core";
 import { WorkflowLogsPanel } from "@journeyman/run-viewer";
 import { btnSecondary, card } from "./admin-styles.ts";
 import { RunSectionNav, type RunSectionId } from "../components/agents/sections/RunSectionNav.tsx";
+import { AgentRunControls } from "../components/agents/AgentRunControls.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 
 // ── Status pill ────────────────────────────────────────────────────────────────
 
@@ -154,21 +156,27 @@ export function AgentRunDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState<RunSectionId>("details");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { can } = useWorkspace();
+
+  const load = useCallback(async () => {
+    if (!runId) return;
+    const d = await getRun(wsId, runId);
+    setDetail(d);
+    const agentId = d.workflowInstance.inputs["agentId"] as string | undefined;
+    if (agentId) {
+      agentsApi.get(wsId, agentId).then(setAgent).catch(() => null);
+    }
+  }, [wsId, runId]);
 
   useEffect(() => {
     if (!runId) return;
     setLoading(true);
-    getRun(wsId, runId)
-      .then(d => {
-        setDetail(d);
-        const agentId = d.workflowInstance.inputs["agentId"] as string | undefined;
-        if (agentId) {
-          agentsApi.get(wsId, agentId).then(setAgent).catch(() => null);
-        }
-      })
+    load()
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
-  }, [wsId, runId]);
+  }, [runId, load]);
 
   useEffect(() => {
     if (!detail || isTerminalStatus(detail.workflowInstance.status)) return;
@@ -185,6 +193,24 @@ export function AgentRunDetailPage() {
     for (const e of liveEvents) byId.set(e.id, e);
     return Array.from(byId.values()).sort((a, b) => a.id - b.id);
   }, [detail?.events, liveEvents]);
+
+  async function runAction(fn: () => Promise<unknown>, opts?: { rerun?: boolean }) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const res = await fn();
+      if (opts?.rerun) {
+        const newId = (res as { workflowInstanceId: string }).workflowInstanceId;
+        navigate(`/workspaces/${wsId}/agent-runs/${newId}`);
+        return;
+      }
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!runId) { navigate(`/workspaces/${wsId}/agent-runs`); return null; }
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
@@ -229,12 +255,28 @@ export function AgentRunDetailPage() {
               {wi.id.slice(0, 8)}&nbsp;·&nbsp;{fmtRelative(wi.startedAt)}
             </p>
           </div>
-          <a
-            href={`/workspaces/${wsId}/workflow-instances/${wi.id}`}
-            className={`${btnSecondary} no-underline`}
-          >
-            Open workflow instance →
-          </a>
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
+              <AgentRunControls
+                status={wi.status}
+                busy={busy}
+                canWrite={can("resource.write")}
+                onPause={() => runAction(() => pauseRun(wsId, wi.id))}
+                onResume={() => runAction(() => resumeRun(wsId, wi.id))}
+                onCancel={() => runAction(() => cancelRun(wsId, wi.id))}
+                onRerun={() => runAction(() => rerunRun(wsId, wi.id), { rerun: true })}
+              />
+              <a
+                href={`/workspaces/${wsId}/workflow-instances/${wi.id}`}
+                className={`${btnSecondary} no-underline`}
+              >
+                Open workflow instance →
+              </a>
+            </div>
+            {actionError && (
+              <span className="text-xs text-destructive">{actionError}</span>
+            )}
+          </div>
         </div>
       </header>
 

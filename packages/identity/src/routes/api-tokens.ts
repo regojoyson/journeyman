@@ -18,7 +18,7 @@ export async function registerApiTokenRoutes(app: FastifyInstance, pool: Pool) {
     });
 
   app.post("/api/orgs/:orgId/api-tokens",
-    { preHandler: requireAuth() },
+    { preHandler: requireAuth(), config: { audit: { action: "api_token.create", targetType: "api_token" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       const ctx = req.runContext!;
@@ -30,12 +30,14 @@ export async function registerApiTokenRoutes(app: FastifyInstance, pool: Pool) {
         userId: ctx.user.id, orgId, name: body.name, tokenHash: hash,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
       });
+      req.auditTargetId = row.id;
+      req.auditDetail = { name: row.name };
       reply.code(201);
       return { id: row.id, name: row.name, plaintext, createdAt: row.created_at, expiresAt: row.expires_at };
     });
 
   app.delete("/api/orgs/:orgId/api-tokens/:id",
-    { preHandler: requireAuth() },
+    { preHandler: requireAuth(), config: { audit: { action: "api_token.revoke", targetType: "api_token" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       const ctx = req.runContext!;

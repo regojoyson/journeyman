@@ -103,3 +103,72 @@ export interface OverviewStats {
   topFailures: FailurePoint[];
   agents: AgentStats;
 }
+
+// ---- usage & cost dashboard ----
+export type UsageDimensionKey =
+  | "model" | "provider" | "agent" | "workflow" | "workflow_version" | "step";
+
+export interface UsageTotals {
+  rows: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+  costUsd: number | null;
+  unpricedRows: number;
+}
+
+export interface UsageSummary extends UsageTotals {
+  runs: number;
+  costPerRun: number | null;
+  cacheReadHitRatio: number;
+  cacheSavingsUsd: number | null;
+  /** Same totals for the immediately-preceding window, for deltas. */
+  previous: UsageTotals & { runs: number };
+}
+
+export interface UsageTimeseriesPoint {
+  day: string;
+  costUsd: number | null;
+  totalTokens: number;
+}
+
+export interface UsageBreakdownRow {
+  key: string;
+  label: string;
+  costUsd: number | null;
+  totalTokens: number;
+  runs: number;
+  costPerRun: number | null;
+  cacheReadHitRatio: number;
+  /** Earliest created_at in the group — used to order workflow versions chronologically. */
+  firstSeen: string | null;
+}
+
+export interface UsageWaste {
+  costUsd: number | null;
+  totalTokens: number;
+  rows: number;
+  fractionOfTotalCost: number | null;
+  topAgent: { agentId: string | null; agentName: string | null; costUsd: number | null } | null;
+}
+
+export interface UsageInstanceStep {
+  nodeId: string;
+  stepType: string;
+  stepName: string | null;
+  attempt: number;
+  outcome: string;
+  model: string | null;
+  totalTokens: number;
+  costUsd: number | null;
+}
+
+export interface UsageInstanceDetail {
+  instanceId: string;
+  costUsd: number | null;
+  totalTokens: number;
+  steps: UsageInstanceStep[];
+}

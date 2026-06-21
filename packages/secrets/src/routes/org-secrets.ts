@@ -21,7 +21,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     });
 
   app.post("/api/orgs/:orgId/secrets",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.create", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -32,6 +32,8 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
           orgId, name: body.name, value: body.value,
           description: body.description ?? null, createdBy: req.runContext!.user.id,
         });
+        req.auditTargetId = rec.id;
+        req.auditDetail = { name: rec.name };
         reply.code(201);
         return { id: rec.id, name: rec.name, description: rec.description, createdAt: rec.createdAt };
       } catch (err) {
@@ -42,7 +44,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     });
 
   app.patch("/api/orgs/:orgId/secrets/:id",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.update", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -56,7 +58,7 @@ export async function registerOrgSecretRoutes(app: FastifyInstance, pool: Pool) 
     });
 
   app.delete("/api/orgs/:orgId/secrets/:id",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "secret.delete", targetType: "secret" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });

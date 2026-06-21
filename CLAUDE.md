@@ -235,7 +235,7 @@ npm run migrate
 # Run services
 npm run start:api-server
 npm run start:worker      # tsx packages/orchestrator/src/cli-worker.ts
-npm run dev:web
+npm run start:web
 npm run build:web
 
 # Build runner/sandbox images + the deployable kit

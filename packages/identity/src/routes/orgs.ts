@@ -21,7 +21,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     });
 
   app.post("/api/orgs/:orgId/invitations",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.invite", targetType: "membership" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -34,12 +34,14 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
       const user = await createInvite(pool, {
         orgId, username: body.username, role: body.role, passwordHash, displayName: body.displayName,
       });
+      req.auditTargetId = user.id;
+      req.auditDetail = { username: body.username, role: body.role };
       reply.code(201);
       return { user, tempPassword };
     });
 
   app.delete("/api/orgs/:orgId/memberships/:userId",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.remove", targetType: "membership", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -52,7 +54,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
     });
 
   app.patch("/api/orgs/:orgId/memberships/:userId",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "membership.update_role", targetType: "membership", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -63,6 +65,7 @@ export async function registerOrgRoutes(app: FastifyInstance, pool: Pool) {
         if (remaining <= 1) return reply.code(409).send({ error: "Cannot demote last admin" });
       }
       await updateMembershipRole(pool, orgId, userId, body.role);
+      req.auditDetail = { role: body.role };
       return { ok: true };
     });
 }

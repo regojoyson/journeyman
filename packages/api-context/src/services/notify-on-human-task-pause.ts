@@ -1,4 +1,4 @@
-import type { Composition } from "../composition.ts";
+import type { Composition } from "../composition-types.ts";
 import type { HumanTaskNotifyConfig } from "@journeyman/core";
 
 /**

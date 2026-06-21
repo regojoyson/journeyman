@@ -1,5 +1,5 @@
 import { SectionShell, FieldLabel } from "../../agents/sections/SectionShell.tsx";
-import { inputCls } from "../../../routes/admin-styles.ts";
+import { PromptEditor } from "../prompt-editor/PromptEditor.tsx";
 import type { SectionProps } from "./types.ts";
 
 export function PromptSection({ step, patch, locked }: SectionProps) {
@@ -10,11 +10,12 @@ export function PromptSection({ step, patch, locked }: SectionProps) {
     >
       <div>
         <FieldLabel>Prompt template</FieldLabel>
-        <textarea
-          className={`${inputCls} min-h-[200px] font-mono text-xs`}
-          disabled={locked}
+        <PromptEditor
           value={step.promptTemplate}
-          onChange={(e) => patch({ promptTemplate: e.target.value })}
+          onChange={(next) => patch({ promptTemplate: next })}
+          inputFields={step.inputFields}
+          slots={step.slots}
+          readOnly={locked}
         />
       </div>
     </SectionShell>

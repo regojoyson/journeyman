@@ -1,6 +1,7 @@
 import type { Agent, AgentUpdateInput } from "@journeyman/core";
-import { inputCls, codePill } from "../../../routes/admin-styles.ts";
+import { codePill } from "../../../routes/admin-styles.ts";
 import { SectionShell, FieldLabel } from "./SectionShell.tsx";
+import { PromptEditor } from "../../custom-steps/prompt-editor/PromptEditor.tsx";
 import { detectInputs } from "../detect-inputs.ts";
 
 export interface SectionProps {
@@ -23,11 +24,13 @@ export function InstructionsSection({ a, patch, locked }: SectionProps) {
     <SectionShell title="Instructions & Inputs" description="Describe what this agent should do on each run. Be specific — the more context you give, the better the results.">
       <div>
         <FieldLabel>Instructions</FieldLabel>
-        <textarea
-          className={`${inputCls} min-h-[160px]`}
-          disabled={locked}
+        <PromptEditor
           value={a.instructions}
-          onChange={(e) => onChangeInstructions(e.target.value)}
+          onChange={onChangeInstructions}
+          inputFields={a.inputs.map((i) => ({ name: i.name, type: "string", required: false }))}
+          slots={[]}
+          readOnly={locked}
+          hideSidebar
         />
       </div>
       <div className="text-xs text-muted-foreground bg-muted rounded-md p-3 space-y-2">

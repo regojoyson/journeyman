@@ -40,7 +40,7 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
     return listMcpInstances(pool, wsId);
   });
 
-  app.post("/api/workspaces/:wsId/mcp-instances", write, async (req, reply) => {
+  app.post("/api/workspaces/:wsId/mcp-instances", { ...write, config: { audit: { action: "mcp.create", targetType: "mcp_instance" } } }, async (req, reply) => {
     const { wsId } = req.params as { wsId: string };
     const ctx = req.runContext!;
     const body = req.body as any;
@@ -61,6 +61,7 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
         enabled: body.enabled ?? true,
         createdBy: ctx.user.id,
       });
+      req.auditTargetId = rec.id;
       reply.code(201);
       return rec;
     } catch (err) {
@@ -82,7 +83,7 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
     return rec;
   });
 
-  app.patch("/api/workspaces/:wsId/mcp-instances/:id", write, async (req, reply) => {
+  app.patch("/api/workspaces/:wsId/mcp-instances/:id", { ...write, config: { audit: { action: "mcp.update", targetType: "mcp_instance" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const existing = await getMcpInstance(pool, id, wsId);
     if (!existing) return reply.code(404).send({ error: "Not found" });
@@ -108,7 +109,7 @@ export async function registerWorkspaceMcpRoutes(app: FastifyInstance, pool: Poo
     }
   });
 
-  app.delete("/api/workspaces/:wsId/mcp-instances/:id", del, async (req, reply) => {
+  app.delete("/api/workspaces/:wsId/mcp-instances/:id", { ...del, config: { audit: { action: "mcp.delete", targetType: "mcp_instance" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const existing = await getMcpInstance(pool, id, wsId);
     if (!existing) return reply.code(404).send({ error: "Not found" });

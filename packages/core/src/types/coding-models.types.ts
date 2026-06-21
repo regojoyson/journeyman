@@ -50,6 +50,8 @@ export type CodingModelCreateInput = {
   contextWindow?: number;
   config?: CodingModelConfig;
   apiKeySecretId?: string;
+  /** Optional pricing entered in the model form; persisted to jm_model_pricing on save. */
+  pricing?: import("./model-pricing.types.ts").ModelPriceInput;
 };
 
 export type CodingModelUpdateInput = Partial<CodingModelCreateInput>;

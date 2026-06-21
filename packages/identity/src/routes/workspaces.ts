@@ -47,7 +47,7 @@ export async function registerWorkspaceRoutes(app: FastifyInstance, pool: Pool) 
     return { workspaces: await listWorkspacesForOrg(pool, orgId) };
   });
 
-  app.post("/api/orgs/:orgId/workspaces", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/workspaces", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "workspace.create", targetType: "workspace" } } }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "wrong_org" });
     const body = req.body as { name?: string; slug?: string };
@@ -55,6 +55,8 @@ export async function registerWorkspaceRoutes(app: FastifyInstance, pool: Pool) 
     const slug = body.slug?.trim() || slugifyWorkspaceName(body.name);
     try {
       const ws = await createWorkspace(pool, { orgId, slug, name: body.name.trim() });
+      req.auditTargetId = ws.id;
+      req.auditDetail = { name: ws.name, slug: ws.slug };
       reply.code(201);
       return ws;
     } catch (err: any) {
@@ -71,7 +73,7 @@ export async function registerWorkspaceRoutes(app: FastifyInstance, pool: Pool) 
     return ws;
   });
 
-  app.patch("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.patch("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "workspace.update", targetType: "workspace", idParam: "wsId" } } }, async (req, reply) => {
     const { orgId, wsId } = req.params as { orgId: string; wsId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "wrong_org" });
     const body = req.body as { name?: string; slug?: string };
@@ -89,7 +91,7 @@ export async function registerWorkspaceRoutes(app: FastifyInstance, pool: Pool) 
     }
   });
 
-  app.delete("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.delete("/api/orgs/:orgId/workspaces/:wsId", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "workspace.delete", targetType: "workspace", idParam: "wsId" } } }, async (req, reply) => {
     const { orgId, wsId } = req.params as { orgId: string; wsId: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "wrong_org" });
     const ws = await getWorkspace(pool, wsId);

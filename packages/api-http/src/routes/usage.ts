@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import {
   buildUsageAggregateQuery, buildUsageTotalsQuery, DIMENSION_COLUMNS,

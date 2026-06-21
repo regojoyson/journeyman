@@ -1,4 +1,4 @@
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import type { AgentSkipReason } from "@journeyman/core";
 import { readPath } from "@journeyman/webhooks";
 import { findAgentByWebhookId, runAgentGuarded, wasSkipped } from "@journeyman/agents";

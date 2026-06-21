@@ -1,9 +1,8 @@
 import { randomBytes, createHash } from "node:crypto";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { Composition } from "../composition.ts";
+import type { FastifyInstance } from "fastify";
+import type { Composition } from "@journeyman/api-context";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { getAgent, runAgentGuarded, wasSkipped } from "@journeyman/agents";
-import { audit } from "../services/audit.ts";
 
 const TOKEN_PREFIX = "jm_agt_";
 
@@ -15,10 +14,6 @@ function hashToken(t: string): string {
   return createHash("sha256").update(t).digest("hex");
 }
 
-function ctxOf(req: FastifyRequest) {
-  return req.runContext!;
-}
-
 export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition): void {
   const requireAuth = makeRequireAuth({ pool: c.pool! });
   const requirePerm = makeRequireWorkspacePermission({ pool: c.pool! });
@@ -27,9 +22,8 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
   const write = { preHandler: [requireAuth(), requirePerm("resource.write")] };
 
   // Issue a per-agent API token (reveal once).
-  app.post("/api/workspaces/:wsId/agents/:id/triggers/api-token", write, async (req, reply) => {
+  app.post("/api/workspaces/:wsId/agents/:id/triggers/api-token", { ...write, config: { audit: { action: "agent.token.issue", targetType: "agent" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
-    const ctx = ctxOf(req);
     const agent = await getAgent(pool, id);
     if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
@@ -40,7 +34,7 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
       `INSERT INTO jm_agent_api_tokens (agent_id, org_id, token_hash) VALUES ($1,$2,$3) RETURNING id`,
       [id, agent.orgId, hash],
     );
-    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.token.issue", targetType: "agent", targetId: id, detail: { tokenId: rows[0].id } });
+    req.auditDetail = { tokenId: rows[0].id };
     reply.code(201);
     return { id: rows[0].id, token: plaintext }; // shown once
   });
@@ -64,21 +58,20 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
   });
 
   // Revoke a token (permanent).
-  app.delete("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", write, async (req, reply) => {
+  app.delete("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", { ...write, config: { audit: { action: "agent.token.revoke", targetType: "agent" } } }, async (req, reply) => {
     const { wsId, id, tokenId } = req.params as { wsId: string; id: string; tokenId: string };
-    const ctx = ctxOf(req);
     const agent = await getAgent(pool, id);
     if (!agent || agent.workspaceId !== wsId) {
       reply.code(404).send({ error: "not_found" });
       return;
     }
     await pool.query(`UPDATE jm_agent_api_tokens SET revoked_at = now() WHERE id = $1 AND agent_id = $2`, [tokenId, id]);
-    await audit(pool, { orgId: agent.orgId, actorUserId: ctx.user.id, action: "agent.token.revoke", targetType: "agent", targetId: id, detail: { tokenId } });
+    req.auditDetail = { tokenId };
     reply.code(204);
   });
 
   // Enable or disable a token (soft toggle — does not affect last_used_at).
-  app.patch("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", write, async (req, reply) => {
+  app.patch("/api/workspaces/:wsId/agents/:id/triggers/api-token/:tokenId", { ...write, config: { audit: { action: "agent.token.toggle", targetType: "agent" } } }, async (req, reply) => {
     const { wsId, id, tokenId } = req.params as { wsId: string; id: string; tokenId: string };
     const body = req.body as { disabled: boolean } | undefined;
     if (typeof body?.disabled !== "boolean") {
@@ -96,6 +89,7 @@ export function registerAgentTriggerRoutes(app: FastifyInstance, c: Composition)
         WHERE id = $2 AND agent_id = $3 AND revoked_at IS NULL`,
       [body.disabled, tokenId, id],
     );
+    req.auditDetail = { tokenId, disabled: body.disabled };
     reply.code(204);
   });
 

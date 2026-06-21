@@ -47,10 +47,10 @@ It connects lazily, so it boots without a database, but the endpoints need the d
 npm run infra:up                 # Postgres :5433, Redis, Conductor
 npm run migrate                  # create jm_* tables on :5433
 npm run start:analytics          # analytics service on :4002
-npm run dev:web                  # web UI — its vite proxy routes /api/analytics → :4002
+npm run start:web                # web UI — its vite proxy routes /api/analytics → :4002
 ```
 
-Then open `/workspaces/<wsId>/dashboard`. A full local stack is three processes — `start:api-server`, `start:analytics`, `dev:web` — over `infra:up` + `migrate`.
+Then open `/workspaces/<wsId>/dashboard`. A full local stack is three processes — `start:api-server`, `start:analytics`, `start:web` — over `infra:up` + `migrate`.
 
 ### Configuration
 

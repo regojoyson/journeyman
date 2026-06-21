@@ -1,10 +1,13 @@
+# One image (journeyman/api-server:dev), three entrypoints via `command` override.
+# api-http and api-webhooks are stateless (scalable); api-control-plane is a
+# SINGLETON (replicas: 1) — its timers double-fire with more than one replica.
 apiVersion: v1
 kind: Service
 metadata:
-  name: api-server
+  name: api-http
 spec:
   selector:
-    app: api-server
+    app: api-http
   ports:
     - port: 4000
       targetPort: 4000
@@ -12,16 +15,16 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-server
+  name: api-http
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api-server
+      app: api-http
   template:
     metadata:
       labels:
-        app: api-server
+        app: api-http
     spec:
       initContainers:
         - name: wait-for-postgres
@@ -31,8 +34,9 @@ spec:
             - -c
             - 'until pg_isready -h postgres -U postgres; do echo "waiting for postgres"; sleep 2; done'
       containers:
-        - name: api-server
+        - name: api-http
           image: journeyman/api-server:dev
+          command: ["npm", "run", "start:http", "-w", "@journeyman/api-server"]
           ports:
             - containerPort: 4000
           envFrom:
@@ -43,5 +47,84 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-webhooks
+spec:
+  selector:
+    app: api-webhooks
+  ports:
+    - port: 4001
+      targetPort: 4001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-webhooks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-webhooks
+  template:
+    metadata:
+      labels:
+        app: api-webhooks
+    spec:
+      containers:
+        - name: api-webhooks
+          image: journeyman/api-server:dev
+          command: ["npm", "run", "start:webhooks", "-w", "@journeyman/api-server"]
+          env:
+            - name: WEBHOOKS_PORT
+              value: "4001"
+          ports:
+            - containerPort: 4001
+          envFrom:
+            - configMapRef:
+                name: journeyman-config
+            - secretRef:
+                name: journeyman-secrets
+          readinessProbe:
+            tcpSocket:
+              port: 4001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-control-plane
+spec:
+  replicas: 1 # MUST stay 1 — background timers double-fire with >1 replica
+  selector:
+    matchLabels:
+      app: api-control-plane
+  template:
+    metadata:
+      labels:
+        app: api-control-plane
+    spec:
+      containers:
+        - name: api-control-plane
+          image: journeyman/api-server:dev
+          command: ["npm", "run", "start:control-plane", "-w", "@journeyman/api-server"]
+          env:
+            - name: CONTROL_PLANE_PORT
+              value: "4003"
+          ports:
+            - containerPort: 4003
+          envFrom:
+            - configMapRef:
+                name: journeyman-config
+            - secretRef:
+                name: journeyman-secrets
+          readinessProbe:
+            tcpSocket:
+              port: 4003
             initialDelaySeconds: 10
             periodSeconds: 5

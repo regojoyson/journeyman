@@ -48,7 +48,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
     return listSandboxes(pool, orgId);
   });
 
-  app.post("/api/orgs/:orgId/sandboxes", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/sandboxes", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "sandbox.create", targetType: "sandbox" } } }, async (req, reply) => {
     const { orgId } = req.params as { orgId: string };
     const ctx = req.runContext!;
     if (ctx.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -63,6 +63,8 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
         maxConcurrentInstances: body.maxConcurrentInstances ?? null,
       });
       await applyImageStateOnSave(pool, rec.id, rec.type, rec.config);
+      req.auditTargetId = rec.id;
+      req.auditDetail = { name: rec.name };
       reply.code(201);
       return rec;
     } catch (err) {
@@ -79,7 +81,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
     return rec;
   });
 
-  app.patch("/api/orgs/:orgId/sandboxes/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.patch("/api/orgs/:orgId/sandboxes/:id", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "sandbox.update", targetType: "sandbox" } } }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const body = req.body as any;
@@ -102,7 +104,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
   });
 
   // ---- Rebuild a target's managed image (force pending) ----
-  app.post("/api/orgs/:orgId/sandboxes/:id/rebuild", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.post("/api/orgs/:orgId/sandboxes/:id/rebuild", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "sandbox.rebuild", targetType: "sandbox" } } }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const rec = await getSandbox(pool, id, orgId);
@@ -111,7 +113,7 @@ export async function registerSandboxRoutes(app: FastifyInstance, pool: Pool): P
     return { ok: true };
   });
 
-  app.delete("/api/orgs/:orgId/sandboxes/:id", { preHandler: requireAuth({ role: "admin" }) }, async (req, reply) => {
+  app.delete("/api/orgs/:orgId/sandboxes/:id", { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "sandbox.delete", targetType: "sandbox" } } }, async (req, reply) => {
     const { orgId, id } = req.params as { orgId: string; id: string };
     if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
     const ok = await deleteSandbox(pool, id, orgId);

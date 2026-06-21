@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Ensure workspace deps are installed/linked before the host-side kit build
-# (build:kit / register-kit run here with tsx and need node_modules — incl. any
+# (build:kit / register:kit run here with tsx and need node_modules — incl. any
 # packages added since the last pull, e.g. @journeyman/agent-protocol).
 # Deterministic install for deploy; fall back to `npm install` if there's no lockfile.
 echo ">>> installing workspace deps"
@@ -87,7 +87,7 @@ echo ">>> bringing up postgres + running migrations"
 echo ">>> registering kit images in the DB"
 ENV_FILE="$ENV_FILE" \
   DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:6032/journeyman}" \
-  JOURNEYMAN_BASE_DIR="${data_dir}" npm run register-kit
+  JOURNEYMAN_BASE_DIR="${data_dir}" npm run register:kit
 
 "${COMPOSE[@]}" up -d
 "${COMPOSE[@]}" ps

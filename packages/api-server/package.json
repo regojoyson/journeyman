@@ -6,17 +6,25 @@
   "main": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "bin": {
-    "journeyman-api-server": "./src/cli-start.ts"
+    "journeyman-api-http": "./src/cli-start-http.ts",
+    "journeyman-api-webhooks": "./src/cli-start-webhooks.ts",
+    "journeyman-api-control-plane": "./src/cli-start-control-plane.ts"
   },
   "files": ["src"],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "start": "tsx src/cli-start.ts"
+    "start:http": "tsx src/cli-start-http.ts",
+    "start:webhooks": "tsx src/cli-start-webhooks.ts",
+    "start:control-plane": "tsx src/cli-start-control-plane.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.803.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/sensible": "^6.0.4",
+    "@journeyman/api-context": "*",
+    "@journeyman/api-http": "*",
+    "@journeyman/api-webhooks": "*",
+    "@journeyman/api-control-plane": "*",
     "@journeyman/builder": "*",
     "@journeyman/core": "*",
     "@journeyman/identity": "*",

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
-import { Maximize2, Minimize2, AlertTriangle, Pencil, Eye } from "lucide-react";
+import { Maximize2, Minimize2, AlertTriangle, Pencil, Eye, Lock } from "lucide-react";
 import { analyzeReferences, namesOf } from "./prompt-tokens.ts";
 import { PromptCodeMirror, type PromptCodeMirrorHandle } from "./PromptCodeMirror.tsx";
 import { PromptPreview } from "./PromptPreview.tsx";
@@ -12,11 +12,14 @@ export interface PromptEditorProps {
   onChange: (next: string) => void;
   inputFields: CustomStepInputField[];
   slots: SecretSlotDef[];
+  readOnly?: boolean;
+  /** Hide the inputs/secrets insert sidebar (e.g. agents auto-detect inputs). */
+  hideSidebar?: boolean;
 }
 
 type Mode = "edit" | "preview";
 
-export function PromptEditor({ value, onChange, inputFields, slots }: PromptEditorProps) {
+export function PromptEditor({ value, onChange, inputFields, slots, readOnly = false, hideSidebar = false }: PromptEditorProps) {
   const cmRef = useRef<PromptCodeMirrorHandle | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [mode, setMode] = useState<Mode>("edit");
@@ -52,19 +55,25 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
               <Eye className="w-3.5 h-3.5" /> Preview
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setFullscreen(f => !f)}
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-surface-hover transition"
-            title={fullscreen ? "Exit fullscreen" : "Expand to fullscreen"}
-          >
-            {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            {fullscreen ? "Exit" : "Expand"}
-          </button>
+          {readOnly ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 border border-slate-700 px-2 py-1 rounded">
+              <Lock className="w-3.5 h-3.5" /> Read-only
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFullscreen(f => !f)}
+              className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-surface-hover transition"
+              title={fullscreen ? "Exit fullscreen" : "Expand to fullscreen"}
+            >
+              {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              {fullscreen ? "Exit" : "Expand"}
+            </button>
+          )}
         </div>
 
-        {/* Formatting toolbar (edit mode only) */}
-        {mode === "edit" && (
+        {/* Formatting toolbar (editable edit mode only) */}
+        {mode === "edit" && !readOnly && (
           <PromptToolbar onCommand={build => cmRef.current?.applyCommand(build)} />
         )}
 
@@ -72,7 +81,7 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
         <div
           className={
             `grid ${fullscreen ? "flex-1 min-h-0" : "h-[460px]"} ` +
-            (mode === "edit" ? "grid-cols-1 lg:grid-cols-[1fr_220px]" : "grid-cols-1")
+            (mode === "edit" && !readOnly && !hideSidebar ? "grid-cols-1 lg:grid-cols-[1fr_220px]" : "grid-cols-1")
           }
         >
           <div className="min-w-0 overflow-auto bg-bg">
@@ -84,13 +93,14 @@ export function PromptEditor({ value, onChange, inputFields, slots }: PromptEdit
                 inputFields={inputFields}
                 slots={slots}
                 height={fullscreen ? "100%" : "460px"}
+                readOnly={readOnly}
               />
             ) : (
               <PromptPreview value={value} inputFields={inputFields} slots={slots} />
             )}
           </div>
 
-          {mode === "edit" && (
+          {mode === "edit" && !readOnly && !hideSidebar && (
             <TokenSidebar
               inputFields={inputFields}
               slots={slots}

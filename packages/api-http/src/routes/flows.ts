@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import type { Composition } from "../composition.ts";
-import { createFlowBody } from "../schemas/flow.ts";
-import { createRunBody } from "../schemas/run.ts";
-import { updateFlowBody } from "../schemas/update-flow.ts";
-import { cloneFlowBody } from "../schemas/clone-flow.ts";
+import type { Composition } from "@journeyman/api-context";
+import { createFlowBody } from "@journeyman/api-context";
+import { createRunBody } from "@journeyman/api-context";
+import { updateFlowBody } from "@journeyman/api-context";
+import { cloneFlowBody } from "@journeyman/api-context";
 import type { WorkflowGraph, PublishError, ProposedCustomStep } from "@journeyman/core";
 import { findManualTriggerNode } from "@journeyman/core";
 import {
@@ -380,7 +380,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { ...report, secretWarnings };
   });
 
-  app.post("/workspaces/:wsId/workflows", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows", { ...write, config: { audit: { action: "workflow.create", targetType: "workflow" } } }, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId } = req.params as { wsId: string };
     const body = createFlowBody.parse(req.body);
@@ -394,6 +394,8 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       initialDefinition: body.definition as WorkflowGraph,
       createdByUserId: ctx.user.id,
     });
+    req.auditTargetId = workflow.id;
+    req.auditDetail = { name: body.name };
     reply.code(201);
     return warnings.length ? { workflow, warnings } : { workflow };
   });
@@ -429,7 +431,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { workflow };
   });
 
-  app.put("/workspaces/:wsId/workflows/:id", write, async (req, reply) => {
+  app.put("/workspaces/:wsId/workflows/:id", { ...write, config: { audit: { action: "workflow.update", targetType: "workflow" } } }, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId, id } = req.params as { wsId: string; id: string };
     const body = updateFlowBody.parse(req.body);
@@ -452,7 +454,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return warnings.length ? { workflow: updated, warnings } : { workflow: updated };
   });
 
-  app.delete("/workspaces/:wsId/workflows/:id", del, async (req, reply) => {
+  app.delete("/workspaces/:wsId/workflows/:id", { ...del, config: { audit: { action: "workflow.delete", targetType: "workflow" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const workflow = await loadInWorkspace(id, wsId);
     if (!workflow) { reply.code(404); return { error: "not_found" }; }
@@ -496,7 +498,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { version };
   });
 
-  app.post("/workspaces/:wsId/workflows/:id/promote", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/:id/promote", { ...write, config: { audit: { action: "workflow.promote", targetType: "workflow" } } }, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId, id } = req.params as { wsId: string; id: string };
 
@@ -557,7 +559,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { workflow: promoted.workflow, version: promoted.version, warnings };
   });
 
-  app.post("/workspaces/:wsId/workflows/:id/rollback", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/:id/rollback", { ...write, config: { audit: { action: "workflow.rollback", targetType: "workflow" } } }, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId, id } = req.params as { wsId: string; id: string };
     const { versionId } = (req.body ?? {}) as { versionId?: string };
@@ -605,7 +607,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
     return { workflow: updated };
   });
 
-  app.post("/workspaces/:wsId/workflows/:id/unpublish", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/:id/unpublish", { ...write, config: { audit: { action: "workflow.unpublish", targetType: "workflow" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const body = (req.body ?? {}) as { confirm?: boolean };
 
@@ -663,7 +665,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
 
   // ----- Snapshot actions -----
 
-  app.post("/workspaces/:wsId/workflows/:id/clone", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/workflows/:id/clone", { ...write, config: { audit: { action: "workflow.clone", targetType: "workflow" } } }, async (req, reply) => {
     const ctx = req.runContext!;
     const { wsId, id } = req.params as { wsId: string; id: string };
     const body = cloneFlowBody.parse(req.body ?? {});
@@ -677,6 +679,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, c: Composition): vo
       initialDefinition: src.draftDefinition,
       createdByUserId: ctx.user.id,
     });
+    req.auditTargetId = workflow.id;
     reply.code(201);
     return { id: workflow.id };
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Webhook } from "@journeyman/core";
 import { fireWebhookTriggers } from "./webhook-trigger-fire.ts";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 // Reproduces the fan-out bug: a webhook bound to two trigger nodes where one
 // workflow submits cleanly and the other throws synchronously during submit.

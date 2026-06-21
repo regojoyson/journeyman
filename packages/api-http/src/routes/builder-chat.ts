@@ -16,8 +16,8 @@ import {
   type ChatMessage, type InventorySummary,
 } from "@journeyman/builder";
 import { stepCatalog } from "@journeyman/steps/catalog";
-import type { Composition } from "../composition.ts";
-import { openSseStream } from "../sse/sse-stream.ts";
+import type { Composition } from "@journeyman/api-context";
+import { openSseStream } from "@journeyman/api-context";
 
 const PING_MS = 15_000;
 

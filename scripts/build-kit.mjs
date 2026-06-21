@@ -74,7 +74,7 @@ console.log(`  bundle: ${kit.bundle}`);
 
 // Record the digests in kit_images so workers pick them up. Best-effort: this
 // works when the DB is reachable (e.g. local dev with infra:up). Under compose:up
-// the DB isn't up yet when this runs, so compose-up.sh calls register-kit later.
+// the DB isn't up yet when this runs, so compose-up.sh calls register:kit later.
 if (process.env.DATABASE_URL) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
@@ -83,10 +83,10 @@ if (process.env.DATABASE_URL) {
     console.log(`✓ registered digests in kit_images`);
   } catch (err) {
     console.warn(`! could not register in kit_images (${err.message})`);
-    console.warn(`  run 'npm run register-kit' once the DB is up.`);
+    console.warn(`  run 'npm run register:kit' once the DB is up.`);
   } finally {
     await pool.end();
   }
 } else {
-  console.log(`\nNo DATABASE_URL set — run 'npm run register-kit' to record these in kit_images.`);
+  console.log(`\nNo DATABASE_URL set — run 'npm run register:kit' to record these in kit_images.`);
 }

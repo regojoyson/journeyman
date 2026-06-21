@@ -152,7 +152,7 @@ Two runtime facts make or break this mechanism (dry-run findings F1, F2):
 - [`backends/docker/docker-execution-environment.ts`](../../../packages/sandbox/src/backends/docker/docker-execution-environment.ts) — `provision` (network + proxy orchestration, env injection) and `destroy` (teardown).
 - [`backends/docker/docker-client.ts`](../../../packages/sandbox/src/backends/docker/docker-client.ts) — new `IDockerClient` methods: `createNetwork` / `removeNetwork`, `runProxy` (or extend `runIdle` with a network + extra-attach option), and container-to-network attach. Faked in unit tests.
 - **New** `backends/docker/egress-presets.ts` — preset → domain-list map + `resolveAllow(policy, modelEndpoints)`.
-- **New** `backends/docker/squid-conf.ts` — pure function: `resolvedAllow → squid.conf` string.
+- **New** `backends/docker/squid-conf.ts` — pure function: `resolvedAllow → squid.conf` string. Must also emit ports parsed from allowed `baseUrl`s into `Safe_ports`/`SSL_ports` (F4), tuned `read_timeout`/`request_timeout` for long streaming (F9), and an `apt.conf.d` proxy snippet path for the OS-mirror preset (F6). Provide an `appendDomain`-style regeneration used by `ensureHostAllowed` + `squid -k reconfigure` (§5.1).
 - Ensure-proxy-image step (pattern from `ensure-kit.ts`).
 
 ### Runner (`@journeyman/agent-runtime`) — F1
@@ -197,3 +197,21 @@ No change required to the create/update route or DB layer — `config` is alread
 - **Tools that ignore `HTTP_PROXY`.** Mitigated by the internal network — such tools simply fail to reach the internet rather than escaping policy. Document which ecosystems need explicit proxy config (git, apt).
 - **Proxy image availability** on locked-down/offline daemons. Reuse the kit-ensure pattern and surface a clear error if the proxy image can't be obtained.
 - **Per-run sidecar overhead** (one extra container + network per allowlist run). Acceptable for the isolation guarantee; revisit a shared-proxy model only if it becomes a measured problem.
+
+## 10. Dry-run findings (verified against code)
+
+| # | Severity | Finding | Resolution |
+|---|---|---|---|
+| F1 | 🔴 Critical | Node `fetch`/undici (Claude SDK + ai-sdk) ignores `HTTP_PROXY`; no proxy setup exists in `agent-runtime`. Model calls would never reach the proxy → every allowlist run dies. | Set `NODE_USE_ENV_PROXY=1` / global `ProxyAgent` in `runner/cli.ts` (§5.1). Hard prerequisite. |
+| F2 | 🔴 Critical | "Union of all model hosts" is unknowable: worker sees one step at a time; proxy ACL frozen at first provision. Later step on a different provider gets blocked. | Append-on-demand `ensureHostAllowed(env, host)` + `squid -k reconfigure` before each step (§5.1). |
+| F3 | 🟠 High | Proxy container + network have no place in `jm_sandbox_instances`; normal teardown and orphan reaper leak them. | Add `proxy_container_id`/`network_name` columns; thread through `ProvisionedEnv`/record/`destroy` (§6). |
+| F4 | 🟠 High | squid default `Safe_ports`/`SSL_ports` deny `CONNECT` to non-standard model ports (e.g. `:1234`, `:8443`). | Parse port from each allowed `baseUrl` into the generated config. |
+| F5 | 🟡 Med | Self-hosted models at `localhost`/`127.0.0.1`/`host.docker.internal`/LAN IP unreachable from proxy netns; `dstdomain` doesn't match IPs. | Handle IP literals via `dst` ACL + `--add-host`; document limitation. |
+| F6 | 🟡 Med | `apt` honoring of `http_proxy` env is unreliable across bases. | Write `/etc/apt/apt.conf.d/` proxy snippet when allowlist is on. |
+| F7 | 🟡 Med | git-over-SSH bypasses the proxy and has no route. | Document as unsupported under allowlist (token-HTTPS clone works). |
+| F8 | 🟡 Med | Partial provision (proxy fails after net/container created) leaks. | `try/catch` rollback in `provision`. |
+| F9 | 🟡 Med | squid `read_timeout`/`request_timeout` can cut long SSE generations. | Tune timeouts up for agent workloads. |
+| F10 | 🟢 Low | One network per run can exhaust the default address pool at high concurrency. | Configurable address pool; document ceiling. |
+| F11 | 🟢 Low | Proxy image must be present on offline daemons. | Reuse `ensure-kit.ts` pattern; clear error if unobtainable. |
+| F12 | 🟢 Low | `web-fetch`/`web-search` tools become governed by the allowlist (correct, but surprising). | Document the behavior. |
+| F13 | 🟢 Low | `NO_PROXY` must cover the OpenCode loopback server. | `NO_PROXY=localhost,127.0.0.1` (already specified). |

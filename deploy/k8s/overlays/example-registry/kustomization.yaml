@@ -22,8 +22,12 @@ images:
     newTag: REPLACE_ME
 
 # Production-leaning replicas.
+# NOTE: api-control-plane is intentionally absent — it MUST stay at 1 replica
+# (its background timers double-fire with more than one instance).
 replicas:
-  - name: api-server
+  - name: api-http
+    count: 2
+  - name: api-webhooks
     count: 2
   - name: worker
     count: 2

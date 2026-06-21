@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import {
   resolveHumanTask,
   HumanTaskNotWaitingError,
   HumanTaskMissingValueError,
-} from "../services/resolve-human-task.ts";
-import { reconcileWorkflowInstance } from "../services/engine-reconciler.ts";
+} from "@journeyman/api-context";
+import { reconcileWorkflowInstance } from "@journeyman/api-context";
 
 export function registerHumanTaskRoutes(app: FastifyInstance, c: Composition): void {
   app.post("/workflow-instances/:workflowInstanceId/human-tasks/:nodeId/resolve", async (req, reply) => {

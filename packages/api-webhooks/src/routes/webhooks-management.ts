@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { getPreset, lintJsonSchema } from "@journeyman/webhooks";
 import type { CreateWebhookArgs, PresetId, UpdateWebhookArgs, Webhook } from "@journeyman/core";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import { buildTestDeliveryHeaders, eventTypeHeaderForSample } from "../services/webhook-test-delivery.ts";
 import { resolveWebhookSecret, secretRefFromAuth } from "../services/webhook-secret-lookup.ts";
 
@@ -47,7 +47,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
     return list.map((w) => withIngestUrl(req, w));
   });
 
-  app.post("/api/workspaces/:wsId/webhooks", write, async (req, reply) => {
+  app.post("/api/workspaces/:wsId/webhooks", { ...write, config: { audit: { action: "webhook.create", targetType: "webhook" } } }, async (req, reply) => {
     const { wsId } = req.params as { wsId: string };
     const ctx = req.runContext!;
     const v = validateCreateBody(req.body);
@@ -56,6 +56,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
       { ...v, workspaceId: wsId, orgId: ctx.workspace!.orgId },
       mintToken(),
     );
+    req.auditTargetId = created.id;
     reply.code(201);
     return withIngestUrl(req, created);
   });
@@ -90,7 +91,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
     return { events, total, page, pageSize };
   });
 
-  app.patch("/api/webhooks/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.patch("/api/webhooks/:id", { preHandler: requireAuth(), config: { audit: { action: "webhook.update", targetType: "webhook" } } }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const r = await load(req, id);
     if ("error" in r) return reply.code(r.code).send({ error: r.error });
@@ -104,7 +105,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
     return withIngestUrl(req, updated);
   });
 
-  app.delete("/api/webhooks/:id", { preHandler: requireAuth() }, async (req, reply) => {
+  app.delete("/api/webhooks/:id", { preHandler: requireAuth(), config: { audit: { action: "webhook.delete", targetType: "webhook" } } }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const r = await load(req, id);
     if ("error" in r) return reply.code(r.code).send({ error: r.error });
@@ -113,7 +114,7 @@ export function registerWebhookManagementRoutes(app: FastifyInstance, c: Composi
     return { ok: true };
   });
 
-  app.post("/api/webhooks/:id/rotate", { preHandler: requireAuth() }, async (req, reply) => {
+  app.post("/api/webhooks/:id/rotate", { preHandler: requireAuth(), config: { audit: { action: "webhook.rotate", targetType: "webhook" } } }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const r = await load(req, id);
     if ("error" in r) return reply.code(r.code).send({ error: r.error });

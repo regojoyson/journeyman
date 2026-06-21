@@ -1,0 +1,31 @@
+{
+  "name": "@journeyman/api-context",
+  "version": "0.1.0",
+  "description": "Shared kernel for the api-* services: Composition contract, schemas, SSE, audit, and cross-cluster pure services.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@journeyman/core": "*",
+    "@journeyman/identity": "*",
+    "@journeyman/orchestrator": "*",
+    "@journeyman/sandbox": "*",
+    "@journeyman/agents": "*",
+    "cron-parser": "^4.9.0",
+    "fastify": "^5.8.5",
+    "pg": "^8.13.0",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^6.0.3",
+    "vitest": "^2.0.0"
+  }
+}

@@ -20,7 +20,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     });
 
   app.patch("/api/orgs/:orgId/users/:userId/status",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "user.update_status", targetType: "user", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       const ctx = req.runContext!;
@@ -41,7 +41,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     });
 
   app.post("/api/orgs/:orgId/users/:userId/reset-password",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "user.reset_password", targetType: "user", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       const ctx = req.runContext!;
@@ -56,7 +56,7 @@ export async function registerUserManagementRoutes(app: FastifyInstance, pool: P
     });
 
   app.patch("/api/orgs/:orgId/users/:userId/profile",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "user.update_profile", targetType: "user", idParam: "userId" } } },
     async (req, reply) => {
       const { orgId, userId } = req.params as { orgId: string; userId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });

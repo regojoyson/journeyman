@@ -99,7 +99,7 @@ npm run build:kit
 npm run start:api-server
 npm run start:analytics    # workspace dashboard stats API (port 4002) — see docs/dashboard.md
 npm run start:worker
-npm run dev:web
+npm run start:web
 ```
 
 → [Quickstart guide](docs/quickstart.md) — 10-minute end-to-end walkthrough
@@ -208,7 +208,7 @@ npm run build:kit     # build + push, and (when DATABASE_URL is reachable) regis
 ```
 
 `build:kit` registers the pushed digests automatically when it can reach the DB.
-`npm run register-kit` stays available to (re)record them separately — it's what the
+`npm run register:kit` stays available to (re)record them separately — it's what the
 compose deploy flow uses, since there the DB comes up after the kit is built.
 
 ## Deployment
@@ -276,7 +276,7 @@ npm run build:kit        # docker build + push → <registry>/runner-* ; writes 
 
 `build:kit` pins each image by **digest**, writes them to `kit.json`, and (when it can reach the DB)
 upserts them into the `kit_images` table — the source of truth workers read. When the DB isn't up yet
-(e.g. the compose deploy flow builds the kit first), run `npm run register-kit` afterwards to record
+(e.g. the compose deploy flow builds the kit first), run `npm run register:kit` afterwards to record
 them. `build:kit` builds and pushes via your machine's **Docker CLI** (your active `docker context`),
 so there's nothing to configure.
 

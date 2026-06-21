@@ -1,11 +1,11 @@
 import { readPath } from "@journeyman/webhooks";
-import { eventPassesListensFor } from "./listens-for.ts";
+import { eventPassesListensFor } from "@journeyman/api-context";
 import type {
   TriggerWebhookConfig,
   Webhook,
   WorkflowNode,
 } from "@journeyman/core";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 async function resolveOrgId(c: Composition, workspaceId: string): Promise<string | null> {
   if (!c.pool) return null;

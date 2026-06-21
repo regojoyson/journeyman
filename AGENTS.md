@@ -49,7 +49,7 @@ npm run infra:up         # infra/compose.dev.yml — Postgres (5433), Redis (638
 npm run migrate          # apply SQL migrations via @journeyman/migrations
 npm run start:api-server
 npm run start:worker     # tsx packages/orchestrator/src/cli-worker.ts
-npm run dev:web
+npm run start:web
 ```
 
 - **Full stack (`compose.deploy.yml`)** — everything containerized, incl. a built-in Docker

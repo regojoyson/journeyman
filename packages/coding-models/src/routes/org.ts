@@ -13,6 +13,7 @@ import {
 } from "../db.ts";
 import { isValidCodingProvider, LIST_CODING_PROVIDERS } from "../validate-provider.ts";
 import { validateCodingModelConfig } from "../validate-config.ts";
+import { upsertActivePrice } from "../pricing-db.ts";
 
 /**
  * Validate the secret binding: when config.requiresApiKey is set the model needs a key,
@@ -49,7 +50,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
 
   app.post(
     "/api/orgs/:orgId/coding-models",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.create", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId } = req.params as { orgId: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -81,6 +82,9 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
           config: b.config,
           apiKeySecretId: b.apiKeySecretId,
         });
+        await upsertActivePrice(pool, orgId, rec.provider, rec.modelId, b.pricing);
+        req.auditTargetId = rec.id;
+        req.auditDetail = { label: rec.label };
         reply.code(201);
         return rec;
       } catch (err) {
@@ -94,7 +98,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
 
   app.patch(
     "/api/orgs/:orgId/coding-models/:id",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.update", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });
@@ -128,6 +132,12 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
       if (bindErr) return reply.code(400).send({ error: bindErr });
       try {
         const updated = await updateCodingModel(pool, orgId, id, req.body as any);
+        if (updated) {
+          await upsertActivePrice(
+            pool, orgId, updated.provider, updated.modelId,
+            (req.body as { pricing?: import("@journeyman/core").ModelPriceInput }).pricing,
+          );
+        }
         return updated;
       } catch (err) {
         if (err instanceof DuplicateCodingModelError) {
@@ -140,7 +150,7 @@ export async function registerOrgCodingModelRoutes(app: FastifyInstance, pool: P
 
   app.delete(
     "/api/orgs/:orgId/coding-models/:id",
-    { preHandler: requireAuth({ role: "admin" }) },
+    { preHandler: requireAuth({ role: "admin" }), config: { audit: { action: "coding_model.delete", targetType: "coding_model" } } },
     async (req, reply) => {
       const { orgId, id } = req.params as { orgId: string; id: string };
       if (req.runContext!.org.id !== orgId) return reply.code(403).send({ error: "Wrong org" });

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import { ingestForWebhook } from "../services/webhook-ingest.ts";
 
 function rawBodyOf(req: FastifyRequest): Buffer {

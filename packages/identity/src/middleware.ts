@@ -8,7 +8,17 @@ import { isApiToken, REFRESH_TTL_SECONDS, sha256 } from "./tokens.ts";
 import { findActiveApiToken, findMembership, getOrg, getUser, isUserPlatformAdmin, touchApiTokenLastUsed } from "./db.ts";
 
 declare module "fastify" {
-  interface FastifyRequest { runContext?: RunContext; }
+  interface FastifyRequest {
+    runContext?: RunContext;
+    /** Set by create-route handlers so the audit hook can record the new entity id. */
+    auditTargetId?: string | null;
+    /** Optional extra context merged into the audit row's `detail` JSON. */
+    auditDetail?: Record<string, unknown>;
+  }
+  interface FastifyContextConfig {
+    /** Declarative audit tag read by the central onResponse hook in api-server. */
+    audit?: { action: string; targetType: string; idParam?: string };
+  }
 }
 
 export interface RequireAuthDeps { pool: Pool; }

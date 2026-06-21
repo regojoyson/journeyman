@@ -1,4 +1,4 @@
-import type { Composition } from "../composition.ts";
+import type { Composition } from "../composition-types.ts";
 import type { WebhookWaitConfig, WebhookWaitOutputField } from "@journeyman/core";
 import { getByPath } from "./jsonpath.ts";
 import { resolveHumanTask } from "./resolve-human-task.ts";

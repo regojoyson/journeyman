@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { createLogger, type TokenUsage } from "@journeyman/core";
+import { computeCostUsd, resolveActivePrice } from "./model-pricing.ts";
 
 const log = createLogger("usage:record");
 
@@ -30,9 +31,9 @@ const INSERT = `
     workflow_instance_id, node_id, step_type, step_name, attempt,
     agent_id, agent_name, triggered_by_user_id, provider, vendor, model, outcome,
     input_tokens, output_tokens, cache_read_tokens, cache_creation_tokens,
-    reasoning_tokens, total_tokens, usage_reported, raw_usage
+    reasoning_tokens, total_tokens, usage_reported, raw_usage, cost_usd
   ) VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
   )
   ON CONFLICT (workflow_instance_id, node_id, attempt, provider, COALESCE(model, '')) DO NOTHING`;
 
@@ -53,14 +54,26 @@ export async function recordTokenUsage(
   let inserted = 0;
   try {
     for (const { u, reported } of rows) {
+      const model = u.model ?? args.requestedModel ?? null;
+      let costUsd: number | null = null;
+      try {
+        const rates = await resolveActivePrice(pool, args.orgId, u.provider ?? args.provider, model);
+        if (rates) {
+          costUsd = computeCostUsd(rates, {
+            inputTokens: u.inputTokens, outputTokens: u.outputTokens,
+            cacheReadTokens: u.cacheReadTokens, cacheCreationTokens: u.cacheCreationTokens,
+            reasoningTokens: u.reasoningTokens,
+          });
+        }
+      } catch { /* unpriced — leave costUsd null */ }
       const res = await pool.query(INSERT, [
         args.workspaceId, args.orgId, args.workflowId, args.workflowVersionId, args.workflowName,
         args.workflowInstanceId, args.nodeId, args.stepType, args.stepName, args.attempt,
         args.agentId, args.agentName, args.triggeredByUserId, u.provider ?? args.provider,
-        u.vendor ?? null, u.model ?? args.requestedModel ?? null, args.outcome,
+        u.vendor ?? null, model, args.outcome,
         u.inputTokens ?? null, u.outputTokens ?? null, u.cacheReadTokens ?? null,
         u.cacheCreationTokens ?? null, u.reasoningTokens ?? null, u.totalTokens ?? null,
-        reported, u.raw != null ? JSON.stringify(u.raw) : null,
+        reported, u.raw != null ? JSON.stringify(u.raw) : null, costUsd,
       ]);
       inserted += res.rowCount ?? 0;
     }

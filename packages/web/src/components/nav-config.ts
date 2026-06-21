@@ -22,6 +22,7 @@ export const NAV_GROUPS: NavGroup[] = [
     scope: "workspace",
     items: [
       { slug: "dashboard", icon: "📊", label: "Dashboard" },
+      { slug: "usage", icon: "📈", label: "Usage" },
       { slug: "workflows", icon: "⚡", label: "Workflows" },
       { slug: "workflow-instances", icon: "▶", label: "Workflow Instances" },
       { slug: "agents", icon: "🤖", label: "Agents" },

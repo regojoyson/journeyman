@@ -6,8 +6,8 @@ import {
   verifyWebhookRequest,
   type VerifyInput,
 } from "@journeyman/webhooks";
-import type { Composition } from "../composition.ts";
-import { matchAndResolveWebhookWaits, type WaitOutcome } from "./match-human-tasks.ts";
+import type { Composition } from "@journeyman/api-context";
+import { matchAndResolveWebhookWaits, type WaitOutcome } from "@journeyman/api-context";
 import { resolveWebhookSecret, secretRefFromAuth } from "./webhook-secret-lookup.ts";
 import { fireWebhookTriggers, type TriggerOutcome } from "./webhook-trigger-fire.ts";
 import { fireAgentForWebhook } from "./agent-webhook-fire.ts";

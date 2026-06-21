@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Framework Setup — Jira + BMAD + Project Hub + Journeyman</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#f3f4f6; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; line-height:1.55; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrap { max-width:1080px; margin:0 auto; padding:28px; }
+  .card { background:#fff; border-radius:16px; padding:30px 34px; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:22px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; background:#f4f4f6; padding:1px 5px; border-radius:4px; }
+  h1 { font-size:25px; margin:0 0 4px; color:#111827; }
+  h2 { font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#9ca3af; margin:0 0 16px; }
+  h3 { font-size:16px; margin:0 0 4px; color:#111827; }
+  .sub { color:#6b7280; font-size:14px; margin:0 0 22px; }
+  .flow { list-style:none; padding:0; margin:14px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:8px 26px; font-size:13px; }
+  .flow li { display:flex; gap:9px; }
+  .flow .b { flex:0 0 22px; height:22px; border-radius:50%; background:#111827; color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .step { display:flex; gap:16px; padding:13px 0; border-bottom:1px solid #f1f1f3; }
+  .step:last-child { border-bottom:none; }
+  .step .n { flex:0 0 30px; height:30px; border-radius:50%; background:#111827; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .step .t b { font-size:14.5px; color:#111827; }
+  .step .t { font-size:13.5px; color:#4b5563; }
+  .new { display:inline-block; font-size:10px; font-weight:700; color:#b45309; background:#fef3c7; border-radius:9px; padding:1px 7px; margin-left:6px; }
+  .reuse { display:inline-block; font-size:10px; font-weight:700; color:#15803d; background:#dcfce7; border-radius:9px; padding:1px 7px; margin-left:6px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #f1f1f3; vertical-align:top; }
+  th { color:#9ca3af; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+  .diagram-wrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ DIAGRAM ============ -->
+  <div class="card">
+    <h1>Framework setup</h1>
+    <p class="sub">Jira · BMAD · Project Hub · Journeyman — how the four wire together, how to set it up, and the reference docs.</p>
+    <h2>The complete picture</h2>
+
+    <div class="diagram-wrap">
+    <svg viewBox="0 0 1040 620" width="100%" font-family="-apple-system,Segoe UI,Roboto,sans-serif">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+      </defs>
+
+      <!-- HUMANS -->
+      <rect x="405" y="22" width="230" height="56" rx="12" fill="#fffbeb" stroke="#f59e0b"/>
+      <text x="520" y="46" font-size="14" font-weight="700" fill="#b45309" text-anchor="middle">HUMANS</text>
+      <text x="520" y="65" font-size="11.5" fill="#92400e" text-anchor="middle">approve at gates · Product + Dev</text>
+
+      <!-- JIRA -->
+      <rect x="60" y="120" width="235" height="120" rx="12" fill="#eef4ff" stroke="#0052cc"/>
+      <text x="80" y="148" font-size="15" font-weight="700" fill="#0052cc">JIRA</text>
+      <text x="80" y="168" font-size="11.5" fill="#374151">status spine — Story workflow</text>
+      <text x="80" y="190" font-size="11" fill="#6b7280">NEW → … → IN PROGRESS →</text>
+      <text x="80" y="206" font-size="11" fill="#6b7280">CODE REVIEW → TESTING →</text>
+      <text x="80" y="222" font-size="11" fill="#6b7280">RELEASE → DONE</text>
+
+      <!-- PROJECT HUB -->
+      <rect x="745" y="110" width="235" height="150" rx="12" fill="#ecfdf3" stroke="#16a34a"/>
+      <text x="765" y="138" font-size="15" font-weight="700" fill="#16a34a">PROJECT HUB (git)</text>
+      <text x="765" y="160" font-size="11.5" fill="#374151">▪ epics/ · stories/ — context</text>
+      <text x="765" y="180" font-size="11.5" fill="#374151">▪ bmad-core/ — the agents</text>
+      <text x="765" y="200" font-size="11.5" fill="#374151">▪ process/workflow.yaml</text>
+      <text x="765" y="220" font-size="11.5" fill="#374151">▪ repos/registry.yaml</text>
+      <text x="765" y="240" font-size="11.5" fill="#374151">▪ CONVENTIONS.md</text>
+
+      <!-- ENGINE -->
+      <rect x="110" y="320" width="820" height="120" rx="14" fill="#f9fafb" stroke="#9ca3af"/>
+      <text x="128" y="344" font-size="14" font-weight="700" fill="#374151">JOURNEYMAN ENGINE</text>
+      <text x="300" y="344" font-size="11" fill="#9ca3af">(reference engine — swappable)</text>
+      <!-- pills -->
+      <g font-size="11.5" font-weight="600" text-anchor="middle">
+        <rect x="130" y="364" width="135" height="56" rx="9" fill="#fff" stroke="#e5e7eb"/><text x="197" y="388" fill="#374151">Trigger</text><text x="197" y="405" font-size="10" font-weight="400" fill="#9ca3af">on Jira status</text>
+        <rect x="285" y="364" width="150" height="56" rx="9" fill="#fff" stroke="#e5e7eb"/><text x="360" y="388" fill="#374151">Sandbox · clone</text><text x="360" y="405" font-size="10" font-weight="400" fill="#9ca3af">Hub + code repos</text>
+        <rect x="455" y="364" width="170" height="56" rx="9" fill="#fff" stroke="#e5e7eb"/><text x="540" y="385" fill="#374151">Agent (custom-ai)</text><text x="540" y="404" font-size="10" font-weight="400" fill="#9ca3af">reads bmad-core persona</text>
+        <rect x="645" y="364" width="120" height="56" rx="9" fill="#fff" stroke="#e5e7eb"/><text x="705" y="388" fill="#374151">Pause</text><text x="705" y="405" font-size="10" font-weight="400" fill="#9ca3af">human gate</text>
+        <rect x="785" y="364" width="125" height="56" rx="9" fill="#fff" stroke="#e5e7eb"/><text x="847" y="388" fill="#374151">Sync</text><text x="847" y="405" font-size="10" font-weight="400" fill="#9ca3af">Hub ↔ Jira</text>
+      </g>
+
+      <!-- CODE REPOS -->
+      <rect x="420" y="500" width="200" height="64" rx="12" fill="#f3f4f6" stroke="#9ca3af"/>
+      <text x="520" y="528" font-size="14" font-weight="700" fill="#4b5563" text-anchor="middle">CODE REPOS</text>
+      <text x="520" y="547" font-size="11" fill="#6b7280" text-anchor="middle">api · web · search-svc · …</text>
+
+      <!-- arrows -->
+      <!-- Jira <-> engine -->
+      <line x1="180" y1="240" x2="180" y2="320" stroke="#6b7280" stroke-width="1.8" marker-start="url(#a)" marker-end="url(#a)"/>
+      <text x="192" y="270" font-size="11" fill="#374151">① status → trigger</text>
+      <text x="192" y="296" font-size="11" fill="#374151">⑥ sync + advance</text>
+      <!-- Hub <-> engine -->
+      <line x1="845" y1="260" x2="845" y2="320" stroke="#6b7280" stroke-width="1.8" marker-start="url(#a)" marker-end="url(#a)"/>
+      <text x="612" y="290" font-size="11" fill="#374151" text-anchor="end">② clone: read context + bmad-core</text>
+      <text x="612" y="307" font-size="11" fill="#374151" text-anchor="end">⑤ write artifacts (Hub PR)</text>
+      <!-- Humans <-> engine -->
+      <line x1="575" y1="78" x2="575" y2="320" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-start="url(#a)" marker-end="url(#a)"/>
+      <text x="585" y="200" font-size="11" fill="#374151">④ pause → approve</text>
+      <!-- Code repos <-> engine -->
+      <line x1="520" y1="440" x2="520" y2="500" stroke="#6b7280" stroke-width="1.8" marker-start="url(#a)" marker-end="url(#a)"/>
+      <text x="532" y="475" font-size="11" fill="#374151">③ clone repos · ⑤ open code PRs</text>
+    </svg>
+    </div>
+
+    <ol class="flow">
+      <li><span class="b">1</span><span>Jira status change fires a webhook → Journeyman picks the phase.</span></li>
+      <li><span class="b">2</span><span>Sandbox clones the Hub — context <i>and</i> <code>bmad-core</code>.</span></li>
+      <li><span class="b">3</span><span>It also clones the story's code repos (from <code>registry.yaml</code>).</span></li>
+      <li><span class="b">4</span><span>Agent reads the BMAD persona + context, does the work; pauses for the human gate.</span></li>
+      <li><span class="b">5</span><span>Writes artifacts back to the Hub and code to the repos — one GitLab MR each (via the GitLab MCP).</span></li>
+      <li><span class="b">6</span><span>Sync mirrors content to Jira and advances the status → next phase.</span></li>
+    </ol>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <div class="card">
+    <h2>How to set it up</h2>
+    <div class="step"><div class="n">1</div><div class="t"><b>Create the Project Hub repo</b> <span class="reuse">git</span><br>New repo with the folder layout (product/ · technical/ · epics/ · repos/ · process/). Add <code>CONVENTIONS.md</code>.</div></div>
+    <div class="step"><div class="n">2</div><div class="t"><b>Install BMAD into the Hub</b> <span class="reuse">bmad</span><br>Run <code>npx bmad-method install</code> so <code>bmad-core/</code> (agents, tasks, templates, checklists) lives <i>inside</i> the Hub, versioned with the project.</div></div>
+    <div class="step"><div class="n">3</div><div class="t"><b>Configure Jira</b> <span class="reuse">jira</span><br>Build the Story workflow statuses and a webhook on status-change → Journeyman. Add pointer fields — <code>Hub Path</code>, <code>Epic</code>, <code>Repos</code>, <code>MR Links</code> — so agents/devs resolve context fast; the <b>Jira key is the unique id</b> (branch / MR / commit / story <code>jiraKey</code>). Epics stay in the Hub (no Jira epics).</div></div>
+    <div class="step"><div class="n">4</div><div class="t"><b>Fill <code>repos/registry.yaml</code></b> <span class="reuse">hub</span><br>List every code repo (url, purpose, tech, owners). Stories reference these short names.</div></div>
+    <div class="step"><div class="n">5</div><div class="t"><b>Define <code>process/workflow.yaml</code></b> <span class="reuse">hub</span><br>Map each status → which <code>bmad-core</code> agent runs + the gate (none / role / on-flag). This is the trigger contract.</div></div>
+    <div class="step"><div class="n">6</div><div class="t"><b>Wire Journeyman</b> <span class="reuse">journeyman</span><br>One <code>custom-ai</code> step per phase whose prompt = "act as <code>bmad-core/agents/&lt;name&gt;.md</code> for {{storyPath}}". Add the Hub to the clone step. Triggers from the Jira webhook. Pauses at gates (built-in).</div></div>
+    <div class="step"><div class="n">7</div><div class="t"><b>Build the two new pieces</b> <span class="new">new code</span><br>(a) the <b>Hub↔Jira sync</b> (create issues from story docs, write <code>jiraKey</code> back, echo status); (b) the <b>Zone-1 trigger</b> for epic phases (fires on a Hub MR merge, since there's no Jira issue yet).</div></div>
+    <div class="step"><div class="n">8</div><div class="t"><b>Dry-run one epic end to end</b> <span class="reuse">test</span><br>Discovery → Design → Grooming in the Hub → mirror a story → walk it to DONE. Watch the gates, PRs, and sync before rollout.</div></div>
+  </div>
+
+  <!-- ============ DOCS ============ -->
+  <div class="card">
+    <h2>Reference docs</h2>
+
+    <h3>The four components</h3>
+    <table>
+      <tr><th>Component</th><th>Role</th><th>Owns</th></tr>
+      <tr><td><span class="dot" style="background:#0052cc"></span><b>Jira</b></td><td>status spine — triggers phases</td><td>status + minimal fields</td></tr>
+      <tr><td><span class="dot" style="background:#16a34a"></span><b>Project Hub</b></td><td>context brain + carries <code>bmad-core</code> + <code>process</code></td><td>all content (canonical)</td></tr>
+      <tr><td><span class="dot" style="background:#a855f7"></span><b>BMAD</b></td><td>the agents/templates each phase uses</td><td>the "how" of each role</td></tr>
+      <tr><td><span class="dot" style="background:#6b7280"></span><b>Journeyman</b></td><td>runs agents, gates, sandbox, sync</td><td>execution (swappable)</td></tr>
+    </table>
+
+    <h3 style="margin-top:22px">Sync rules — no drift</h3>
+    <table>
+      <tr><th>Direction</th><th>Canonical</th><th>What flows</th></tr>
+      <tr><td><b>CONTENT →</b> Hub to Jira</td><td>Hub</td><td>title, description, links create/update the issue</td></tr>
+      <tr><td><b>STATUS ←</b> Jira to Hub</td><td>Jira</td><td>status echoed read-only into the doc's frontmatter</td></tr>
+    </table>
+    <p class="sub" style="margin-top:8px">Two one-way flows on different fields → they never conflict. Story <code>id</code> is the anchor; <code>jiraKey</code> written back once.</p>
+
+    <h3 style="margin-top:14px">Gating</h3>
+    <table>
+      <tr><th>Mode</th><th>When</th></tr>
+      <tr><td><b>Notify</b></td><td>every phase (Slack / Jira comment)</td></tr>
+      <tr><td><b>Block</b></td><td>key gates only — Ready-for-Dev, Release, Discovery approval</td></tr>
+      <tr><td><b>Escalate</b></td><td>any phase where an agent flags a problem</td></tr>
+    </table>
+
+    <h3 style="margin-top:22px">Two zones</h3>
+    <table>
+      <tr><th>Zone</th><th>Phases</th><th>Driven by</th></tr>
+      <tr><td><b>1 · Hub-driven</b></td><td>Discovery → Design → Grooming</td><td>Hub PRs (no Jira)</td></tr>
+      <tr><td><b>2 · Jira-driven</b></td><td>Solution → Implementation → Release</td><td>Jira status</td></tr>
+    </table>
+    <p class="sub" style="margin-top:8px">Handoff = Grooming: approved stories are mirrored into Jira and enter the dev workflow.</p>
+  </div>
+
+</div>
+</body>
+</html>

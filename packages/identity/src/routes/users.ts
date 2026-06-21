@@ -8,9 +8,10 @@ export async function registerUserRoutes(app: FastifyInstance, pool: Pool) {
   const requireAuth = makeRequireAuth({ pool });
 
   app.post("/api/users/me/password",
-    { preHandler: requireAuth() },
+    { preHandler: requireAuth(), config: { audit: { action: "user.change_password", targetType: "user" } } },
     async (req, reply) => {
       const ctx = req.runContext!;
+      req.auditTargetId = ctx.user.id;
       const body = req.body as { currentPassword?: string; newPassword?: string };
       if (!body?.currentPassword || !body?.newPassword) {
         return reply.code(400).send({ error: "Missing fields" });
@@ -24,9 +25,10 @@ export async function registerUserRoutes(app: FastifyInstance, pool: Pool) {
     });
 
   app.patch("/api/users/me",
-    { preHandler: requireAuth() },
+    { preHandler: requireAuth(), config: { audit: { action: "user.update_self", targetType: "user" } } },
     async (req) => {
       const ctx = req.runContext!;
+      req.auditTargetId = ctx.user.id;
       const body = req.body as { displayName?: string | null };
       await updateUserProfile(pool, ctx.user.id, body?.displayName ?? null);
       return { ok: true };

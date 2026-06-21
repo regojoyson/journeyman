@@ -23,6 +23,7 @@
     "@journeyman/run-viewer": "*",
     "@journeyman/runs-list": "*",
     "@journeyman/theme": "*",
+    "@journeyman/usage-dashboard": "*",
     "@tanstack/react-query": "^5.50.0",
     "@uiw/react-codemirror": "^4.23.0",
     "@xyflow/react": "^12.3.5",

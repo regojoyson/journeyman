@@ -92,12 +92,12 @@ more tar files. Set the target registry in `.env.production`:
 
 `compose:up` runs the full publish flow for you: it builds + pushes the kit, runs
 migrations, then records the pushed image **digests** in the `kit_images` table via
-`register-kit`. Workers read that table and pull the exact digest.
+`register:kit`. Workers read that table and pull the exact digest.
 
 - `runner-base` → the **default box** (docker sandboxes with no custom image).
 - `runner-bundle` → grafted into **custom** sandbox images.
 
-To roll a new kit: `npm run build:kit && npm run register-kit` (workers pick up the
+To roll a new kit: `npm run build:kit && npm run register:kit` (workers pick up the
 new digest automatically — no redeploy).
 
 **Local default (zero-config):** compose ships a bundled `registry:2` service. With

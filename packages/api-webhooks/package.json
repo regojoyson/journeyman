@@ -1,0 +1,26 @@
+{
+  "name": "@journeyman/api-webhooks",
+  "version": "0.1.0",
+  "description": "Public webhook ingress: receiver, ingest pipeline, trigger-fire, and webhook management routes.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@journeyman/api-context": "*",
+    "@journeyman/core": "*",
+    "@journeyman/identity": "*",
+    "@journeyman/webhooks": "*",
+    "fastify": "^5.8.5",
+    "pg": "^8.13.0",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^6.0.3",
+    "vitest": "^2.0.0"
+  }
+}

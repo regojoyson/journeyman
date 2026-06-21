@@ -4,6 +4,7 @@ import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/ide
 import { getLiveStats } from "../db/live.ts";
 import { getOverviewStats } from "../db/overview.ts";
 import { parseWindow } from "../window.ts";
+import { registerUsageRoutes } from "./usage.ts";
 
 export async function registerAnalyticsRoutes(app: FastifyInstance, pool: Pool) {
   const requireAuth = makeRequireAuth({ pool });
@@ -27,4 +28,6 @@ export async function registerAnalyticsRoutes(app: FastifyInstance, pool: Pool) 
       return await getOverviewStats(pool, wsId, parseWindow(window));
     },
   );
+
+  registerUsageRoutes(app, pool);
 }

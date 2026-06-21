@@ -8,6 +8,7 @@ export type { INotificationProvider } from "./interfaces/notification.interface.
 export type * from "./types/git.types.ts";
 export type * from "./types/coding.types.ts";
 export type * from "./types/coding-models.types.ts";
+export type * from "./types/model-pricing.types.ts";
 export * from "./types/coding-tools.types.ts";
 export { parseRepoList } from "./parse-repo-list.ts";
 export type * from "./types/custom-steps.types.ts";

@@ -8,7 +8,7 @@ import type {
   WorkflowInputDef,
   WorkflowNode,
 } from "@journeyman/core";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 export interface ResolvedFormField {
   name: string;

@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
 import { providersForKind, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
+import { modelPricingApi } from "../api/modelPricing.ts";
+import { activePriceFor } from "./coding-model-pricing.ts";
 import { listOrgSecrets, createOrgSecret, type OrgSecretMeta } from "../api/secrets.ts";
 
 const CODING_PROVIDERS = providersForKind("coding-cli");
@@ -36,6 +38,14 @@ export function AdminCodingModelsPage() {
     queryFn: () => codingModelsApi.orgList(orgId),
     enabled: !!orgId,
   });
+  const { data: prices = [] } = useQuery({
+    queryKey: ["model-pricing", orgId],
+    queryFn: () => modelPricingApi.orgList(orgId),
+    enabled: !!orgId,
+  });
+  const pricedKeys = new Set(
+    prices.filter((p) => p.effectiveTo === null).map((p) => `${p.provider}/${p.model}`),
+  );
 
   const [editing, setEditing] = useState<CodingModel | null>(null);
   const [creating, setCreating] = useState<CodingModelCreateInput | null>(null);
@@ -43,6 +53,7 @@ export function AdminCodingModelsPage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["org-coding-models", orgId] });
     qc.invalidateQueries({ queryKey: ["coding-models"] });
+    qc.invalidateQueries({ queryKey: ["model-pricing", orgId] });
   };
 
   const createMut = useMutation({
@@ -88,6 +99,7 @@ export function AdminCodingModelsPage() {
                   <th className="px-4 py-3 text-left font-medium">Enabled</th>
                   <th className="px-4 py-3 text-left font-medium">Deprecated</th>
                   <th className="px-4 py-3 text-left font-medium">Context</th>
+                  <th className="px-4 py-3 text-left font-medium">Price</th>
                   <th className="px-4 py-3 text-right font-medium"></th>
                 </tr>
               </thead>
@@ -101,6 +113,11 @@ export function AdminCodingModelsPage() {
                     <td className="px-4 py-3">{m.enabled ? <span className="text-success">yes</span> : <span className="text-slate-500">no</span>}</td>
                     <td className="px-4 py-3">{m.deprecated ? <span className="text-danger">yes</span> : <span className="text-slate-600">—</span>}</td>
                     <td className="px-4 py-3 text-slate-300">{m.contextWindow ?? <span className="text-slate-600">—</span>}</td>
+                    <td className="px-4 py-3">
+                      {pricedKeys.has(`${m.provider}/${m.modelId}`)
+                        ? <span className="text-success">✓</span>
+                        : <span className="text-slate-600">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button className={btnGhost} onClick={() => setEditing(m)}>Edit</button>
                       <button
@@ -116,7 +133,7 @@ export function AdminCodingModelsPage() {
                 ))}
                 {(data ?? []).length === 0 && (
                   <tr>
-                    <td className="px-4 py-8 text-center text-slate-500" colSpan={8}>
+                    <td className="px-4 py-8 text-center text-slate-500" colSpan={9}>
                       No models yet — click “New model” to add one.
                     </td>
                   </tr>
@@ -179,6 +196,27 @@ function ModelForm(props: {
     queryFn: () => listOrgSecrets(props.orgId),
     enabled: !!props.orgId,
   });
+
+  const { data: orgPrices = [] } = useQuery({
+    queryKey: ["model-pricing", props.orgId],
+    queryFn: () => modelPricingApi.orgList(props.orgId),
+    enabled: !!props.orgId,
+  });
+
+  type RateKey = "inputPer1m" | "outputPer1m" | "cacheReadPer1m" | "cacheCreationPer1m" | "reasoningPer1m";
+  const setPrice = (k: RateKey, raw: string) =>
+    setV((prev) => ({
+      ...prev,
+      pricing: { ...(prev.pricing ?? {}), [k]: raw.trim() === "" ? null : Number(raw) },
+    }));
+
+  const isEdit = "id" in props.initial;
+  useEffect(() => {
+    if (!isEdit || v.pricing !== undefined) return;
+    const active = activePriceFor(orgPrices, v.provider, v.modelId);
+    if (active) setV((prev) => ({ ...prev, pricing: active }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgPrices, isEdit]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6">
@@ -294,6 +332,41 @@ function ModelForm(props: {
                 onChange={(e) => set("contextWindow", e.target.value === "" ? undefined : Number(e.target.value))}
                 placeholder="200000"
               />
+            </Field>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-medium text-slate-200">Pricing</h3>
+          <p className="text-xs text-slate-400">
+            USD per 1M tokens — optional. Changing a saved price supersedes the old one going forward;
+            past usage keeps its cost.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Input / 1M">
+              <input className={inputCls} type="number" step="0.0001" min="0"
+                value={v.pricing?.inputPer1m ?? ""}
+                onChange={(e) => setPrice("inputPer1m", e.target.value)} placeholder="15" />
+            </Field>
+            <Field label="Output / 1M">
+              <input className={inputCls} type="number" step="0.0001" min="0"
+                value={v.pricing?.outputPer1m ?? ""}
+                onChange={(e) => setPrice("outputPer1m", e.target.value)} placeholder="75" />
+            </Field>
+            <Field label="Cache read / 1M">
+              <input className={inputCls} type="number" step="0.0001" min="0"
+                value={v.pricing?.cacheReadPer1m ?? ""}
+                onChange={(e) => setPrice("cacheReadPer1m", e.target.value)} placeholder="1.5" />
+            </Field>
+            <Field label="Cache write / 1M">
+              <input className={inputCls} type="number" step="0.0001" min="0"
+                value={v.pricing?.cacheCreationPer1m ?? ""}
+                onChange={(e) => setPrice("cacheCreationPer1m", e.target.value)} placeholder="18.75" />
+            </Field>
+            <Field label="Reasoning / 1M">
+              <input className={inputCls} type="number" step="0.0001" min="0"
+                value={v.pricing?.reasoningPer1m ?? ""}
+                onChange={(e) => setPrice("reasoningPer1m", e.target.value)} placeholder="(often = output)" />
             </Field>
           </div>
         </section>

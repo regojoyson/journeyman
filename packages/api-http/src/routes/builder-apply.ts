@@ -5,7 +5,7 @@ import {
   applyBuildPlan, buildApplyArgs, requiredGapsRemaining,
   getBuilderSession, updateBuilderSession, type ApplyDeps,
 } from "@journeyman/builder";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 
 /** Build the executor's injected deps from the live composition. */
 function makeApplyDeps(c: Composition): ApplyDeps {

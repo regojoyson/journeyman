@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import type { FastifyInstance } from "fastify";
-import type { Composition } from "../composition.ts";
+import type { Composition } from "@journeyman/api-context";
 import { makeRequireAuth, makeRequireWorkspacePermission } from "@journeyman/identity";
 import { seal, open } from "@journeyman/secrets";
 import { GitHubProvider, GitLabProvider } from "@journeyman/git-provider";
@@ -16,7 +16,6 @@ import {
   DuplicateConnectionError,
 } from "@journeyman/connections";
 import { SESClient, GetSendQuotaCommand } from "@aws-sdk/client-ses";
-import { audit } from "../services/audit.ts";
 
 function gitProviderFor(provider: string, token: string, baseUrl?: string): IGitProvider {
   if (provider === "gitlab") return new GitLabProvider({ token, baseUrl });
@@ -176,7 +175,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     return listConnections(pool, wsId, category);
   });
 
-  app.post("/workspaces/:wsId/connections", write, async (req, reply) => {
+  app.post("/workspaces/:wsId/connections", { ...write, config: { audit: { action: "connection.create", targetType: "connection" } } }, async (req, reply) => {
     const { wsId } = req.params as { wsId: string };
     const ctx = req.runContext!;
     const body = req.body as {
@@ -203,7 +202,8 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
         config: body.config ?? {},
         createdBy: ctx.user.id,
       });
-      await audit(pool, { orgId: ctx.workspace!.orgId, actorUserId: ctx.user.id, action: "connection.create", targetType: "connection", targetId: conn.id, detail: { category: body.category, provider: body.provider, label: conn.label } });
+      req.auditTargetId = conn.id;
+      req.auditDetail = { category: body.category, provider: body.provider, label: conn.label };
       reply.code(201);
       return conn;
     } catch (err) {
@@ -222,7 +222,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     return conn;
   });
 
-  app.patch("/workspaces/:wsId/connections/:id", write, async (req, reply) => {
+  app.patch("/workspaces/:wsId/connections/:id", { ...write, config: { audit: { action: "connection.update", targetType: "connection" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
     const conn = await loadConn(id, wsId);
     if (!conn) { reply.code(404); return { error: "not_found" }; }
@@ -243,9 +243,8 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
     }
   });
 
-  app.delete("/workspaces/:wsId/connections/:id", write, async (req, reply) => {
+  app.delete("/workspaces/:wsId/connections/:id", { ...write, config: { audit: { action: "connection.delete", targetType: "connection" } } }, async (req, reply) => {
     const { wsId, id } = req.params as { wsId: string; id: string };
-    const ctx = req.runContext!;
     const conn = await loadConn(id, wsId);
     if (!conn) { reply.code(404); return { error: "not_found" }; }
     const using = await agentsUsingConnection(pool, id);
@@ -254,7 +253,7 @@ export function registerConnectionRoutes(app: FastifyInstance, c: Composition): 
       return;
     }
     await deleteConnection(pool, id);
-    await audit(pool, { orgId: conn.orgId, actorUserId: ctx.user.id, action: "connection.delete", targetType: "connection", targetId: id, detail: { label: conn.label } });
+    req.auditDetail = { label: conn.label };
     reply.code(204);
   });
 

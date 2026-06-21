@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { EditorView, keymap } from "@codemirror/view";
-import type { EditorState, TransactionSpec } from "@codemirror/state";
+import { EditorState, type TransactionSpec } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { useTheme } from "@journeyman/theme";
 import type { CustomStepInputField, SecretSlotDef } from "@journeyman/core";
@@ -59,8 +59,9 @@ export const PromptCodeMirror = forwardRef<
     inputFields: CustomStepInputField[];
     slots: SecretSlotDef[];
     height: string;
+    readOnly?: boolean;
   }
->(function PromptCodeMirror({ value, onChange, inputFields, slots, height }, ref) {
+>(function PromptCodeMirror({ value, onChange, inputFields, slots, height, readOnly = false }, ref) {
   const cmRef = useRef<ReactCodeMirrorRef | null>(null);
   const { theme } = useTheme();
 
@@ -72,8 +73,9 @@ export const PromptCodeMirror = forwardRef<
       tokenHighlighter(namesOf(inputFields), namesOf(slots)),
       tokenAutocomplete(inputFields, slots),
       makeEditorTheme(theme === "dark"),
+      ...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
     ],
-    [inputFields, slots, theme],
+    [inputFields, slots, theme, readOnly],
   );
 
   useImperativeHandle(
