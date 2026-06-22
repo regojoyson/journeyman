@@ -195,16 +195,20 @@ export class AgentRunStepHandler implements IStepHandler {
     const agentId = typeof input.agentId === "string" ? input.agentId : null;
     let versionId: string | null = null;
     let wfName: string | null = null;
+    let instanceWorkspaceId: string | null = null;
     try {
       const wi = await this.deps.pool.query(
-        "SELECT workflow_version_id, workflow_name_snapshot FROM jm_workflow_instances WHERE id = $1",
+        "SELECT workspace_id, workflow_version_id, workflow_name_snapshot FROM jm_workflow_instances WHERE id = $1",
         [ctx.workflowInstanceId],
       );
       versionId = wi.rows[0]?.workflow_version_id ?? null;
       wfName = wi.rows[0]?.workflow_name_snapshot ?? null;
+      instanceWorkspaceId = wi.rows[0]?.workspace_id ?? null;
     } catch { /* non-fatal */ }
     const insertedRows = await recordTokenUsage(this.deps.pool, {
-      workspaceId: typeof input.workspaceId === "string" ? input.workspaceId : null,
+      // Instance row is authoritative for workspace_id; the step input lacks it,
+      // and a NULL workspace_id makes the row invisible to the workspace dashboard.
+      workspaceId: instanceWorkspaceId ?? (typeof input.workspaceId === "string" ? input.workspaceId : null),
       orgId, workflowId, workflowVersionId: versionId, workflowName: wfName,
       workflowInstanceId: ctx.workflowInstanceId, nodeId: ctx.nodeId, stepType: this.stepType,
       stepName: typeof input.displayName === "string" ? input.displayName : null, attempt: ctx.attempt,
