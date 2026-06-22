@@ -127,6 +127,13 @@ export function logSessionEvent(
   onLog?: CodingCliLogFn,
 ): void {
   const hasStructured = info.structured !== undefined || info.structured_output !== undefined;
-  logger.info({ sessionId, hasError: !!info.error, hasStructured }, "opencode session result");
-  onLog?.(`📦 session result: ${info.error ? "error" : hasStructured ? "structured" : "no-structured"}`);
+  // Surface the reported token usage so a "tokens not captured" problem is visible
+  // in the run's events: if this shows `tokens: none reported` (or all zeros) the
+  // model/endpoint never returned usage; if it shows counts, the gap is downstream.
+  const t = (info.tokens ?? null) as { input?: number; output?: number; reasoning?: number; cache?: { read?: number; write?: number } } | null;
+  const tokenSummary = t
+    ? `in=${t.input ?? 0} out=${t.output ?? 0} reasoning=${t.reasoning ?? 0} cacheRead=${t.cache?.read ?? 0} cacheWrite=${t.cache?.write ?? 0}`
+    : "none reported";
+  logger.info({ sessionId, hasError: !!info.error, hasStructured, tokens: t }, "opencode session result");
+  onLog?.(`📦 session result: ${info.error ? "error" : hasStructured ? "structured" : "no-structured"} | 📊 tokens: ${tokenSummary}`);
 }
