@@ -1,6 +1,16 @@
 import { describe, it, expect } from "vitest";
-import type { UsageSummary } from "@journeyman/core";
-import { tokenMixSegments } from "./usage-charts.ts";
+import type { UsageSummary, UsageBreakdownRow, UsageTimeseriesPoint } from "@journeyman/core";
+import { tokenMixSegments, cumulativeSpend, costShareSegments } from "./usage-charts.ts";
+
+function row(label: string, costUsd: number | null): UsageBreakdownRow {
+  return {
+    key: label, label, costUsd, totalTokens: 0, runs: 1,
+    costPerRun: costUsd, cacheReadHitRatio: 0, firstSeen: null,
+  };
+}
+function pt(day: string, costUsd: number | null): UsageTimeseriesPoint {
+  return { day, costUsd, totalTokens: 0 };
+}
 
 const base: UsageSummary = {
   rows: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0,
@@ -37,5 +47,38 @@ describe("tokenMixSegments", () => {
       cacheCreationTokens: 1, reasoningTokens: 1,
     });
     expect(new Set(segs.map((s) => s.color)).size).toBe(5);
+  });
+});
+
+describe("cumulativeSpend", () => {
+  it("returns [] for empty series", () => expect(cumulativeSpend([])).toEqual([]));
+
+  it("accumulates cost across days", () => {
+    const pts = cumulativeSpend([pt("d1", 1), pt("d2", 2), pt("d3", 3)]);
+    expect(pts.map((p) => p.value)).toEqual([1, 3, 6]);
+  });
+
+  it("treats null cost as zero", () => {
+    const pts = cumulativeSpend([pt("d1", 2), pt("d2", null), pt("d3", 1)]);
+    expect(pts.map((p) => p.value)).toEqual([2, 2, 3]);
+  });
+});
+
+describe("costShareSegments", () => {
+  it("returns [] when nothing is priced", () =>
+    expect(costShareSegments([row("a", null), row("b", 0)])).toEqual([]));
+
+  it("sorts by cost descending and shows percent of total", () => {
+    const segs = costShareSegments([row("a", 25), row("b", 75)]);
+    expect(segs.map((s) => s.label)).toEqual(["b", "a"]);
+    expect(segs[0].valueText).toContain("75%");
+  });
+
+  it("rolls overflow groups into an Other slice", () => {
+    const rows = Array.from({ length: 9 }, (_, i) => row(`g${i}`, 10 - i));
+    const segs = costShareSegments(rows, 6);
+    expect(segs).toHaveLength(7);
+    expect(segs[6].label).toBe("Other (3)");
+    expect(segs[6].value).toBe(4 + 3 + 2);
   });
 });

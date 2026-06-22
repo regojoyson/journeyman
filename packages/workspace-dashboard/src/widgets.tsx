@@ -113,8 +113,11 @@ export function Sparkline({ points }: { points: { value: number; title: string }
   const values = points.map((p) => p.value);
   const max = Math.max(1, ...values), min = Math.min(...values);
   const span = Math.max(1, max - min);
-  const step = points.length > 1 ? 260 / (points.length - 1) : 260;
-  const at = (i: number): [number, number] => [i * step, 90 - ((values[i] - min) / span) * 70 - 10];
+  // A single point can't form a polyline segment — center it and draw a
+  // visible dot so the card body isn't blank for a one-day window.
+  const single = points.length === 1;
+  const step = single ? 0 : 260 / (points.length - 1);
+  const at = (i: number): [number, number] => [single ? 130 : i * step, 90 - ((values[i] - min) / span) * 70 - 10];
   const coords = points.map((_, i) => at(i).join(",")).join(" ");
   return (
     <svg width="100%" height="90" viewBox="0 0 260 90" preserveAspectRatio="none">
@@ -122,7 +125,7 @@ export function Sparkline({ points }: { points: { value: number; title: string }
       {points.map((p, i) => {
         const [x, y] = at(i);
         return (
-          <circle key={i} cx={x} cy={y} r={6} fill="transparent">
+          <circle key={i} cx={x} cy={y} r={single ? 4 : 6} fill={single ? BLUE : "transparent"}>
             <title>{p.title}</title>
           </circle>
         );

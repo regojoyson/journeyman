@@ -1,11 +1,12 @@
+import type { CSSProperties, ReactNode } from "react";
 import type {
   AnalyticsWindow, UsageSummary, UsageTimeseriesPoint, UsageBreakdownRow,
-  UsageWaste, UsageInstanceDetail, UsageDimensionKey,
+  UsageWaste, UsageDimensionKey,
 } from "@journeyman/core";
 import { Card, Bars, HBars, Donut, Sparkline, COLORS } from "./widgets.tsx";
 import { formatUsd, formatTokens, pctDelta } from "./format.ts";
 import { detectVersionRegression } from "./regression.ts";
-import { tokenMixSegments } from "./usage-charts.ts";
+import { tokenMixSegments, cumulativeSpend, costShareSegments } from "./usage-charts.ts";
 
 export interface UsageDashboardProps {
   window: AnalyticsWindow;
@@ -16,11 +17,13 @@ export interface UsageDashboardProps {
   timeseries: UsageTimeseriesPoint[];
   breakdown: UsageBreakdownRow[];
   waste: UsageWaste | null;
-  instance: UsageInstanceDetail | null;
-  onSelectInstance?: (id: string) => void;
   workspaceName?: string;
   loading?: boolean;
 }
+
+const GRID: CSSProperties = {
+  display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16,
+};
 
 const WINDOWS: AnalyticsWindow[] = ["30d", "7d", "24h"];
 const GROUPS: UsageDimensionKey[] = ["model", "agent", "workflow", "workflow_version", "step"];
@@ -29,6 +32,7 @@ export function UsageDashboard(p: UsageDashboardProps) {
   const s = p.summary;
   const costDelta = s ? pctDelta(s.costUsd ?? 0, s.previous.costUsd ?? 0) : null;
   const maxCost = Math.max(1, ...p.breakdown.map((b) => b.costUsd ?? 0));
+  const maxCostPerRun = Math.max(1e-9, ...p.breakdown.map((b) => b.costPerRun ?? 0));
 
   // Version regression: when grouping by workflow_version, order versions chronologically
   // (by first appearance) and flag when the newest version's $/run jumped >25% over the prior one.
@@ -86,28 +90,29 @@ export function UsageDashboard(p: UsageDashboardProps) {
         <Kpi label="Cache hit ratio" value={s ? `${Math.round(s.cacheReadHitRatio * 100)}%` : "—"} />
       </div>
 
-      {/* Cost + token trends, side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      {/* ── Spend ─────────────────────────────────────────────── */}
+      <SectionLabel>Spend</SectionLabel>
+      <div style={GRID}>
         <Card title="Cost over time" cap="daily · USD">
           <Bars bars={p.timeseries.map((t) => ({ label: t.day, value: t.costUsd ?? 0 }))} />
         </Card>
-        <Card title="Tokens over time" cap="daily · total tokens">
-          <Sparkline points={p.timeseries.map((t) => ({
-            value: t.totalTokens, title: `${t.day} · ${formatTokens(t.totalTokens)} tokens`,
-          }))} />
+        <Card title="Cumulative spend" cap="running total · USD">
+          <Sparkline points={cumulativeSpend(p.timeseries)} />
         </Card>
-      </div>
-
-      {/* Cost breakdown + token composition, side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 16 }}>
-        <Card title={`Cost by ${p.groupBy}`}>
+        <Card title={`Cost by ${p.groupBy}`} cap="total · USD">
           <HBars rows={p.breakdown.map((b) => ({
             label: b.label, frac: (b.costUsd ?? 0) / maxCost, valueText: formatUsd(b.costUsd),
             title: `${b.label} · ${formatUsd(b.costUsd)} · ${b.runs} runs`,
           }))} />
         </Card>
-        <Card title="Token mix" cap="input · output · cache · reasoning">
-          <Donut segments={tokenMixSegments(s)} />
+        <Card title="Cost share" cap={`by ${p.groupBy} · % of spend`}>
+          <Donut segments={costShareSegments(p.breakdown)} />
+        </Card>
+        <Card title={`Cost per run by ${p.groupBy}`} cap="unit cost · USD / run">
+          <HBars rows={p.breakdown.map((b) => ({
+            label: b.label, frac: (b.costPerRun ?? 0) / maxCostPerRun, valueText: formatUsd(b.costPerRun),
+            title: `${b.label} · ${formatUsd(b.costPerRun)} / run · ${b.runs} runs`,
+          }))} />
         </Card>
       </div>
 
@@ -125,31 +130,27 @@ export function UsageDashboard(p: UsageDashboardProps) {
         </div>
       )}
 
-      {p.onSelectInstance && (
-        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <span style={{ opacity: 0.6 }}>Drill into a run</span>
-          <input placeholder="workflow instance id"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") p.onSelectInstance!((e.target as HTMLInputElement).value.trim());
-            }}
-            style={{ flex: "0 1 320px" }} />
-        </div>
-      )}
-
-      {p.instance && (
-        <div style={{ marginTop: 16 }}>
-          <Card title={`Run drill-in — ${p.instance.instanceId.slice(0, 8)}`} cap={`${formatUsd(p.instance.costUsd)} · ${formatTokens(p.instance.totalTokens)} tokens`}>
-            {p.instance.steps.map((st) => (
-              <div key={`${st.nodeId}-${st.attempt}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid rgba(127,127,127,.12)" }}>
-                <span>{st.stepType}{st.stepName ? ` · ${st.stepName}` : ""}{st.attempt > 1 ? ` · attempt ${st.attempt}` : ""}</span>
-                <span style={{ opacity: 0.6 }}>{formatTokens(st.totalTokens)}</span>
-                <span>{formatUsd(st.costUsd)}</span>
-              </div>
-            ))}
-          </Card>
-        </div>
-      )}
+      {/* ── Usage ─────────────────────────────────────────────── */}
+      <SectionLabel>Usage</SectionLabel>
+      <div style={GRID}>
+        <Card title="Tokens over time" cap="daily · total tokens">
+          <Sparkline points={p.timeseries.map((t) => ({
+            value: t.totalTokens, title: `${t.day} · ${formatTokens(t.totalTokens)} tokens`,
+          }))} />
+        </Card>
+        <Card title="Token mix" cap="input · output · cache · reasoning">
+          <Donut segments={tokenMixSegments(s)} />
+        </Card>
+      </div>
     </div>
+  );
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <h3 style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", opacity: 0.55, margin: "24px 0 12px" }}>
+      {children}
+    </h3>
   );
 }
 
