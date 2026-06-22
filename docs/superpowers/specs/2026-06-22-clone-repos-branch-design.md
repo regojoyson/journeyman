@@ -113,7 +113,16 @@ Agent UI (per-repo branch)                Clone-repos step UI (per-repo branch)
 
 Blank branch at any layer ⇒ clone the repo's default branch.
 
-## Migration impact (breaking)
+## Execution backends (local / Docker / Windows)
+
+Clone routing branches only on whether `ctx.exec` is set (worker-harness sets it for every non-`local` backend), never on backend type — so per-repo branch is uniform:
+- **Local workspace** (`type: "local"`, `ctx.exec` undefined) → git-provider `execFile git` into an absolute `ctx.workspaceDir` (never `/workspace`). OS-agnostic.
+- **Docker** (`ctx.exec` set) → `SandboxInstanceGitProvider` → `docker exec journeyman-runner` → `dispatch.ts` clone op.
+- **Windows** (`ctx.exec` set) → same `SandboxInstanceGitProvider` → gRPC → the **same** `journeyman-runner` → same `dispatch.ts`.
+
+The per-repo `branch` rides in the `clone` op `stdin` (`unknown`, passed through verbatim by each backend's `exec`), so B4's single change is honored everywhere. Auth URL builders are pure string-building, OS-agnostic and branch-independent.
+
+**Pre-existing Windows caveat (not introduced here, do not fix in this change):** `dispatch.ts` `gitClone` hardcodes `cwd: "/workspace"` and ignores the per-op `cwd` the Windows env supplies (`C:\jm-runs\<runId>`) — this is windows-sandbox design Finding 3b, and the Windows agent package does not exist yet. This change does not touch `cwd`/folder handling, so it adds no new Windows risk, but Windows clone is not end-to-end functional until that agent lands.
 
 - **Clone-repos step:** existing saved flows with `repos: "a\nb"` + `branch` are not read at runtime (cloning fails) and show no rows / a validation error in the editor until the node's repos are re-picked. Accepted per the no-legacy decision.
 - **Agents:** unaffected at the data layer — agents recompile config from `repoSelections` on every run, so there is no persisted legacy agent-run config. Old agents simply gain the per-repo branch capability.
