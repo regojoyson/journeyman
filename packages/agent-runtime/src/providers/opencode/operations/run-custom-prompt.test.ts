@@ -74,6 +74,19 @@ describe("opencode runCustomPrompt", () => {
     expect(r.error).toBe("boom");
   });
 
+  it("surfaces the HTTP status when session.prompt returns an empty error body", async () => {
+    // The opencode SDK collapses a non-2xx response with an empty body to `error: {}`
+    // (see @opencode-ai/sdk client.gen.js). The diagnosable detail lives on `response`.
+    const client = fakeClient(() => ({
+      data: undefined,
+      error: {},
+      response: { status: 500, statusText: "Internal Server Error" },
+    }));
+    const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "text", model: "openai/gpt-4o" });
+    expect(r.error).toContain("500");
+    expect(r.error).toContain("Internal Server Error");
+  });
+
   it("puts confinement in `system` and only the task in `parts` (caching prefix)", async () => {
     let captured: any;
     const client = fakeClient((p) => { captured = p; return { data: { info: {}, parts: [] } }; });

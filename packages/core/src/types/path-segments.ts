@@ -7,7 +7,10 @@ export type PathSeg =
   | { kind: "index"; index: number }
   | { kind: "wildcard" };
 
-const IDENT = /[\w$]/;
+// `-` is included so custom-step fields named with hyphens (e.g. "review-path")
+// parse as a single key. Hyphen is never a separator here ('.' and '[' are),
+// so accepting it cannot change where existing paths split.
+const IDENT = /[\w$-]/;
 
 /**
  * Tokenize a JSONPath-flavored field string into segments.

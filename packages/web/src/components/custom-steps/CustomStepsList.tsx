@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CustomAiStep } from "@journeyman/core";
 import { customStepsApi } from "../../api/customSteps.ts";
-import { btnDanger, btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/admin-styles.ts";
+import { btnGhost, btnPrimary, card, codePill, inputCls } from "../../routes/admin-styles.ts";
 import { StatusChip } from "../StatusChip.tsx";
 
 function CreateStepModal({
@@ -82,12 +82,6 @@ export function CustomStepsList(props: { wsId: string }) {
   };
 
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [wsId]);
-
-  const handleDelete = async (p: CustomAiStep) => {
-    if (!confirm(`Delete custom step "${p.name}"?`)) return;
-    await customStepsApi.remove(wsId, p.id);
-    await refresh();
-  };
 
   const handleImport = async (parsed: unknown) => {
     try {
@@ -215,7 +209,6 @@ export function CustomStepsList(props: { wsId: string }) {
                     >
                       Edit
                     </button>
-                    <button className={btnDanger} onClick={() => handleDelete(p)}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -227,7 +220,7 @@ export function CustomStepsList(props: { wsId: string }) {
       {showCreate && (
         <CreateStepModal
           wsId={wsId}
-          onCreated={(created) => navigate(`/workspaces/${wsId}/custom-steps/${created.id}?section=prompt`)}
+          onCreated={(created) => navigate(`/workspaces/${wsId}/custom-steps/${created.id}?section=definition`)}
           onCancel={() => setShowCreate(false)}
         />
       )}

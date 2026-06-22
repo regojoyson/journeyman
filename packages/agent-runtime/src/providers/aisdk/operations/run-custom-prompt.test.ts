@@ -128,6 +128,19 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(r.error).toMatch(/boom/);
   });
 
+  it("returns usage accumulated from onStepFinish when the run throws mid-stream", async () => {
+    generateText.mockImplementationOnce((args: any) => {
+      args.onStepFinish?.({ usage: { inputTokens: 100, outputTokens: 20 } });
+      args.onStepFinish?.({ usage: { inputTokens: 50, outputTokens: 10 } });
+      throw new Error("rate limit");
+    });
+    const r = await runCustomPrompt({ prompt: "hi", outputMode: "text", model: "x", modelConfig: {} } as any);
+    expect(r.error).toMatch(/rate limit/);
+    expect(r.usage).toBeDefined();
+    expect(r.usage).toHaveLength(1);
+    expect(r.usage![0]).toMatchObject({ provider: "aisdk", model: "x", inputTokens: 150, outputTokens: 30 });
+  });
+
   it("surfaces the underlying reason when the catch is an API error", async () => {
     (resolveModel as any).mockImplementationOnce(() => {
       throw Object.assign(new Error("Bad Request"), {

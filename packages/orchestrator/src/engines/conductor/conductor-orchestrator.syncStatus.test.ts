@@ -147,4 +147,35 @@ describe("ConductorOrchestrator.syncStatus — Conductor 404 (orphan)", () => {
     await expect(orch.syncStatus("wi-1")).rejects.toThrow("503");
     expect(setStatus).not.toHaveBeenCalled();
   });
+
+  /**
+   * Regression: a run that already completed must never be resurrected and
+   * cancelled by a later sync. Conductor archives/forgets finished workflows,
+   * so a getWorkflow 404 on a terminal instance is EXPECTED — it means "the
+   * engine garbage-collected a finished run", not "an active run was lost".
+   * syncStatus must short-circuit on terminal instances before ever calling
+   * the engine, so the 404-reconcile path can't overwrite `completed`.
+   */
+  it("does NOT re-sync or cancel an already-completed instance whose engine 404s", async () => {
+    const { deps, setStatus, getWorkflow } = makeNotFoundDeps();
+    deps.workflowInstances.getById = vi.fn().mockResolvedValue({
+      id: "wi-1",
+      engineWorkflowId: "eng-1",
+      status: "completed",
+      startedAt: new Date(0),
+      attemptNumber: 1,
+      definitionSnapshot: { nodes: [], edges: [] },
+    });
+    getWorkflow.mockResolvedValue(null); // Conductor has forgotten the finished run
+    const orch = new ConductorOrchestrator(deps);
+
+    // Two views of the finished run page — exactly the trigger that flipped a
+    // completed run to cancelled in production (NOT_FOUND_TERMINAL_THRESHOLD=2).
+    await orch.syncStatus("wi-1");
+    const result = await orch.syncStatus("wi-1");
+
+    expect(result).toBe("completed");
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(getWorkflow).not.toHaveBeenCalled();
+  });
 });

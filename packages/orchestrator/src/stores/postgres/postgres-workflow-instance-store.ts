@@ -77,6 +77,12 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
     durationMs?: number;
     outputs?: Record<string, unknown>;
   } = {}): Promise<void> {
+    // A terminal run (completed/failed/cancelled) may never be flipped to ANOTHER
+    // terminal state — that's always a stray reconcile (e.g. a Conductor-404 sync
+    // overwriting completed → cancelled). The guard makes such an update a no-op.
+    // Terminal → non-terminal IS allowed: retryFromTask/resume legitimately move a
+    // failed/terminal run back to `running`. So block only when BOTH the current
+    // and the target status are terminal.
     await this.pool.query(
       `UPDATE jm_workflow_instances SET
          status = $1,
@@ -85,7 +91,11 @@ export class PostgresWorkflowInstanceStore implements IWorkflowInstanceStore {
          duration_ms = COALESCE($4, duration_ms),
          outputs = COALESCE($5::jsonb, outputs),
          started_at = COALESCE(started_at, CASE WHEN $1 = 'running' THEN now() ELSE NULL END)
-       WHERE id = $6`,
+       WHERE id = $6
+         AND NOT (
+           status IN ('completed','failed','cancelled')
+           AND $1 IN ('completed','failed','cancelled')
+         )`,
       [
         status,
         opts.failedAtNodeId ?? null,

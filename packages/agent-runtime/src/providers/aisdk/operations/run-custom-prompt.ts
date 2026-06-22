@@ -102,6 +102,17 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     "runCustomPrompt start",
   );
 
+  // Accumulate per-step usage so a mid-run throw (API error / abort) still reports the tokens
+  // burned before failing. generateText fires onStepFinish per step; result.usage stays
+  // authoritative on success.
+  const vendor = vendorFromConfig(opts.modelConfig, opts.model);
+  const stepUsage: TokenUsage[] = [];
+  const baseStepLogger = makeStepLogger(opts.onLog, level);
+  const onStepFinish = (step: { usage?: unknown }) => {
+    baseStepLogger(step as never);
+    if (step?.usage) stepUsage.push(...aiSdkUsageToTokenUsage(step.usage as never, opts.model ?? "", vendor));
+  };
+
   let mcp: { tools: Record<string, unknown>; close: () => Promise<void> } = { tools: {}, close: async () => {} };
   try {
     const baseModel = await resolveModel({ modelId: opts.model, config: opts.modelConfig, env: opts.env });
@@ -138,13 +149,12 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
       // AI SDK 6 stable option is `output` (was `experimental_output`); result is on `result.output`.
       ...(opts.outputMode === "structured" ? { output: buildOutput(opts.outputSchema) } : {}),
       ...(opts.signal ? { abortSignal: opts.signal } : {}),
-      onStepFinish: makeStepLogger(opts.onLog, level),
+      onStepFinish,
     } as any);
 
     logFinal(true, undefined, opts.onLog, level);
     log.info({ sessionId }, "runCustomPrompt done");
 
-    const vendor = vendorFromConfig(opts.modelConfig, opts.model);
     const usageRows: TokenUsage[] = aiSdkUsageToTokenUsage(result.usage, opts.model ?? "", vendor);
     const usage = () => accumulateUsage(usageRows);
 
@@ -168,7 +178,7 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
         ],
         output: buildOutput(opts.outputSchema),
         ...(opts.signal ? { abortSignal: opts.signal } : {}),
-        onStepFinish: makeStepLogger(opts.onLog, level),
+        onStepFinish,
       } as any);
       usageRows.push(...aiSdkUsageToTokenUsage(forced.usage, opts.model ?? "", vendor));
       structured = tryReadStructured(forced);
@@ -183,7 +193,7 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     const error = describeError(err);
     logFinal(false, error, opts.onLog, level);
     log.error({ sessionId, error }, "runCustomPrompt threw");
-    return { sessionId, error };
+    return { sessionId, error, usage: accumulateUsage(stepUsage) };
   } finally {
     await mcp.close();
   }

@@ -122,11 +122,13 @@ export function UsageDashboard(p: UsageDashboardProps) {
         </div>
       )}
 
-      {p.waste && p.waste.costUsd !== null && (
+      {p.waste && (p.waste.costUsd !== null || p.waste.failedRunsNoCost > 0) && (
         <div style={{ marginTop: 16, background: "rgba(255,106,106,.12)", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>
-          Wasted spend — {formatUsd(p.waste.costUsd)} on failed / retried runs
+          Wasted spend — {formatUsd(p.waste.costUsd ?? 0)} on failed / retried runs
           {p.waste.fractionOfTotalCost !== null && ` (${Math.round(p.waste.fractionOfTotalCost * 100)}% of total)`}.
           {p.waste.topAgent?.agentName && ` ${p.waste.topAgent.agentName} accounts for ${formatUsd(p.waste.topAgent.costUsd)}.`}
+          {p.waste.failedRunsNoCost > 0 &&
+            ` ${p.waste.failedRunsNoCost} more run${p.waste.failedRunsNoCost === 1 ? "" : "s"} failed or were cancelled with no AI cost recorded.`}
         </div>
       )}
 

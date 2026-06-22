@@ -71,8 +71,8 @@ export function CustomStepDetail({
 }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const rawSection = params.get("section") ?? "prompt";
-  const section = (SECTIONS.some((s) => s.id === rawSection) ? rawSection : "prompt") as SectionId;
+  const rawSection = params.get("section") ?? "definition";
+  const section = (SECTIONS.some((s) => s.id === rawSection) ? rawSection : "definition") as SectionId;
 
   const [original, setOriginal] = useState<CustomAiStep>(initial);
   const [step, setStep] = useState<CustomAiStep>(initial);

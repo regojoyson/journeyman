@@ -153,6 +153,8 @@ export interface UsageWaste {
   rows: number;
   fractionOfTotalCost: number | null;
   topAgent: { agentId: string | null; agentName: string | null; costUsd: number | null } | null;
+  /** Failed/cancelled workflow instances that recorded no priced cost (no row with cost_usd>0). */
+  failedRunsNoCost: number;
 }
 
 export interface UsageInstanceStep {

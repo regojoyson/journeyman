@@ -202,6 +202,18 @@ export class ConductorOrchestrator implements IOrchestratorEngine, IPauseableEng
   async syncStatus(workflowInstanceId: string): Promise<WorkflowInstanceStatus> {
     const instance = await this.deps.workflowInstances.getById(workflowInstanceId);
     if (!instance?.engineWorkflowId) return instance?.status ?? "pending";
+
+    // A terminal run is done — its status is owned and must never be re-derived
+    // from the engine. Conductor archives/forgets finished workflows, so a later
+    // getWorkflow would 404 and the orphan-reconcile below would wrongly flip a
+    // completed run to `cancelled`. This fires on the request path (the run-detail
+    // route calls syncStatus on every view), so without this guard simply viewing
+    // a finished run an hour later could cancel it. Short-circuit before any engine call.
+    if (isTerminalStatus(instance.status)) {
+      this.notFoundCounts.delete(workflowInstanceId);
+      return instance.status;
+    }
+
     const live = await this.deps.client.getWorkflow(instance.engineWorkflowId);
 
     // Conductor 404 (live === null): the engine no longer knows this run — almost

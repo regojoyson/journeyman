@@ -6,7 +6,7 @@ import { createLogger } from "@journeyman/core";
 import { toMcpServerConfigs, mergeSystemPrompts } from "@journeyman/mcp/sdk-adapter";
 import { toSdkPluginConfigs, buildSkillSystemPrompt } from "@journeyman/skills/sdk-adapter";
 import { logSdkMessage } from "../utils/sdk-logger.ts";
-import { modelUsageToTokenUsage } from "../utils/usage.ts";
+import { modelUsageToTokenUsage, createUsageAccumulator } from "../utils/usage.ts";
 import { resolveSession } from "../utils/session.ts";
 import { claudeNativeTools } from "../tool-mapping.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
@@ -148,9 +148,11 @@ export async function runCustomPrompt(
     return tail ? `${msg}\n--- engine stderr ---\n${tail.slice(-STDERR_CAP)}` : msg;
   };
 
+  const acc = createUsageAccumulator();
   try {
     for await (const msg of query({ prompt: opts.prompt, options: queryOptions as any })) {
       logSdkMessage(msg, opts.onLog, opts.agentLogLevel);
+      acc.add(msg);
       if ((msg as any).type === "result") {
         const m = msg as any;
         const usage = modelUsageToTokenUsage(m.modelUsage);
@@ -172,7 +174,7 @@ export async function runCustomPrompt(
   } catch (err) {
     const error = withStderr(String((err as Error)?.message ?? err));
     log.error({ sessionId, error }, "runCustomPrompt threw");
-    return { sessionId, error };
+    return { sessionId, error, usage: acc.toTokenUsage() };
   }
 
   log.info({ sessionId, outputMode: opts.outputMode }, "runCustomPrompt done");

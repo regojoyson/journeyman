@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DIMENSION_SQL, costPerRun, cacheReadHitRatio } from "./usage.ts";
+import { DIMENSION_SQL, costPerRun, cacheReadHitRatio, WASTE_OUTCOME_PREDICATE, usageWaste } from "./usage.ts";
 
 describe("DIMENSION_SQL whitelist", () => {
   it("maps known dimensions and omits unknown ones", () => {
@@ -29,5 +29,32 @@ describe("derivations", () => {
   it("cacheReadHitRatio = cacheRead / (cacheRead + input)", () => {
     expect(cacheReadHitRatio(75, 25)).toBeCloseTo(0.75, 6);
     expect(cacheReadHitRatio(0, 0)).toBe(0);
+  });
+});
+
+describe("waste predicate", () => {
+  it("counts failed/aborted attempts only — not successful retries", () => {
+    expect(WASTE_OUTCOME_PREDICATE).toBe("outcome <> 'success'");
+    expect(WASTE_OUTCOME_PREDICATE).not.toContain("attempt");
+  });
+});
+
+describe("usageWaste assembly", () => {
+  // Fake pool: dispatch canned rows by inspecting the SQL each query runs.
+  const pool = {
+    query: async (sql: string) => {
+      if (sql.includes("jm_workflow_instances")) return { rows: [{ failed_runs: 3 }] };
+      if (sql.includes("agent_id")) return { rows: [{ agent_id: "a1", agent_name: "Coder", cost_usd: "0.30" }] };
+      if (sql.includes("total_tokens")) return { rows: [{ cost_usd: "0.30", total_tokens: "1500", rows: 2 }] };
+      return { rows: [{ cost_usd: "1.20" }] }; // total cost
+    },
+  } as unknown as import("pg").Pool;
+
+  it("returns failedRunsNoCost and a fraction over total cost", async () => {
+    const w = await usageWaste(pool, "ws1", new Date("2026-06-01"));
+    expect(w.costUsd).toBe(0.3);
+    expect(w.failedRunsNoCost).toBe(3);
+    expect(w.fractionOfTotalCost).toBeCloseTo(0.25, 6);
+    expect(w.topAgent).toMatchObject({ agentName: "Coder", costUsd: 0.3 });
   });
 });

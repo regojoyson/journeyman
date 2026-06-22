@@ -140,12 +140,15 @@ export async function usageByDimension(
   });
 }
 
+/** Waste = failed/aborted token rows. Excludes successful retries (a successful attempt is not waste). */
+export const WASTE_OUTCOME_PREDICATE = "outcome <> 'success'";
+
 export async function usageWaste(pool: Pool, wsId: string, since: Date): Promise<UsageWaste> {
   const { rows } = await pool.query(
     `SELECT COALESCE(SUM(total_tokens),0)::bigint AS total_tokens,
             COUNT(*)::int AS rows, SUM(cost_usd) AS cost_usd
      FROM jm_token_usage
-     WHERE workspace_id = $1 AND created_at >= $2 AND (outcome <> 'success' OR attempt > 1)`,
+     WHERE workspace_id = $1 AND created_at >= $2 AND ${WASTE_OUTCOME_PREDICATE}`,
     [wsId, since],
   );
   const totalCostRow = await pool.query(
@@ -155,8 +158,19 @@ export async function usageWaste(pool: Pool, wsId: string, since: Date): Promise
   const topAgentRow = await pool.query(
     `SELECT agent_id, agent_name, SUM(cost_usd) AS cost_usd
      FROM jm_token_usage
-     WHERE workspace_id = $1 AND created_at >= $2 AND (outcome <> 'success' OR attempt > 1)
+     WHERE workspace_id = $1 AND created_at >= $2 AND ${WASTE_OUTCOME_PREDICATE}
      GROUP BY agent_id, agent_name ORDER BY cost_usd DESC NULLS LAST LIMIT 1`,
+    [wsId, since],
+  );
+  const failedRunsRow = await pool.query(
+    `SELECT count(*)::int AS failed_runs
+     FROM jm_workflow_instances
+     WHERE workspace_id = $1 AND created_at >= $2
+       AND status IN ('failed','cancelled')
+       AND id NOT IN (
+         SELECT DISTINCT workflow_instance_id FROM jm_token_usage
+         WHERE workspace_id = $1 AND created_at >= $2 AND cost_usd > 0
+       )`,
     [wsId, since],
   );
   const wasteCost = rows[0].cost_usd === null ? null : Number(rows[0].cost_usd);
@@ -167,6 +181,7 @@ export async function usageWaste(pool: Pool, wsId: string, since: Date): Promise
     fractionOfTotalCost: wasteCost !== null && totalCost && totalCost > 0 ? wasteCost / totalCost : null,
     topAgent: ta ? { agentId: ta.agent_id ?? null, agentName: ta.agent_name ?? null,
       costUsd: ta.cost_usd === null ? null : Number(ta.cost_usd) } : null,
+    failedRunsNoCost: Number(failedRunsRow.rows[0].failed_runs),
   };
 }
 

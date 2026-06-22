@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { UsageSummary, UsageTimeseriesPoint, UsageBreakdownRow } from "@journeyman/core";
+import type { UsageSummary, UsageTimeseriesPoint, UsageBreakdownRow, UsageWaste } from "@journeyman/core";
 import { UsageDashboard } from "./UsageDashboard.tsx";
 
 const summary: UsageSummary = {
@@ -58,5 +58,35 @@ describe("UsageDashboard render", () => {
   it("no longer renders the run drill-in", () => {
     expect(html).not.toContain("Drill into a run");
     expect(html).not.toContain("workflow instance id");
+  });
+});
+
+function renderWithWaste(waste: UsageWaste) {
+  return renderToStaticMarkup(
+    <UsageDashboard
+      window="30d" onWindowChange={() => {}}
+      groupBy="model" onGroupByChange={() => {}}
+      summary={summary} timeseries={timeseries} breakdown={breakdown}
+      waste={waste} workspaceName="Cadmium"
+    />,
+  );
+}
+
+describe("UsageDashboard waste caveat", () => {
+  it("shows the caveat and renders the card even when costUsd is null", () => {
+    const html = renderWithWaste({
+      costUsd: null, totalTokens: 0, rows: 0, fractionOfTotalCost: null, topAgent: null, failedRunsNoCost: 8,
+    });
+    expect(html).toContain("Wasted spend");
+    expect(html).toContain("$0.00");
+    expect(html).toContain("8 more run");
+    expect(html).toContain("no AI cost recorded");
+  });
+
+  it("hides the card when there is neither cost nor failed runs", () => {
+    const html = renderWithWaste({
+      costUsd: null, totalTokens: 0, rows: 0, fractionOfTotalCost: null, topAgent: null, failedRunsNoCost: 0,
+    });
+    expect(html).not.toContain("Wasted spend");
   });
 });

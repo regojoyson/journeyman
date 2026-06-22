@@ -31,6 +31,20 @@ describe("parsePathSegments", () => {
     expect(parsePathSegments("items[].x")).toBeNull();
     expect(parsePathSegments("a..b")).toBeNull();
   });
+  it("parses hyphenated keys (custom-step fields use names verbatim as keys)", () => {
+    // Custom-step input/output fields are keyed by their raw name (shape-adapter),
+    // so a field named "review-path" yields a ref like `node.output.review-path`.
+    // The tokenizer must accept the hyphen — '-' is never a separator here.
+    expect(parsePathSegments("review-path")).toEqual([
+      { kind: "key", key: "review-path" },
+    ]);
+    expect(parsePathSegments("review-path.sub-field")).toEqual([
+      { kind: "key", key: "review-path" }, { kind: "key", key: "sub-field" },
+    ]);
+    expect(parsePathSegments("items[0].review-path")).toEqual([
+      { kind: "key", key: "items" }, { kind: "index", index: 0 }, { kind: "key", key: "review-path" },
+    ]);
+  });
   it("tolerates a leading separator so path TAILS parse", () => {
     // The editor parses tails like ".user.name" — a leading '.' is a separator,
     // not an error. (Validators always pass a full field starting with a key.)

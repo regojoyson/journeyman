@@ -14,15 +14,29 @@ const log = createLogger("opencode:custom-prompt");
 /** How many times opencode itself re-asks the model to satisfy the json_schema. */
 const STRUCTURED_RETRY_COUNT = Number(process.env.OPENCODE_STRUCTURED_RETRIES) || 2;
 
-/** Render an OpenCode SDK error envelope into a diagnosable string. */
-function describeSdkError(error: unknown): string {
-  if (error == null) return "no data and no error returned (server unreachable?)";
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
+/**
+ * Render an OpenCode SDK error envelope into a diagnosable string. The SDK
+ * collapses a non-2xx HTTP response with an empty body to `error: {}` (see
+ * @opencode-ai/sdk client.gen.js), so the only actionable detail — the status —
+ * lives on the result tuple's `response`. Surface it, or failures read as `{}`.
+ */
+function describeSdkError(error: unknown, response?: { status?: number; statusText?: string }): string {
+  const http = response?.status != null
+    ? `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`
+    : "";
+  const empty =
+    error == null ||
+    (typeof error === "string" && error.length === 0) ||
+    (typeof error === "object" && error !== null && Object.keys(error).length === 0);
+  let body: string;
+  if (empty) {
+    body = http ? "(empty error body)" : "no data and no error returned (server unreachable?)";
+  } else if (typeof error === "string") {
+    body = error;
+  } else {
+    try { body = JSON.stringify(error); } catch { body = String(error); }
   }
+  return [http, body].filter(Boolean).join(": ");
 }
 
 /** Concatenate the text of all text parts in a prompt response. */
@@ -114,7 +128,8 @@ export async function runCustomPrompt(
   if (opts.signal?.aborted) throw abortError(opts.signal);
 
   if (!res.data) {
-    const error = `opencode session.prompt failed: ${describeSdkError((res as { error?: unknown }).error)}`;
+    const r = res as { error?: unknown; response?: { status?: number; statusText?: string } };
+    const error = `opencode session.prompt failed: ${describeSdkError(r.error, r.response)}`;
     log.error({ sessionId, error }, "runCustomPrompt failed (no data)");
     return { sessionId, error };
   }
