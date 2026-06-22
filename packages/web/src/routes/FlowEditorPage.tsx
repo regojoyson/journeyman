@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowEditor } from "@journeyman/flow-editor";
-import type { Workflow, WorkflowGraph } from "@journeyman/core";
-import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, listWorkflowVersions, type UnpublishWarning } from "../api/flows.ts";
+import type { Workflow, WorkflowGraph, WorkflowInputDef } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
+import { getFlow, updateFlowDefinition, updateFlowMeta, validateFlowDefinition, promoteFlow, unpublishFlow, deleteFlow, rollbackFlow, listWorkflowVersions, getCurrentWorkflowVersion, type UnpublishWarning } from "../api/flows.ts";
+import { RunFlowDialog } from "../components/RunFlowDialog.tsx";
 import { workflowCapabilities } from "../lib/workflow-capabilities.ts";
 import { getWorkflowTriggers, type TriggerSummary } from "../api/workflow-triggers.ts";
 import { mcpApi } from "../api/mcp.ts";
@@ -22,6 +24,7 @@ export function FlowEditorPage() {
   const [, setDirty] = useState(false);
   const [saveToast, setSaveToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [triggers, setTriggers] = useState<TriggerSummary[] | null>(null);
+  const [showRun, setShowRun] = useState(false);
   const { activeOrgId } = useAuth();
   const { can } = useWorkspace();
   const customStepDefs = useCustomStepPaletteEntries(wsId);
@@ -49,6 +52,14 @@ export function FlowEditorPage() {
   const catalogQ = useQuery({
     queryKey: ["mcp-catalog"],
     queryFn: () => mcpApi.listCatalog(),
+  });
+
+  // Inputs for the Run dialog come from the published version (that's what runs),
+  // fetched lazily when the user opens the dialog.
+  const runVersionQ = useQuery({
+    queryKey: ["flow-version-current", id],
+    queryFn: () => getCurrentWorkflowVersion(wsId, id!),
+    enabled: !!id && showRun,
   });
 
   useEffect(() => {
@@ -100,6 +111,15 @@ export function FlowEditorPage() {
 
   const flow = flowQ.data;
   const caps = workflowCapabilities({ can, status: flow.status });
+
+  const runVersionDef = runVersionQ.data?.definition;
+  const runStartNode = runVersionDef?.nodes.find((n) =>
+    n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+  );
+  const runInputDefs: WorkflowInputDef[] = ((runVersionDef?.inputDefs && runVersionDef.inputDefs.length > 0)
+    ? runVersionDef.inputDefs
+    : getStartWorkflowInputs(runStartNode?.config)
+  ).filter((d) => d.name.trim() !== "");
 
   const onPublish = async () => {
     const res = await promoteFlow(wsId, flow.id);
@@ -192,6 +212,7 @@ export function FlowEditorPage() {
             onValidate={async (next) => await validateFlowDefinition(wsId, next)}
             busy={saveM.isPending}
             status={flow.status}
+            onRun={() => setShowRun(true)}
             onPublish={caps.canPublish ? onPublish : undefined}
             onUnpublish={caps.canPublish ? onUnpublish : undefined}
             versions={versionsQ.data ?? []}
@@ -207,6 +228,19 @@ export function FlowEditorPage() {
           kind={saveToast.kind}
           message={saveToast.message}
           onDismiss={() => setSaveToast(null)}
+        />
+      )}
+      {showRun && !runVersionQ.isLoading && (
+        <RunFlowDialog
+          wsId={wsId}
+          workflowId={flow.id}
+          workflowName={flow.name}
+          inputDefs={runInputDefs}
+          onClose={() => setShowRun(false)}
+          onSubmitted={(res) => {
+            setShowRun(false);
+            navigate(`/workspaces/${wsId}/workflow-instances/${res.workflowInstanceId}`);
+          }}
         />
       )}
     </>
