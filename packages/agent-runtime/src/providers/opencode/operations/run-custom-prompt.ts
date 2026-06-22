@@ -219,6 +219,28 @@ async function forceJsonTurn(
  * client (index.ts owns start/close). Honors outputMode none|text|structured,
  * tools, cwd (as `directory`), and MCP system prompts.
  */
+/**
+ * The final assistant message (`{ info, parts }`) from the durable messages endpoint.
+ * Used to recover a completed run whose blocking `session.prompt` response was dropped
+ * — e.g. undici's ~300s headersTimeout fires on a long agent run, so the prompt's HTTP
+ * call is aborted even though the server finished and the SSE stream reached
+ * session.idle. The result is still retrievable here. Returns undefined if nothing
+ * usable is present (caller then surfaces the original error).
+ */
+async function recoverFinalMessage(
+  client: OpenCodeClient,
+  sid: string,
+): Promise<{ info?: unknown; parts?: unknown[] } | undefined> {
+  try {
+    const msgs = await client.session.messages({ sessionID: sid });
+    const list = (msgs.data ?? []) as Array<{ info?: { role?: string }; parts?: unknown[] }>;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i]?.info && (list[i].info as { role?: string }).role === "assistant") return list[i];
+    }
+  } catch { /* messages unavailable — caller fails with the original error */ }
+  return undefined;
+}
+
 export async function runCustomPrompt(
   client: OpenCodeClient,
   config: OpenCodeProviderConfig,
@@ -297,7 +319,17 @@ export async function runCustomPrompt(
 
   if (opts.signal?.aborted) throw abortError(opts.signal);
 
-  if (!res.data) {
+  // The blocking session.prompt response can be dropped on a long run (undici's
+  // ~300s headersTimeout) even though the server finished and the SSE stream reached
+  // session.idle. Recover the completed result from the messages endpoint rather than
+  // failing — a failure here is retryable and re-runs the whole agent, duplicating any
+  // branches/PRs it already created.
+  let data = res.data as { info?: unknown; parts?: unknown[] } | undefined;
+  if (!data) {
+    data = await recoverFinalMessage(client, sid);
+    if (data) log.warn({ sessionId, sid }, "session.prompt returned no data; recovered final message from messages endpoint");
+  }
+  if (!data) {
     const r = res as { error?: unknown; response?: { status?: number; statusText?: string } };
     const error = `opencode session.prompt failed: ${describeSdkError(r.error, r.response)}`;
     log.error({ sessionId, error }, "runCustomPrompt failed (no data)");
@@ -312,11 +344,11 @@ export async function runCustomPrompt(
       const parts = ((msgs.data ?? []) as Array<{ parts?: unknown[] }>).flatMap((m) => m.parts ?? []);
       logOpenCodeTranscript(parts as never, opts.onLog, level);
     } catch {
-      logOpenCodeTranscript((res.data as { parts?: unknown }).parts as never, opts.onLog, level);
+      logOpenCodeTranscript((data as { parts?: unknown }).parts as never, opts.onLog, level);
     }
   }
 
-  const info = res.data.info as { error?: unknown; structured?: unknown; structured_output?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
+  const info = (data.info ?? {}) as { error?: unknown; structured?: unknown; structured_output?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
   logSessionEvent(log, sessionId, info as never, opts.onLog);
   const usage = openCodeInfoToTokenUsage(info as never);
 
@@ -336,7 +368,7 @@ export async function runCustomPrompt(
       // first, then salvage a JSON block from what it already printed.
       const recovered =
         (opts.signal?.aborted ? undefined : await forceJsonTurn(client, sid, schema, { model, tools, system, cwd: opts.cwd }))
-        ?? salvageFromParts(res.data as never, schema);
+        ?? salvageFromParts(data as never, schema);
       if (recovered) {
         log.warn({ sessionId, error: (info.error as { name?: string })?.name ?? "error" }, "structured recovered after session error (forced turn or salvage)");
         return { sessionId, structured: recovered, usage };
@@ -348,7 +380,7 @@ export async function runCustomPrompt(
   }
 
   if (opts.outputMode === "none") return { sessionId, usage };
-  if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never), usage };
+  if (opts.outputMode === "text") return { sessionId, result: extractText(data as never), usage };
 
   // structured: validate → forced JSON-only turn → salvage → fail clearly.
   const schema = opts.outputSchema as Record<string, unknown>;
@@ -364,7 +396,7 @@ export async function runCustomPrompt(
   }
 
   // Surface whichever channel the model actually used so the failure is diagnosable.
-  const text = extractText(res.data as never) || concatParts(res.data as never, "reasoning");
+  const text = extractText(data as never) || concatParts(data as never, "reasoning");
   const error = `model did not return valid structured output (${valid.reason}). Model said: ${text.slice(0, 500) || "(no text)"}`;
   log.error({ sessionId, error }, "runCustomPrompt structured invalid");
   return { sessionId, error, usage };

@@ -26,6 +26,19 @@ const BYPASS_PERMISSION = {
 const DEFAULT_STEP_BUDGET = 80;
 
 /**
+ * Per-request timeout (ms) for the model provider — OpenCode → the model server.
+ * OpenCode's default is 300000 (5 min), which is too tight for a slow local model
+ * doing a large single generation (e.g. writing a long spec): the call gets aborted
+ * mid-stream. Raise it generously. Env-overridable via OPENCODE_MODEL_TIMEOUT_MS;
+ * a non-positive/invalid value falls back to the default. Only applied to custom
+ * endpoints (the provider block is built only when a baseUrl is set).
+ */
+const PROVIDER_TIMEOUT_MS = (() => {
+  const env = Number(process.env.OPENCODE_MODEL_TIMEOUT_MS);
+  return Number.isFinite(env) && env > 0 ? env : 900_000; // 15 min
+})();
+
+/**
  * The OpenCode agent every prompt runs under. It MUST match the agent key we set
  * `maxSteps` on below — prompts pass `agent: OPENCODE_AGENT` explicitly so the
  * step budget can never silently fail to apply (which it would if a prompt ran
@@ -90,6 +103,7 @@ function buildProviderBlock(
     ...(modelConfig.baseUrl ? { baseURL: modelConfig.baseUrl } : {}),
     ...(apiKey ? { apiKey } : {}),
     ...(includeUsage !== undefined ? { includeUsage } : {}),
+    timeout: PROVIDER_TIMEOUT_MS,
   };
   return {
     [parsed.providerID]: {

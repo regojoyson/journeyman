@@ -34,7 +34,7 @@ describe("buildServerConfig", () => {
     expect(c.provider).toEqual({
       lmstudio: {
         npm: "@ai-sdk/openai-compatible",
-        options: { baseURL: "http://host.docker.internal:1234/v1", includeUsage: true },
+        options: { baseURL: "http://host.docker.internal:1234/v1", includeUsage: true, timeout: 900_000 },
         models: { "llama-3.1": {} },
       },
     });
@@ -68,7 +68,15 @@ describe("buildServerConfig", () => {
       modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/openai-compatible", requiresApiKey: true },
       env: { MYVLLM_API_KEY: "secret-123" },
     });
-    expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123", includeUsage: true });
+    expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123", includeUsage: true, timeout: 900_000 });
+  });
+
+  it("sets a generous provider request timeout (raised above OpenCode's 300s default)", () => {
+    const c = buildServerConfig(cfg, {
+      model: "lmstudio/qwen",
+      modelConfig: { baseUrl: "http://host:1234/v1" },
+    });
+    expect((c.provider as any).lmstudio.options.timeout).toBe(900_000);
   });
 
   it("defaults includeUsage on for an openai-compatible custom endpoint", () => {

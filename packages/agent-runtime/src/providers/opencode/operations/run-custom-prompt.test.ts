@@ -104,6 +104,34 @@ describe("opencode runCustomPrompt", () => {
     expect(r.error).toBeTruthy(); // clear failure, not a prose blob in spec-path
   });
 
+  it("recovers the final message via session.messages when prompt returns no data (long-run timeout)", async () => {
+    const client = {
+      session: {
+        create: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+        prompt: vi.fn().mockResolvedValue({ data: undefined }), // dropped, e.g. undici ~300s headersTimeout
+        messages: vi.fn().mockResolvedValue({ data: [
+          { info: { role: "user" }, parts: [{ type: "text", text: "do it" }] },
+          { info: { role: "assistant", tokens: { input: 10, output: 5 } }, parts: [{ type: "text", text: "All done. PR created." }] },
+        ] }),
+      },
+    } as unknown as OpenCodeClient;
+    const r = await runCustomPrompt(client, cfg, { prompt: "do it", outputMode: "text" });
+    expect(r.error).toBeUndefined();
+    expect(r.result).toBe("All done. PR created.");
+  });
+
+  it("still fails clearly when prompt returns no data and nothing is recoverable", async () => {
+    const client = {
+      session: {
+        create: vi.fn().mockResolvedValue({ data: { id: "s" } }),
+        prompt: vi.fn().mockResolvedValue({ data: undefined }),
+        messages: vi.fn().mockResolvedValue({ data: [] }),
+      },
+    } as unknown as OpenCodeClient;
+    const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "text" });
+    expect(r.error).toMatch(/no data/);
+  });
+
   it("structured mode without a schema returns an error", async () => {
     const client = fakeClient(() => ({ data: { info: {}, parts: [] } }));
     const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "structured" });
