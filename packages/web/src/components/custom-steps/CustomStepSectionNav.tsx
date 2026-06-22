@@ -2,12 +2,12 @@ export type SectionId =
   | "prompt" | "definition" | "inputs" | "output" | "tools" | "secrets" | "delete";
 
 export const SECTIONS: Array<{ id: SectionId; label: string; icon: string; danger?: boolean }> = [
-  { id: "prompt",     label: "Prompt",     icon: "✨" },
   { id: "definition", label: "Definition", icon: "📝" },
   { id: "inputs",     label: "Inputs",     icon: "↘️" },
   { id: "output",     label: "Output",     icon: "↗️" },
   { id: "tools",      label: "Tools",      icon: "🔧" },
   { id: "secrets",    label: "Secrets",    icon: "🔑" },
+  { id: "prompt",     label: "Prompt",     icon: "✨" },
   { id: "delete",     label: "Delete step", icon: "🗑", danger: true },
 ];
 

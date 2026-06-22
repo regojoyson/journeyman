@@ -131,7 +131,7 @@ export async function claimSandboxInstanceWithCapacity(
      cap AS (
        SELECT count(*) AS n
        FROM jm_sandbox_instances i, lk
-       WHERE i.sandbox_id = $4 AND i.status IN ('provisioning','active')
+       WHERE i.sandbox_id = $4::uuid AND i.status IN ('provisioning','active')
      ),
      ins AS (
        INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner, sandbox_id)
