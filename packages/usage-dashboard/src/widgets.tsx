@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
-const BLUE = "#6aa9ff", GREEN = "#3ddc84", RED = "#ff6a6a", AMBER = "#ffc24b";
-export const COLORS = { BLUE, GREEN, RED, AMBER };
+const BLUE = "#6aa9ff", GREEN = "#3ddc84", RED = "#ff6a6a", AMBER = "#ffc24b", PURPLE = "#b18cff";
+export const COLORS = { BLUE, GREEN, RED, AMBER, PURPLE };
 
 export function Card({ title, cap, children, span }: {
   title: string; cap?: string; children: ReactNode; span?: boolean;
@@ -54,11 +54,13 @@ export function HBars({ rows }: {
 }
 
 export function Donut({ segments }: {
-  segments: { value: number; color: string; label: string }[];
+  segments: { value: number; color: string; label: string; valueText?: string }[];
 }) {
+  if (segments.length === 0) return <div style={{ height: 90, opacity: 0.4, fontSize: 12 }}>no data</div>;
   const total = Math.max(1, segments.reduce((s, x) => s + x.value, 0));
   const C = 2 * Math.PI * 34;
   let offset = 0;
+  const display = (s: { value: number; valueText?: string }) => s.valueText ?? String(s.value);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
       <svg width="92" height="92" viewBox="0 0 92 92">
@@ -69,7 +71,7 @@ export function Donut({ segments }: {
             <circle key={i} cx="46" cy="46" r="34" fill="none" stroke={s.color} strokeWidth="13"
               strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset}
               transform="rotate(-90 46 46)">
-              <title>{`${s.label} · ${s.value}`}</title>
+              <title>{`${s.label} · ${display(s)}`}</title>
             </circle>
           );
           offset += len;
@@ -80,7 +82,7 @@ export function Donut({ segments }: {
         {segments.map((s, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "2px 0" }}>
             <span style={{ width: 9, height: 9, borderRadius: 2, background: s.color }} />
-            {s.label} · {s.value}
+            {s.label} · {display(s)}
           </div>
         ))}
       </div>

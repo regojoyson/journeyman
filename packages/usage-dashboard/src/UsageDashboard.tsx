@@ -2,9 +2,10 @@ import type {
   AnalyticsWindow, UsageSummary, UsageTimeseriesPoint, UsageBreakdownRow,
   UsageWaste, UsageInstanceDetail, UsageDimensionKey,
 } from "@journeyman/core";
-import { Card, Bars, HBars, COLORS } from "./widgets.tsx";
+import { Card, Bars, HBars, Donut, Sparkline, COLORS } from "./widgets.tsx";
 import { formatUsd, formatTokens, pctDelta } from "./format.ts";
 import { detectVersionRegression } from "./regression.ts";
+import { tokenMixSegments } from "./usage-charts.ts";
 
 export interface UsageDashboardProps {
   window: AnalyticsWindow;
@@ -85,16 +86,28 @@ export function UsageDashboard(p: UsageDashboardProps) {
         <Kpi label="Cache hit ratio" value={s ? `${Math.round(s.cacheReadHitRatio * 100)}%` : "—"} />
       </div>
 
-      <Card title="Cost over time" cap="daily · USD">
-        <Bars bars={p.timeseries.map((t) => ({ label: t.day, value: t.costUsd ?? 0 }))} />
-      </Card>
+      {/* Cost + token trends, side by side */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+        <Card title="Cost over time" cap="daily · USD">
+          <Bars bars={p.timeseries.map((t) => ({ label: t.day, value: t.costUsd ?? 0 }))} />
+        </Card>
+        <Card title="Tokens over time" cap="daily · total tokens">
+          <Sparkline points={p.timeseries.map((t) => ({
+            value: t.totalTokens, title: `${t.day} · ${formatTokens(t.totalTokens)} tokens`,
+          }))} />
+        </Card>
+      </div>
 
-      <div style={{ marginTop: 16 }}>
+      {/* Cost breakdown + token composition, side by side */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 16 }}>
         <Card title={`Cost by ${p.groupBy}`}>
           <HBars rows={p.breakdown.map((b) => ({
             label: b.label, frac: (b.costUsd ?? 0) / maxCost, valueText: formatUsd(b.costUsd),
             title: `${b.label} · ${formatUsd(b.costUsd)} · ${b.runs} runs`,
           }))} />
+        </Card>
+        <Card title="Token mix" cap="input · output · cache · reasoning">
+          <Donut segments={tokenMixSegments(s)} />
         </Card>
       </div>
 
