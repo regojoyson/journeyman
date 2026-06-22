@@ -52,4 +52,12 @@ describe("openCodeToolsConfig", () => {
   it("never produces an empty map", () => {
     expect(Object.keys(openCodeToolsConfig([])).length).toBeGreaterThan(0);
   });
+
+  it("disables opencode's non-canonical native tools (task subagent, todowrite, list, patch)", () => {
+    const cfg = openCodeToolsConfig(["bash", "search"]);
+    expect(cfg.task).toBe(false);      // subagent spawn — must never be left on
+    expect(cfg.todowrite).toBe(false);
+    expect(cfg.list).toBe(false);
+    expect(cfg.patch).toBe(false);
+  });
 });

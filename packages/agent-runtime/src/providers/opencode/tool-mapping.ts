@@ -30,10 +30,15 @@ export function openCodeToolsEnableMap(tools: readonly CanonicalTool[]): Record<
 }
 
 /** Every OpenCode built-in tool journeyman knows about. Used to build an
- * EXPLICIT enable/disable map: opencode treats an omitted `tools` param as
- * "all tools on", so a pure-prompt step must disable them by name. */
+ * EXPLICIT enable/disable map: opencode treats an omitted (or partial) `tools`
+ * param as "all tools on", so any builtin we don't list stays enabled. We must
+ * therefore enumerate the FULL native set — including tools no canonical tool
+ * maps to (`list`, `patch`, `todowrite`, and especially `task`, the subagent
+ * spawner) — so unselected ones are turned off, not silently left on.
+ * Verified against the opencode server tool registry. */
 export const OPENCODE_BUILTIN_TOOL_IDS = [
   "bash", "read", "write", "edit", "grep", "glob", "webfetch",
+  "list", "patch", "todowrite", "task",
 ] as const;
 
 /**

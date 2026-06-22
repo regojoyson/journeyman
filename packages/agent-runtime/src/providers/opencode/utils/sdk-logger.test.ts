@@ -83,6 +83,12 @@ describe("split renderers", () => {
     expect(medium).not.toHaveBeenCalled();
   });
 
+  it("renderText skips whitespace-only text (no blank assistant line)", () => {
+    const blank = vi.fn();
+    renderText({ type: "text", text: "\n\n\n" }, blank, "all");
+    expect(blank).not.toHaveBeenCalled();
+  });
+
   it("renderPart on a completed tool emits both invocation and result at all", () => {
     const all = vi.fn();
     renderPart(toolOk, all, "all");

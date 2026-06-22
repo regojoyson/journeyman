@@ -71,6 +71,17 @@ describe("streamSessionLog", () => {
     expect(texts).toEqual(["First done", "Second done"]);
   });
 
+  it("does not emit whitespace-only text parts (live or at stream end)", async () => {
+    const client = fakeEventClient([
+      partUpdated("sid", { id: "t1", type: "text", text: "\n\n", time: { start: 0, end: 1 } }),
+      partUpdated("sid", { id: "t2", type: "text", text: "   " }),
+    ]);
+    const emit = vi.fn();
+    const s = streamSessionLog(client, "sid", emit);
+    await s.done;
+    expect(emit.mock.calls.filter((c: any[]) => c[0].kind === "text").length).toBe(0);
+  });
+
   it("does not re-emit at stream end a text part already emitted live", async () => {
     const client = fakeEventClient([
       partUpdated("sid", { id: "t1", type: "text", text: "Hi", time: { start: 0, end: 1 } }),

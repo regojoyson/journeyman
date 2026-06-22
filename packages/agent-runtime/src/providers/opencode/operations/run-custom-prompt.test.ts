@@ -39,6 +39,7 @@ describe("opencode runCustomPrompt", () => {
     // Explicit enable/disable map: selected tools true, the rest of the builtins false.
     expect(captured.tools).toEqual({
       bash: true, grep: true, glob: true, read: false, write: false, edit: false, webfetch: false,
+      list: false, patch: false, todowrite: false, task: false,
     });
     expect(captured.directory).toBe("/workspace");
     expect(captured.format.type).toBe("json_schema");

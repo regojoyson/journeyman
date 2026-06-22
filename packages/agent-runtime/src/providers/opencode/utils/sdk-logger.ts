@@ -65,7 +65,9 @@ export function renderToolResult(part: OpenCodePart, onLog?: CodingCliLogFn, lev
 
 /** Emit the `🤖 assistant: text` line (gated at all). */
 export function renderText(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
-  if (typeof part.text !== "string" || !part.text) return;
+  // Skip whitespace-only segments — models often emit empty text between tool
+  // calls, which would render as a bare "🤖 assistant:" line.
+  if (typeof part.text !== "string" || !part.text.trim()) return;
   log.debug({ text: part.text }, "assistant text");
   if (onLog && allowsAssistantText(level)) {
     onLog(singleLine(`🤖 assistant: ${part.text}`, MAX_LINE_LEN), { part });

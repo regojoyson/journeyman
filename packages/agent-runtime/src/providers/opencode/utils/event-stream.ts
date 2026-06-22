@@ -73,7 +73,7 @@ export function streamSessionLog(
           // Emit each text segment the moment it settles (time.end present),
           // deduped by id — the text analogue of a tool's "completed" transition.
           // Streaming deltas (no end yet) are skipped so we don't spam partials.
-          if (!emittedText.has(id) && part.text && part.time?.end != null) {
+          if (!emittedText.has(id) && part.text?.trim() && part.time?.end != null) {
             out({ kind: "text", part });
             emittedText.add(id);
           }
@@ -89,7 +89,7 @@ export function streamSessionLog(
     // Fallback: emit any text segment that never received an end marker
     // (or arrived after we stopped), once, in arrival order.
     for (const [id, part] of texts) {
-      if (!emittedText.has(id) && part.text) { out({ kind: "text", part }); emittedText.add(id); }
+      if (!emittedText.has(id) && part.text?.trim()) { out({ kind: "text", part }); emittedText.add(id); }
     }
     return { emitted, degraded };
   };
