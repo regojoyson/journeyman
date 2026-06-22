@@ -9,6 +9,7 @@ const MAX_LINE_LEN = 200;
  * version-agnostic, unlike subscribing to the SSE event stream. */
 export interface OpenCodePart {
   type: string;
+  id?: string;
   text?: string;
   tool?: string;
   state?: { status?: string; input?: Record<string, unknown>; error?: string };
@@ -39,35 +40,57 @@ function summarizeInput(input: unknown): string {
  * gated by `level`. Called once after the prompt resolves with `res.data.parts`.
  * Always debug-logs to stderr regardless of level (the runner forwards stderr).
  */
+/** Emit the `🔧 tool: name(args)` invocation line (gated at medium/all). */
+export function renderToolInvocation(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
+  const tool = typeof part.tool === "string" ? part.tool : "tool";
+  log.debug({ tool, status: part.state?.status }, "tool part");
+  if (!onLog || !allowsToolUse(level)) return;
+  const arg = summarizeInput(part.state?.input);
+  onLog(singleLine(arg ? `🔧 tool: ${tool}(${arg})` : `🔧 tool: ${tool}`, MAX_LINE_LEN), { part });
+}
+
+/** Emit the `📥 name: ok|error` result line (gated at all). */
+export function renderToolResult(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
+  if (!onLog || !allowsToolResult(level)) return;
+  const tool = typeof part.tool === "string" ? part.tool : "tool";
+  const st = part.state ?? {};
+  if (st.status === "error") {
+    onLog(singleLine(`📥 ${tool}: error: ${st.error ?? ""}`, MAX_LINE_LEN), { part });
+  } else if (st.status === "completed") {
+    onLog(`📥 ${tool}: ok`, { part });
+  }
+}
+
+/** Emit the `🤖 assistant: text` line (gated at all). */
+export function renderText(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
+  if (typeof part.text !== "string" || !part.text) return;
+  log.debug({ text: part.text }, "assistant text");
+  if (onLog && allowsAssistantText(level)) {
+    onLog(singleLine(`🤖 assistant: ${part.text}`, MAX_LINE_LEN), { part });
+  }
+}
+
+/** Render a single part fully (invocation + result + text) — used by the fallback dump. */
+export function renderPart(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
+  if (part.type === "text") {
+    renderText(part, onLog, level);
+  } else if (part.type === "tool") {
+    renderToolInvocation(part, onLog, level);
+    renderToolResult(part, onLog, level);
+  }
+}
+
+/**
+ * Emit the model's transcript (text + tool calls) to the UI log via `onLog`,
+ * gated by `level`. Used by the end-of-run fallback dump.
+ */
 export function logOpenCodeTranscript(
   parts: readonly OpenCodePart[] | undefined,
   onLog?: CodingCliLogFn,
   level: AgentLogLevel = "all",
 ): void {
   const ui = onLog && level !== "none" ? onLog : undefined;
-  for (const part of parts ?? []) {
-    if (part.type === "text" && typeof part.text === "string" && part.text) {
-      log.debug({ text: part.text }, "assistant text");
-      if (ui && allowsAssistantText(level)) {
-        ui(singleLine(`🤖 assistant: ${part.text}`, MAX_LINE_LEN), { part });
-      }
-    } else if (part.type === "tool") {
-      const tool = typeof part.tool === "string" ? part.tool : "tool";
-      const st = part.state ?? {};
-      log.debug({ tool, status: st.status }, "tool part");
-      if (ui && allowsToolUse(level)) {
-        const arg = summarizeInput(st.input);
-        ui(singleLine(arg ? `🔧 tool: ${tool}(${arg})` : `🔧 tool: ${tool}`, MAX_LINE_LEN), { part });
-      }
-      if (ui && allowsToolResult(level)) {
-        if (st.status === "error") {
-          ui(singleLine(`📥 ${tool}: error: ${st.error ?? ""}`, MAX_LINE_LEN), { part });
-        } else if (st.status === "completed") {
-          ui(`📥 ${tool}: ok`, { part });
-        }
-      }
-    }
-  }
+  for (const part of parts ?? []) renderPart(part, ui, level);
 }
 
 /** Final session-result diagnostic. Routed through `onLog` so it is visible

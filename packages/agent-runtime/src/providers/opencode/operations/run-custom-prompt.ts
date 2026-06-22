@@ -1,6 +1,10 @@
 import { createLogger } from "@journeyman/core";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
-import { logOpenCodeTranscript, logSessionEvent } from "../utils/sdk-logger.ts";
+import {
+  logOpenCodeTranscript, logSessionEvent,
+  renderToolInvocation, renderToolResult, renderText,
+} from "../utils/sdk-logger.ts";
+import { streamSessionLog } from "../utils/event-stream.ts";
 import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
@@ -100,12 +104,26 @@ export async function runCustomPrompt(
   }
   const sid = session.data.id;
 
+  // Live log streaming: forward opencode's SSE part events through onLog as they
+  // happen. Only when a UI log sink is present.
+  const level = opts.agentLogLevel ?? "all";
+  const logStream = opts.onLog
+    ? streamSessionLog(client, sid, (e) => {
+        if (e.kind === "tool-invoke") renderToolInvocation(e.part, opts.onLog, level);
+        else if (e.kind === "tool-result") renderToolResult(e.part, opts.onLog, level);
+        else renderText(e.part, opts.onLog, level);
+      })
+    : undefined;
+
   // Only the dynamic task in the user part; stable confinement now rides in `system`.
   const promptText = opts.prompt;
 
   // Best-effort server-side cancellation: when the run is aborted, tell OpenCode to
   // stop the agent loop. Swallow abort's own errors so they never mask the cancellation.
-  const onAbort = () => { void Promise.resolve(client.session.abort({ sessionID: sid })).catch(() => {}); };
+  const onAbort = () => {
+    logStream?.stop();
+    void Promise.resolve(client.session.abort({ sessionID: sid })).catch(() => {});
+  };
   opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   let res: Awaited<ReturnType<typeof client.session.prompt>>;
@@ -125,6 +143,10 @@ export async function runCustomPrompt(
     opts.signal?.removeEventListener("abort", onAbort);
   }
 
+  // The live stream resolves on session.idle (or natural stream end); on a
+  // user abort, onAbort already called stop() so this resolves promptly too.
+  const streamInfo = logStream ? await logStream.done : { emitted: 0, degraded: false };
+
   if (opts.signal?.aborted) throw abortError(opts.signal);
 
   if (!res.data) {
@@ -134,8 +156,17 @@ export async function runCustomPrompt(
     return { sessionId, error };
   }
 
-  // Dump the model transcript (text + tool calls) to the UI log, gated by level.
-  logOpenCodeTranscript((res.data as { parts?: unknown }).parts as never, opts.onLog, opts.agentLogLevel ?? "all");
+  // If the live feed produced nothing (SSE failed/empty), dump the full transcript
+  // from the stable messages endpoint so we never regress to a single final line.
+  if (opts.onLog && streamInfo.emitted === 0) {
+    try {
+      const msgs = await client.session.messages({ sessionID: sid });
+      const parts = ((msgs.data ?? []) as Array<{ parts?: unknown[] }>).flatMap((m) => m.parts ?? []);
+      logOpenCodeTranscript(parts as never, opts.onLog, level);
+    } catch {
+      logOpenCodeTranscript((res.data as { parts?: unknown }).parts as never, opts.onLog, level);
+    }
+  }
 
   const info = res.data.info as { error?: unknown; structured?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
   logSessionEvent(log, sessionId, info as never, opts.onLog);

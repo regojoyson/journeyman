@@ -202,3 +202,80 @@ describe("opencode runCustomPrompt abort", () => {
     expect(abort).toHaveBeenCalledWith({ sessionID: "sess-1" });
   });
 });
+
+// Helper: a client with a scripted event stream + prompt + messages.
+function fakeStreamingClient(opts: {
+  events: unknown[];
+  promptResult: any;
+  messages?: any[];
+  subscribeRejects?: boolean;
+}): OpenCodeClient {
+  async function* gen() { for (const e of opts.events) yield e; }
+  return {
+    session: {
+      create: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+      prompt: vi.fn().mockResolvedValue(opts.promptResult),
+      messages: vi.fn().mockResolvedValue({ data: opts.messages ?? [] }),
+      abort: vi.fn(),
+    },
+    event: {
+      subscribe: opts.subscribeRejects
+        ? vi.fn().mockRejectedValue(new Error("no sse"))
+        : vi.fn().mockResolvedValue({ stream: gen() }),
+    },
+  } as unknown as OpenCodeClient;
+}
+
+const pu = (part: Record<string, unknown>) => ({
+  type: "message.part.updated", properties: { sessionID: "sess-1", part, time: 0 },
+});
+
+describe("opencode runCustomPrompt — live logging", () => {
+  it("streams tool calls live and does NOT re-dump from session.messages", async () => {
+    const onLog = vi.fn();
+    const client = fakeStreamingClient({
+      events: [
+        pu({ id: "p1", type: "tool", tool: "bash", state: { status: "running", input: { command: "git clone" } } }),
+        pu({ id: "p1", type: "tool", tool: "bash", state: { status: "completed", input: { command: "git clone" } } }),
+        pu({ id: "t1", type: "text", text: "Done." }),
+        { type: "session.idle", properties: { sessionID: "sess-1" } },
+      ],
+      promptResult: { data: { info: {}, parts: [{ type: "text", text: "Done." }] } },
+    });
+    const r = await runCustomPrompt(client, cfg, { prompt: "go", outputMode: "text", onLog, agentLogLevel: "all" });
+
+    const lines = onLog.mock.calls.map((c: any[]) => String(c[0]));
+    expect(lines.some((l) => l.includes("🔧 tool: bash"))).toBe(true);
+    expect(lines.some((l) => l.includes("bash: ok"))).toBe(true);
+    expect((client.session as any).messages).not.toHaveBeenCalled();
+    expect(r.result).toBe("Done.");
+  });
+
+  it("falls back to session.messages full dump when the stream yields nothing", async () => {
+    const onLog = vi.fn();
+    const client = fakeStreamingClient({
+      events: [],
+      subscribeRejects: true,
+      promptResult: { data: { info: {}, parts: [{ type: "text", text: "final" }] } },
+      messages: [{ info: {}, parts: [
+        { type: "tool", tool: "write", state: { status: "completed", input: { path: "/spec.md" } } },
+        { type: "text", text: "final" },
+      ] }],
+    });
+    await runCustomPrompt(client, cfg, { prompt: "go", outputMode: "text", onLog, agentLogLevel: "all" });
+
+    expect((client.session as any).messages).toHaveBeenCalledWith({ sessionID: "sess-1" });
+    const lines = onLog.mock.calls.map((c: any[]) => String(c[0]));
+    expect(lines.some((l) => l.includes("🔧 tool: write"))).toBe(true);
+  });
+
+  it("does not stream or fall back when onLog is absent", async () => {
+    const client = fakeStreamingClient({
+      events: [pu({ id: "p1", type: "tool", tool: "bash", state: { status: "completed" } })],
+      promptResult: { data: { info: {}, parts: [] } },
+    });
+    const r = await runCustomPrompt(client, cfg, { prompt: "go", outputMode: "text" });
+    expect((client as any).event.subscribe).not.toHaveBeenCalled();
+    expect(r.error).toBeUndefined();
+  });
+});

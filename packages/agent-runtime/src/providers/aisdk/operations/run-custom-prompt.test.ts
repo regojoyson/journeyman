@@ -8,7 +8,7 @@ vi.mock("ai", () => ({
   jsonSchema: (x: unknown) => x,
   tool: (x: unknown) => x,
   wrapLanguageModel: ({ model }: { model: unknown }) => model,
-  extractJsonMiddleware: () => ({}),
+  extractReasoningMiddleware: () => ({}),
 }));
 vi.mock("../model.ts", () => ({
   resolveModel: vi.fn(async () => ({ fake: "model" })),
@@ -57,13 +57,6 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(r.structured).toEqual({ ok: 1 });
   });
 
-  it("recovers from <think>+fenced JSON when result.output throws", async () => {
-    const text = "<think>\nreport it\n</think>\n```json\n{\"ok\":true}\n```";
-    generateText.mockResolvedValue(resultWithThrowingOutput({ text }));
-    const r = await runCustomPrompt(structuredOpts);
-    expect(r.structured).toEqual({ ok: true });
-  });
-
   it("returns a clear error (does not throw) when no JSON is present even after the forced turn", async () => {
     generateText.mockResolvedValue(resultWithThrowingOutput({ text: "no json here" }));
     const r = await runCustomPrompt(structuredOpts);
@@ -88,6 +81,40 @@ describe("runCustomPrompt (aisdk)", () => {
     await runCustomPrompt(structuredOpts);
     expect(generateText).toHaveBeenCalledTimes(1);
   });
+
+  // The schema declares the exact output field names the downstream steps read
+  // (e.g. `review-path`). A reasoning model over an openai-compatible endpoint
+  // ignores response_format and freely renames keys (`review_file_path`); nothing
+  // in the recovery path validated against the schema, so the wrong-keyed object
+  // sailed downstream and the next step failed with "Missing required input".
+  const schemaWithRequired = {
+    type: "object",
+    properties: { "review-path": { type: "string" }, status: { type: "string" } },
+    required: ["review-path"],
+  };
+  const requiredOpts = { prompt: "review it", outputMode: "structured", outputSchema: schemaWithRequired, model: "x", modelConfig: {} } as any;
+
+  it("forces another turn when recovered JSON is missing a required schema field", async () => {
+    generateText
+      // first turn: recovered JSON has the WRONG key name (model renamed it)
+      .mockResolvedValueOnce(resultWithThrowingOutput({ text: '{"review_file_path":"/ws/r.md","status":"success"}' }))
+      // forced turn: model now uses the declared key
+      .mockResolvedValueOnce({ output: { "review-path": "/ws/r.md", status: "success" }, steps: [] });
+    const r = await runCustomPrompt(requiredOpts);
+    expect(generateText).toHaveBeenCalledTimes(2);
+    expect(r.structured).toEqual({ "review-path": "/ws/r.md", status: "success" });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("errors naming the missing required field when the model never produces it", async () => {
+    // Both the agent loop and the forced turn emit the wrong key.
+    generateText.mockResolvedValue(resultWithThrowingOutput({ text: '{"review_file_path":"/ws/r.md","status":"success"}' }));
+    const r = await runCustomPrompt(requiredOpts);
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toMatch(/review-path/);
+    expect(r.error).toMatch(/required/i);
+  });
+
 
   it("uses a configured maxSteps as the step budget", async () => {
     generateText.mockResolvedValue({ output: { ok: true }, steps: [] });

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { logOpenCodeTranscript, type OpenCodePart } from "./sdk-logger.ts";
+import {
+  logOpenCodeTranscript,
+  renderToolInvocation, renderToolResult, renderText, renderPart,
+  type OpenCodePart,
+} from "./sdk-logger.ts";
 
 const textPart: OpenCodePart = { type: "text", text: "hello" };
 const toolOk: OpenCodePart = { type: "tool", tool: "read", state: { status: "completed", input: { path: "/x" } } };
@@ -44,5 +48,46 @@ describe("logOpenCodeTranscript", () => {
     const onLog = vi.fn();
     expect(() => logOpenCodeTranscript(undefined, onLog, "all")).not.toThrow();
     expect(onLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("split renderers", () => {
+  it("renderToolInvocation emits the 🔧 line at medium/all, nothing at none", () => {
+    const all = vi.fn();
+    renderToolInvocation(toolOk, all, "all");
+    expect(all.mock.calls[0][0]).toContain("🔧 tool: read");
+    expect(all.mock.calls[0][0]).toContain("/x");
+
+    const none = vi.fn();
+    renderToolInvocation(toolOk, none, "none");
+    expect(none).not.toHaveBeenCalled();
+  });
+
+  it("renderToolResult emits 📥 ok/error only at all", () => {
+    const all = vi.fn();
+    renderToolResult(toolOk, all, "all");
+    expect(all.mock.calls.some((c: any[]) => String(c[0]).includes("read: ok"))).toBe(true);
+
+    const medium = vi.fn();
+    renderToolResult(toolErr, medium, "medium");
+    expect(medium).not.toHaveBeenCalled();
+  });
+
+  it("renderText emits 🤖 line only at all", () => {
+    const all = vi.fn();
+    renderText(textPart, all, "all");
+    expect(all.mock.calls[0][0]).toContain("hello");
+
+    const medium = vi.fn();
+    renderText(textPart, medium, "medium");
+    expect(medium).not.toHaveBeenCalled();
+  });
+
+  it("renderPart on a completed tool emits both invocation and result at all", () => {
+    const all = vi.fn();
+    renderPart(toolOk, all, "all");
+    const lines = all.mock.calls.map((c: any[]) => String(c[0]));
+    expect(lines.some((l) => l.includes("🔧 tool: read"))).toBe(true);
+    expect(lines.some((l) => l.includes("read: ok"))).toBe(true);
   });
 });

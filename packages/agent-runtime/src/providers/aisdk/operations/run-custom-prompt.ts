@@ -7,7 +7,7 @@ import { aiSdkToolIds } from "../tool-mapping.ts";
 import { buildBuiltinTools } from "../tools/index.ts";
 import { buildMcpTools } from "../mcp.ts";
 import { buildSkillMenu, skillTool } from "../skills.ts";
-import { buildOutput, wrapForStructuredOutput, extractJsonPayload } from "../structured.ts";
+import { buildOutput, wrapForStructuredOutput } from "../structured.ts";
 import { makeStepLogger, logFinal } from "../utils/sdk-logger.ts";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 
@@ -26,6 +26,26 @@ const FORCE_JSON_INSTRUCTION =
   "matches the required schema, reflecting what you actually accomplished. Do not call " +
   "any tools and do not add any other text. If the task could not be completed, still " +
   "produce the JSON and set the appropriate status/error fields.";
+
+/** The `required` property names declared by a JSON Schema object (empty if none). */
+function schemaRequiredKeys(schema: Record<string, unknown> | undefined): string[] {
+  const req = schema?.required;
+  return Array.isArray(req) ? req.filter((k): k is string => typeof k === "string") : [];
+}
+
+/**
+ * Required schema keys absent (or null) from `value`. The structured-output
+ * contract is only honored when these are empty — the recovery/forced paths
+ * (which bypass the AI SDK's own validated `result.output`) must enforce it
+ * themselves, or wrong-keyed model output slips downstream unchecked.
+ */
+function missingRequiredKeys(value: unknown, schema: Record<string, unknown> | undefined): string[] {
+  const required = schemaRequiredKeys(schema);
+  if (!required.length) return [];
+  if (typeof value !== "object" || value === null) return required;
+  const obj = value as Record<string, unknown>;
+  return required.filter((k) => obj[k] === undefined || obj[k] === null);
+}
 
 function truncate(s: string, max = 2000): string {
   return s.length > max ? s.slice(0, max) + "…" : s;
@@ -63,7 +83,8 @@ function tryReadStructured(result: { output?: unknown; text?: unknown; steps?: u
     /* NoOutputGeneratedError — fall through to text recovery */
   }
   try {
-    return JSON.parse(extractJsonPayload(finalAssistantText(result)));
+    // Text is already reasoning-stripped by wrapForStructuredOutput's middleware.
+    return JSON.parse(finalAssistantText(result));
   } catch {
     return undefined;
   }
@@ -164,10 +185,12 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     let structured = tryReadStructured(result);
 
     // Safety net: tool-using agents often exhaust their step budget or stop on a
-    // reasoning-only turn without ever emitting the final JSON. Ask once more, with
-    // no tools, replaying the conversation so the model has full context.
-    if (structured === undefined) {
-      log.warn({ sessionId }, "agent loop produced no structured output; forcing a final JSON turn");
+    // reasoning-only turn without ever emitting the final JSON — or emit JSON whose
+    // keys don't match the declared schema (response_format-ignoring models rename
+    // fields). In either case ask once more, with no tools, replaying the
+    // conversation and restating the schema so the model has full context.
+    if (structured === undefined || missingRequiredKeys(structured, opts.outputSchema).length) {
+      log.warn({ sessionId }, "agent loop produced no valid structured output; forcing a final JSON turn");
       const forced: any = await generateText({
         model,
         ...(system ? { system } : {}),
@@ -181,12 +204,24 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
         onStepFinish,
       } as any);
       usageRows.push(...aiSdkUsageToTokenUsage(forced.usage, opts.model ?? "", vendor));
-      structured = tryReadStructured(forced);
+      const forcedStructured = tryReadStructured(forced);
+      // Keep the forced result only if it actually satisfies the schema; otherwise
+      // fall through to the schema-mismatch error below using the best candidate.
+      if (forcedStructured !== undefined) structured = forcedStructured;
     }
 
     if (structured === undefined) {
       const text = finalAssistantText(result);
       return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}`, usage: usage() };
+    }
+    const missing = missingRequiredKeys(structured, opts.outputSchema);
+    if (missing.length) {
+      return {
+        sessionId,
+        error: `structured output is missing required field(s) declared by the step schema: ${missing.join(", ")}. ` +
+          `Model returned keys: ${Object.keys(structured as Record<string, unknown>).join(", ")}.`,
+        usage: usage(),
+      };
     }
     return { sessionId, structured, usage: usage() };
   } catch (err) {
