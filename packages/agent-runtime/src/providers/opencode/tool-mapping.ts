@@ -35,10 +35,15 @@ export function openCodeToolsEnableMap(tools: readonly CanonicalTool[]): Record<
  * therefore enumerate the FULL native set — including tools no canonical tool
  * maps to (`list`, `patch`, `todowrite`, and especially `task`, the subagent
  * spawner) — so unselected ones are turned off, not silently left on.
- * Verified against the opencode server tool registry. */
+ * Verified against the opencode server tool registry.
+ *
+ * `question` is the interactive "ask the user" tool. We run autonomously with no
+ * human to answer, so it MUST be disabled — otherwise an interactive skill (e.g.
+ * brainstorming) makes the agent call it and the step hangs forever waiting for a
+ * reply. No canonical tool maps to it, so it is always off. */
 export const OPENCODE_BUILTIN_TOOL_IDS = [
   "bash", "read", "write", "edit", "grep", "glob", "webfetch",
-  "list", "patch", "todowrite", "task",
+  "list", "patch", "todowrite", "task", "question",
 ] as const;
 
 /**

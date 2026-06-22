@@ -14,6 +14,10 @@ describe("buildServerConfig", () => {
     const c = buildServerConfig(cfg, {});
     expect((c.permission as Record<string, unknown>).external_directory).toBe("deny");
   });
+  it("denies the interactive `question` tool (no human to answer in an autonomous run)", () => {
+    const c = buildServerConfig(cfg, {});
+    expect((c.permission as Record<string, unknown>).question).toBe("deny");
+  });
   it("includes mcp only when instances are present", () => {
     expect(buildServerConfig(cfg, {}).mcp).toBeUndefined();
     const mcps: ResolvedMcpInstance[] = [{ id: "1", name: "fs", transport: "stdio", command: "x", args: [], env: {}, systemPrompt: null }];

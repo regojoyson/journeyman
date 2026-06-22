@@ -121,8 +121,23 @@ function workspaceRepoDirs(root: string): string[] {
   }
 }
 
+/**
+ * Establishes autonomous operation. Without it, an interactive skill (e.g.
+ * brainstorming) makes the agent ask for clarification/approval and wait — but no
+ * human is in the loop, so the step hangs. This is a user/system instruction, so it
+ * overrides any skill's "ask the user / get approval" gate (skills defer to user
+ * instructions). The `question` tool is also disabled/denied as a hard backstop.
+ */
+const AUTONOMOUS_SYSTEM_PROMPT =
+  "AUTONOMOUS EXECUTION: You run inside an automated pipeline with NO human available " +
+  "to answer questions, confirm, or approve anything. Never ask for clarification or " +
+  "approval and never wait for input — make reasonable assumptions, proceed, and complete " +
+  "the entire task yourself. Any skill or instruction telling you to 'ask the user' or " +
+  "'get approval before continuing' does not apply here: treat such gates as already " +
+  "approved and carry the work through to completion.";
+
 function buildSystem(opts: RunCustomPromptOptions): string | undefined {
-  const parts: string[] = [];
+  const parts: string[] = [AUTONOMOUS_SYSTEM_PROMPT];
   if (opts.cwd) {
     parts.push(confinementSystemPrompt(opts.cwd));
     // Point the agent at the cloned repos so it starts in the right place instead

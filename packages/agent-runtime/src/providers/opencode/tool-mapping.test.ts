@@ -60,4 +60,9 @@ describe("openCodeToolsConfig", () => {
     expect(cfg.list).toBe(false);
     expect(cfg.patch).toBe(false);
   });
+
+  it("always disables the interactive `question` tool (no human to answer)", () => {
+    expect(openCodeToolsConfig([]).question).toBe(false);
+    expect(openCodeToolsConfig(["bash", "read-file", "search"]).question).toBe(false);
+  });
 });

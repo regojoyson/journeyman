@@ -16,6 +16,10 @@ import { parseOpenCodeModel } from "./model.ts";
 const BYPASS_PERMISSION = {
   bash: "allow", edit: "allow", webfetch: "allow", websearch: "allow", skill: "allow",
   external_directory: "deny",
+  // `question` is the interactive ask-the-user tool. We run autonomously with no
+  // human to answer, so deny it server-wide: a denied call returns an error the
+  // model can recover from, instead of blocking the step forever waiting for input.
+  question: "deny",
 } as const;
 
 /** Default agent step budget when the step doesn't specify maxSteps — matches the Claude/AISDK providers. */
