@@ -4,14 +4,30 @@ import type {
   UsageWaste, UsageInstanceDetail, UsageDimensionKey,
 } from "@journeyman/core";
 
-/** GROUP BY expression per dashboard dimension. Whitelisted — never interpolate caller input. */
-export const DIMENSION_SQL: Record<UsageDimensionKey, string> = {
-  model: "provider, model",
-  provider: "provider",
-  agent: "agent_id, agent_name",
-  workflow: "workflow_id, workflow_name",
-  workflow_version: "workflow_version_id",
-  step: "step_type",
+/**
+ * Per dashboard dimension: `group` is the GROUP BY column list, `label` is the
+ * SQL expression used as the human-readable bar label. Whitelisted — never
+ * interpolate caller input.
+ *
+ * `label` is a COALESCE chain so a null name never renders as a bare "—":
+ * agent/workflow fall back to the stored name, then a resolved name (agents are
+ * looked up in jm_agents by id), then the id text. The JS mapper applies the
+ * final "—" only when every column is null (e.g. usage not tied to an agent).
+ */
+export const DIMENSION_SQL: Record<UsageDimensionKey, { group: string; label: string }> = {
+  model: { group: "provider, model", label: "COALESCE(model, provider)" },
+  provider: { group: "provider", label: "provider" },
+  agent: {
+    group: "agent_id, agent_name",
+    label:
+      "COALESCE(agent_name, (SELECT a.name FROM jm_agents a WHERE a.id = jm_token_usage.agent_id), agent_id::text)",
+  },
+  workflow: {
+    group: "workflow_id, workflow_name",
+    label: "COALESCE(workflow_name, workflow_id::text)",
+  },
+  workflow_version: { group: "workflow_version_id", label: "workflow_version_id::text" },
+  step: { group: "step_type", label: "step_type" },
 };
 
 export function costPerRun(cost: number | null, runs: number): number | null {
@@ -95,10 +111,10 @@ export async function usageTimeseries(
 export async function usageByDimension(
   pool: Pool, wsId: string, since: Date, dimension: UsageDimensionKey,
 ): Promise<UsageBreakdownRow[]> {
-  const group = DIMENSION_SQL[dimension];
-  if (!group) throw new Error(`unknown dimension: ${dimension}`);
+  const cfg = DIMENSION_SQL[dimension];
+  if (!cfg) throw new Error(`unknown dimension: ${dimension}`);
   const { rows } = await pool.query(
-    `SELECT ${group} AS gk,
+    `SELECT ${cfg.label} AS gk,
             COUNT(DISTINCT workflow_instance_id)::int AS runs,
             COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
             COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
@@ -107,7 +123,7 @@ export async function usageByDimension(
             MIN(created_at) AS first_seen
      FROM jm_token_usage
      WHERE workspace_id = $1 AND created_at >= $2
-     GROUP BY ${group} ORDER BY cost_usd DESC NULLS LAST, total_tokens DESC`,
+     GROUP BY ${cfg.group} ORDER BY cost_usd DESC NULLS LAST, total_tokens DESC`,
     [wsId, since],
   );
   return rows.map((r) => {

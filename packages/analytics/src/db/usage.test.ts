@@ -3,9 +3,20 @@ import { DIMENSION_SQL, costPerRun, cacheReadHitRatio } from "./usage.ts";
 
 describe("DIMENSION_SQL whitelist", () => {
   it("maps known dimensions and omits unknown ones", () => {
-    expect(DIMENSION_SQL.model).toBe("provider, model");
-    expect(DIMENSION_SQL.agent).toContain("agent_id");
-    expect((DIMENSION_SQL as Record<string, string>).bogus).toBeUndefined();
+    expect(DIMENSION_SQL.model.group).toBe("provider, model");
+    expect(DIMENSION_SQL.agent.group).toContain("agent_id");
+    expect((DIMENSION_SQL as Record<string, unknown>).bogus).toBeUndefined();
+  });
+
+  it("agent label resolves a real name and never renders a bare dash", () => {
+    // falls back name → jm_agents lookup → id text; the JS mapper adds the final '—'
+    expect(DIMENSION_SQL.agent.label).toContain("agent_name");
+    expect(DIMENSION_SQL.agent.label).toContain("jm_agents");
+    expect(DIMENSION_SQL.agent.label).toContain("agent_id::text");
+  });
+
+  it("model label coalesces to provider when model is null", () => {
+    expect(DIMENSION_SQL.model.label).toBe("COALESCE(model, provider)");
   });
 });
 

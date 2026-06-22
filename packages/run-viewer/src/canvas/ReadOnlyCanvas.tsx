@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   Background, Controls, ReactFlow, ReactFlowProvider,
-  type Edge, type Node, type NodeProps, type NodeTypes,
+  type NodeProps, type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
@@ -9,6 +9,7 @@ import type { WorkflowGraph, WorkflowNode } from "@journeyman/core";
 import { nodeTypes as editorNodeTypes, edgeTypes as editorEdgeTypes } from "@journeyman/flow-editor";
 import { STATUS_CLASS, STATUS_LABEL } from "./status-styles.ts";
 import type { ResolvedNodeStatus } from "../types.ts";
+import { buildRfGraph, emptyGraphCache } from "./build-rf-graph.ts";
 
 function makeWrappedNode(InnerComponent: React.ComponentType<NodeProps>) {
   return function WrappedNode(props: NodeProps) {
@@ -30,6 +31,7 @@ for (const [name, Comp] of Object.entries(editorNodeTypes)) {
   wrappedNodeTypes[name] = makeWrappedNode(Comp as unknown as React.ComponentType<NodeProps>);
 }
 const edgeTypes = editorEdgeTypes;
+const knownNodeTypes = new Set(Object.keys(wrappedNodeTypes));
 
 export interface ReadOnlyCanvasProps {
   workflow: WorkflowGraph;
@@ -100,26 +102,22 @@ function CanvasInner(p: ReadOnlyCanvasProps) {
       : null,
     [p.workflow.nodes, p.workflow.edges],
   );
-  const rfNodes: Node[] = useMemo(() => p.workflow.nodes.map(n => ({
-    id: n.id,
-    type: n.type in wrappedNodeTypes ? n.type : "step",
-    position: n.position ?? fallbackPos?.get(n.id) ?? { x: 0, y: 0 },
-    data: {
-      displayName: n.displayName ?? n.stepType ?? n.type,
-      stepType: n.stepType ?? "",
-      config: n.config ?? {},
-      inputs: n.inputs ?? {},
-      runStatus: p.statuses.get(n.id),
-    },
-    selected: n.id === p.selectedNodeId,
-    selectable: true,
-    draggable: false,
-  })), [p.workflow.nodes, p.statuses, p.selectedNodeId, fallbackPos]);
-
-  const rfEdges: Edge[] = useMemo(() => p.workflow.edges.map(e => ({
-    id: e.id, source: e.source, target: e.target, type: "default",
-    animated: isAnimatedEdge(e, p.statuses),
-  })), [p.workflow.edges, p.statuses]);
+  // Reuse node/edge object references across status ticks so ReactFlow keeps
+  // each node's measured size — otherwise the high-frequency event stream
+  // (step.log especially) resets every node to "unmeasured" each tick and the
+  // canvas flickers to blank under a log burst. See build-rf-graph.ts.
+  const cacheRef = useRef(emptyGraphCache());
+  const { nodes: rfNodes, edges: rfEdges } = useMemo(
+    () => buildRfGraph({
+      workflow: p.workflow,
+      statuses: p.statuses,
+      selectedNodeId: p.selectedNodeId,
+      fallbackPos,
+      knownNodeTypes,
+      isAnimatedEdge,
+    }, cacheRef.current),
+    [p.workflow, p.statuses, p.selectedNodeId, fallbackPos],
+  );
 
   return (
     <div className="je-runview__canvas">
