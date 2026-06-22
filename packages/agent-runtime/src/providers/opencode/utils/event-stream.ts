@@ -41,6 +41,11 @@ export function streamSessionLog(
 
   const out = (e: LogEvent) => { emitted++; emit(e); };
 
+  // How the consume loop terminated — surfaced in the teardown log so a future
+  // hang/regression shows whether the stream settled (idle), errored, ended on its
+  // own, or was aborted, rather than leaving us guessing.
+  let endReason: "session.idle" | "session.error" | "stream-end" | "aborted" | "error" = "stream-end";
+
   const run = async (): Promise<{ emitted: number; degraded: boolean }> => {
     try {
       const sub = await (client.event.subscribe as (
@@ -53,7 +58,10 @@ export function streamSessionLog(
         // The global event stream stays open for other sessions, so we must break
         // explicitly rather than wait for it to end. stop() (abort) covers the
         // user-cancellation path via the signal handed to event.subscribe.
-        if ((e.type === "session.idle" || e.type === "session.error") && e.properties?.sessionID === sessionID) break;
+        if ((e.type === "session.idle" || e.type === "session.error") && e.properties?.sessionID === sessionID) {
+          endReason = e.type as "session.idle" | "session.error";
+          break;
+        }
         if (e.type !== "message.part.updated" || e.properties?.sessionID !== sessionID) continue;
         const part = e.properties.part;
         if (!part) continue;
@@ -83,14 +91,26 @@ export function streamSessionLog(
       // An intentional stop() aborts the fetch; that is not degradation.
       if (!controller.signal.aborted) {
         degraded = true;
+        endReason = "error";
         log.warn({ err: String((err as Error)?.message ?? err) }, "event stream errored");
+      } else {
+        endReason = "aborted";
       }
+    } finally {
+      // Always tear down the SSE connection when the loop ends — including the
+      // happy path, which `break`s on session.idle without ever calling stop().
+      // event.subscribe opens a long-lived streaming fetch that never times out;
+      // leaving it open keeps a handle on the runner's event loop, so the one-shot
+      // runner process would not exit and the run would hang after the result.
+      // abort() is idempotent, so the stop()/abort paths are unaffected.
+      controller.abort();
     }
     // Fallback: emit any text segment that never received an end marker
     // (or arrived after we stopped), once, in arrival order.
     for (const [id, part] of texts) {
       if (!emittedText.has(id) && part.text?.trim()) { out({ kind: "text", part }); emittedText.add(id); }
     }
+    log.info({ sessionID, endReason, emitted, degraded }, "session log stream torn down");
     return { emitted, degraded };
   };
 

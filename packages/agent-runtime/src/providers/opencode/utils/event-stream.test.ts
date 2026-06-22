@@ -93,6 +93,28 @@ describe("streamSessionLog", () => {
     expect(textCalls.length).toBe(1);
   });
 
+  it("aborts the SSE subscription once the stream loop ends (no leaked connection)", async () => {
+    // Regression: on the happy path the loop `break`s on session.idle without
+    // calling stop(); the subscription must still be torn down or the runner's
+    // event loop never drains and the one-shot process hangs after the result.
+    let captured: AbortSignal | undefined;
+    async function* gen() {
+      yield partUpdated("sid", { id: "t1", type: "text", text: "done", time: { start: 0, end: 1 } });
+      yield { type: "session.idle", properties: { sessionID: "sid" } };
+    }
+    const client = {
+      event: {
+        subscribe: vi.fn((_p: unknown, o?: { signal?: AbortSignal }) => {
+          captured = o?.signal;
+          return Promise.resolve({ stream: gen() });
+        }),
+      },
+    } as unknown as OpenCodeClient;
+    const s = streamSessionLog(client, "sid", vi.fn());
+    await s.done;
+    expect(captured?.aborted).toBe(true);
+  });
+
   it("marks degraded when subscribe rejects, emitting nothing", async () => {
     const client = { event: { subscribe: vi.fn().mockRejectedValue(new Error("boom")) } } as unknown as OpenCodeClient;
     const emit = vi.fn();

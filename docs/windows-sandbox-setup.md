@@ -38,6 +38,7 @@ There are **two machines**:
 - [ ] One open inbound firewall port (default **50051**)
 
 **On the Windows box — optional, only if a workflow uses it (per your product):**
+- [ ] **Python 3** — only for steps/agents that run Python. Reported as an *advisory* line in the readiness scorecard (a missing interpreter does **not** block startup). Install from python.org or the Microsoft Store and confirm `python --version` works in Git Bash.
 - [ ] IIS + Classic ASP / ASP.NET — only for steps that host/run those apps
 - [ ] .NET SDK / MSBuild — only for steps that build .NET code
 - [ ] SQL Server (local or reachable) — only for steps that need the database
@@ -143,10 +144,12 @@ Now split the files:
    [readiness] ✓ bash: C:\Program Files\Git\bin\bash.exe
    [readiness] ✓ git: git on PATH
    [readiness] ✓ node: node on PATH
+   [readiness] ✓ curl: curl on PATH — ships with Windows 10 1803+
+   [readiness] ✓ python: python on PATH
    [readiness] ✓ workspace: C:\jm-runs
    journeyman-agent listening on 0.0.0.0:50051 (mTLS)
    ```
-   Any ✗ line tells you exactly what to fix (usually "install Git for Windows" or "make `C:\jm-runs` writable"), and the agent refuses to start until it's green.
+   Any ✗ line on a **required** check tells you exactly what to fix (usually "install Git for Windows" or "make `C:\jm-runs` writable"), and the agent refuses to start until those are green. `python` is **advisory** — a ✗ there is only a heads-up (install Python 3 if a workflow needs it) and does not block startup.
 
 ✅ **Done when:** you see "listening … (mTLS)".
 

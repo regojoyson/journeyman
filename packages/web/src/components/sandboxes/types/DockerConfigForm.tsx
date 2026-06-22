@@ -47,6 +47,12 @@ const DockerConfigForm: FC<{ state: Record<string, unknown>; onChange: (s: Recor
               value={s.dockerfile} onChange={(e) => set({ dockerfile: e.target.value })} />
           </Field>
         )}
+        <p className="text-xs leading-relaxed text-slate-500">
+          The default runner image and any apt- or apk-based image you provide
+          automatically include <Code>git</Code>, SSH, <Code>curl</Code>,{" "}
+          <Code>node</Code>, and <Code>python3</Code> (with <Code>pip</Code>).
+          Images built on other bases must install their own toolchain.
+        </p>
         <Field icon={Network} label="Network"
           hint={s.network === "full"
             ? <>Container can reach the internet — needed for <Code>git clone</Code>, <Code>npm install</Code>, API calls.</>

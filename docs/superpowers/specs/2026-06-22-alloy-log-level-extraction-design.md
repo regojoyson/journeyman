@@ -77,7 +77,11 @@ loki.process "levels" {
     }
     stage.template {
       source   = "level"
-      template = "{{ if eq .Value \"10\" }}trace{{ else if eq .Value \"20\" }}debug{{ else if eq .Value \"30\" }}info{{ else if eq .Value \"40\" }}warn{{ else if eq .Value \"50\" }}error{{ else if eq .Value \"60\" }}fatal{{ else }}{{ .Value }}{{ end }}"
+      // No final `{{ else }}{{ .Value }}` branch: a missing field renders Go's
+      // literal "<no value>" string, which is non-empty and would survive as a
+      // bogus level. Unknown/missing values must fall through to empty so Loki
+      // drops the label.
+      template = "{{ if eq .Value \"10\" }}trace{{ else if eq .Value \"20\" }}debug{{ else if eq .Value \"30\" }}info{{ else if eq .Value \"40\" }}warn{{ else if eq .Value \"50\" }}error{{ else if eq .Value \"60\" }}fatal{{ end }}"
     }
     stage.labels {
       values = { level = "" }   // promote extracted `level` to a stream label
@@ -87,16 +91,18 @@ loki.process "levels" {
 ```
 
 The `stage.json` reads pino's top-level `level` key into the extracted map.
-`stage.template` rewrites that key from the number to a name (passing through any
-unexpected value unchanged). `stage.labels` with an empty string promotes the
-extracted `level` to a stream label of the same name.
+`stage.template` rewrites that key from the number to a name; unknown or missing
+values render as an empty string. `stage.labels` with an empty string promotes the
+extracted `level` to a stream label of the same name — and Loki drops the label
+when the value is empty.
 
 ## Boundaries / behavior
 
 - **Cardinality:** `level` has ≤6 distinct values — safe as a stream label.
 - **Non-matching services:** not processed; keep Loki's `detected_level`.
-- **Matching but non-JSON or level-less lines:** `level` stays empty in the
-  extracted map; Loki drops empty-value labels, so no spurious `level=""`.
+- **Matching but non-JSON or level-less lines:** the template renders empty (it
+  must NOT fall back to `.Value`, which would emit Go's `<no value>` string);
+  Loki drops empty-value labels, so no spurious `level` value.
 - **Display only:** services still emit at `LOG_LEVEL=info` by default, so
   `debug`/`trace` lines won't appear unless `LOG_LEVEL` is lowered. Out of scope.
 - **No app changes, no new services, no `compose.deploy.yml` changes.**

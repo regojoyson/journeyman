@@ -46,12 +46,61 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+/**
+ * Emit a runner diagnostic on stderr in the `{line, meta}` NDJSON shape the worker
+ * forwards as a step.log event (see DockerExecutionEnvironment.forwardLog), so these
+ * lines show up in the workflow instance's events for post-hoc debugging. stderr is
+ * a separate channel from the stdout protocol, so this never corrupts the response.
+ */
+function diag(line: string, meta?: Record<string, unknown>): void {
+  process.stderr.write(JSON.stringify({ line, meta: { ns: "runner", ...meta } }) + "\n");
+}
+
+/**
+ * Names of the resources still keeping the event loop alive at this moment
+ * (timers, sockets, child-process pipes, …). Logged right before exit so that if a
+ * provider ever leaves a handle open again (the OpenCode SSE-subscription hang), the
+ * culprit's resource type is visible in the run's events instead of a silent stall.
+ * `getActiveResourcesInfo` exists on Node 18.4+; guard for older runtimes.
+ */
+function activeHandles(): string[] {
+  const fn = (process as { getActiveResourcesInfo?: () => string[] }).getActiveResourcesInfo;
+  return typeof fn === "function" ? fn.call(process) : [];
+}
+
+/**
+ * Write the final RunnerResponse to stdout, then exit once it has flushed.
+ *
+ * The runner is one-shot: the worker reads it via `docker exec`, which only
+ * returns when this process exits and the exec stream closes (see
+ * DockerExecutionEnvironment.exec / docker-client.exec's `stream.on("end")`).
+ * Returning from main() and letting the event loop drain is NOT enough — provider
+ * SDKs can leave persistent handles on the loop (notably OpenCode's managed-server
+ * SSE subscription), so the process would stay alive forever and the run would hang
+ * with the result already computed but never delivered. Exiting explicitly
+ * guarantees the stream ends. The write callback fires once the buffer is flushed
+ * to the OS, so the response is never truncated by the exit.
+ */
+function writeResponseAndExit(out: string, code: number): void {
+  // Diagnostic breadcrumb: reaching here proves the operation produced a response.
+  // The active-handles list reveals anything still pinning the loop open — if a
+  // future run hangs, either this line is absent (it stalled earlier, inside the
+  // provider) or it names the leaked resource type.
+  const handles = activeHandles();
+  diag(`response ready (${out.length}B); exiting code=${code}; active handles: ${handles.join(",") || "none"}`, {
+    bytes: out.length,
+    code,
+    handles,
+  });
+  process.stdout.write(out, () => process.exit(code));
+}
+
 async function main(): Promise<void> {
   guardRunnerStdout();
   ensureNodeOnPath();
   markSandbox();
   if (process.argv.includes("--selftest")) {
-    process.stdout.write(JSON.stringify({ ok: true, structured: { selftest: true } }));
+    writeResponseAndExit(JSON.stringify({ ok: true, structured: { selftest: true } }), 0);
     return;
   }
   const input = await readStdin();
@@ -60,10 +109,9 @@ async function main(): Promise<void> {
     (key) => createCodingProvider(key, { env: process.env as Record<string, string> }),
     (line, meta) => process.stderr.write(JSON.stringify({ line, meta }) + "\n"),
   );
-  process.stdout.write(out);
+  writeResponseAndExit(out, 0);
 }
 
 main().catch((err) => {
-  process.stdout.write(JSON.stringify({ ok: false, error: String((err as Error)?.message ?? err) }));
-  process.exit(1);
+  writeResponseAndExit(JSON.stringify({ ok: false, error: String((err as Error)?.message ?? err) }), 1);
 });

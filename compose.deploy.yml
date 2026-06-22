@@ -97,6 +97,9 @@ services:
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       IDENTITY_ENFORCE: "true"
       NODE_ENV: production
+      # Local prod-sim: verbose logs to surface issues easily. Remove to revert
+      # to the default "info" level.
+      LOG_LEVEL: "debug"
       PORT: "4000"
       # Skill installs (git clone) run in-process here; clones land in the SAME
       # shared data root the worker reads from. Mounted to /data/journeyman below.
@@ -127,6 +130,7 @@ services:
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       IDENTITY_ENFORCE: "true"
       NODE_ENV: production
+      LOG_LEVEL: "debug"
       WEBHOOKS_PORT: "4001"
       JOURNEYMAN_BASE_DIR: /data/journeyman
     ports: ["6001:4001"]
@@ -154,6 +158,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       CONDUCTOR_BASE_URL: http://conductor:8080/api
       NODE_ENV: production
+      LOG_LEVEL: "debug"
       CONTROL_PLANE_PORT: "4003"
       JOURNEYMAN_BASE_DIR: /data/journeyman
     volumes:
@@ -180,6 +185,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/journeyman
       IDENTITY_ENFORCE: "true"
       NODE_ENV: production
+      LOG_LEVEL: "debug"
       # Dedicated var — the shared PORT (4000) belongs to api-server.
       ANALYTICS_PORT: "4002"
     ports: ["6002:4002"]
@@ -201,6 +207,7 @@ services:
       # Inside the container the data root is always /data/journeyman (the mount target
       # below). The host folder behind it is set via JOURNEYMAN_BASE_DIR in .env.
       JOURNEYMAN_BASE_DIR: /data/journeyman
+      LOG_LEVEL: "debug"
       # Local-sandbox AI runs in-process as root here; the Claude engine refuses
       # bypassPermissions as root unless IS_SANDBOX=1.
       IS_SANDBOX: "1"

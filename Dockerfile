@@ -69,7 +69,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 # Local-sandbox runs clone + run AI in-process here, so git + ssh must be present.
 # curl ships in every sandbox so steps/AI can reach HTTP endpoints.
-RUN apk add --no-cache git openssh-client ca-certificates curl
+# python3 + a bare `python` alias: agents commonly write/run Python scripts.
+RUN apk add --no-cache git openssh-client ca-certificates curl python3 py3-pip \
+ && ln -sf /usr/bin/python3 /usr/bin/python
 COPY --from=deps /app/node_modules ./node_modules
 # Also ship per-workspace node_modules (see runtime-api).
 COPY --from=deps /app/packages ./packages

@@ -39,7 +39,32 @@ discovery.relabel "containers" {
 loki.source.docker "containers" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.containers.output
+  forward_to = [loki.process.levels.receiver]
+}
+
+// Extract pino's numeric log level into a `level` stream label for the built-in
+// services. Other containers (postgres, redis, conductor, loki, web) are not
+// matched and keep Loki's own detected_level.
+loki.process "levels" {
   forward_to = [loki.write.default.receiver]
+
+  stage.match {
+    selector = "{service=~\"api-app|api-webhooks|api-control-plane|worker|analytics|sandbox\"}"
+
+    stage.json {
+      expressions = { level = "level" }
+    }
+    stage.template {
+      source   = "level"
+      // Map pino's numeric level to a name. Unknown/missing values fall through
+      // to an empty string (NOT `.Value`, which renders Go's "<no value>" for a
+      // missing field) so stage.labels emits nothing and Loki drops it.
+      template = "{{ if eq .Value \"10\" }}trace{{ else if eq .Value \"20\" }}debug{{ else if eq .Value \"30\" }}info{{ else if eq .Value \"40\" }}warn{{ else if eq .Value \"50\" }}error{{ else if eq .Value \"60\" }}fatal{{ end }}"
+    }
+    stage.labels {
+      values = { level = "" }
+    }
+  }
 }
 
 loki.write "default" {

@@ -22,6 +22,19 @@ describe("wrapDockerfile", () => {
     expect(out).toMatch(/apt-get install -y[^\n]*curl/);
   });
 
+  it("installs python3 on apt bases", () => {
+    expect(out).toMatch(/apt-get install -y[^\n]*python3/);
+  });
+
+  it("falls back to apk (alpine) for python3", () => {
+    expect(out).toMatch(/apk add[^\n]*python3/);
+  });
+
+  it("ensures a bare `python` on both base families", () => {
+    expect(out).toContain("python-is-python3");                       // apt
+    expect(out).toContain("ln -sf /usr/bin/python3 /usr/bin/python"); // apk
+  });
+
   it("does not inject when the base is already the runner base", () => {
     const skipped = wrapDockerfile("FROM journeyman/runner-base:dev\nRUN x", "journeyman/runner-bundle:dev");
     expect(skipped).not.toContain("COPY --from=journeyman/runner-bundle");

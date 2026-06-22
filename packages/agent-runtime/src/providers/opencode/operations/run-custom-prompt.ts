@@ -146,6 +146,7 @@ export async function runCustomPrompt(
   // The live stream resolves on session.idle (or natural stream end); on a
   // user abort, onAbort already called stop() so this resolves promptly too.
   const streamInfo = logStream ? await logStream.done : { emitted: 0, degraded: false };
+  log.info({ sessionId, sid, emitted: streamInfo.emitted, degraded: streamInfo.degraded }, "log stream settled");
 
   if (opts.signal?.aborted) throw abortError(opts.signal);
 

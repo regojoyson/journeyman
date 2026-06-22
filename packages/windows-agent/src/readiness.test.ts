@@ -19,4 +19,17 @@ describe("runReadinessChecks", () => {
     expect(r.ready).toBe(false);
     expect(r.checks.find((c) => c.name === "bash")?.detail).toMatch(/Git for Windows/i);
   });
+
+  it("reports python advisorily — present in the scorecard but does not block startup", async () => {
+    const root = mkdtempSync(join(tmpdir(), "jm-ready-"));
+    const r = await runReadinessChecks({
+      bashPath: process.execPath,
+      workspaceRoot: root,
+      probe: async (t) => t !== "python", // everything resolves except python
+    });
+    expect(r.ready).toBe(true); // advisory: missing python must not block
+    const py = r.checks.find((c) => c.name === "python");
+    expect(py?.ok).toBe(false);
+    expect(py?.detail).toMatch(/Python 3/i);
+  });
 });
