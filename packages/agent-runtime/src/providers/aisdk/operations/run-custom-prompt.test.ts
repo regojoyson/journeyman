@@ -64,6 +64,45 @@ describe("runCustomPrompt (aisdk)", () => {
     expect(r.error).toMatch(/no parseable JSON/i);
   });
 
+  // #1: reasoning models that get cut off mid-<think>, or that emit the whole
+  // answer inside the reasoning tag, leave the clean JSON in the reasoning channel
+  // (result.reasoningText) while the content channel comes back empty. Recover it
+  // with a plain JSON.parse — no prose digging (the output is clean JSON).
+  it("recovers structured JSON from the reasoning channel when the text channel is empty", async () => {
+    const o: Record<string, unknown> = { text: "", steps: [], reasoningText: '{"ok":1}' };
+    Object.defineProperty(o, "output", { get() { throw new Error("No output generated."); } });
+    generateText.mockResolvedValue(o);
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ ok: 1 });
+    expect(generateText).toHaveBeenCalledTimes(1); // recovered without needing a forced turn
+  });
+
+  it("recovers JSON from the newest non-empty step reasoningText when the result-level one is empty", async () => {
+    const o: Record<string, unknown> = {
+      text: "",
+      reasoningText: "",
+      steps: [{ text: "", reasoningText: "" }, { text: "", reasoningText: '{"ok":2}' }],
+    };
+    Object.defineProperty(o, "output", { get() { throw new Error("No output generated."); } });
+    generateText.mockResolvedValue(o);
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toEqual({ ok: 2 });
+  });
+
+  // #5: the empty "Final text" alone is undebuggable. Surface finishReason and the
+  // sizes of the text/reasoning channels so one re-run tells us whether the model
+  // was cut off mid-think (finishReason=length) or dumped a non-JSON answer.
+  it("surfaces finishReason and channel sizes when no JSON is produced", async () => {
+    const o: Record<string, unknown> = { text: "", steps: [], reasoningText: "thinking but cut off", finishReason: "length" };
+    Object.defineProperty(o, "output", { get() { throw new Error("No output generated."); } });
+    generateText.mockResolvedValue(o);
+    const r = await runCustomPrompt(structuredOpts);
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toMatch(/no parseable JSON/i);
+    expect(r.error).toMatch(/finishReason=length/);
+    expect(r.error).toMatch(/reasoningLen=/);
+  });
+
   it("forces a final tool-free JSON turn when the agent loop ends without JSON", async () => {
     generateText
       .mockResolvedValueOnce(resultWithThrowingOutput({ text: "<think>ran out of steps</think>", steps: [] }))

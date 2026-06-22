@@ -68,6 +68,23 @@ function finalAssistantText(result: { text?: unknown; steps?: unknown }): string
 }
 
 /**
+ * The model's reasoning text. Prefer `result.reasoningText`; fall back to the
+ * newest non-empty step's `reasoningText`. Reasoning models that get cut off
+ * mid-`<think>` (unclosed tag → the middleware moves the *whole* output into the
+ * reasoning channel), or that emit the entire answer inside the reasoning tag,
+ * leave the clean JSON here while the content channel comes back empty.
+ */
+function finalReasoningText(result: { reasoningText?: unknown; steps?: unknown }): string {
+  if (typeof result.reasoningText === "string" && result.reasoningText.trim()) return result.reasoningText;
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const t = (steps[i] as { reasoningText?: unknown })?.reasoningText;
+    if (typeof t === "string" && t.trim()) return t;
+  }
+  return "";
+}
+
+/**
  * Read the structured result. The AI SDK only resolves `result.output` when the
  * final step's finishReason is "stop"; with tool-using steps it is often
  * "tool-calls"/"unknown", so `result.output` throws NoOutputGeneratedError even
@@ -75,7 +92,7 @@ function finalAssistantText(result: { text?: unknown; steps?: unknown }): string
  * that case we recover the JSON from the model's text ourselves. Returns
  * `undefined` when no parseable JSON is present (never throws).
  */
-function tryReadStructured(result: { output?: unknown; text?: unknown; steps?: unknown }): unknown {
+function tryReadStructured(result: { output?: unknown; text?: unknown; reasoningText?: unknown; steps?: unknown }): unknown {
   try {
     const out = result.output;
     if (out !== undefined) return out;
@@ -86,8 +103,38 @@ function tryReadStructured(result: { output?: unknown; text?: unknown; steps?: u
     // Text is already reasoning-stripped by wrapForStructuredOutput's middleware.
     return JSON.parse(finalAssistantText(result));
   } catch {
+    /* not in the content channel — try the reasoning channel next */
+  }
+  try {
+    // Reasoning models leave the clean JSON in the reasoning channel when the
+    // content channel is empty (whole answer wrapped in <think>, or an unclosed
+    // think tag swallowed it). Plain JSON.parse — the output is clean JSON.
+    return JSON.parse(finalReasoningText(result));
+  } catch {
     return undefined;
   }
+}
+
+/**
+ * Compact diagnostic snapshot of a generateText result for the no-JSON failure
+ * path. The bare empty "Final text" is undebuggable — was the model cut off
+ * mid-think (finishReason=length) or did it dump a non-JSON answer? Surfaces the
+ * finish reason, step count, and the sizes/previews of both channels.
+ */
+function describeNoJson(result: { finishReason?: unknown; steps?: unknown; text?: unknown; reasoningText?: unknown }): string {
+  const text = finalAssistantText(result);
+  const reasoning = finalReasoningText(result);
+  const steps = Array.isArray(result.steps) ? result.steps.length : 0;
+  const parts = [
+    "structured step produced no parseable JSON.",
+    `finishReason=${String(result.finishReason ?? "unknown")}`,
+    `steps=${steps}`,
+    `textLen=${text.length}`,
+    `reasoningLen=${reasoning.length}`,
+  ];
+  if (text.trim()) parts.push(`finalText="${truncate(text, 300)}"`);
+  if (reasoning.trim()) parts.push(`reasoningPreview="${truncate(reasoning, 300)}"`);
+  return parts.join(" | ");
 }
 
 /**
@@ -183,6 +230,7 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     if (opts.outputMode === "text") return { sessionId, result: typeof result.text === "string" ? result.text : "", usage: usage() };
 
     let structured = tryReadStructured(result);
+    let forced: any;
 
     // Safety net: tool-using agents often exhaust their step budget or stop on a
     // reasoning-only turn without ever emitting the final JSON — or emit JSON whose
@@ -190,8 +238,17 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     // fields). In either case ask once more, with no tools, replaying the
     // conversation and restating the schema so the model has full context.
     if (structured === undefined || missingRequiredKeys(structured, opts.outputSchema).length) {
-      log.warn({ sessionId }, "agent loop produced no valid structured output; forcing a final JSON turn");
-      const forced: any = await generateText({
+      log.warn(
+        {
+          sessionId,
+          finishReason: String((result as any).finishReason ?? "unknown"),
+          steps: Array.isArray((result as any).steps) ? (result as any).steps.length : 0,
+          textLen: finalAssistantText(result).length,
+          reasoningLen: finalReasoningText(result).length,
+        },
+        "agent loop produced no valid structured output; forcing a final JSON turn",
+      );
+      forced = await generateText({
         model,
         ...(system ? { system } : {}),
         messages: [
@@ -211,8 +268,9 @@ export async function runCustomPrompt(opts: RunCustomPromptOptions): Promise<Run
     }
 
     if (structured === undefined) {
-      const text = finalAssistantText(result);
-      return { sessionId, error: `structured step produced no parseable JSON. Final text: ${truncate(text, 500)}`, usage: usage() };
+      // Report against the turn that actually ran last (the forced turn, if any),
+      // so finishReason/channel sizes reflect the freshest evidence.
+      return { sessionId, error: describeNoJson(forced ?? result), usage: usage() };
     }
     const missing = missingRequiredKeys(structured, opts.outputSchema);
     if (missing.length) {
