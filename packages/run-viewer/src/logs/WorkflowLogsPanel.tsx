@@ -181,7 +181,10 @@ export function WorkflowLogsPanel(props: WorkflowLogsPanelProps) {
   ) : null;
 
   return (
-    <div className="je-runview__logspanel" style={props.height != null ? { height: props.height } : undefined}>
+    <div
+      className={`je-runview__logspanel${props.height == null ? " je-runview__logspanel--fill" : ""}`}
+      style={props.height != null ? { height: props.height } : undefined}
+    >
       {props.resizeEdge !== 'bottom' && handle}
 
       <div className="je-runview__logspanel-header">

@@ -280,10 +280,10 @@ export function AgentRunDetailPage() {
         </div>
       </header>
 
-      {/* Scrollable body */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
-        <div className={`${card} overflow-hidden`}>
-          <div className="flex min-h-[500px]">
+      {/* Body — full-height flex column so the Logs tab can fill and scroll internally */}
+      <div className="flex-1 min-h-0 px-6 py-6">
+        <div className={`${card} h-full overflow-hidden`}>
+          <div className="flex h-full min-h-0">
 
             {/* Sidebar nav */}
             <aside className="w-44 shrink-0 border-r p-3">
@@ -291,22 +291,28 @@ export function AgentRunDetailPage() {
             </aside>
 
             {/* Content panel */}
-            <div className="flex-1 p-6">
+            <div className="flex-1 min-h-0 flex flex-col">
               {section === "details" && (
-                <RunDetailsPanel
-                  wi={wi}
-                  provider={provider}
-                  model={model}
-                  isRunning={isRunning}
-                  repoName={repoName}
-                  prUrl={prUrl}
-                  prNumber={prNumber}
-                  displayInputs={displayInputs}
-                  outputText={outputText}
-                />
+                <div className="flex-1 min-h-0 overflow-y-auto p-6">
+                  <RunDetailsPanel
+                    wi={wi}
+                    provider={provider}
+                    model={model}
+                    isRunning={isRunning}
+                    repoName={repoName}
+                    prUrl={prUrl}
+                    prNumber={prNumber}
+                    displayInputs={displayInputs}
+                    outputText={outputText}
+                  />
+                </div>
               )}
               {section === "logs" && <RunLogsPanel events={allEvents} />}
-              {section === "tokens" && <RunTokensPanel />}
+              {section === "tokens" && (
+                <div className="flex-1 min-h-0 overflow-y-auto p-6">
+                  <RunTokensPanel />
+                </div>
+              )}
             </div>
 
           </div>

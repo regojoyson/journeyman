@@ -1,0 +1,49 @@
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // compose service name -> `service` label (e.g. api-app, worker)
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  // compose project -> `project` label
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+  // container name (strip leading slash) -> `container` label
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  // image title -> `image` label
+  rule {
+    source_labels = ["__meta_docker_container_label_org_opencontainers_image_title"]
+    target_label  = "image"
+  }
+  // Non-compose containers (sandbox runners) have no compose service label;
+  // fall back to "sandbox" so they are still grouped and queryable.
+  rule {
+    source_labels = ["service"]
+    regex         = ""
+    target_label  = "service"
+    replacement   = "sandbox"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
