@@ -79,7 +79,7 @@ export class PostgresWorkflowStore implements IWorkflowStore {
       `INSERT INTO jm_workflows
          (workspace_id, name, description, created_by_user_id,
           draft_definition, draft_updated_at, draft_updated_by_user_id)
-       VALUES ($1, $2, $3, $4, $5::jsonb, now(), $4)
+       VALUES ($1, $2, $3, $4::uuid, $5::jsonb, now(), $4::text)
        RETURNING *`,
       [args.workspaceId, args.name, args.description ?? null, args.createdByUserId,
        JSON.stringify(args.initialDefinition)],
