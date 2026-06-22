@@ -64,6 +64,46 @@ describe("opencode runCustomPrompt", () => {
     expect(captured.system).not.toContain(".cache");
   });
 
+  it("recovers structured output via a forced JSON-only turn when the agent ends in prose", async () => {
+    const calls: any[] = [];
+    const client = fakeClient((p) => {
+      calls.push(p);
+      if (calls.length === 1) {
+        // agent run ended chatty → OpenCode StructuredOutputError + prose parts
+        return { data: { info: { error: { name: "StructuredOutputError", data: { retries: 2 } } },
+          parts: [{ type: "text", text: "Done. Here's the summary:\n| Step | Result |" }] } };
+      }
+      // forced tool-free turn → clean structured output
+      return { data: { info: { structured: { "spec-path": "docs/spec/x.md" } }, parts: [] } };
+    });
+    const r = await runCustomPrompt(client, cfg, {
+      prompt: "do it", outputMode: "structured",
+      outputSchema: { type: "object", properties: { "spec-path": { type: "string" } }, required: ["spec-path"] },
+      model: "openai/gpt-4o", tools: ["bash", "search"], cwd: "/workspace",
+    });
+    expect(r.structured).toEqual({ "spec-path": "docs/spec/x.md" });
+    expect(r.error).toBeUndefined();
+    expect(calls.length).toBe(2); // agent run + forced turn
+    const forced = calls[1];
+    expect(forced.agent).toBeUndefined(); // plain completion, not the build agent
+    expect(Object.values(forced.tools).every((v) => v === false)).toBe(true); // tools disabled
+    expect(forced.format.type).toBe("json_schema");
+  });
+
+  it("fails clearly (no prose dump) when even the forced turn can't produce JSON", async () => {
+    const client = fakeClient(() => ({
+      data: { info: { error: { name: "StructuredOutputError", data: { retries: 2 } } },
+        parts: [{ type: "text", text: "Done. Here's the summary:\n| Step | Result |\nSpec at docs/spec/x.md" }] },
+    }));
+    const r = await runCustomPrompt(client, cfg, {
+      prompt: "do it", outputMode: "structured",
+      outputSchema: { type: "object", properties: { "spec-path": { type: "string" } }, required: ["spec-path"] },
+      model: "openai/gpt-4o", tools: ["bash"], cwd: "/workspace",
+    });
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toBeTruthy(); // clear failure, not a prose blob in spec-path
+  });
+
   it("structured mode without a schema returns an error", async () => {
     const client = fakeClient(() => ({ data: { info: {}, parts: [] } }));
     const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "structured" });

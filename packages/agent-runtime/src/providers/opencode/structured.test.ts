@@ -37,4 +37,22 @@ describe("salvageStructured", () => {
   it("returns undefined when nothing usable is present", () => {
     expect(salvageStructured("I cannot help with that.", boolSchema)).toBeUndefined();
   });
+
+  const pathSchema = {
+    type: "object",
+    properties: { "spec-path": { type: "string" } },
+    required: ["spec-path"],
+  } as const;
+
+  it("salvages a bare single-line value into a single string field", () => {
+    expect(salvageStructured("docs/spec/HireIQ-5.md", pathSchema)).toEqual({ "spec-path": "docs/spec/HireIQ-5.md" });
+  });
+  it("does NOT dump a multi-line prose summary into a single string field", () => {
+    const prose = "Done. Here's the summary:\n\n| Step | Result |\n|---|---|\nSpec file path: `docs/spec/x.md`";
+    expect(salvageStructured(prose, pathSchema)).toBeUndefined();
+  });
+  it("still extracts a clean JSON block even amid prose", () => {
+    const text = 'Done!\n```json\n{"spec-path": "docs/spec/x.md"}\n```';
+    expect(salvageStructured(text, pathSchema)).toEqual({ "spec-path": "docs/spec/x.md" });
+  });
 });

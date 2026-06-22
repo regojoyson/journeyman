@@ -60,8 +60,12 @@ export function salvageStructured(text: string, schema: Schema): Record<string, 
       const m = text.match(/-?\d+(\.\d+)?/);
       if (m) return { [name]: Number(m[0]) };
     } else if (t === "string") {
+      // Only salvage a BARE value — a single, short line that plausibly IS the
+      // value (e.g. a path). Dumping multi-line/prose text here passes validation
+      // (any string satisfies a string field) and sends a whole summary downstream
+      // as if it were the answer. Reject prose; let the caller fail clearly instead.
       const v = text.trim();
-      if (v) return { [name]: v };
+      if (v && !v.includes("\n") && v.length <= 512) return { [name]: v };
     }
   }
   return undefined;

@@ -95,6 +95,41 @@ function writeResponseAndExit(out: string, code: number): void {
   process.stdout.write(out, () => process.exit(code));
 }
 
+/**
+ * The operation's workspace (`opts.cwd`, e.g. /workspace), or undefined. Pure so
+ * it can be unit-tested; the chdir side-effect stays in main().
+ */
+export function parseRequestCwd(input: string): string | undefined {
+  try {
+    const cwd = (JSON.parse(input) as { opts?: { cwd?: unknown } })?.opts?.cwd;
+    return typeof cwd === "string" && cwd ? cwd : undefined;
+  } catch {
+    return undefined; // invalid JSON is reported by runRunnerCli downstream
+  }
+}
+
+/**
+ * Make the runner's cwd the operation's workspace before any provider runs.
+ *
+ * The OpenCode SDK spawns `opencode serve` with the runner's inherited cwd as its
+ * project root (createOpencode passes no cwd to cross-spawn), and OpenCode judges
+ * `external_directory` permissions against that root. Without this, the cloned repo
+ * under /workspace is treated as OUTSIDE the project, so `external_directory:"deny"`
+ * blocks every read/glob/bash against it and the agent falls back to remote/MCP.
+ * The docker runner is one-shot per operation, so a process-wide chdir is safe.
+ * Best-effort: a missing dir leaves cwd unchanged (paths are still absolute).
+ */
+function chdirToWorkspace(input: string): void {
+  const cwd = parseRequestCwd(input);
+  if (!cwd) return;
+  try {
+    process.chdir(cwd);
+    diag(`runner cwd set to ${cwd}`, { cwd });
+  } catch (err) {
+    diag(`could not chdir to ${cwd}: ${String((err as Error)?.message ?? err)}`, { cwd });
+  }
+}
+
 async function main(): Promise<void> {
   guardRunnerStdout();
   ensureNodeOnPath();
@@ -104,6 +139,7 @@ async function main(): Promise<void> {
     return;
   }
   const input = await readStdin();
+  chdirToWorkspace(input);
   const out = await runRunnerCli(
     input,
     (key) => createCodingProvider(key, { env: process.env as Record<string, string> }),

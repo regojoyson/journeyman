@@ -10,7 +10,7 @@ import { streamSessionLog } from "../utils/event-stream.ts";
 import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
-import { resolveOpenCodeModel } from "../model.ts";
+import { resolveOpenCodeModel, type OpenCodeModel } from "../model.ts";
 import { OPENCODE_AGENT } from "../server-config.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
@@ -147,6 +147,59 @@ function abortError(signal: AbortSignal | undefined): unknown {
 }
 
 /**
+ * Final, tool-free turn sent when the agent finished without valid structured output.
+ * A chatty coding agent often ends in a prose summary; OpenCode's inline format+retry
+ * re-asks *inside* the agent loop and never recovers it. This restates the contract on
+ * a clean turn. Mirrors the aisdk provider's FORCE_JSON_INSTRUCTION.
+ */
+const FORCE_JSON_INSTRUCTION =
+  "You have finished working. Output ONLY the JSON object that matches the required schema, " +
+  "reflecting what you actually accomplished. Do not call any tools and do not add any other " +
+  "text, markdown, or commentary. If something could not be completed, still return the JSON " +
+  "with your best values for each field.";
+
+/** Same tool keys, all disabled — the forced turn must not call tools. */
+function disableAllTools(tools: Record<string, boolean>): Record<string, boolean> {
+  const off: Record<string, boolean> = {};
+  for (const k of Object.keys(tools)) off[k] = false;
+  return off;
+}
+
+/**
+ * Ask the model, in one clean tool-free turn in the same session, to emit ONLY the
+ * schema JSON. This is what reliably gets structured output from a model that just
+ * ran as an agent and ended in prose (OpenCode's inline retry can't). No agent is
+ * set, tools are disabled, and the schema is restated via `format`. Returns a
+ * validated object, or undefined on any failure (caller falls back to salvage/error).
+ */
+async function forceJsonTurn(
+  client: OpenCodeClient,
+  sid: string,
+  schema: Record<string, unknown>,
+  ctx: { model: OpenCodeModel; tools: Record<string, boolean>; system?: string; cwd?: string },
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    const res = await client.session.prompt({
+      sessionID: sid,
+      parts: [{ type: "text", text: FORCE_JSON_INSTRUCTION }],
+      model: ctx.model,
+      tools: disableAllTools(ctx.tools),
+      ...(ctx.cwd ? { directory: ctx.cwd } : {}),
+      ...(ctx.system ? { system: ctx.system } : {}),
+      format: { type: "json_schema", schema, retryCount: STRUCTURED_RETRY_COUNT },
+    });
+    if (!res.data) return undefined;
+    const info = res.data.info as { structured?: unknown; structured_output?: unknown };
+    const valid = validateStructured(readStructured(info), schema);
+    if (valid.ok) return valid.value;
+    // The forced turn may itself print a JSON block as text — salvage that too.
+    return salvageFromParts(res.data as never, schema);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Run a custom prompt through OpenCode. `client` is an already-started server
  * client (index.ts owns start/close). Honors outputMode none|text|structured,
  * tools, cwd (as `directory`), and MCP system prompts.
@@ -263,10 +316,15 @@ export async function runCustomPrompt(
     // Salvage is validation-safe — it returns only a schema-conforming object — so try
     // it before surfacing the error rather than discarding a usable result.
     if (opts.outputMode === "structured" && opts.outputSchema) {
-      const salvaged = salvageFromParts(res.data as never, opts.outputSchema as Record<string, unknown>);
-      if (salvaged) {
-        log.warn({ sessionId, error: (info.error as { name?: string })?.name ?? "error" }, "structured salvaged from text/reasoning despite session error");
-        return { sessionId, structured: salvaged, usage };
+      const schema = opts.outputSchema as Record<string, unknown>;
+      // Recover a chatty agent that ended in prose: a clean tool-free JSON-only turn
+      // first, then salvage a JSON block from what it already printed.
+      const recovered =
+        (opts.signal?.aborted ? undefined : await forceJsonTurn(client, sid, schema, { model, tools, system, cwd: opts.cwd }))
+        ?? salvageFromParts(res.data as never, schema);
+      if (recovered) {
+        log.warn({ sessionId, error: (info.error as { name?: string })?.name ?? "error" }, "structured recovered after session error (forced turn or salvage)");
+        return { sessionId, structured: recovered, usage };
       }
     }
     const error = describeInfoError(info.error);
@@ -277,15 +335,17 @@ export async function runCustomPrompt(
   if (opts.outputMode === "none") return { sessionId, usage };
   if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never), usage };
 
-  // structured: validate → salvage from text/reasoning → fail clearly.
+  // structured: validate → forced JSON-only turn → salvage → fail clearly.
   const schema = opts.outputSchema as Record<string, unknown>;
   const valid = validateStructured(readStructured(info), schema);
   if (valid.ok) return { sessionId, structured: valid.value, usage };
 
-  const salvaged = salvageFromParts(res.data as never, schema);
-  if (salvaged) {
-    log.warn({ sessionId, reason: valid.reason }, "structured salvaged from text/reasoning");
-    return { sessionId, structured: salvaged, usage };
+  const recovered =
+    (opts.signal?.aborted ? undefined : await forceJsonTurn(client, sid, schema, { model, tools, system, cwd: opts.cwd }))
+    ?? salvageFromParts(res.data as never, schema);
+  if (recovered) {
+    log.warn({ sessionId, reason: valid.reason }, "structured recovered (forced turn or salvage)");
+    return { sessionId, structured: recovered, usage };
   }
 
   // Surface whichever channel the model actually used so the failure is diagnosable.
