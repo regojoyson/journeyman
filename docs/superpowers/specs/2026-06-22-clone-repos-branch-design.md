@@ -53,14 +53,15 @@ One git connection on the node, then a picker-only list of repos from that conne
 - **ConfigTab wiring** (`ConfigTab.tsx`, the clone-repos block): replace the `.split("\n")`/`.join("\n")` adapters with object-array passthrough (`value={config.repos ?? []}`, `onChange={repos => …}`). Coerce a non-array `config.repos` to `[]` (stale old node shows no rows → user re-picks).
 - **Generic-render + stale-key sweep (the two traps):**
   - `repos`/`branch` currently also render via `SchemaForm` from `configFields`, and `string-list`/`valueListMode` writes a **string**, not objects. RepoPicker must be the *only* repos editor — exclude `repos` from generic SchemaForm rendering for clone-repos, and remove `branch` from `configFields`.
-  - The `ConfigTab` stale-key sweep deletes any `config` key not in `configFields`. `repos` **must remain a recognized key** (kept in `configFields` or allow-listed) or the sweep wipes `config.repos` on node select. `branch` is intentionally dropped, so the sweep removing a stale `config.branch` is desired.
+  - The `ConfigTab` stale-key sweep deletes any `config` key not in `configFields` (the allow-set is derived from `definition.configFields` keys). So **keep `repos` in `configFields`** (protects it from the sweep) and exclude it from generic rendering by filtering the `fields` map passed to `SchemaForm` for clone-repos (a small `renderedConfigFields` derivation in `ConfigTab` — least invasive; no new `FieldMeta` flag plumbing). `branch` is dropped from `configFields`, so the sweep removing a stale `config.branch` is desired.
+  - `SchemaForm` runs `safeParse` on the whole `config` regardless of which fields render, so excluding `repos` from rendering does **not** skip its validation. With `repos` as an optional array, an empty selection validates cleanly at edit time; the runtime handler enforces non-empty (fails at run time).
 
 ### A3. Handler
 - `packages/orchestrator/src/workers/steps/clone-repos-step-handler.ts`
   - Replace `parseRepoList(input.repos)` + `input.branch` with `const entries = toRepoEntries(input.repos)`. Empty → unchanged non-retryable `InvalidInput` failure.
   - Pass `repos: entries` to `cloneRepos` (per-entry branch); drop the single `branch` arg.
   - Fix the per-repo log line to use `r.url` (today `ctx.log(\`Cloning ${r}\`)` would print `[object Object]`).
-  - **Sandbox auth fix:** build a `SandboxGitAuth` from `ctx.connection` (resolve token like agent-run does) and pass it to `new SandboxInstanceGitProvider(ctx.exec, auth)`. Today it passes no auth, and the runner's `git clone` injects no token, so private repos cannot clone in a sandbox.
+  - **Sandbox auth fix:** `ctx.connection.credential` is already the decrypted token (the worker's resolver unseals it before the handler runs), so build `SandboxGitAuth` **directly** — `{ provider: ctx.connection.provider, token: ctx.connection.credential, baseUrl: ctx.connection.baseUrl }` — and pass it to `new SandboxInstanceGitProvider(ctx.exec, auth)`. No pool/unseal needed (simpler than agent-run, which only does that because it resolves a separate `input.gitConnectionId` the harness hasn't pre-resolved). Today the sandbox branch passes no auth and the runner's `git clone` injects no token, so private repos cannot clone in a sandbox. The local (`this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection)`) path is already authed — only the `ctx.exec` branch needs the fix.
 
 ### A4. Blank-branch fix (local providers)
 - `packages/git-provider/src/providers/github/operations/clone-repos.ts`
@@ -70,6 +71,8 @@ One git connection on the node, then a picker-only list of repos from that conne
 - `packages/git-provider/src/providers/gitlab/operations/clone-repos.ts` — **same `?? "main"` fix** (its `--branch` is already conditional; just change the default).
 
 ## Part B — Agent per-repo branch
+
+**Repos are optional for agents** (a pure-prompt agent with `repoSelections: []` is valid — no required-repo guard exists in the UI, API, or the `readiness` enable-gate, and none is added). `needsWorkspaceFor` must keep returning `false` for "no repos + no tools/skills/mcps", which `toRepoEntries([]).length === 0` preserves. This is the key asymmetry vs the clone-repos step: an empty agent runs prompt-only; an empty clone-repos step is a non-retryable failure.
 
 ### B1. UI — per-repo branch input (inline)
 - `packages/web/src/components/agents/sections/WorkspaceSection.tsx`
@@ -120,7 +123,7 @@ Blank branch at any layer ⇒ clone the repo's default branch.
 - **Blank branch** → repo default branch (local and sandbox).
 - **Branch missing on remote** → clone fails with the git error surfaced (no auto-create).
 - **Mixed branches across repos** (agent or step) → each repo clones its own branch.
-- **Empty repo list** → no clone; agent-run skips workspace provisioning; clone-repos step fails non-retryably.
+- **Empty repo list** → agent: valid, runs prompt-only (no workspace unless tools/skills/mcps require it); clone-repos step: non-retryable failure.
 - **Private repo in a sandbox (clone-repos step)** → now authed via the A3 fix.
 - **Bound `repos` input** → shape tightens to `array<object{url,branch}>`; a flow binding a plain string-array into `repos` will newly fail publish validation (acceptable tightening).
 
