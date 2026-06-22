@@ -13,6 +13,8 @@ export interface OpenCodePart {
   text?: string;
   tool?: string;
   state?: { status?: string; input?: Record<string, unknown>; error?: string };
+  /** Present on text parts; `time.end` is set once the segment is settled. */
+  time?: { start?: number; end?: number };
   [k: string]: unknown;
 }
 

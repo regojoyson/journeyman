@@ -35,6 +35,7 @@ export function streamSessionLog(
   const controller = new AbortController();
   const tools = new Map<string, ToolState>();
   const texts = new Map<string, OpenCodePart>();
+  const emittedText = new Set<string>();
   let emitted = 0;
   let degraded = false;
 
@@ -67,7 +68,15 @@ export function streamSessionLog(
           }
           tools.set(id, st);
         } else if (part.type === "text" && typeof part.text === "string") {
-          texts.set(part.id ?? `text:${texts.size}`, part);
+          const id = part.id ?? `text:${texts.size}`;
+          texts.set(id, part);
+          // Emit each text segment the moment it settles (time.end present),
+          // deduped by id — the text analogue of a tool's "completed" transition.
+          // Streaming deltas (no end yet) are skipped so we don't spam partials.
+          if (!emittedText.has(id) && part.text && part.time?.end != null) {
+            out({ kind: "text", part });
+            emittedText.add(id);
+          }
         }
       }
     } catch (err) {
@@ -77,8 +86,11 @@ export function streamSessionLog(
         log.warn({ err: String((err as Error)?.message ?? err) }, "event stream errored");
       }
     }
-    // Flush settled text once, in arrival order.
-    for (const part of texts.values()) if (part.text) out({ kind: "text", part });
+    // Fallback: emit any text segment that never received an end marker
+    // (or arrived after we stopped), once, in arrival order.
+    for (const [id, part] of texts) {
+      if (!emittedText.has(id) && part.text) { out({ kind: "text", part }); emittedText.add(id); }
+    }
     return { emitted, degraded };
   };
 
