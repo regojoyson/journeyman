@@ -135,7 +135,7 @@ export async function claimSandboxInstanceWithCapacity(
      ),
      ins AS (
        INSERT INTO jm_sandbox_instances (run_id, type, handle, status, owner, sandbox_id)
-       SELECT $1, $2, '', 'provisioning', $3, $4
+       SELECT $1, $2, '', 'provisioning', $3, $4::uuid
        FROM cap
        WHERE cap.n < $5
        ON CONFLICT (run_id) DO NOTHING
