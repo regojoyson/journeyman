@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CodingModel, CodingModelCreateInput } from "@journeyman/core";
-import { providersForKind, AISDK_PROVIDER_PACKAGES } from "@journeyman/core";
+import { providersForKind, AISDK_PROVIDER_PACKAGES, isAiSdkPackage } from "@journeyman/core";
 import { codingModelsApi } from "../api/codingModels.ts";
 import { modelPricingApi } from "../api/modelPricing.ts";
 import { activePriceFor } from "./coding-model-pricing.ts";
@@ -410,25 +410,19 @@ function ModelForm(props: {
               />
             </Field>
             <Field label="npm package">
-              {v.provider === "aisdk" ? (
-                <select
-                  className={inputCls}
-                  value={v.config?.npm ?? ""}
-                  onChange={(e) => setConfig("npm", e.target.value)}
-                >
-                  <option value="" disabled>Select a provider package…</option>
-                  {AISDK_PROVIDER_PACKAGES.map((p) => (
-                    <option key={p.npm} value={p.npm}>{p.label} — {p.npm}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  className={`${inputCls} font-mono text-sm`}
-                  value={v.config?.npm ?? ""}
-                  onChange={(e) => setConfig("npm", e.target.value)}
-                  placeholder="@ai-sdk/openai-compatible"
-                />
-              )}
+              <select
+                className={inputCls}
+                value={v.config?.npm ?? ""}
+                onChange={(e) => setConfig("npm", e.target.value)}
+              >
+                <option value="" disabled>Select a provider package…</option>
+                {AISDK_PROVIDER_PACKAGES.map((p) => (
+                  <option key={p.npm} value={p.npm}>{p.label} — {p.npm}</option>
+                ))}
+                {v.config?.npm && !isAiSdkPackage(v.config.npm) && (
+                  <option value={v.config.npm}>{v.config.npm} (custom)</option>
+                )}
+              </select>
             </Field>
           </section>
         )}

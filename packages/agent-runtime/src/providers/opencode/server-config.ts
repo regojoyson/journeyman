@@ -57,15 +57,22 @@ function buildProviderBlock(
   const parsed = model ? parseOpenCodeModel(model) : undefined;
   if (!parsed) return undefined;
 
+  const npm = modelConfig.npm ?? "@ai-sdk/openai-compatible";
   const slot = codingModelKeySlot({ provider: "opencode", config: modelConfig, modelId: model });
   const apiKey = modelConfig.requiresApiKey ? env?.[slot] : undefined;
+  // OpenCode streams; OpenAI-compatible servers only return usage on a stream when
+  // stream_options.include_usage is set. Default it on for that npm so local models
+  // report tokens; an explicit value always wins. Other providers handle usage
+  // themselves, so only forward the flag for them when explicitly set.
+  const includeUsage = modelConfig.includeUsage ?? (npm === "@ai-sdk/openai-compatible" ? true : undefined);
   const options: Record<string, unknown> = {
     ...(modelConfig.baseUrl ? { baseURL: modelConfig.baseUrl } : {}),
     ...(apiKey ? { apiKey } : {}),
+    ...(includeUsage !== undefined ? { includeUsage } : {}),
   };
   return {
     [parsed.providerID]: {
-      npm: modelConfig.npm ?? "@ai-sdk/openai-compatible",
+      npm,
       options,
       // A custom provider must declare its models or OpenCode can't resolve the
       // model and throws a generic "UnknownError". Declare the one we target.

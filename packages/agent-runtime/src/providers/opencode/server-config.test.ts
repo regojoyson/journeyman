@@ -26,7 +26,7 @@ describe("buildServerConfig", () => {
     expect(c.provider).toEqual({
       lmstudio: {
         npm: "@ai-sdk/openai-compatible",
-        options: { baseURL: "http://host.docker.internal:1234/v1" },
+        options: { baseURL: "http://host.docker.internal:1234/v1", includeUsage: true },
         models: { "llama-3.1": {} },
       },
     });
@@ -45,7 +45,39 @@ describe("buildServerConfig", () => {
       modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/openai-compatible", requiresApiKey: true },
       env: { MYVLLM_API_KEY: "secret-123" },
     });
-    expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123" });
+    expect((c.provider as any).myvllm.options).toEqual({ baseURL: "http://gw/v1", apiKey: "secret-123", includeUsage: true });
+  });
+
+  it("defaults includeUsage on for an openai-compatible custom endpoint", () => {
+    const c = buildServerConfig(cfg, {
+      model: "lmstudio/qwen",
+      modelConfig: { baseUrl: "http://host:1234/v1" }, // npm defaults to openai-compatible
+    });
+    expect((c.provider as any).lmstudio.options.includeUsage).toBe(true);
+  });
+
+  it("respects an explicit includeUsage:false override", () => {
+    const c = buildServerConfig(cfg, {
+      model: "lmstudio/qwen",
+      modelConfig: { baseUrl: "http://host:1234/v1", includeUsage: false },
+    });
+    expect((c.provider as any).lmstudio.options.includeUsage).toBe(false);
+  });
+
+  it("does not inject includeUsage for a non-openai-compatible npm unless set", () => {
+    const c = buildServerConfig(cfg, {
+      model: "custom/claude",
+      modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/anthropic" },
+    });
+    expect("includeUsage" in (c.provider as any).custom.options).toBe(false);
+  });
+
+  it("injects includeUsage for a non-openai-compatible npm when explicitly set", () => {
+    const c = buildServerConfig(cfg, {
+      model: "custom/claude",
+      modelConfig: { baseUrl: "http://gw/v1", npm: "@ai-sdk/anthropic", includeUsage: true },
+    });
+    expect((c.provider as any).custom.options.includeUsage).toBe(true);
   });
   it("caps the build agent at the requested maxSteps", () => {
     const c = buildServerConfig(cfg, { maxSteps: 25 });

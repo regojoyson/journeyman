@@ -11,6 +11,16 @@ export interface CodingModelConfig {
   /** Whether this model needs an API key bound (replaces the old typed apiKeySlot). */
   requiresApiKey?: boolean;
   /**
+   * Whether to request token usage on streamed responses via
+   * `stream_options.include_usage`. OpenCode streams, and OpenAI-compatible
+   * servers (e.g. LM Studio, vLLM) only attach usage to streamed responses when
+   * this is set. Defaults to true for the "@ai-sdk/openai-compatible" npm; set
+   * false for a strict endpoint that rejects stream_options. Ignored by non-
+   * openai-compatible providers unless explicitly set. OpenCode-only (the aisdk
+   * provider uses non-streaming generateText and already returns usage).
+   */
+  includeUsage?: boolean;
+  /**
    * @deprecated Legacy typed env-var label. No longer read; the label is derived
    * by codingModelKeySlot(). Kept only so old JSONB rows still parse.
    */
