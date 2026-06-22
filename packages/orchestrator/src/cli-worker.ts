@@ -440,7 +440,13 @@ const harness = new WorkerHarness({
   modelConfigResolver: async ({ provider, modelId, orgId }) => {
     if (!pool || !orgId) return undefined;
     const m = await findCodingModel(pool, orgId, provider, modelId);
-    return m?.config;
+    if (!m) return undefined;
+    // Surface the model-level `supportsThinking` flag into the runtime config as
+    // `reasoning` so the OpenCode provider can declare the model as a reasoning
+    // model (see CodingModelConfig.reasoning). Only emit the key when set, so a
+    // non-thinking model leaves the config blob untouched.
+    if (!m.supportsThinking) return m.config;
+    return { ...(m.config ?? {}), reasoning: true };
   },
   modelKeyResolver: async ({ provider, modelId, orgId }) => {
     if (!pool || !orgId) return null;

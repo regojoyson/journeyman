@@ -1,14 +1,17 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { createLogger } from "@journeyman/core";
 import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import {
   logOpenCodeTranscript, logSessionEvent,
-  renderToolInvocation, renderToolResult, renderText,
+  renderToolInvocation, renderToolResult, renderText, renderReasoning,
 } from "../utils/sdk-logger.ts";
 import { streamSessionLog } from "../utils/event-stream.ts";
 import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { openCodeToolsConfig } from "../tool-mapping.ts";
 import { validateStructured, salvageStructured } from "../structured.ts";
 import { resolveOpenCodeModel } from "../model.ts";
+import { OPENCODE_AGENT } from "../server-config.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
 import type { RunCustomPromptOptions, RunCustomPromptResult } from "@journeyman/core";
@@ -106,9 +109,34 @@ function describeInfoError(error: unknown): string {
  * server cache it across steps. OpenCode places Anthropic cache breakpoints itself
  * and other vendors auto-cache, so no explicit marker is needed here.
  */
+/** Immediate, non-hidden subdirectory names of `root` (the cloned repos); [] on any error. */
+function workspaceRepoDirs(root: string): string[] {
+  try {
+    return readdirSync(root, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .map((e) => e.name)
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
 function buildSystem(opts: RunCustomPromptOptions): string | undefined {
   const parts: string[] = [];
-  if (opts.cwd) parts.push(confinementSystemPrompt(opts.cwd));
+  if (opts.cwd) {
+    parts.push(confinementSystemPrompt(opts.cwd));
+    // Point the agent at the cloned repos so it starts in the right place instead
+    // of probing the workspace blindly. `external_directory: "deny"` already
+    // hard-blocks anything outside opts.cwd; this just tells the model where to begin.
+    const repos = workspaceRepoDirs(opts.cwd);
+    if (repos.length) {
+      const paths = repos.map((r) => join(opts.cwd as string, r)).join(", ");
+      parts.push(
+        `The repositories cloned into your workspace are: ${paths}. ` +
+          `Begin your work in the relevant repository; everything outside ${opts.cwd} is off-limits.`,
+      );
+    }
+  }
   for (const m of opts.mcps ?? []) if (m.systemPrompt) parts.push(m.systemPrompt);
   return parts.length ? parts.join("\n\n") : undefined;
 }
@@ -160,6 +188,7 @@ export async function runCustomPrompt(
     ? streamSessionLog(client, sid, (e) => {
         if (e.kind === "tool-invoke") renderToolInvocation(e.part, opts.onLog, level);
         else if (e.kind === "tool-result") renderToolResult(e.part, opts.onLog, level);
+        else if (e.kind === "reasoning") renderReasoning(e.part, opts.onLog, level);
         else renderText(e.part, opts.onLog, level);
       })
     : undefined;
@@ -179,6 +208,7 @@ export async function runCustomPrompt(
   try {
     res = await client.session.prompt({
       sessionID: sid,
+      agent: OPENCODE_AGENT,
       parts: [{ type: "text", text: promptText }],
       model,
       tools,

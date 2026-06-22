@@ -93,6 +93,38 @@ describe("streamSessionLog", () => {
     expect(textCalls.length).toBe(1);
   });
 
+  it("emits reasoning live on first sight, throttles a rapid update, emits on settle", async () => {
+    const nowSpy = vi.spyOn(Date, "now");
+    nowSpy.mockReturnValueOnce(1000) // first sight -> emit
+      .mockReturnValueOnce(1100)     // +100ms, within 5s window -> skip
+      .mockReturnValueOnce(1200);    // settled (grew since last emit) -> emit
+    const client = fakeEventClient([
+      partUpdated("sid", { id: "r1", type: "reasoning", text: "thinking a", time: { start: 0 } }),
+      partUpdated("sid", { id: "r1", type: "reasoning", text: "thinking ab", time: { start: 0 } }),
+      partUpdated("sid", { id: "r1", type: "reasoning", text: "thinking abc", time: { start: 0, end: 5 } }),
+    ]);
+    const emit = vi.fn();
+    const s = streamSessionLog(client, "sid", emit);
+    await s.done;
+    const texts = emit.mock.calls.filter((c: any[]) => c[0].kind === "reasoning").map((c: any[]) => c[0].part.text);
+    expect(texts).toEqual(["thinking a", "thinking abc"]);
+    nowSpy.mockRestore();
+  });
+
+  it("emits a reasoning update once the throttle window has elapsed", async () => {
+    const nowSpy = vi.spyOn(Date, "now");
+    nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(7000); // 6s later, > 5s window
+    const client = fakeEventClient([
+      partUpdated("sid", { id: "r1", type: "reasoning", text: "aaaa", time: { start: 0 } }),
+      partUpdated("sid", { id: "r1", type: "reasoning", text: "aaaabbbb", time: { start: 0 } }),
+    ]);
+    const emit = vi.fn();
+    const s = streamSessionLog(client, "sid", emit);
+    await s.done;
+    expect(emit.mock.calls.filter((c: any[]) => c[0].kind === "reasoning").length).toBe(2);
+    nowSpy.mockRestore();
+  });
+
   it("aborts the SSE subscription once the stream loop ends (no leaked connection)", async () => {
     // Regression: on the happy path the loop `break`s on session.idle without
     // calling stop(); the subscription must still be torn down or the runner's

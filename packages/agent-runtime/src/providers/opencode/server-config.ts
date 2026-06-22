@@ -6,12 +6,29 @@ import type { OpenCodeProviderConfig } from "./types.ts";
 import { toOpenCodeMcpConfigs } from "./mcp-adapter.ts";
 import { parseOpenCodeModel } from "./model.ts";
 
+// `external_directory: "deny"` confines the agent to its working directory
+// (/workspace). It governs EVERY path-taking tool — read/edit/glob/grep and bash
+// working dirs — so a single setting hard-blocks out-of-workspace access (the
+// Claude-hook equivalent, reads included). "deny" is synchronous: OpenCode refuses
+// instantly and returns an error the model can recover from. It also removes the
+// default "ask" behaviour, which — with no permission client subscribed — leaves
+// the agent blocked forever on an unanswered prompt.
 const BYPASS_PERMISSION = {
   bash: "allow", edit: "allow", webfetch: "allow", websearch: "allow", skill: "allow",
+  external_directory: "deny",
 } as const;
 
 /** Default agent step budget when the step doesn't specify maxSteps — matches the Claude/AISDK providers. */
 const DEFAULT_STEP_BUDGET = 80;
+
+/**
+ * The OpenCode agent every prompt runs under. It MUST match the agent key we set
+ * `maxSteps` on below — prompts pass `agent: OPENCODE_AGENT` explicitly so the
+ * step budget can never silently fail to apply (which it would if a prompt ran
+ * under a different default agent than the one configured). "build" is OpenCode's
+ * full-capability primary agent.
+ */
+export const OPENCODE_AGENT = "build";
 
 export interface ServerConfigRuntime {
   mcps?: ResolvedMcpInstance[];
@@ -40,7 +57,7 @@ export function buildServerConfig(
   const skillPaths = (runtime.skills ?? []).flatMap((pkg) => pkg.enabledSkills.map((name) => join(pkg.localPath, name)));
   return {
     permission,
-    agent: { build: { maxSteps } },
+    agent: { [OPENCODE_AGENT]: { maxSteps } },
     ...(Object.keys(mcp).length ? { mcp } : {}),
     ...(provider ? { provider } : {}),
     ...(skillPaths.length ? { skills: { paths: skillPaths } } : {}),
@@ -76,7 +93,10 @@ function buildProviderBlock(
       options,
       // A custom provider must declare its models or OpenCode can't resolve the
       // model and throws a generic "UnknownError". Declare the one we target.
-      models: { [parsed.modelID]: {} },
+      // `reasoning: true` (from the model's supportsThinking flag) makes OpenCode
+      // enable and parse the model's thinking channel; without it a reasoning
+      // model's narration is mishandled and dropped.
+      models: { [parsed.modelID]: modelConfig.reasoning ? { reasoning: true } : {} },
     },
   };
 }

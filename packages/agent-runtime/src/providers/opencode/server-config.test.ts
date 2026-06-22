@@ -10,6 +10,10 @@ describe("buildServerConfig", () => {
     const c = buildServerConfig(cfg, { mcps: undefined, model: undefined, modelConfig: undefined, env: undefined });
     expect(c.permission).toMatchObject({ bash: "allow", edit: "allow", webfetch: "allow", websearch: "allow", skill: "allow" });
   });
+  it("denies external_directory to confine the agent to its working directory", () => {
+    const c = buildServerConfig(cfg, {});
+    expect((c.permission as Record<string, unknown>).external_directory).toBe("deny");
+  });
   it("includes mcp only when instances are present", () => {
     expect(buildServerConfig(cfg, {}).mcp).toBeUndefined();
     const mcps: ResolvedMcpInstance[] = [{ id: "1", name: "fs", transport: "stdio", command: "x", args: [], env: {}, systemPrompt: null }];
@@ -31,6 +35,21 @@ describe("buildServerConfig", () => {
       },
     });
   });
+  it("declares the model with reasoning:true when modelConfig.reasoning is set", () => {
+    const c = buildServerConfig(cfg, {
+      model: "lmstudio/qwen3",
+      modelConfig: { baseUrl: "http://host:1234/v1", reasoning: true },
+    });
+    expect((c.provider as any).lmstudio.models).toEqual({ qwen3: { reasoning: true } });
+  });
+  it("declares an empty model entry when reasoning is unset/false", () => {
+    const c = buildServerConfig(cfg, {
+      model: "lmstudio/qwen3",
+      modelConfig: { baseUrl: "http://host:1234/v1", reasoning: false },
+    });
+    expect((c.provider as any).lmstudio.models).toEqual({ qwen3: {} });
+  });
+
   it("omits the provider block for a cloud model (no baseUrl)", () => {
     const c = buildServerConfig(cfg, {
       model: "anthropic/claude-sonnet-4-6",

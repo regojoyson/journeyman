@@ -4,6 +4,7 @@ import { confinementSystemPrompt } from "../../../workspace-guard/index.ts";
 import { logSessionEvent } from "../utils/sdk-logger.ts";
 import { openCodeInfoToTokenUsage } from "../utils/usage.ts";
 import { resolveOpenCodeModel } from "../model.ts";
+import { OPENCODE_AGENT } from "../server-config.ts";
 import type { OpenCodeClient } from "../client.ts";
 import type { OpenCodeProviderConfig } from "../types.ts";
 import type { ScanReposOptions, ScanReposResult } from "@journeyman/core";
@@ -60,6 +61,7 @@ export async function scanRepos(
 
   const result = await client.session.prompt({
     sessionID: sid,
+    agent: OPENCODE_AGENT,
     parts: [{ type: "text", text: [confinementSystemPrompt(opts.cwd ?? opts.parentDir), buildPrompt(opts.parentDir)].join("\n\n") }],
     model: resolveOpenCodeModel(opts.model, config.model),
     tools: { ...DEFAULT_TOOLS, ...(config.tools ?? {}) },

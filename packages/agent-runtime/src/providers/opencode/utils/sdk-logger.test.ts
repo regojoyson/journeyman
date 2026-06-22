@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   logOpenCodeTranscript,
-  renderToolInvocation, renderToolResult, renderText, renderPart,
+  renderToolInvocation, renderToolResult, renderText, renderReasoning, renderPart,
   type OpenCodePart,
 } from "./sdk-logger.ts";
 
@@ -86,6 +86,32 @@ describe("split renderers", () => {
   it("renderText skips whitespace-only text (no blank assistant line)", () => {
     const blank = vi.fn();
     renderText({ type: "text", text: "\n\n\n" }, blank, "all");
+    expect(blank).not.toHaveBeenCalled();
+  });
+
+  it("renderReasoning emits the 💭 thinking line only at all", () => {
+    const part: OpenCodePart = { type: "reasoning", text: "let me think" };
+    const all = vi.fn();
+    renderReasoning(part, all, "all");
+    expect(all.mock.calls[0][0]).toContain("💭 thinking: let me think");
+
+    const medium = vi.fn();
+    renderReasoning(part, medium, "medium");
+    expect(medium).not.toHaveBeenCalled();
+  });
+
+  it("renderReasoning tail-truncates so the latest thinking shows", () => {
+    const long = "x".repeat(250) + " FINAL_THOUGHT";
+    const onLog = vi.fn();
+    renderReasoning({ type: "reasoning", text: long }, onLog, "all");
+    const line = String(onLog.mock.calls[0][0]);
+    expect(line.startsWith("…")).toBe(true);
+    expect(line).toContain("FINAL_THOUGHT");
+  });
+
+  it("renderReasoning skips whitespace-only thoughts", () => {
+    const blank = vi.fn();
+    renderReasoning({ type: "reasoning", text: "  \n " }, blank, "all");
     expect(blank).not.toHaveBeenCalled();
   });
 

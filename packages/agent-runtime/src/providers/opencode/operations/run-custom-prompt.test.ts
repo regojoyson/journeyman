@@ -42,11 +42,26 @@ describe("opencode runCustomPrompt", () => {
       list: false, patch: false, todowrite: false, task: false,
     });
     expect(captured.directory).toBe("/workspace");
+    expect(captured.agent).toBe("build"); // matches the agent we set maxSteps on
     expect(captured.format.type).toBe("json_schema");
     expect(captured.format.schema).toEqual({ type: "object" });
     expect(typeof captured.format.retryCount).toBe("number");
     expect(r.structured).toEqual({ ok: true });
     expect(r.error).toBeUndefined();
+  });
+
+  it("lists cloned repo dirs in the system prompt to point the agent at them", async () => {
+    const { mkdtempSync, mkdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "jm-ws-"));
+    mkdirSync(join(root, "HireIQ"));
+    mkdirSync(join(root, ".cache")); // hidden — excluded from the listing
+    let captured: any;
+    const client = fakeClient((p) => { captured = p; return { data: { info: {}, parts: [] } }; });
+    await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "text", cwd: root });
+    expect(captured.system).toContain(join(root, "HireIQ"));
+    expect(captured.system).not.toContain(".cache");
   });
 
   it("structured mode without a schema returns an error", async () => {

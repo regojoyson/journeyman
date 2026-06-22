@@ -23,6 +23,13 @@ function singleLine(s: string, max = 120): string {
   return flat.length > max ? flat.slice(0, max) + "…" : flat;
 }
 
+/** Like singleLine but keeps the TAIL — for live reasoning, where each emit carries
+ *  the full accumulated thought and the latest words are what's new/interesting. */
+function singleLineTail(s: string, max = 120): string {
+  const flat = s.replace(/\s+/g, " ").trim();
+  return flat.length > max ? "…" + flat.slice(-max) : flat;
+}
+
 function allowsAssistantText(l: AgentLogLevel): boolean { return l === "all"; }
 function allowsToolUse(l: AgentLogLevel): boolean { return l === "medium" || l === "all"; }
 function allowsToolResult(l: AgentLogLevel): boolean { return l === "all"; }
@@ -74,10 +81,22 @@ export function renderText(part: OpenCodePart, onLog?: CodingCliLogFn, level: Ag
   }
 }
 
+/** Emit the `💭 thinking: text` line (gated at all). Tail-truncated: live emits
+ * carry the whole accumulated thought, so the newest words matter most. */
+export function renderReasoning(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
+  if (typeof part.text !== "string" || !part.text.trim()) return;
+  log.debug({ text: part.text }, "assistant reasoning");
+  if (onLog && allowsAssistantText(level)) {
+    onLog(singleLineTail(`💭 thinking: ${part.text}`, MAX_LINE_LEN), { part });
+  }
+}
+
 /** Render a single part fully (invocation + result + text) — used by the fallback dump. */
 export function renderPart(part: OpenCodePart, onLog?: CodingCliLogFn, level: AgentLogLevel = "all"): void {
   if (part.type === "text") {
     renderText(part, onLog, level);
+  } else if (part.type === "reasoning") {
+    renderReasoning(part, onLog, level);
   } else if (part.type === "tool") {
     renderToolInvocation(part, onLog, level);
     renderToolResult(part, onLog, level);

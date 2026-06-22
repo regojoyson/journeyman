@@ -21,6 +21,15 @@ export interface CodingModelConfig {
    */
   includeUsage?: boolean;
   /**
+   * Whether this model is a reasoning/thinking model. OpenCode-only: when true,
+   * the model is declared to the OpenCode server with `reasoning: true` so the
+   * server enables and parses its thinking channel (otherwise a reasoning model's
+   * output is mishandled and its narration is dropped). Populated at model-resolve
+   * time from the coding model's `supportsThinking` flag, not edited in the UI
+   * config blob directly. Ignored by the aisdk/claude providers.
+   */
+  reasoning?: boolean;
+  /**
    * @deprecated Legacy typed env-var label. No longer read; the label is derived
    * by codingModelKeySlot(). Kept only so old JSONB rows still parse.
    */
