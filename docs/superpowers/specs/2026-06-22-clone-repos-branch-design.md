@@ -1,130 +1,142 @@
 # Clone-repos branch handling — design
 
 **Date:** 2026-06-22
-**Status:** Approved for planning
+**Status:** Approved for planning (revised after end-to-end dry run)
 
 ## Problem
 
-There are two independent "clone repos" paths in the product, and each has a branch gap:
+There are two independent "clone repos" paths, each with a branch gap:
 
-1. **Workflow `clone-repos` step** — stores repos as one newline blob (`repos: string`) plus a single `branch` for all of them, and:
-   - `repos` is hard-required (`z.string().min(1)` + `required: true`), so a freshly-dropped node shows a required-error *before* the user has picked a connection. The connection-bound `RepoPicker` already exists, so the typed field should not be mandatory.
-   - There is no way to give each repo its own branch — the step applies one branch across all repos.
-   - The local clone path forces `opts.branch ?? "main"`, so leaving the branch blank breaks any repo whose default branch is `master`/`develop`.
+1. **Workflow `clone-repos` step** — stores repos as one newline blob (`repos: string`) plus a single `branch` for all of them. There is no way to give each repo its own branch, `repos` is hard-required (so a fresh node errors before a connection is picked), and the local clone path forces `opts.branch ?? "main"` (breaks repos whose default is `master`/`develop`).
+2. **Agent `repoSelections`** — the user picks repos but cannot set a checkout branch per repo. The type has `branch?`, but the UI never sets it, `compile.ts` reads only `repoSelections[0]?.branch` (first repo wins, rest lost), and the agent-run handler + sandbox provider apply one shared branch to all repos.
 
-2. **Agent `repoSelections`** — the user picks repos via a connection-bound browser, but there is **no way to set the checkout branch per repo**. The data type already has `branch?`, but:
-   - the UI ([WorkspaceSection.tsx](../../../packages/web/src/components/agents/sections/WorkspaceSection.tsx)) never sets it,
-   - `compile.ts` flattens to `repos: string[]` and reads only `repoSelections[0]?.branch`, discarding every other repo's branch,
-   - the agent-run handler passes one shared `branch` to all repos,
-   - `SandboxInstanceGitProvider.cloneRepos` flattens repos to bare URLs (`toUrls`) and applies one `opts.branch` to all.
+The low-level plumbing already supports per-repo branches: `RepoEntry` (`{ url, branch }`), `CloneReposOptions.repos: string | string[] | RepoEntry | RepoEntry[]`, the local provider's `normalizeEntries`, and the runner's `clone` op (`dispatch.ts` runs `git clone --branch <branch>`). The gaps are in the middle layers that throw the per-repo branch away — plus one shared helper (`parseRepoList`) that only understands strings.
 
-The underlying plumbing already supports per-repo branches: `RepoEntry` (`{ url, branch }`), `CloneReposOptions.repos: string | string[] | RepoEntry | RepoEntry[]`, the local provider's `normalizeEntries`, and the sandbox runner's `clone` op (`dispatch.ts` runs `git clone --branch <branch>` from a per-call stdin `branch`). The gaps are in the middle layers that throw the per-repo branch away.
+## Decisions
 
-## Branch semantics
+- **No legacy back-compat.** The connection-based `{ url, branch }[]` shape is the only supported shape. Old `repos: string` + `branch` configs are not read at runtime and not migrated. Existing saved flows whose clone-repos nodes use the old shape must have those nodes re-picked. (Breaking change — see Migration impact.)
+- **Branch semantics:** `branch` = check out an existing branch at clone time (`git clone --branch <branch>`). Blank = clone the repo's real default branch (omit `--branch`). A branch missing on the remote fails the clone (clear error); clone never creates branches. Creating a new working branch remains `start-feature-branch`.
+- **Fix the sandbox private-repo auth gap** in the clone-repos step as part of this work (see A3).
 
-- `branch` means **check out an existing branch at clone time** (`git clone --branch <branch>`).
-- **Blank branch = clone the repo's real default branch** (omit `--branch`), at every layer.
-- A branch name that does not exist on the remote **fails the clone** with a clear error — clone does **not** create branches.
-- Creating a new working branch remains the job of the existing **`start-feature-branch`** step (`checkoutRepo`). Out of scope here.
+## Shared runtime normalizer
+
+`parseRepoList` (`packages/core/src/parse-repo-list.ts`) only handles `string | string[]` — fed an object array it returns `[]`, which silently zeros out cloning. Leave `parseRepoList` as-is and add a new shared helper in `@journeyman/core`:
+
+```
+toRepoEntries(repos: unknown): RepoEntry[]
+// maps [{ url, branch? }] → [{ url, branch: branch ?? "" }], trims, drops empty url.
+```
+
+Both step handlers and the sandbox provider use it. `needsWorkspaceFor` counts `toRepoEntries(...).length`.
 
 ## Part A — Workflow `clone-repos` step (per-repo branch)
 
-The step gets the same UX as the agent: one git connection on the node, then a list of repos chosen from that connection, each with its own checkout branch. Repos come **only** from the connection's browse list (picker-only — no manual free-text entry).
+One git connection on the node, then a picker-only list of repos from that connection, each with its own checkout branch.
 
 ### A1. Config model
-- **Before:** `{ repos: string (newline list), branch?: string }`.
-- **After:** `{ repos: { url: string; branch?: string }[] }`. The standalone step-level `branch` field is removed; each repo carries its own (blank = that repo's default branch).
+- `repos: string` (+ `branch`) → `repos: { url: string; branch?: string }[]`. The standalone `branch` is removed (blank per-repo = that repo's default).
+- `packages/steps/src/git/clone-repos.tsx`
+  - `CloneReposConfig` interface → `{ repos: { url: string; branch?: string }[] }` (drop `branch`).
+  - `defaultConfig` → `{ repos: [] }`.
+  - `summary()` — **currently `c.repos.split("\n")`, which throws on an array.** Rewrite to `c.repos?.length ? \`${c.repos.length} repo(s)\` : "(no repos)"`.
+  - `configFields` — **remove the `branch` field**. Keep a `repos` entry so it stays a recognized config key (see A2 sweep note), but it is not generically rendered.
 - `packages/steps/src/git/clone-repos.meta.ts`
-  - `cloneReposConfigSchema`: `repos: z.array(z.object({ url: z.string().min(1), branch: z.string().optional() })).optional()`; remove the top-level `branch`.
-  - `cloneReposInputFields.repos`: shape becomes an array of `{ url, branch }` objects; remove `required: true`.
-  - `defaultConfig`: `{ repos: [] }`.
-  - `configFields`: remove the `repos` `string-list` field and the `branch` `text` field (the picker fully owns repos + branches now).
+  - `cloneReposConfigSchema` → `z.object({ repos: z.array(z.object({ url: z.string().min(1), branch: z.string().optional() })).optional() })`.
+  - `cloneReposInputFields.repos.shape` → array of object `{ url, branch }`; remove `required: true`; remove the `branch` input field.
 
 ### A2. UI (flow editor)
-- **Connection** — unchanged: the node's existing `ConnectionPicker` (one git connection for the step).
-- **Repos** — upgrade [RepoPicker.tsx](../../../packages/flow-editor/src/properties-panel/RepoPicker.tsx) (already special-cased for clone-repos in `ConfigTab.tsx`):
-  - browse & tick repos from the connection;
-  - render each selected repo as a **row with an inline branch input** (placeholder `default branch`) + remove, matching the agent `WorkspaceSection` layout;
-  - `value`/`onChange` switch from `string[]` to `{ url, branch? }[]`.
-- No manual "add by name" path; no generic `string-list` editor for this step.
+- **Connection** — unchanged: the node's existing `ConnectionPicker`.
+- **Repos** — upgrade [RepoPicker.tsx](../../../packages/flow-editor/src/properties-panel/RepoPicker.tsx) (the sole editor for repos; it is used nowhere else):
+  - `value`/`onChange` change from `string[]` to `{ url, branch? }[]`.
+  - `toggle`/selected-checks change from `value.includes(url)` to `value.some(r => r.url === url)`; add `{ url }` on select.
+  - render selected repos as **vertical rows**, each with an inline branch `<input>` (controlled on `r.branch ?? ""`, writes `branch || undefined`) + remove.
+- **ConfigTab wiring** (`ConfigTab.tsx`, the clone-repos block): replace the `.split("\n")`/`.join("\n")` adapters with object-array passthrough (`value={config.repos ?? []}`, `onChange={repos => …}`). Coerce a non-array `config.repos` to `[]` (stale old node shows no rows → user re-picks).
+- **Generic-render + stale-key sweep (the two traps):**
+  - `repos`/`branch` currently also render via `SchemaForm` from `configFields`, and `string-list`/`valueListMode` writes a **string**, not objects. RepoPicker must be the *only* repos editor — exclude `repos` from generic SchemaForm rendering for clone-repos, and remove `branch` from `configFields`.
+  - The `ConfigTab` stale-key sweep deletes any `config` key not in `configFields`. `repos` **must remain a recognized key** (kept in `configFields` or allow-listed) or the sweep wipes `config.repos` on node select. `branch` is intentionally dropped, so the sweep removing a stale `config.branch` is desired.
 
 ### A3. Handler
 - `packages/orchestrator/src/workers/steps/clone-repos-step-handler.ts`
-  - Normalize `input.repos` into `RepoEntry[]`, accepting **both** the new `{ url, branch }[]` shape and the legacy `string`/`string[]` (with the old top-level `input.branch` as fallback).
-  - Pass the `RepoEntry[]` straight to `cloneRepos` (already supports per-entry branch); drop the single `input.branch` read.
-  - Empty list → unchanged non-retryable `InvalidInput` failure (so an empty clone step fails at run time, not at edit time).
+  - Replace `parseRepoList(input.repos)` + `input.branch` with `const entries = toRepoEntries(input.repos)`. Empty → unchanged non-retryable `InvalidInput` failure.
+  - Pass `repos: entries` to `cloneRepos` (per-entry branch); drop the single `branch` arg.
+  - Fix the per-repo log line to use `r.url` (today `ctx.log(\`Cloning ${r}\`)` would print `[object Object]`).
+  - **Sandbox auth fix:** build a `SandboxGitAuth` from `ctx.connection` (resolve token like agent-run does) and pass it to `new SandboxInstanceGitProvider(ctx.exec, auth)`. Today it passes no auth, and the runner's `git clone` injects no token, so private repos cannot clone in a sandbox.
 
-### A4. Blank-branch fix (local path)
+### A4. Blank-branch fix (local providers)
 - `packages/git-provider/src/providers/github/operations/clone-repos.ts`
-  - `normalizeEntries`: stop defaulting to `"main"`. When an entry has no branch (and no `opts.branch`), it carries **no branch**.
-  - Clone invocation: build args conditionally — `["clone", ...(branch ? ["--branch", branch, "--single-branch"] : []), cloneUrl, repoDir]`. With no branch, git clones the repo's default branch.
-  - `CloneResult.branch` reports the effective branch (empty when defaulted), matching the sandbox provider.
-
-### A5. Back-compat
-- Existing saved clone-repos nodes store `{ repos: "a\nb", branch: "main" }`.
-  - **Runtime:** the A3 normalizer reads the legacy string + top-level `branch`, so already-saved/published workflows keep cloning correctly without a data migration.
-  - **Editor:** on load, convert a legacy newline `repos` string into rows, seeding each row's `branch` from the old single `branch` value, so nothing is lost when the node is re-saved into the new shape.
+  - `normalizeEntries`: `opts.branch ?? "main"` → `opts.branch ?? ""` (no forced `main`).
+  - Clone args: `["clone", ...(entry.branch ? ["--branch", entry.branch, "--single-branch"] : []), cloneUrl, repoDir]` — blank branch clones the default. `--branch ""` would otherwise crash.
+  - `CloneResult.branch` reports the effective branch (empty when defaulted).
+- `packages/git-provider/src/providers/gitlab/operations/clone-repos.ts` — **same `?? "main"` fix** (its `--branch` is already conditional; just change the default).
 
 ## Part B — Agent per-repo branch
 
 ### B1. UI — per-repo branch input (inline)
 - `packages/web/src/components/agents/sections/WorkspaceSection.tsx`
-  - Replace the repo "chip" render with a **row**: repo name on the left, a small inline branch `<input>` on the right (placeholder `default branch`), then the remove button.
-  - Add `setRepoBranch(repo: string, branch: string)` that patches the matching `repoSelections` entry's `branch` (store `undefined` when the input is cleared/blank, so blank means default).
-  - `addRepo` unchanged in shape — new repos start with no branch.
+  - Replace the chip-cloud render with **rows**: repo name + inline branch `<input>` (controlled on `r.branch ?? ""`) + remove.
+  - Add `setRepoBranch(repo, value)` patching the matching `repoSelections` entry's `branch` (blank → `undefined`).
+  - `AgentRepoSelection.branch` already exists — no type change. (Minor pre-existing: rows keyed by `r.repo` ignore `connectionId`; cross-connection same-name repos would collide — out of scope, but note.)
 
-### B2. Compile — carry per-repo branch
+### B2. Compile
 - `packages/agents/src/compile.ts`
-  - Stop emitting `repos: string[]` + single `repoBranch`. Emit **per-repo entries** that preserve each repo's branch, e.g. `repos: agent.repoSelections.map(r => ({ url: r.repo, branch: r.branch }))` (a `RepoEntry`-shaped list, branch omitted/empty when unset).
-  - Keep `gitConnectionId` and `allowWrites` derivation as-is.
-  - Remove the `repoBranch` field (superseded by per-entry branch).
+  - `repos: agent.repoSelections.map(r => ({ url: r.repo, branch: r.branch ?? "" }))`.
+  - **Remove `repoBranch`** (only writer here, only reader is the agent-run handler — both go together).
 
-### B3. Agent-run handler — pass entries through
+### B3. Agent-run handler
 - `packages/orchestrator/src/workers/steps/agent-run-step-handler.ts`
-  - Read the per-repo entries from `input.repos` and pass them to `cloneRepos` as `RepoEntry[]` (the type already accepts this) instead of `{ repos: string[], branch }`.
-  - `needsWorkspaceFor` and the run guard: count entries (a small normalizer that accepts `string | string[] | RepoEntry[]`) instead of relying solely on `parseRepoList`. Empty list → no workspace / no clone, as today.
-  - Drop the single `input.repoBranch` read.
+  - `needsWorkspaceFor` and `run`: replace `parseRepoList(input.repos)` with `toRepoEntries(input.repos)` (else no workspace is provisioned and cloning is skipped).
+  - Pass `repos: entries` to `cloneRepos`; drop the `input.repoBranch` read; fix the `ctx.log(\`Cloning ${r}\`)` loop to use `r.url`.
+  - `auth`/`gitConnectionId` resolution is orthogonal to branch — unchanged.
 
-### B4. Sandbox provider — honor each repo's branch (key fix)
+### B4. Sandbox provider — honor each repo's branch (shared by both paths)
 - `packages/orchestrator/src/sandbox/sandbox-instance-git-provider.ts`
-  - Replace `toUrls(opts.repos)` (which discards per-entry branch) with a normalizer that yields `{ url, branch? }` per repo — accepting `string`, `string[]`, `RepoEntry`, and `RepoEntry[]`, with `opts.branch` as the fallback for plain-string inputs.
-  - In the clone loop, pass **each entry's own branch** into the `clone` exec op's stdin (`...(entry.branch ? { branch: entry.branch } : {})`). Blank → omit, so the runner clones the default branch.
-  - `CloneResult.branch` reports the effective per-entry branch.
+  - Replace `toUrls(opts.repos)` (which discards per-entry branch and applies one `opts.branch`) with `toRepoEntries(opts.repos)`.
+  - In the loop, pass each entry's own branch into the `clone` op stdin: `...(entry.branch ? { branch: entry.branch } : {})` (blank → omit → default branch). `buildAuthCloneUrl` is branch-agnostic (unchanged).
+  - `CloneResult.branch` reports the per-entry branch.
+
+The runner's `clone` op (`dispatch.ts`) already runs `git clone --branch <branch>` and clones the default when branch is omitted — no change.
 
 ## Data flow (after)
 
 ```
 Agent UI (per-repo branch)                Clone-repos step UI (per-repo branch)
-  → compile.ts (RepoEntry[])                 → step config { repos: {url,branch}[] }
-        \                                    /
-         → step handler builds RepoEntry[] and calls cloneRepos
+  → compile.ts ({url,branch}[])             → step config { repos: {url,branch}[] }
+        \                                   /
+         → step handler: toRepoEntries() → cloneRepos(RepoEntry[])
            → SandboxInstanceGitProvider (per-entry branch → clone op stdin)
              → runner dispatch "clone" (git clone --branch <branch>)   [already supported]
-           → local GitHubProvider.cloneRepos (normalizeEntries per-entry branch)
+           → local GitHub/GitLab provider (normalizeEntries per-entry branch)
 ```
 
-Both entry points converge on `cloneRepos(RepoEntry[])`. Blank branch at any layer ⇒ clone the repo's default branch.
+Blank branch at any layer ⇒ clone the repo's default branch.
+
+## Migration impact (breaking)
+
+- **Clone-repos step:** existing saved flows with `repos: "a\nb"` + `branch` are not read at runtime (cloning fails) and show no rows / a validation error in the editor until the node's repos are re-picked. Accepted per the no-legacy decision.
+- **Agents:** unaffected at the data layer — agents recompile config from `repoSelections` on every run, so there is no persisted legacy agent-run config. Old agents simply gain the per-repo branch capability.
 
 ## Edge cases
 
-- **Blank branch** → repo default branch (both local and sandbox).
+- **Blank branch** → repo default branch (local and sandbox).
 - **Branch missing on remote** → clone fails with the git error surfaced (no auto-create).
-- **Mixed branches across repos** (agent or clone-repos step) → each repo clones its own branch.
-- **Legacy agents / legacy clone-repos nodes** (no per-repo branch) → entries carry no branch → default branch everywhere; behavior unchanged. Legacy clone-repos config (`repos: string` + `branch`) is read at runtime without a data migration.
-- **Empty repo list** → no clone; agent-run skips workspace provisioning; workflow clone-repos step fails non-retryably at run time.
-- **Local (non-sandbox) runs** → the local provider already honors `RepoEntry[]` per-entry branch via `normalizeEntries`; the A4 blank-branch fix applies here too.
+- **Mixed branches across repos** (agent or step) → each repo clones its own branch.
+- **Empty repo list** → no clone; agent-run skips workspace provisioning; clone-repos step fails non-retryably.
+- **Private repo in a sandbox (clone-repos step)** → now authed via the A3 fix.
+- **Bound `repos` input** → shape tightens to `array<object{url,branch}>`; a flow binding a plain string-array into `repos` will newly fail publish validation (acceptable tightening).
 
 ## Testing
 
-- `compile.test.ts`: per-repo branches survive compilation (not just `repoSelections[0]`); connection + allowWrites derivation unchanged.
-- `sandbox-instance-git-provider` unit test: `RepoEntry[]` with differing branches issues one `clone` op per repo, each with its own `branch` in stdin; blank branch omits `branch`.
-- `clone-repos.ts` (local) unit test: blank branch omits `--branch` (clones default); set branch passes `--branch <b> --single-branch`.
-- `clone-repos-step-handler`: new `{url,branch}[]` config and legacy `string`+`branch` config both produce the correct `RepoEntry[]`; empty `repos` still returns the non-retryable `InvalidInput` failure.
-- Existing `clone-repos` step save no longer surfaces a required-error with an empty `repos` field; editor migrates a legacy newline `repos` string into rows on load.
+- New `toRepoEntries` unit test: `{url,branch}[]` → `RepoEntry[]`; blank/omitted branch → `""`; non-array/garbage → `[]`.
+- `compile.test.ts`: **update** — `config.repos` becomes `[{url, branch}]`; assert per-repo branches survive; drop `repoBranch` assertions.
+- `sandbox-instance-git-provider` test: `RepoEntry[]` with differing branches issues one `clone` op per repo, each with its own `branch`; blank omits `branch`.
+- `clone-repos.ts` (github) + gitlab test: blank branch omits `--branch` (clones default); set branch passes `--branch <b>`.
+- `clone-repos-step-handler` test: object-array config produces the right `RepoEntry[]`; empty → non-retryable failure; sandbox path builds auth from `ctx.connection`.
+- `agent-run-step-handler` test: object-array `input.repos` provisions a workspace and clones with per-repo branch.
 
 ## Out of scope
 
-- Creating/switching to a **new** branch at clone time (`checkout -b`) — remains `start-feature-branch`.
-- Per-repo connection selection (one git connection per agent / per clone-repos step is unchanged).
+- Creating/switching to a new branch at clone time (`checkout -b`) — remains `start-feature-branch`.
+- Per-repo connection selection (one connection per agent / per clone-repos step).
 - Manual free-text repo entry on the clone-repos step (picker-only).
-- Extracting a shared repo-rows component across `web` (agent) and `flow-editor` (clone-repos) — optional future cleanup; the two live in different packages with different data models.
+- The pre-existing cross-connection same-name repo key collision in the agent UI.
+- Extracting a shared repo-rows component across `web` and `flow-editor` (different packages/data models) — optional future cleanup.
