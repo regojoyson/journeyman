@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createOrgSecret, createUserSecret, secretNameSuggestion } from "../../api/secrets.ts";
+import { createOrgSecret, secretNameSuggestion } from "../../api/secrets.ts";
 
 const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -11,13 +11,12 @@ function generateHex(bytes = 32): string {
 
 export interface GenerateSecretPanelProps {
   presetId: string;
-  scope: "org" | "user";
   orgId: string;
   onSaved: (name: string) => void;
   onCancel: () => void;
 }
 
-export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel }: GenerateSecretPanelProps) {
+export function GenerateSecretPanel({ presetId, orgId, onSaved, onCancel }: GenerateSecretPanelProps) {
   const [name, setName] = useState(secretNameSuggestion(presetId));
   const [generatedValue, setGeneratedValue] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,11 +34,7 @@ export function GenerateSecretPanel({ presetId, scope, orgId, onSaved, onCancel 
     const value = generateHex(32);
     setBusy(true);
     try {
-      if (scope === "org") {
-        await createOrgSecret(orgId, name, value, `Webhook secret for preset ${presetId}`);
-      } else {
-        await createUserSecret(orgId, name, value, `Webhook secret for preset ${presetId}`);
-      }
+      await createOrgSecret(orgId, name, value, `Webhook secret for preset ${presetId}`);
       setGeneratedValue(value);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

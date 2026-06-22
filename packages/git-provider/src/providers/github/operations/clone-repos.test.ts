@@ -76,4 +76,24 @@ describe("cloneRepos", () => {
     // rm was called once per cloneRepos invocation
     expect(rmMock).toHaveBeenCalledTimes(2);
   });
+
+  it("omits --branch when branch is blank (clones default)", async () => {
+    await cloneRepos("tok", {
+      repos: [{ url: "https://github.com/acme/api.git", branch: "" }],
+      workspaceDir: "/tmp/ws",
+    });
+    const args = execFileMock.mock.calls[0][1];
+    expect(args).not.toContain("--branch");
+  });
+
+  it("passes --branch <b> --single-branch when branch is set", async () => {
+    await cloneRepos("tok", {
+      repos: [{ url: "https://github.com/acme/api.git", branch: "develop" }],
+      workspaceDir: "/tmp/ws",
+    });
+    const args = execFileMock.mock.calls[0][1];
+    expect(args).toContain("--branch");
+    expect(args).toContain("develop");
+    expect(args).toContain("--single-branch");
+  });
 });

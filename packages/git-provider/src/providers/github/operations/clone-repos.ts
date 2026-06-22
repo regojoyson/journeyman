@@ -14,7 +14,7 @@ const execFileP = promisify(execFile);
 
 function normalizeEntries(opts: CloneReposOptions): RepoEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
-  const defaultBranch = opts.branch ?? "main";
+  const defaultBranch = opts.branch ?? "";
   return raw.map((r) =>
     typeof r === "string"
       ? { url: r.trim(), branch: defaultBranch }
@@ -78,7 +78,7 @@ export async function cloneRepos(
       await rm(repoDir, { recursive: true, force: true });
       await execFileP(
         "git",
-        ["clone", "--branch", entry.branch, "--single-branch", cloneUrl, repoDir],
+        ["clone", ...(entry.branch ? ["--branch", entry.branch, "--single-branch"] : []), cloneUrl, repoDir],
         { signal: opts.signal },
       );
       results.push({ folderName, repoDir, url: entry.url, branch: entry.branch, owner, repoName });

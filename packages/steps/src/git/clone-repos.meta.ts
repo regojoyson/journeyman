@@ -2,8 +2,9 @@ import { z } from "zod";
 import type { OutputSchema, InputFields } from "@journeyman/core";
 
 export const cloneReposConfigSchema = z.object({
-  repos: z.string().min(1),
-  branch: z.string().optional(),
+  repos: z
+    .array(z.object({ url: z.string().min(1), branch: z.string().optional() }))
+    .optional(),
 });
 
 export const CLONE_REPOS_STEP_TYPE = "clone-repos";
@@ -17,6 +18,11 @@ export const cloneReposOutputSchema: OutputSchema = {
 };
 
 export const cloneReposInputFields: InputFields = {
-  repos:  { shape: { type: "array", items: { type: "string" } }, label: "Repos", required: true },
-  branch: { shape: { type: "string" }, label: "Branch" },
+  repos: {
+    shape: {
+      type: "array",
+      items: { type: "object", fields: { url: { type: "string" }, branch: { type: "string" } } },
+    },
+    label: "Repos",
+  },
 };

@@ -8,7 +8,7 @@ const execFileP = promisify(execFile);
 
 function normalizeEntries(opts: CloneReposOptions): RepoEntry[] {
   const raw = Array.isArray(opts.repos) ? opts.repos : [opts.repos];
-  const defaultBranch = opts.branch ?? "main";
+  const defaultBranch = opts.branch ?? "";
   return raw.map((r) =>
     typeof r === "string" ? { url: r.trim(), branch: defaultBranch } : { ...r, url: (r.url ?? "").trim() },
   );

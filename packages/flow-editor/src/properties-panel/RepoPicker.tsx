@@ -3,11 +3,16 @@ import { useEffect, useState, useCallback } from "react";
 import { fetchConnectionRepos, type RepoSummary } from "../api/connections.ts";
 import { useWsId } from "../state/org-context.tsx";
 
+export interface RepoSelection {
+  url: string;
+  branch?: string;
+}
+
 interface Props {
   connectionId: string;
-  /** Currently selected clone URLs */
-  value: string[];
-  onChange: (urls: string[]) => void;
+  /** Currently selected repos with their per-repo checkout branch */
+  value: RepoSelection[];
+  onChange: (repos: RepoSelection[]) => void;
   readOnly?: boolean;
 }
 
@@ -36,9 +41,16 @@ export function RepoPicker({ connectionId, value, onChange, readOnly }: Props) {
     return () => window.clearTimeout(id);
   }, [search, load]);
 
+  const isSelected = (url: string) => value.some(r => r.url === url);
+
   const toggle = (url: string) => {
     if (readOnly) return;
-    onChange(value.includes(url) ? value.filter(u => u !== url) : [...value, url]);
+    onChange(isSelected(url) ? value.filter(r => r.url !== url) : [...value, { url }]);
+  };
+
+  const setBranch = (url: string, branch: string) => {
+    if (readOnly) return;
+    onChange(value.map(r => (r.url === url ? { ...r, branch: branch || undefined } : r)));
   };
 
   return (
@@ -46,26 +58,35 @@ export function RepoPicker({ connectionId, value, onChange, readOnly }: Props) {
       <label>Repositories</label>
 
       {value.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
-          {value.map(url => {
-            const name = url.split("/").slice(-2).join("/").replace(/\.git$/, "");
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+          {value.map(r => {
+            const name = r.url.split("/").slice(-2).join("/").replace(/\.git$/, "");
             return (
-              <span key={url} style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                fontSize: 11, padding: "2px 7px",
+              <div key={r.url} style={{
+                display: "flex", alignItems: "center", gap: 6,
+                fontSize: 11, padding: "3px 7px",
                 background: "rgb(var(--color-surface) / 1)",
                 border: "1px solid rgb(var(--color-border) / 1)",
                 borderRadius: 4,
               }}>
-                {name}
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+                <input
+                  type="text"
+                  placeholder="default branch"
+                  value={r.branch ?? ""}
+                  onChange={e => setBranch(r.url, e.target.value)}
+                  disabled={readOnly}
+                  style={{ width: 130, fontSize: 11, padding: "1px 5px", boxSizing: "border-box" }}
+                />
                 {!readOnly && (
                   <button
                     type="button"
-                    onClick={() => toggle(url)}
+                    onClick={() => toggle(r.url)}
+                    aria-label={`Remove ${name}`}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}
                   >×</button>
                 )}
-              </span>
+              </div>
             );
           })}
         </div>
@@ -95,7 +116,7 @@ export function RepoPicker({ connectionId, value, onChange, readOnly }: Props) {
           </div>
         )}
         {repos.map(r => {
-          const selected = value.includes(r.url);
+          const selected = isSelected(r.url);
           return (
             <div
               key={r.url}

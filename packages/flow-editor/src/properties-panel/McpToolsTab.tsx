@@ -112,18 +112,16 @@ export function McpToolsTab({ node, orgId, onChange, readOnly }: McpToolsTabProp
       <div className="je-props__field">
         <label>MCPs</label>
         <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 8 }}>
-          MCPs to attach when this step runs. Manage your MCPs at{" "}
-          <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/mcps</a>{" "}
-          or{" "}
-          <a href="/admin/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/admin/mcps</a>.
+          MCPs to attach when this step runs. Manage your MCPs on the{" "}
+          <a href={`/workspaces/${wsId}/mcps`} target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>MCPs page</a>.
         </div>
 
         {loading ? (
           <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>
         ) : available.length === 0 ? (
           <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
-            No MCPs registered. Add some at{" "}
-            <a href="/me/mcps" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/mcps</a>.
+            No MCPs registered. Add some on the{" "}
+            <a href={`/workspaces/${wsId}/mcps`} target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>MCPs page</a>.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

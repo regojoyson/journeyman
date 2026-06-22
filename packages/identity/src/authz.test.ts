@@ -34,8 +34,13 @@ describe("loadWorkspaceAccess", () => {
     const acc = await loadWorkspaceAccess(db, "u1", "w1");
     expect(acc).toEqual({ orgId: "o1", isOrgAdmin: true, member: { role: "observer", permissions: null } });
   });
-  it("member null when user has no workspace membership", async () => {
+  it("synthesizes a contributor when an org member has no workspace membership", async () => {
     const db = fakeDb(() => ({ rows: [{ org_id: "o1", org_role: "member", ws_role: null, ws_permissions: null }] }));
+    const acc = await loadWorkspaceAccess(db, "u1", "w1");
+    expect(acc).toEqual({ orgId: "o1", isOrgAdmin: false, member: { role: "contributor", permissions: null } });
+  });
+  it("member null when the user is neither a workspace nor an org member", async () => {
+    const db = fakeDb(() => ({ rows: [{ org_id: "o1", org_role: null, ws_role: null, ws_permissions: null }] }));
     const acc = await loadWorkspaceAccess(db, "u1", "w1");
     expect(acc).toEqual({ orgId: "o1", isOrgAdmin: false, member: null });
   });

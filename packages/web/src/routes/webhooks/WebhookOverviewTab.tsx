@@ -12,8 +12,7 @@ interface Props {
 export function WebhookOverviewTab({ webhook, onChange }: Props) {
   const [busy, setBusy] = useState(false);
 
-  const { activeOrgId, role } = useAuth();
-  const isAdmin = role === "admin";
+  const { activeOrgId } = useAuth();
   const needsSecret = webhook.auth.mode !== "none";
   const currentRef = useMemo(() => refOf(webhook.auth), [webhook.auth]);
 
@@ -91,9 +90,7 @@ export function WebhookOverviewTab({ webhook, onChange }: Props) {
                 <SecretPicker
                   authMode={webhook.auth.mode}
                   presetId={webhook.preset}
-                  scope="org"
                   orgId={activeOrgId}
-                  isAdmin={isAdmin}
                   value={secretDraft}
                   onChange={setSecretDraft}
                 />

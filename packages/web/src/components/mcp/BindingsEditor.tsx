@@ -7,7 +7,6 @@ export interface BindingsEditorProps {
   wsId: string;
   value: Binding[];
   onChange: (next: Binding[]) => void;
-  scope: "all" | "org-and-global";
 }
 
 export function BindingsEditor(props: BindingsEditorProps) {
@@ -34,7 +33,6 @@ export function BindingsEditor(props: BindingsEditorProps) {
               wsId={props.wsId}
               value={b.secretName}
               onChange={(name) => update(i, { secretName: name })}
-              scope={props.scope}
             />
           </div>
           <button type="button" onClick={() => remove(i)} className={btnDanger}>✕</button>

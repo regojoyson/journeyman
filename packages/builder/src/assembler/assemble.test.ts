@@ -119,7 +119,7 @@ describe("assemble — branching", () => {
         branches: [{
           label: "a",
           condition: { left: { from: "workflow-input", name: "sev" }, op: "==", right: "high" },
-          steps: [{ ref: "n", kind: "provider", label: "Slack", stepType: "send-message", provider: "slack" }],
+          steps: [{ ref: "n", kind: "provider", label: "Comment", stepType: "comment-on-issue", provider: "linear" }],
         }],
       },
     };

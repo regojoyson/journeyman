@@ -50,7 +50,7 @@ export function CustomAiConfigForm({ config, onChange, readOnly, sources, inputs
   if (error) return <div className="je-props__field-help" style={{ color: "#ff7675" }}>{error}</div>;
   if (!step) return <div className="je-props__field-help">Loading custom step…</div>;
 
-  const editHref = "/me/custom-steps";
+  const editHref = `/workspaces/${wsId}/custom-steps/${config.customStepId}`;
   const removeInput = (name: string) => {
     const next = { ...inputs };
     delete next[name];

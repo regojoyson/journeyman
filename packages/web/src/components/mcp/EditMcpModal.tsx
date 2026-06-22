@@ -69,7 +69,6 @@ export function EditMcpModal(props: EditMcpModalProps) {
               wsId={props.wsId}
               value={bindings}
               onChange={setBindings}
-              scope="org-and-global"
             />
           </div>
 

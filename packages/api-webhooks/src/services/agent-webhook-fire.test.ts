@@ -40,6 +40,8 @@ describe("fireAgentForWebhook", () => {
       { ticketKey: "PROJ-1" },
       "webhook",
       expect.objectContaining({ orgId: "o1" }),
+      "trigger-1",
+      { payload: { issue: { key: "PROJ-1" } } },
     );
   });
 

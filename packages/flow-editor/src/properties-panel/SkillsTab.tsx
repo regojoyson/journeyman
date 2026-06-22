@@ -68,18 +68,16 @@ export function SkillsTab({ node, onChange, readOnly }: SkillsTabProps) {
       <div className="je-props__field">
         <label>Skills</label>
         <div style={{ fontSize: 11, color: "rgb(var(--color-text-muted) / 1)", marginBottom: 8 }}>
-          Skill packages to load when this step runs. Manage your skills at{" "}
-          <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/skills</a>{" "}
-          or{" "}
-          <a href="/admin/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/admin/skills</a>.
+          Skill packages to load when this step runs. Manage your skills on the{" "}
+          <a href={`/workspaces/${wsId}/skills`} target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>Skills page</a>.
         </div>
 
         {loading ? (
           <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>Loading…</div>
         ) : available.length === 0 ? (
           <div style={{ fontSize: 12, color: "rgb(var(--color-text-muted) / 1)" }}>
-            No ready skill packages. Add some at{" "}
-            <a href="/me/skills" target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>/me/skills</a>.
+            No ready skill packages. Add some on the{" "}
+            <a href={`/workspaces/${wsId}/skills`} target="_blank" rel="noreferrer" style={{ color: "rgb(var(--color-info) / 1)" }}>Skills page</a>.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

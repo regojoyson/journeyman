@@ -81,7 +81,6 @@ export function AddCustomModal(props: AddCustomModalProps) {
               wsId={props.wsId}
               value={bindings}
               onChange={setBindings}
-              scope="org-and-global"
             />
           </div>
 

@@ -61,6 +61,14 @@ export function WorkspaceSection({ a, patch, locked, wsId, orgId }: SectionProps
     patch({ repoSelections: a.repoSelections.filter((r) => r.repo !== fullName) });
   };
 
+  const setRepoBranch = (fullName: string, branch: string) => {
+    patch({
+      repoSelections: a.repoSelections.map((r) =>
+        r.repo === fullName ? { ...r, branch: branch || undefined } : r,
+      ),
+    });
+  };
+
   const browse = async () => {
     if (browsedRepos) {
       setBrowsedRepos(null);
@@ -190,13 +198,22 @@ export function WorkspaceSection({ a, patch, locked, wsId, orgId }: SectionProps
               : "Select a git connection, then use “Browse repos” to add repositories."}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2">
             {a.repoSelections.map((r) => (
-              <span
+              <div
                 key={r.repo}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm"
+                className="flex items-center gap-2 rounded-md border bg-muted px-3 py-1.5 text-sm"
               >
-                {r.repo}
+                <span className="flex-1 truncate">{r.repo}</span>
+                <input
+                  type="text"
+                  className={inputCls}
+                  style={{ width: 160 }}
+                  placeholder="default branch"
+                  value={r.branch ?? ""}
+                  disabled={locked}
+                  onChange={(e) => setRepoBranch(r.repo, e.target.value)}
+                />
                 {!locked && (
                   <button
                     type="button"
@@ -207,7 +224,7 @@ export function WorkspaceSection({ a, patch, locked, wsId, orgId }: SectionProps
                     ×
                   </button>
                 )}
-              </span>
+              </div>
             ))}
           </div>
         )}

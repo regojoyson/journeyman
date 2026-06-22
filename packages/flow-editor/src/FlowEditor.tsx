@@ -179,7 +179,7 @@ export function FlowEditor(props: FlowEditorProps) {
           flow={heal.healed}
           busy={props.busy}
           saveEnabled={!effectiveReadOnly && !!props.onSave}
-          runEnabled={!effectiveReadOnly && !!props.onRun && validity.ok && props.status !== "draft"}
+          runEnabled={!!props.onRun && validity.ok && props.status !== "draft"}
           runDisabledReason={
             props.status === "draft"
               ? "Publish this flow to run it."

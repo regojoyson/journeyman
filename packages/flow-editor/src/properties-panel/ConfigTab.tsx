@@ -345,8 +345,8 @@ export function ConfigTab({ flow, node, onChange, readOnly, mcpCatalog, flowDefa
           {node.stepType === "clone-repos" && node.connectionId && (
             <RepoPicker
               connectionId={node.connectionId}
-              value={((config.repos as string | undefined) ?? "").split("\n").filter(Boolean)}
-              onChange={urls => onChange({ ...node, config: { ...config, repos: urls.join("\n") } })}
+              value={Array.isArray(config.repos) ? (config.repos as { url: string; branch?: string }[]) : []}
+              onChange={repos => onChange({ ...node, config: { ...config, repos } })}
               readOnly={readOnly}
             />
           )}

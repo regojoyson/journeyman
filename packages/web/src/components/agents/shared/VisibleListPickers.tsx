@@ -64,9 +64,8 @@ export function VisibleMcpPicker({
   if (available.length === 0) {
     return (
       <div className="text-xs text-muted-foreground">
-        No MCP connectors available. Add some at{" "}
-        <a className="text-primary underline" href="/me/mcps" target="_blank" rel="noreferrer">/me/mcps</a>{" "}
-        or <a className="text-primary underline" href="/admin/mcps" target="_blank" rel="noreferrer">/admin/mcps</a>.
+        No MCP connectors available. Add some on the{" "}
+        <a className="text-primary underline" href={`/workspaces/${wsId}/mcps`} target="_blank" rel="noreferrer">MCPs page</a>.
       </div>
     );
   }
@@ -129,9 +128,8 @@ export function VisibleSkillPicker({
   if (available.length === 0) {
     return (
       <div className="text-xs text-muted-foreground">
-        No skill packages available. Add some at{" "}
-        <a className="text-primary underline" href="/me/skills" target="_blank" rel="noreferrer">/me/skills</a>{" "}
-        or <a className="text-primary underline" href="/admin/skills" target="_blank" rel="noreferrer">/admin/skills</a>.
+        No skill packages available. Add some on the{" "}
+        <a className="text-primary underline" href={`/workspaces/${wsId}/skills`} target="_blank" rel="noreferrer">Skills page</a>.
       </div>
     );
   }

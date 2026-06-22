@@ -99,9 +99,7 @@ export function WebhookCreateWizard({ wsId, onCreated, onCancel }: Props) {
             initial={{ payloadSchema: presetSchema }}
             onSubmit={submit}
             busy={busy}
-            scope="org"
             orgId=""
-            isAdmin={false}
           />
         )}
       </div>

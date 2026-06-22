@@ -5,10 +5,10 @@ import type { AssemblerIntent } from "./intent.ts";
 const base: AssemblerIntent = { summary: "", triggers: [{ kind: "manual" }], steps: [] };
 
 describe("detectGaps", () => {
-  it("flags an unimplemented provider step (Slack) as not-implemented", () => {
+  it("flags an unimplemented provider step (Linear) as not-implemented", () => {
     const intent: AssemblerIntent = {
       ...base,
-      steps: [{ ref: "notify", kind: "provider", label: "Notify", stepType: "send-message", provider: "slack" }],
+      steps: [{ ref: "notify", kind: "provider", label: "Comment", stepType: "comment-on-issue", provider: "linear" }],
     };
     const gaps = detectGaps(intent, { nodeIdByRef: { notify: "n_1" } });
     expect(gaps).toHaveLength(1);

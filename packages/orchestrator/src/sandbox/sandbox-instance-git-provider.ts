@@ -1,23 +1,9 @@
-import { parseRepoList } from "@journeyman/core";
+import { toRepoEntries } from "@journeyman/core";
 import type {
   CloneReposOptions, CloneReposResult, CloneResult, ExecOp, ExecResult, IGitProvider,
 } from "@journeyman/core";
 
 type ExecFn = (op: ExecOp) => Promise<ExecResult>;
-
-function toUrls(repos: unknown): string[] {
-  if (typeof repos === "string" || (Array.isArray(repos) && repos.every((r) => typeof r === "string"))) {
-    return parseRepoList(repos as string | string[]);
-  }
-  if (Array.isArray(repos)) {
-    return repos
-      .map((r) => (typeof r === "string" ? r : (r as { url?: string })?.url))
-      .filter((u): u is string => typeof u === "string")
-      .map((u) => u.trim())
-      .filter((u) => u.length > 0);
-  }
-  return [];
-}
 
 function folderName(url: string): string {
   return url.replace(/\.git$/, "").split("/").filter(Boolean).pop() ?? "repo";
@@ -65,23 +51,23 @@ export class SandboxInstanceGitProvider implements Pick<IGitProvider, "cloneRepo
   constructor(private exec: ExecFn, private auth?: SandboxGitAuth) {}
 
   async cloneRepos(opts: CloneReposOptions): Promise<CloneReposResult> {
-    const urls = toUrls(opts.repos);
+    const entries = toRepoEntries(opts.repos, opts.branch);
     const workspaceDir = opts.workspaceDir ?? "/workspace";
     const results: CloneResult[] = [];
-    for (const url of urls) {
-      const dir = folderName(url);
-      const cloneUrl = this.auth ? buildAuthCloneUrl(url, this.auth) : url;
+    for (const entry of entries) {
+      const dir = folderName(entry.url);
+      const cloneUrl = this.auth ? buildAuthCloneUrl(entry.url, this.auth) : entry.url;
       const r = await this.exec({
         op: "clone",
-        stdin: { repoUrl: cloneUrl, dir, ...(opts.branch ? { branch: opts.branch } : {}) },
+        stdin: { repoUrl: cloneUrl, dir, ...(entry.branch ? { branch: entry.branch } : {}) },
         ...(opts.signal ? { signal: opts.signal } : {}),
         ...(opts.onLog ? { onLog: opts.onLog } : {}),
       });
       results.push({
         folderName: dir,
         repoDir: `${workspaceDir}/${dir}`,
-        url,
-        branch: opts.branch ?? "",
+        url: entry.url,
+        branch: entry.branch ?? "",
         ...(r.ok ? {} : { error: r.error }),
       });
     }

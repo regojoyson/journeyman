@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { selectCls } from "../../routes/admin-styles.ts";
-import { fetchVisibleSecrets, filterSecrets, type VisibleSecret } from "../../api/secrets.ts";
+import { fetchVisibleSecrets, type VisibleSecret } from "../../api/secrets.ts";
 
 export interface SecretPickerProps {
   wsId: string;
   value: string;
   onChange: (name: string) => void;
-  scope: "all" | "org-and-global";
   required?: boolean;
 }
 
@@ -15,12 +14,12 @@ export function SecretPicker(props: SecretPickerProps) {
   useEffect(() => {
     let alive = true;
     fetchVisibleSecrets(props.wsId).then((list) => {
-      if (alive) setSecrets(filterSecrets(list, props.scope));
+      if (alive) setSecrets(list);
     });
     return () => { alive = false; };
-  }, [props.wsId, props.scope]);
+  }, [props.wsId]);
 
-  const order: Record<VisibleSecret["scope"], number> = { user: 0, org: 1, global: 2 };
+  const order: Record<VisibleSecret["scope"], number> = { org: 0, global: 1 };
   const byName = new Map<string, VisibleSecret>();
   for (const s of secrets) {
     const existing = byName.get(s.name);

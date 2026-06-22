@@ -11,6 +11,7 @@ export type * from "./types/coding-models.types.ts";
 export type * from "./types/model-pricing.types.ts";
 export * from "./types/coding-tools.types.ts";
 export { parseRepoList } from "./parse-repo-list.ts";
+export { toRepoEntries } from "./to-repo-entries.ts";
 export type * from "./types/custom-steps.types.ts";
 export {
   CUSTOM_STEP_EXPORT_KIND,

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
+import { ThemeProvider } from "@journeyman/theme";
 import type { Agent } from "@journeyman/core";
 import { AgentDetail } from "./AgentDetail.tsx";
 
@@ -15,9 +16,11 @@ const agent: Agent = {
 
 function render(a: Agent) {
   return renderToStaticMarkup(
-    <MemoryRouter>
-      <AgentDetail wsId="w1" orgId="o1" initial={a} />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <AgentDetail wsId="w1" orgId="o1" initial={a} />
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

@@ -36,7 +36,8 @@ describe("compileAgentToGraph", () => {
     expect(stepNode).toBeTruthy();
     expect(stepNode.config!.agentId).toBe("ag1");
     expect(stepNode.config!.instructions).toBe("Fix PROJ-1");
-    expect(stepNode.config!.repos).toEqual(["acme/api"]);
+    expect(stepNode.config!.repos).toEqual([{ url: "acme/api", branch: "main" }]);
+    expect(stepNode.config!.repoBranch).toBeUndefined();
     expect(stepNode.config!.maxSteps).toBe(40);
     expect(stepNode.config!.timeoutSeconds).toBe(1800);
     expect(stepNode.sandboxId).toBe("sb1");
@@ -57,6 +58,22 @@ describe("compileAgentToGraph", () => {
     const { graph } = compileAgentToGraph(agent, { ticketKey: "X" });
     const step = graph.nodes.find((n) => n.stepType === "agent-run")!;
     expect(step.config!.gitConnectionId).toBe("conn-1");
+  });
+
+  it("carries each repo's own branch (not just the first)", () => {
+    const agent = {
+      ...baseAgent,
+      repoSelections: [
+        { repo: "acme/api", branch: "develop", allowWrites: false },
+        { repo: "acme/web", allowWrites: false },
+      ],
+    };
+    const { graph } = compileAgentToGraph(agent, { ticketKey: "X" });
+    const step = graph.nodes.find((n) => n.stepType === "agent-run")!;
+    expect(step.config!.repos).toEqual([
+      { url: "acme/api", branch: "develop" },
+      { url: "acme/web", branch: "" },
+    ]);
   });
 
   it("renders required inputs and rejects missing ones", () => {

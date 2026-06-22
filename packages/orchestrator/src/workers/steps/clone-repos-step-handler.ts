@@ -1,8 +1,8 @@
-import { createLogger, parseRepoList } from "@journeyman/core";
+import { createLogger, toRepoEntries } from "@journeyman/core";
 import type {
   IGitProvider, IStepHandler, StepContext, StepInput, StepRunResult, ProviderFactory,
 } from "@journeyman/core";
-import { SandboxInstanceGitProvider } from "../../sandbox/sandbox-instance-git-provider.ts";
+import { SandboxInstanceGitProvider, type SandboxGitAuth } from "../../sandbox/sandbox-instance-git-provider.ts";
 
 const log = createLogger("worker:clone-repos");
 
@@ -30,11 +30,9 @@ export class CloneReposStepHandler implements IStepHandler {
 
   async run(input: StepInput, ctx: StepContext): Promise<StepRunResult> {
     const workspaceDir = ctx.workspaceDir;
-    const branch = typeof input.branch === "string" ? input.branch : undefined;
+    const entries = toRepoEntries(input.repos);
 
-    const repos = parseRepoList(input.repos as string | string[] | undefined);
-
-    if (repos.length === 0) {
+    if (entries.length === 0) {
       return {
         kind: "failure",
         failure: {
@@ -45,16 +43,20 @@ export class CloneReposStepHandler implements IStepHandler {
       };
     }
 
+    const auth: SandboxGitAuth | undefined = ctx.connection
+      ? { provider: ctx.connection.provider, token: ctx.connection.credential, baseUrl: ctx.connection.baseUrl }
+      : undefined;
+
     const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
-      ? new SandboxInstanceGitProvider(ctx.exec)
+      ? new SandboxInstanceGitProvider(ctx.exec, auth)
       : this.deps.git(ctx.connection?.provider, ctx.env, ctx.connection);
 
     const agentLogLevel = typeof input.agentLogLevel === "string" ? input.agentLogLevel : "light";
     const verbose = agentLogLevel === "medium" || agentLogLevel === "all";
-    for (const r of repos) ctx.log(`Cloning ${r}…`);
+    for (const r of entries) ctx.log(`Cloning ${r.url}…`);
 
     const result = await git.cloneRepos({
-      repos, workspaceDir, branch, signal: ctx.signal,
+      repos: entries, workspaceDir, signal: ctx.signal,
       ...(verbose ? { onLog: ctx.log } : {}),
     });
     if (result?.error) {

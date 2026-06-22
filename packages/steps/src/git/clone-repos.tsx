@@ -9,8 +9,7 @@ import {
 } from "./clone-repos.meta.ts";
 
 interface CloneReposConfig {
-  repos: string;
-  branch?: string;
+  repos: { url: string; branch?: string }[];
 }
 
 export const cloneReposStep: StepDefinition<CloneReposConfig> = {
@@ -20,16 +19,16 @@ export const cloneReposStep: StepDefinition<CloneReposConfig> = {
   description: CLONE_REPOS_DESCRIPTION,
   color: "#74b9ff",
   icon: "📦",
-  defaultConfig: { repos: "", branch: "" },
+  defaultConfig: { repos: [] },
   configSchema: cloneReposConfigSchema,
-  configFields: {
-    repos:  { label: "Repos",  widget: "string-list", help: "One owner/repo or URL per row" },
-    branch: { label: "Branch", widget: "text",        help: "Optional — defaults to main" },
-  },
+  // Repos (and their per-repo branch) are edited by the connection-bound RepoPicker
+  // in the flow-editor, not by generic widgets. An empty configFields also disables
+  // the ConfigTab stale-key sweep for this step, so config.repos is never wiped.
+  configFields: {},
   tabs: { io: "shown", mcp: "hidden", retry: "shown", requiredSecrets: "hidden" },
   summary: c => {
-    const lines = (c.repos ?? "").split("\n").filter(s => s.trim());
-    return lines.length ? `${lines.length} repo${lines.length === 1 ? "" : "s"}` : "(no repos)";
+    const n = Array.isArray(c.repos) ? c.repos.length : 0;
+    return n ? `${n} repo${n === 1 ? "" : "s"}` : "(no repos)";
   },
   executor: { kind: "git-provider", method: "cloneRepos" },
 };

@@ -21,15 +21,11 @@ interface Props {
   submitLabel?: string;
   onSubmit: (value: ConfigFormValue) => void | Promise<void>;
   busy?: boolean;
-  /** Scope of the webhook being created. Drives the secret list and create endpoint. */
-  scope: "org" | "user";
-  /** Active org id (required by both list and create endpoints). */
+  /** Active org id (required to create an org-scoped secret from the generate panel). */
   orgId: string;
-  /** Whether the current user is an org admin (controls promote UI). */
-  isAdmin: boolean;
 }
 
-export function WebhookConfigForm({ preset, initial, submitLabel = "Create webhook", onSubmit, busy, scope, orgId, isAdmin }: Props) {
+export function WebhookConfigForm({ preset, initial, submitLabel = "Create webhook", onSubmit, busy, orgId }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [secretRefInput, setSecretRefInput] = useState<string>(refOf(initial?.auth ?? preset.auth));
@@ -111,9 +107,7 @@ export function WebhookConfigForm({ preset, initial, submitLabel = "Create webho
           <SecretPicker
             authMode={preset.auth.mode}
             presetId={preset.id}
-            scope={scope}
             orgId={orgId}
-            isAdmin={isAdmin}
             value={secretRefInput}
             onChange={setSecretRefInput}
           />

@@ -167,7 +167,6 @@ export function AddFromCatalogModal(props: AddFromCatalogModalProps) {
                       wsId={props.wsId}
                       value={bindings[ev] ?? ""}
                       onChange={(secretName) => setBindings((prev) => ({ ...prev, [ev]: secretName }))}
-                      scope="org-and-global"
                       required
                     />
                   </div>

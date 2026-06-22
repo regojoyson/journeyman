@@ -1,6 +1,6 @@
 import { api } from "./client.ts";
 
-export type SecretScope = "user" | "org" | "global";
+export type SecretScope = "org" | "global";
 
 export interface VisibleSecret { name: string; scope: SecretScope }
 
@@ -10,14 +10,6 @@ export async function fetchVisibleSecrets(wsId: string): Promise<VisibleSecret[]
   if (!r.ok) return [];
   const body = await r.json();
   return Array.isArray(body?.scoped) ? body.scoped : [];
-}
-
-export function filterSecrets(
-  secrets: VisibleSecret[],
-  mode: "all" | "org-and-global",
-): VisibleSecret[] {
-  if (mode === "all") return secrets;
-  return secrets.filter((s) => s.scope !== "user");
 }
 
 export interface OrgSecretMeta { id: string; name: string; description?: string | null }
@@ -39,34 +31,6 @@ export function createOrgSecret(
   return api<{ id: string; name: string }>(
     `/api/orgs/${encodeURIComponent(orgId)}/secrets`,
     { method: "POST", body: JSON.stringify({ name, value, description }) },
-  );
-}
-
-/**
- * Create a user-scope secret. Pinned to active org per existing MySecretsPage pattern.
- */
-export function createUserSecret(
-  orgId: string,
-  name: string,
-  value: string,
-  description?: string,
-): Promise<{ id: string; name: string }> {
-  return api<{ id: string; name: string }>(
-    `/api/orgs/${encodeURIComponent(orgId)}/users/me/secrets`,
-    { method: "POST", body: JSON.stringify({ name, value, description }) },
-  );
-}
-
-/**
- * Promote a user-scope secret with the given name to org-scope. Admin-only.
- */
-export function promoteSecretToOrg(
-  orgId: string,
-  secretName: string,
-): Promise<{ id: string; name: string }> {
-  return api<{ id: string; name: string }>(
-    `/api/orgs/${encodeURIComponent(orgId)}/secrets/${encodeURIComponent(secretName)}/promote-from-user`,
-    { method: "POST", body: "{}" },
   );
 }
 

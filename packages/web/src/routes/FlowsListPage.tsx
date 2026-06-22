@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import type { Workflow } from "@journeyman/core";
-import { listFlowsPaged, updateFlowMeta } from "../api/flows.ts";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import type { Workflow, WorkflowInputDef } from "@journeyman/core";
+import { getStartWorkflowInputs } from "@journeyman/core";
+import { listFlowsPaged, updateFlowMeta, getCurrentWorkflowVersion } from "../api/flows.ts";
 import { useWorkspace } from "../WorkspaceContext.tsx";
 import { Pagination } from "@journeyman/runs-list";
 import { btnPrimary, card } from "./admin-styles.ts";
 import { StatusChip } from "../components/StatusChip.tsx";
+import { RunFlowDialog } from "../components/RunFlowDialog.tsx";
+import { runActionVisible } from "./flows-list-actions.ts";
 
 export function FlowsListPage() {
   const { wsId = "" } = useParams<{ wsId: string }>();
@@ -18,6 +21,10 @@ export function FlowsListPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const navigate = useNavigate();
+  const [runTarget, setRunTarget] = useState<{ id: string; name: string } | null>(null);
+  const [runInputDefs, setRunInputDefs] = useState<WorkflowInputDef[]>([]);
+  const [runLoadingId, setRunLoadingId] = useState<string | null>(null);
 
   async function fetchFlows(p: number, ps: number) {
     setLoading(true);
@@ -50,6 +57,28 @@ export function FlowsListPage() {
       await fetchFlows(page, pageSize);
     } catch (e) {
       alert(`Rename failed: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleRun(flow: Workflow) {
+    setRunLoadingId(flow.id);
+    setError(null);
+    try {
+      const version = await getCurrentWorkflowVersion(wsId, flow.id);
+      const def = version.definition;
+      const startNode = def.nodes.find(
+        (n) => n.type === "trigger-manual" || n.type === "trigger-webhook" || n.type === "trigger-human",
+      );
+      const defs = (def.inputDefs && def.inputDefs.length > 0
+        ? def.inputDefs
+        : getStartWorkflowInputs(startNode?.config)
+      ).filter((d) => d.name.trim() !== "");
+      setRunInputDefs(defs);
+      setRunTarget({ id: flow.id, name: flow.name });
+    } catch (e) {
+      setError(`Could not load inputs: ${(e as Error).message}`);
+    } finally {
+      setRunLoadingId(null);
     }
   }
 
@@ -121,6 +150,15 @@ export function FlowsListPage() {
                             Open (read-only)
                           </Link>
                         )}
+                        {runActionVisible(editable, f.status) && (
+                          <button
+                            onClick={() => handleRun(f)}
+                            disabled={runLoadingId === f.id}
+                            className="text-foreground hover:text-foreground"
+                          >
+                            {runLoadingId === f.id ? "Loading…" : "Run"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -136,6 +174,19 @@ export function FlowsListPage() {
             total={total}
             onPageChange={setPage}
             onPageSizeChange={handlePageSizeChange}
+          />
+        )}
+        {runTarget && (
+          <RunFlowDialog
+            wsId={wsId}
+            workflowId={runTarget.id}
+            workflowName={runTarget.name}
+            inputDefs={runInputDefs}
+            onClose={() => setRunTarget(null)}
+            onSubmitted={(res) => {
+              setRunTarget(null);
+              navigate(`/workspaces/${wsId}/workflow-instances/${res.workflowInstanceId}`);
+            }}
           />
         )}
       </div>

@@ -51,4 +51,32 @@ describe("CloneReposStepHandler", () => {
     expect(result.failure.errorClass).toBe("CloneReposFailed");
     expect(result.failure.retryable).toBe(true);
   });
+
+  it("clones object-array repos with per-repo branch", async () => {
+    const ctx = makeCtx();
+    const calls: Parameters<IGitProvider["cloneRepos"]>[0][] = [];
+    const handler = new CloneReposStepHandler({
+      git: () => ({
+        cloneRepos: async (o: Parameters<IGitProvider["cloneRepos"]>[0]) => { calls.push(o); return { repos: [] }; },
+      }) as unknown as IGitProvider,
+    });
+    const result = await handler.run(
+      { repos: [{ url: "acme/api", branch: "develop" }, { url: "acme/web", branch: "" }] },
+      ctx,
+    );
+    expect(result.kind).toBe("success");
+    expect(calls[0].repos).toEqual([
+      { url: "acme/api", branch: "develop" },
+      { url: "acme/web", branch: "" },
+    ]);
+  });
+
+  it("fails non-retryably when repos is empty", async () => {
+    const ctx = makeCtx();
+    const handler = makeHandler({ repos: [] });
+    const result = await handler.run({ repos: [] }, ctx);
+    if (result.kind !== "failure") throw new Error("expected failure");
+    expect(result.failure.errorClass).toBe("InvalidInput");
+    expect(result.failure.retryable).toBe(false);
+  });
 });

@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 import {
   createLogger,
   toolsRequireWorkspace,
-  parseRepoList,
+  toRepoEntries,
   type CanonicalTool,
   type ICodingCLI,
   type IGitProvider,
@@ -53,7 +53,7 @@ export class AgentRunStepHandler implements IStepHandler {
 
   async needsWorkspaceFor(input: StepInput): Promise<boolean> {
     const tools = Array.isArray(input.tools) ? (input.tools as CanonicalTool[]) : [];
-    const hasRepos = parseRepoList(input.repos as string | string[] | undefined).length > 0;
+    const hasRepos = toRepoEntries(input.repos).length > 0;
     const hasSkills = Array.isArray(input.skills) && (input.skills as unknown[]).length > 0;
     const hasMcps = Array.isArray(input.mcps) && (input.mcps as unknown[]).length > 0;
     return hasRepos || toolsRequireWorkspace(tools) || hasSkills || hasMcps;
@@ -75,8 +75,8 @@ export class AgentRunStepHandler implements IStepHandler {
 
     // 1) Clone repos (if any) into the workspace. When a git Connection is named,
     //    resolve its token and authenticate the clone (works in-container via URL).
-    const repos = parseRepoList(input.repos as string | string[] | undefined);
-    if (repos.length > 0) {
+    const repoEntries = toRepoEntries(input.repos);
+    if (repoEntries.length > 0) {
       const gitConnectionId = typeof input.gitConnectionId === "string" ? input.gitConnectionId : undefined;
       let auth: SandboxGitAuth | undefined;
       let gitProviderKey = provider;
@@ -97,9 +97,8 @@ export class AgentRunStepHandler implements IStepHandler {
       const git: Pick<IGitProvider, "cloneRepos"> = ctx.exec
         ? new SandboxInstanceGitProvider(ctx.exec, auth)
         : this.deps.git(gitProviderKey, cloneEnv);
-      const branch = typeof input.repoBranch === "string" ? input.repoBranch : undefined;
-      for (const r of repos) ctx.log(`Cloning ${r}…`);
-      const cloneRes = await git.cloneRepos({ repos, workspaceDir: ctx.workspaceDir, branch, signal: ctx.signal });
+      for (const r of repoEntries) ctx.log(`Cloning ${r.url}…`);
+      const cloneRes = await git.cloneRepos({ repos: repoEntries, workspaceDir: ctx.workspaceDir, signal: ctx.signal });
       if (cloneRes?.error) {
         return {
           kind: "failure",

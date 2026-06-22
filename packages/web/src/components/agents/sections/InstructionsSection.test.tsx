@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { ThemeProvider } from "@journeyman/theme";
 import type { Agent } from "@journeyman/core";
 import { InstructionsSection } from "./InstructionsSection.tsx";
 
@@ -13,7 +14,11 @@ const agent = {
 
 describe("InstructionsSection", () => {
   it("lists the detected inputs as chips", () => {
-    const html = renderToStaticMarkup(<InstructionsSection a={agent} patch={() => {}} locked={false} />);
+    const html = renderToStaticMarkup(
+      <ThemeProvider>
+        <InstructionsSection a={agent} patch={() => {}} locked={false} />
+      </ThemeProvider>,
+    );
     expect(html).toContain("Detected inputs");
     expect(html).toContain("ticketKey");
     expect(html).toContain("repo");
