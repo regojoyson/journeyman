@@ -128,6 +128,22 @@ describe("runCustomPrompt structured reliability", () => {
     expect(r.error).toBeUndefined();
   });
 
+  it("reads the structured result from the `structured_output` key too (version-resilience)", async () => {
+    // SDK docs / v1 surface name the field `structured_output`; v2 uses `structured`.
+    const client = streamingClient({ data: { info: { structured_output: { success: true } }, parts: [] } });
+    const r = await runCustomPrompt(client, cfg, structuredOpts);
+    expect(r.structured).toEqual({ success: true });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("surfaces a StructuredOutputError with its message and retry count (per docs)", async () => {
+    const client = streamingClient({
+      data: { info: { error: { name: "StructuredOutputError", data: { message: "Model did not produce structured output", retries: 2 } } }, parts: [] },
+    });
+    const r = await runCustomPrompt(client, cfg, structuredOpts);
+    expect(r.error).toBe("StructuredOutputError: Model did not produce structured output (after 2 retries)");
+  });
+
   it("salvages a boolean from text when structured is absent", async () => {
     const client = streamingClient({ data: { info: {}, parts: [{ type: "text", text: "Yes, the answer is true." }] } });
     const r = await runCustomPrompt(client, cfg, structuredOpts);
@@ -139,6 +155,54 @@ describe("runCustomPrompt structured reliability", () => {
     const r = await runCustomPrompt(client, cfg, structuredOpts);
     expect(r.structured).toBeUndefined();
     expect(r.error).toContain("cannot determine");
+  });
+
+  it("salvages from a ```json text block even when opencode reports StructuredOutputError", async () => {
+    // Real LM Studio case: opencode's coercion gives up (StructuredOutputError,
+    // retries: 0) but the model emitted the JSON as a fenced text block. We must
+    // recover it instead of failing the step.
+    const schema = { type: "object", properties: { data: { type: "string" }, valid: { type: "boolean" }, count: { type: "number" } }, required: ["data", "valid", "count"] };
+    const client = streamingClient({
+      data: {
+        info: { error: { name: "StructuredOutputError", data: { message: "Model did not produce structured output", retries: 0 } } },
+        parts: [{ type: "text", text: 'Input: `hello-sam`\n\n```json\n{\n  "data": "masolleh",\n  "valid": true,\n  "count": 9\n}\n```' }],
+      },
+    });
+    const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "structured", outputSchema: schema, model: "qwen/q3" });
+    expect(r.structured).toEqual({ data: "masolleh", valid: true, count: 9 });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("salvages JSON from the reasoning channel when the content channel is empty", async () => {
+    // qwen via LM Studio: with response_format json_schema the answer comes back in
+    // `reasoning_content` (a `reasoning` part) and `content` is empty. opencode then
+    // reports StructuredOutputError. We must recover from the reasoning channel.
+    const schema = { type: "object", properties: { title: { type: "string" }, is_bug: { type: "boolean" } }, required: ["title", "is_bug"] };
+    const client = streamingClient({
+      data: {
+        info: { error: { name: "StructuredOutputError", data: { message: "Model did not produce structured output", retries: 0 } } },
+        parts: [
+          { type: "text", text: "" },
+          { type: "reasoning", text: '{\n  "title": "Login button does nothing on mobile Safari",\n  "is_bug": true\n}' },
+        ],
+      },
+    });
+    const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "structured", outputSchema: schema, model: "qwen/q3" });
+    expect(r.structured).toEqual({ title: "Login button does nothing on mobile Safari", is_bug: true });
+    expect(r.error).toBeUndefined();
+  });
+
+  it("still surfaces a session error when there is no salvageable JSON", async () => {
+    const schema = { type: "object", properties: { data: { type: "string" }, valid: { type: "boolean" }, count: { type: "number" } }, required: ["data", "valid", "count"] };
+    const client = streamingClient({
+      data: {
+        info: { error: { name: "StructuredOutputError", data: { message: "Model did not produce structured output", retries: 0 } } },
+        parts: [{ type: "text", text: "data : mas-olleh valid : true count : 9" }],
+      },
+    });
+    const r = await runCustomPrompt(client, cfg, { prompt: "x", outputMode: "structured", outputSchema: schema, model: "qwen/q3" });
+    expect(r.structured).toBeUndefined();
+    expect(r.error).toContain("StructuredOutputError");
   });
 
   it("sends an explicit tools map (all builtins false for a tool-less step)", async () => {

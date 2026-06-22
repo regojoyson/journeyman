@@ -43,12 +43,61 @@ function describeSdkError(error: unknown, response?: { status?: number; statusTe
   return [http, body].filter(Boolean).join(": ");
 }
 
-/** Concatenate the text of all text parts in a prompt response. */
-function extractText(data: { parts?: Array<{ type?: string; text?: string }> }): string {
+type Part = { type?: string; text?: string };
+
+/** Concatenate the text of all parts of the given `type` ("text" or "reasoning"). */
+function concatParts(data: { parts?: Part[] }, type: string): string {
   return (data.parts ?? [])
-    .filter((p) => p.type === "text" && typeof p.text === "string")
+    .filter((p) => p.type === type && typeof p.text === "string")
     .map((p) => p.text as string)
     .join("");
+}
+
+/** Concatenate the text of all text parts in a prompt response. */
+function extractText(data: { parts?: Part[] }): string {
+  return concatParts(data, "text");
+}
+
+/**
+ * Best-effort structured salvage from the model's reply, trying the content channel
+ * first and then the reasoning channel. Reasoning models (e.g. qwen via LM Studio)
+ * routinely emit the JSON answer into `reasoning_content` — surfaced here as a
+ * `reasoning` part — while leaving `content` (the text parts) empty, which would
+ * otherwise look like "no output". Each channel is tried separately so a stray brace
+ * in one can't corrupt the JSON match in the other. Validation-safe: returns only a
+ * schema-conforming object.
+ */
+function salvageFromParts(data: { parts?: Part[] }, schema: Record<string, unknown>): Record<string, unknown> | undefined {
+  return salvageStructured(extractText(data), schema) ?? salvageStructured(concatParts(data, "reasoning"), schema);
+}
+
+/**
+ * The structured result on the assistant message. The installed SDK (@opencode-ai/sdk
+ * v2) exposes it as `info.structured`; the SDK docs and the v1/HTTP surface call it
+ * `structured_output`. Read both so a SDK/server version change can't silently strand
+ * the result. See https://opencode.ai/docs/sdk/#json-schema-format.
+ */
+function readStructured(info: { structured?: unknown; structured_output?: unknown }): unknown {
+  return info.structured !== undefined ? info.structured : info.structured_output;
+}
+
+/**
+ * Render an opencode `AssistantMessage.error` into a diagnosable string. Per the SDK
+ * docs (#error-handling) each error has a `name` and nested `data`; a
+ * StructuredOutputError additionally carries `data.retries`.
+ */
+function describeInfoError(error: unknown): string {
+  if (typeof error === "string") return error;
+  const e = error as { name?: string; data?: { message?: string; retries?: number } };
+  if (e?.name) {
+    const msg = e.data?.message ?? "";
+    const retries =
+      e.name === "StructuredOutputError" && typeof e.data?.retries === "number"
+        ? ` (after ${e.data.retries} ${e.data.retries === 1 ? "retry" : "retries"})`
+        : "";
+    return `${e.name}: ${msg}${retries}`.trim();
+  }
+  try { return JSON.stringify(error); } catch { return String(error); }
 }
 
 /**
@@ -169,7 +218,7 @@ export async function runCustomPrompt(
     }
   }
 
-  const info = res.data.info as { error?: unknown; structured?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
+  const info = res.data.info as { error?: unknown; structured?: unknown; structured_output?: unknown; tokens?: unknown; modelID?: string; providerID?: string };
   logSessionEvent(log, sessionId, info as never, opts.onLog);
   const usage = openCodeInfoToTokenUsage(info as never);
 
@@ -177,7 +226,20 @@ export async function runCustomPrompt(
     if (info.error && typeof info.error === "object" && (info.error as { name?: string }).name === "MessageAbortedError") {
       throw abortError(opts.signal);
     }
-    const error = typeof info.error === "string" ? info.error : JSON.stringify(info.error);
+    // OpenCode's own structured-output coercion can give up (StructuredOutputError)
+    // even though the model DID emit the JSON — just as plain text rather than through
+    // the structured channel. This is common with small/local models (e.g. via LM
+    // Studio) that ignore the format directive and print a ```json block instead.
+    // Salvage is validation-safe — it returns only a schema-conforming object — so try
+    // it before surfacing the error rather than discarding a usable result.
+    if (opts.outputMode === "structured" && opts.outputSchema) {
+      const salvaged = salvageFromParts(res.data as never, opts.outputSchema as Record<string, unknown>);
+      if (salvaged) {
+        log.warn({ sessionId, error: (info.error as { name?: string })?.name ?? "error" }, "structured salvaged from text/reasoning despite session error");
+        return { sessionId, structured: salvaged, usage };
+      }
+    }
+    const error = describeInfoError(info.error);
     log.error({ sessionId, error }, "runCustomPrompt failed");
     return { sessionId, error, usage };
   }
@@ -185,18 +247,19 @@ export async function runCustomPrompt(
   if (opts.outputMode === "none") return { sessionId, usage };
   if (opts.outputMode === "text") return { sessionId, result: extractText(res.data as never), usage };
 
-  // structured: validate → salvage from text → fail clearly.
+  // structured: validate → salvage from text/reasoning → fail clearly.
   const schema = opts.outputSchema as Record<string, unknown>;
-  const valid = validateStructured(info.structured, schema);
+  const valid = validateStructured(readStructured(info), schema);
   if (valid.ok) return { sessionId, structured: valid.value, usage };
 
-  const text = extractText(res.data as never);
-  const salvaged = salvageStructured(text, schema);
+  const salvaged = salvageFromParts(res.data as never, schema);
   if (salvaged) {
-    log.warn({ sessionId, reason: valid.reason }, "structured salvaged from text");
+    log.warn({ sessionId, reason: valid.reason }, "structured salvaged from text/reasoning");
     return { sessionId, structured: salvaged, usage };
   }
 
+  // Surface whichever channel the model actually used so the failure is diagnosable.
+  const text = extractText(res.data as never) || concatParts(res.data as never, "reasoning");
   const error = `model did not return valid structured output (${valid.reason}). Model said: ${text.slice(0, 500) || "(no text)"}`;
   log.error({ sessionId, error }, "runCustomPrompt structured invalid");
   return { sessionId, error, usage };

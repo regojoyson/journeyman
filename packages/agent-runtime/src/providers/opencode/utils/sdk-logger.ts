@@ -98,17 +98,16 @@ export function logOpenCodeTranscript(
 }
 
 /** Final session-result diagnostic. Routed through `onLog` so it is visible
- * (the old version used log.debug, dropped at the default `info` level), and
- * inspects OpenCode's `structured` key (not the Claude-shaped structured_output). */
+ * (the old version used log.debug, dropped at the default `info` level). The
+ * structured result lives on `structured` (SDK v2) or `structured_output`
+ * (docs / v1 surface); check both so the log reflects either. */
 export function logSessionEvent(
   logger: Logger,
   sessionId: string,
-  info: { error?: unknown; structured?: unknown; [k: string]: unknown },
+  info: { error?: unknown; structured?: unknown; structured_output?: unknown; [k: string]: unknown },
   onLog?: CodingCliLogFn,
 ): void {
-  logger.info(
-    { sessionId, hasError: !!info.error, hasStructured: info.structured !== undefined },
-    "opencode session result",
-  );
-  onLog?.(`📦 session result: ${info.error ? "error" : info.structured !== undefined ? "structured" : "no-structured"}`);
+  const hasStructured = info.structured !== undefined || info.structured_output !== undefined;
+  logger.info({ sessionId, hasError: !!info.error, hasStructured }, "opencode session result");
+  onLog?.(`📦 session result: ${info.error ? "error" : hasStructured ? "structured" : "no-structured"}`);
 }
